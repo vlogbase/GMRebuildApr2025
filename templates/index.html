@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GloriaMundo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <button id="new-chat-btn" class="new-chat-btn">
+                    <i class="fa-solid fa-plus"></i> New Chat
+                </button>
+            </div>
+            
+            <div class="conversation-list">
+                <!-- Example conversation items (static for now) -->
+                <div class="conversation-item">
+                    <div class="conversation-title">New Conversation</div>
+                    <div class="conversation-date">1 day ago</div>
+                </div>
+                <div class="conversation-item">
+                    <div class="conversation-title">New Conversation</div>
+                    <div class="conversation-date">1 day ago</div>
+                </div>
+                <div class="conversation-item">
+                    <div class="conversation-title">test</div>
+                    <div class="conversation-date">1 day ago</div>
+                </div>
+                <div class="conversation-item">
+                    <div class="conversation-title">Imagine you could redes...</div>
+                    <div class="conversation-date">1 day ago</div>
+                </div>
+                <div class="conversation-item">
+                    <div class="conversation-title">If the primary energy sou...</div>
+                    <div class="conversation-date">1 day ago</div>
+                </div>
+                <div class="conversation-item">
+                    <div class="conversation-title">A city's public transporta...</div>
+                    <div class="conversation-date">1 day ago</div>
+                </div>
+                <div class="conversation-item">
+                    <div class="conversation-title">A small, isolated island...</div>
+                    <div class="conversation-date">1 day ago</div>
+                </div>
+                <div class="conversation-item">
+                    <div class="conversation-title">a set of potential interac...</div>
+                    <div class="conversation-date">1 day ago</div>
+                </div>
+                <div class="conversation-item">
+                    <div class="conversation-title">Imagine gravity suddenly...</div>
+                    <div class="conversation-date">1 day ago</div>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                <button id="clear-conversations-btn" class="clear-conversations-btn">
+                    <i class="fa-regular fa-trash-can"></i> Clear conversations
+                </button>
+            </div>
+        </div>
+        
+        <!-- Main Chat Area -->
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                <!-- Welcome message -->
+                <div class="welcome-container">
+                    <div class="welcome-icon">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                    </div>
+                    <h1 class="welcome-heading">Welcome to GloriaMundo!</h1>
+                    <p class="welcome-text">
+                        Ask me anything and I'll provide helpful, accurate responses. Sign in to 
+                        save your conversations and access them from any device.
+                    </p>
+                    <button class="example-question-btn" id="example-question-btn">
+                        <i class="fa-regular fa-lightbulb"></i> Try an example question
+                    </button>
+                </div>
+                
+                <!-- Chat messages will be added here dynamically -->
+            </div>
+            
+            <!-- Input Area -->
+            <div class="chat-input-container">
+                <div class="model-buttons">
+                    <button class="model-btn active" data-model="gemini-1.5-pro">
+                        <i class="fa-solid fa-robot"></i> Gemini 1.5 Pro
+                    </button>
+                    <button class="model-btn" data-model="claude-3-sonnet">
+                        <i class="fa-solid fa-robot"></i> Claude 3.7 Sonnet
+                    </button>
+                    <button class="model-btn" data-model="mistral-large">
+                        <i class="fa-solid fa-robot"></i> Mistral Large
+                    </button>
+                    <button class="model-btn" data-model="gpt-4o">
+                        <i class="fa-solid fa-robot"></i> GPT-4o
+                    </button>
+                    <button class="model-btn" data-model="sonar-pro">
+                        <i class="fa-solid fa-robot"></i> Sonar Pro
+                    </button>
+                    <button class="model-btn free-model" data-model="free-gemini">
+                        <i class="fa-solid fa-robot"></i> Free: Gemini
+                    </button>
+                </div>
+                
+                <div class="input-group">
+                    <textarea id="message-input" placeholder="Message GloriaMundo..."></textarea>
+                    <button id="send-btn" class="send-btn">
+                        <i class="fa-solid fa-paper-plane"></i>
+                    </button>
+                </div>
+                
+                <div class="disclaimer">
+                    For important decisions, always confirm information with trusted sources.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
