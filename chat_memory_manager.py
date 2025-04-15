@@ -483,7 +483,7 @@ class ChatMemoryManager:
             
             # Use OpenRouter client for chat completion
             response = self.openrouter_client.chat.completions.create(
-                model="anthropic/claude-3-haiku-20240307",
+                model="anthropic/claude-3.7-sonnet",
                 response_format={"type": "json_object"},
                 messages=[
                     {"role": "system", "content": system_prompt},
