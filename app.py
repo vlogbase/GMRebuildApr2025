@@ -15,7 +15,7 @@ app.secret_key = os.environ.get("SESSION_SECRET")
 OPENROUTER_MODELS = {
     "gemini-1.5-pro": "google/gemini-1.5-pro-latest",
     "claude-3-sonnet": "anthropic/claude-3-sonnet",
-    "mistral-large": "mistralai/mistral-large",
+    "mistral-large": "mistralai/mistral-large-latest",
     "gpt-4o": "openai/gpt-4o",
     "sonar-pro": "anthropic/claude-3-opus",  # Best guess for "Sonar Pro"
     "free-gemini": "google/gemini-1.0-pro"   # Free tier model
@@ -34,6 +34,7 @@ def chat():
         data = request.get_json()
         user_message = data.get('message', '')
         model_id = data.get('model', 'gemini-1.5-pro')
+        message_history = data.get('history', [])
         
         # Get the corresponding OpenRouter model ID
         openrouter_model = OPENROUTER_MODELS.get(model_id, OPENROUTER_MODELS['gemini-1.5-pro'])
@@ -52,13 +53,22 @@ def chat():
             'HTTP-Referer': request.headers.get('Referer', 'https://gloriamundo.com')
         }
         
+        # Prepare messages array
+        messages = [{'role': 'system', 'content': 'You are a helpful assistant at GloriaMundo.'}]
+        
+        # Add message history if available
+        if message_history:
+            messages.extend(message_history)
+        
+        # Add the current user message
+        messages.append({'role': 'user', 'content': user_message})
+        
+        logger.debug(f"Sending message history with {len(messages)} messages")
+        
         # Prepare payload for OpenRouter
         payload = {
             'model': openrouter_model,
-            'messages': [
-                {'role': 'system', 'content': 'You are a helpful assistant.'},
-                {'role': 'user', 'content': user_message}
-            ],
+            'messages': messages,
             'stream': True
         }
         

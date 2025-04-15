@@ -11,6 +11,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Current selected model
     let currentModel = 'gemini-1.5-pro';
     
+    // Conversation history
+    let messageHistory = [];
+    
     // Event Listeners
     messageInput.addEventListener('keydown', function(event) {
         if (event.key === 'Enter' && !event.shiftKey) {
@@ -135,6 +138,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to send message to backend and process streaming response
     function sendMessageToBackend(message, model, typingIndicator) {
+        // Add user message to history
+        messageHistory.push({
+            role: 'user',
+            content: message
+        });
+        
         // Create fetch request to /chat endpoint
         fetch('/chat', {
             method: 'POST',
@@ -143,7 +152,8 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({
                 message: message,
-                model: model
+                model: model,
+                history: messageHistory
             })
         }).then(response => {
             if (!response.ok) {
@@ -169,6 +179,13 @@ document.addEventListener('DOMContentLoaded', function() {
             function processChunks() {
                 return reader.read().then(({ done, value }) => {
                     if (done) {
+                        // Add the complete assistant response to the message history
+                        if (responseText) {
+                            messageHistory.push({
+                                role: 'assistant',
+                                content: responseText
+                            });
+                        }
                         return;
                     }
                     
@@ -255,6 +272,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to clear chat
     function clearChat() {
+        // Clear the message history
+        messageHistory = [];
+        
         // Keep only the welcome container or create it if it doesn't exist
         if (!document.querySelector('.welcome-container')) {
             chatMessages.innerHTML = `
