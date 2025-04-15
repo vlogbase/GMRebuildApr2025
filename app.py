@@ -13,12 +13,12 @@ app.secret_key = os.environ.get("SESSION_SECRET")
 
 # OpenRouter model mappings
 OPENROUTER_MODELS = {
-    "gemini-1.5-pro": "google/gemini-1.5-pro-latest",
+    "gemini-1.5-pro": "google/gemini-pro-1.5",  # Updated to correct ID
     "claude-3-sonnet": "anthropic/claude-3-sonnet",
-    "mistral-large": "mistralai/mistral-large-latest",
+    "mistral-large": "mistralai/mistral-large",
     "gpt-4o": "openai/gpt-4o",
-    "sonar-pro": "anthropic/claude-3-opus",  # Best guess for "Sonar Pro"
-    "free-gemini": "google/gemini-1.0-pro"   # Free tier model
+    "sonar-pro": "anthropic/claude-3-opus",  # "Sonar Pro" maps to Claude 3 Opus
+    "free-gemini": "google/gemma-3-27b-it:free"  # Free tier Gemini model
 }
 
 @app.route('/')
@@ -53,8 +53,15 @@ def chat():
             'HTTP-Referer': request.headers.get('Referer', 'https://gloriamundo.com')
         }
         
-        # Prepare messages array
-        messages = [{'role': 'system', 'content': 'You are a helpful assistant at GloriaMundo.'}]
+        # Prepare messages array with a detailed system prompt
+        system_message = (
+            "You are a helpful assistant at GloriaMundo, an advanced AI chat platform. "
+            "Provide detailed, accurate, and helpful responses to user queries. "
+            "Write in a conversational yet professional tone. "
+            "If you don't know something, say so rather than making up information. "
+            "Format responses with clear structure using paragraphs, lists, and emphasis when appropriate."
+        )
+        messages = [{'role': 'system', 'content': system_message}]
         
         # Add message history if available
         if message_history:
@@ -113,9 +120,25 @@ def chat():
                             # Extract the content from the choices
                             if 'choices' in json_data and len(json_data['choices']) > 0:
                                 choice = json_data['choices'][0]
+                                
+                                # Handle different response formats
+                                content = None
                                 if 'delta' in choice and 'content' in choice['delta']:
+                                    # OpenAI-like format
                                     content = choice['delta']['content']
+                                elif 'delta' in choice and choice['delta'].get('content', None) is None:
+                                    # Empty delta content, just continue
+                                    continue
+                                elif 'text' in choice:
+                                    # Some models might use 'text' directly
+                                    content = choice['text']
+                                elif 'content' in choice:
+                                    # Some models might include content directly
+                                    content = choice['content']
+                                
+                                if content:
                                     yield f"data: {json.dumps({'content': content})}\n\n"
+                                    logger.debug(f"Streamed content chunk: {content[:20]}...")
                         except json.JSONDecodeError as e:
                             logger.error(f"JSON decode error: {e}")
                             logger.error(f"Problematic line: {line_text}")
