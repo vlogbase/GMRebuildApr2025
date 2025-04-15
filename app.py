@@ -7,6 +7,17 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user
 
+# Check if we should enable advanced memory features
+ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
+
+if ENABLE_MEMORY_SYSTEM:
+    try:
+        from memory_integration import save_message_with_memory, enrich_prompt_with_memory
+        logging.info("Advanced memory system enabled")
+    except ImportError as e:
+        logging.warning(f"Failed to import memory integration: {e}")
+        ENABLE_MEMORY_SYSTEM = False
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -147,6 +158,22 @@ def chat():
         db.session.add(user_db_message)
         db.session.commit()
         
+        # Save user message to memory system if enabled
+        if ENABLE_MEMORY_SYSTEM:
+            try:
+                # The current user ID (use conversation ID if user not logged in)
+                memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation_id}"
+                
+                # Asynchronously save to memory
+                save_message_with_memory(
+                    session_id=str(conversation_id),
+                    user_id=memory_user_id,
+                    role='user',
+                    content=user_message
+                )
+            except Exception as e:
+                logger.error(f"Error saving user message to memory: {e}")
+        
         # Add message history if available from the request
         if message_history:
             messages.extend(message_history)
@@ -158,6 +185,27 @@ def chat():
         
         # Add the current user message
         messages.append({'role': 'user', 'content': user_message})
+        
+        # Enrich with memory if enabled
+        if ENABLE_MEMORY_SYSTEM:
+            try:
+                # The current user ID (use conversation ID if user not logged in)
+                memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation_id}"
+                
+                # Enrich the messages with relevant memory
+                original_message_count = len(messages)
+                messages = enrich_prompt_with_memory(
+                    session_id=str(conversation_id),
+                    user_id=memory_user_id,
+                    user_message=user_message,
+                    conversation_history=messages
+                )
+                
+                if len(messages) > original_message_count:
+                    logger.info(f"Added {len(messages) - original_message_count} context messages from memory system")
+            except Exception as e:
+                logger.error(f"Error enriching with memory: {e}")
+                # Continue without memory enrichment if it fails
         
         logger.debug(f"Sending message history with {len(messages)} messages")
         
@@ -213,6 +261,22 @@ def chat():
                                 )
                                 db.session.add(assistant_db_message)
                                 db.session.commit()
+                                
+                                # Save to memory system if enabled
+                                if ENABLE_MEMORY_SYSTEM:
+                                    try:
+                                        # The current user ID (use conversation ID if user not logged in)
+                                        memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation_id}"
+                                        
+                                        # Asynchronously save to memory
+                                        save_message_with_memory(
+                                            session_id=str(conversation_id),
+                                            user_id=memory_user_id,
+                                            role='assistant',
+                                            content=full_response
+                                        )
+                                    except Exception as e:
+                                        logger.error(f"Error saving to memory: {e}")
                                 
                                 # Send the DONE marker to the client
                                 yield f"data: {json.dumps({'done': True, 'conversation_id': conversation_id})}\n\n"
