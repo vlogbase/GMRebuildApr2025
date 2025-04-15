@@ -655,12 +655,15 @@ class ChatMemoryManager:
                     update_operations["$set"][f"facts.{field}"] = info[field]
             
             # Update lists using $addToSet to avoid duplicates
-            for field in ["interests", "opinions"]:
-                if field in info and info[field]:
-                    update_operations["$addToSet"][f"facts.{field}"] = {"$each": info[field]}
+            if any(field in info and info[field] for field in ["interests", "opinions"]):
+                update_operations["$addToSet"] = {}
+                
+                for field in ["interests", "opinions"]:
+                    if field in info and info[field] and isinstance(info[field], list):
+                        update_operations["$addToSet"][f"facts.{field}"] = {"$each": info[field]}
             
             # Process preferences and generate embeddings
-            if "preferences" in info and info["preferences"]:
+            if "preferences" in info and info["preferences"] and isinstance(info["preferences"], list):
                 for pref in info["preferences"]:
                     # Generate embedding for the preference
                     pref_embedding = self._get_embedding(pref)
