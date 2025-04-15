@@ -7,12 +7,19 @@ document.addEventListener('DOMContentLoaded', function() {
     const newChatButton = document.getElementById('new-chat-btn');
     const clearConversationsButton = document.getElementById('clear-conversations-btn');
     const exampleQuestionButton = document.getElementById('example-question-btn');
+    const conversationsList = document.getElementById('conversations-list');
     
     // Current selected model
     let currentModel = 'gemini-1.5-pro';
     
+    // Current conversation ID
+    let currentConversationId = null;
+    
     // Conversation history
     let messageHistory = [];
+    
+    // Fetch conversations on load
+    fetchConversations();
     
     // Event Listeners
     messageInput.addEventListener('keydown', function(event) {
@@ -136,6 +143,55 @@ document.addEventListener('DOMContentLoaded', function() {
         return addMessage('', 'assistant', true);
     }
     
+    // Function to fetch conversations from the backend
+    function fetchConversations() {
+        fetch('/conversations')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.conversations && data.conversations.length > 0) {
+                    // Clear existing conversations
+                    if (conversationsList) {
+                        conversationsList.innerHTML = '';
+                        
+                        // Add each conversation to the sidebar
+                        data.conversations.forEach(conversation => {
+                            const conversationItem = document.createElement('div');
+                            conversationItem.className = 'conversation-item';
+                            conversationItem.dataset.id = conversation.id;
+                            conversationItem.textContent = conversation.title;
+                            
+                            // Add click event to load conversation
+                            conversationItem.addEventListener('click', function() {
+                                loadConversation(conversation.id);
+                            });
+                            
+                            conversationsList.appendChild(conversationItem);
+                        });
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching conversations:', error);
+            });
+    }
+    
+    // Function to load a specific conversation
+    function loadConversation(conversationId) {
+        // Clear the current chat
+        chatMessages.innerHTML = '';
+        messageHistory = [];
+        currentConversationId = conversationId;
+        
+        // In a full implementation, you would fetch the messages for this conversation
+        // For now, simply set the current conversation ID
+        console.log(`Loading conversation ID: ${conversationId}`);
+    }
+    
     // Function to send message to backend and process streaming response
     function sendMessageToBackend(message, model, typingIndicator) {
         // Add user message to history
@@ -153,7 +209,8 @@ document.addEventListener('DOMContentLoaded', function() {
             body: JSON.stringify({
                 message: message,
                 model: model,
-                history: messageHistory
+                history: messageHistory,
+                conversation_id: currentConversationId
             })
         }).then(response => {
             if (!response.ok) {
@@ -217,6 +274,22 @@ document.addEventListener('DOMContentLoaded', function() {
                                     return;
                                 }
                                 
+                                // Update conversation ID if provided
+                                if (parsedData.conversation_id && !currentConversationId) {
+                                    currentConversationId = parsedData.conversation_id;
+                                    console.log(`Setting conversation ID: ${currentConversationId}`);
+                                    
+                                    // Refresh conversations list to show the new conversation
+                                    fetchConversations();
+                                }
+                                
+                                // Handle done marker
+                                if (parsedData.done) {
+                                    console.log("Conversation finished");
+                                    return;
+                                }
+                                
+                                // Handle content
                                 if (parsedData.content) {
                                     responseText += parsedData.content;
                                     messageContent.innerHTML = formatMessage(responseText);

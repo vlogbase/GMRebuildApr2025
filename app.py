@@ -3,13 +3,44 @@ import logging
 import json
 import requests
 from flask import Flask, render_template, request, Response, stream_with_context
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
+from flask_login import LoginManager, current_user
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+# SQLAlchemy setup
+class Base(DeclarativeBase):
+    pass
+
+db = SQLAlchemy(model_class=Base)
+
+# Create Flask app
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET")
+app.secret_key = os.environ.get("SESSION_SECRET", "developmentsecretkey")
+
+# Configure database
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Initialize SQLAlchemy with the app
+db.init_app(app)
+
+# Initialize LoginManager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.login_view = 'login'
+
+@login_manager.user_loader
+def load_user(user_id):
+    from models import User
+    return User.query.get(int(user_id))
 
 # OpenRouter model mappings
 OPENROUTER_MODELS = {
@@ -25,6 +56,33 @@ OPENROUTER_MODELS = {
 def index():
     return render_template('index.html')
 
+@app.route('/conversations', methods=['GET'])
+def get_conversations():
+    """Get all conversations for the current user or create a new conversation"""
+    # If user is logged in, get their conversations
+    # Otherwise return a limited set of conversations or empty list
+    try:
+        from models import Conversation, Message
+        
+        # For now, just return a list of dummy conversations
+        # In a real implementation, you would filter by current_user.id
+        conversations = []
+        
+        # Create a test conversation if none exist
+        if len(conversations) == 0:
+            # For now, create a demo conversation
+            conversation = Conversation(title="Demo Conversation")
+            db.session.add(conversation)
+            db.session.commit()
+            
+            conversations = [{"id": conversation.id, "title": conversation.title}]
+        
+        return Response(json.dumps({"conversations": conversations}), content_type='application/json')
+    except Exception as e:
+        logger.exception("Error getting conversations")
+        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+
 @app.route('/chat', methods=['POST'])
 def chat():
     """
@@ -35,6 +93,10 @@ def chat():
         user_message = data.get('message', '')
         model_id = data.get('model', 'gemini-1.5-pro')
         message_history = data.get('history', [])
+        conversation_id = data.get('conversation_id', None)
+        
+        # Import models for database operations
+        from models import Conversation, Message
         
         # Get the corresponding OpenRouter model ID
         openrouter_model = OPENROUTER_MODELS.get(model_id, OPENROUTER_MODELS['gemini-1.5-pro'])
@@ -63,9 +125,36 @@ def chat():
         )
         messages = [{'role': 'system', 'content': system_message}]
         
-        # Add message history if available
+        # Get or create a conversation
+        conversation = None
+        if conversation_id:
+            conversation = Conversation.query.get(conversation_id)
+        
+        if not conversation:
+            # Create a new conversation with a title based on the first message
+            title = user_message[:50] + "..." if len(user_message) > 50 else user_message
+            conversation = Conversation(title=title)
+            db.session.add(conversation)
+            db.session.commit()
+            conversation_id = conversation.id
+        
+        # Save the user message to the database
+        user_db_message = Message(
+            conversation_id=conversation.id,
+            role='user',
+            content=user_message
+        )
+        db.session.add(user_db_message)
+        db.session.commit()
+        
+        # Add message history if available from the request
         if message_history:
             messages.extend(message_history)
+        else:
+            # If no history in request, load from database
+            db_messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.created_at).all()
+            for msg in db_messages:
+                messages.append({'role': msg.role, 'content': msg.content})
         
         # Add the current user message
         messages.append({'role': 'user', 'content': user_message})
@@ -80,6 +169,9 @@ def chat():
         }
         
         logger.debug(f"Sending request to OpenRouter with model: {openrouter_model}")
+        
+        # Buffer to collect the assistant's response
+        assistant_response = []
         
         # Stream the response using requests
         def generate():
@@ -111,7 +203,19 @@ def chat():
                             
                             # Check for [DONE] marker
                             if sse_data.strip() == '[DONE]':
-                                yield f"data: [DONE]\n\n"
+                                # Save the complete assistant response to the database
+                                full_response = ''.join(assistant_response)
+                                assistant_db_message = Message(
+                                    conversation_id=conversation_id,
+                                    role='assistant',
+                                    content=full_response,
+                                    model=model_id
+                                )
+                                db.session.add(assistant_db_message)
+                                db.session.commit()
+                                
+                                # Send the DONE marker to the client
+                                yield f"data: {json.dumps({'done': True, 'conversation_id': conversation_id})}\n\n"
                                 continue
                             
                             # Parse the data as JSON
@@ -137,7 +241,11 @@ def chat():
                                     content = choice['content']
                                 
                                 if content:
-                                    yield f"data: {json.dumps({'content': content})}\n\n"
+                                    # Add content to the buffer
+                                    assistant_response.append(content)
+                                    
+                                    # Send content to the client
+                                    yield f"data: {json.dumps({'content': content, 'conversation_id': conversation_id})}\n\n"
                                     logger.debug(f"Streamed content chunk: {content[:20]}...")
                         except json.JSONDecodeError as e:
                             logger.error(f"JSON decode error: {e}")
