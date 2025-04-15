@@ -310,25 +310,78 @@ class ChatMemoryManager:
                 if query_embedding:
                     # Perform vector search using $vectorSearch
                     try:
-                        vector_results = self.chat_sessions.aggregate([
-                            {"$match": {"session_id": session_id, "user_id": user_id}},
-                            {"$unwind": "$message_history"},
-                            {"$vectorSearch": {
-                                "index": "idx_message_embedding_large",
-                                "path": "message_history.embedding",
-                                "queryVector": query_embedding,
-                                "numCandidates": 100,
-                                "limit": vector_search_limit
-                            }},
-                            {"$project": {
-                                "_id": 0,
-                                "role": "$message_history.role",
-                                "content": "$message_history.content",
-                                "timestamp": "$message_history.timestamp",
-                                "message_id": "$message_history.metadata.message_id",
-                                "score": {"$meta": "vectorSearchScore"}
-                            }}
-                        ])
+                        # MongoDB Atlas requires $vectorSearch to be the first stage in the pipeline
+                        # Extract session first, then use $vectorSearch on the message_history
+                        session_data = self.chat_sessions.find_one(
+                            {"session_id": session_id, "user_id": user_id}
+                        )
+                        
+                        if session_data and "message_history" in session_data:
+                            # Now we can run vector search on the messages
+                            message_docs = []
+                            for msg in session_data["message_history"]:
+                                # Add each message as a document for vector search
+                                if "embedding" in msg:
+                                    msg_doc = {
+                                        "embedding": msg["embedding"],
+                                        "role": msg["role"],
+                                        "content": msg["content"],
+                                        "timestamp": msg["timestamp"],
+                                        "message_id": msg["metadata"]["message_id"] if "metadata" in msg and "message_id" in msg["metadata"] else ""
+                                    }
+                                    message_docs.append(msg_doc)
+                            
+                            # If we have messages with embeddings, create a temporary collection for vector search
+                            if message_docs:
+                                # Create a unique temp collection name
+                                import uuid
+                                temp_coll_name = f"temp_vector_search_{uuid.uuid4().hex[:8]}"
+                                temp_coll = self.db.get_collection(temp_coll_name)
+                                
+                                # Insert the message documents
+                                temp_coll.insert_many(message_docs)
+                                
+                                # Create the index on the temp collection
+                                temp_coll.create_index([("embedding", pymongo.ASCENDING)])
+                                
+                                # Now run a simple vector similarity search (not using $vectorSearch)
+                                # We'll approximate it using dot product
+                                pipeline = [
+                                    {"$project": {
+                                        "role": 1,
+                                        "content": 1,
+                                        "timestamp": 1,
+                                        "message_id": 1,
+                                        "similarity": {
+                                            "$reduce": {
+                                                "input": {"$zip": {"inputs": ["$embedding", query_embedding]}},
+                                                "initialValue": 0,
+                                                "in": {"$add": ["$$value", {"$multiply": [{"$arrayElemAt": ["$$this", 0]}, {"$arrayElemAt": ["$$this", 1]}]}]}
+                                            }
+                                        }
+                                    }},
+                                    {"$sort": {"similarity": -1}},
+                                    {"$limit": vector_search_limit},
+                                    {"$project": {
+                                        "_id": 0,
+                                        "role": 1,
+                                        "content": 1,
+                                        "timestamp": 1,
+                                        "message_id": 1,
+                                        "score": "$similarity"
+                                    }}
+                                ]
+                                
+                                vector_results = temp_coll.aggregate(pipeline)
+                                
+                                # Clean up the temp collection after use
+                                self.db.drop_collection(temp_coll_name)
+                            else:
+                                # No messages with embeddings
+                                vector_results = []
+                        else:
+                            # No session data
+                            vector_results = []
                         
                         similar_messages = list(vector_results)
                         
@@ -392,34 +445,84 @@ class ChatMemoryManager:
             if query_embedding:
                 # Perform vector search
                 try:
-                    pipeline = [
-                        {"$match": match_query},
-                        {"$vectorSearch": {
-                            "index": "idx_preference_embedding_large",
-                            "path": "preferences_embeddings.embedding",
-                            "queryVector": query_embedding,
-                            "numCandidates": 100,
-                            "limit": vector_search_limit
-                        }},
-                        {"$project": {
-                            "_id": 0,
-                            "facts": 1,
-                            "similar_preferences": {
-                                "$map": {
-                                    "input": "$preferences_embeddings",
-                                    "as": "pref",
-                                    "in": {
-                                        "text": "$$pref.text",
-                                        "source_message_id": "$$pref.source_message_id",
-                                        "timestamp": "$$pref.timestamp",
-                                        "score": {"$meta": "vectorSearchScore"}
-                                    }
-                                }
-                            }
-                        }}
-                    ]
+                    # First, get the user profile data
+                    profile_data = self.user_profiles.find_one(match_query)
                     
-                    results = list(self.user_profiles.aggregate(pipeline))
+                    if profile_data and "preferences_embeddings" in profile_data:
+                        # Get facts from profile
+                        facts = profile_data.get("facts", {})
+                        
+                        # Prepare preference documents for similarity search
+                        pref_docs = []
+                        for pref in profile_data["preferences_embeddings"]:
+                            if "embedding" in pref:
+                                pref_doc = {
+                                    "embedding": pref["embedding"],
+                                    "text": pref.get("text", ""),
+                                    "source_message_id": pref.get("source_message_id", ""),
+                                    "timestamp": pref.get("timestamp", datetime.datetime.utcnow())
+                                }
+                                pref_docs.append(pref_doc)
+                        
+                        # If we have preferences with embeddings
+                        if pref_docs:
+                            # Create a temporary collection
+                            import uuid
+                            temp_coll_name = f"temp_pref_search_{uuid.uuid4().hex[:8]}"
+                            temp_coll = self.db.get_collection(temp_coll_name)
+                            
+                            # Insert preference documents
+                            temp_coll.insert_many(pref_docs)
+                            
+                            # Create the index
+                            temp_coll.create_index([("embedding", pymongo.ASCENDING)])
+                            
+                            # Run similarity search
+                            pipeline = [
+                                {"$project": {
+                                    "text": 1,
+                                    "source_message_id": 1,
+                                    "timestamp": 1,
+                                    "similarity": {
+                                        "$reduce": {
+                                            "input": {"$zip": {"inputs": ["$embedding", query_embedding]}},
+                                            "initialValue": 0,
+                                            "in": {"$add": ["$$value", {"$multiply": [{"$arrayElemAt": ["$$this", 0]}, {"$arrayElemAt": ["$$this", 1]}]}]}
+                                        }
+                                    }
+                                }},
+                                {"$sort": {"similarity": -1}},
+                                {"$limit": vector_search_limit},
+                                {"$project": {
+                                    "_id": 0,
+                                    "text": 1,
+                                    "source_message_id": 1,
+                                    "timestamp": 1,
+                                    "score": "$similarity"
+                                }}
+                            ]
+                            
+                            similar_prefs = list(temp_coll.aggregate(pipeline))
+                            
+                            # Clean up
+                            self.db.drop_collection(temp_coll_name)
+                            
+                            # Prepare result
+                            result = {
+                                "matching_facts": facts,
+                                "similar_preferences": similar_prefs
+                            }
+                            
+                            return result
+                    
+                    # Return an empty result with just the facts
+                    if profile_data:
+                        results = [{
+                            "facts": profile_data.get("facts", {}),
+                            "similar_preferences": []
+                        }]
+                    else:
+                        results = []
                     
                     if results:
                         return {
@@ -494,7 +597,34 @@ class ChatMemoryManager:
             # Parse the JSON response
             import json
             content = response.choices[0].message.content
-            extracted_info = json.loads(content)
+            
+            # Debugging log
+            logger.debug(f"Raw JSON content: {content}")
+            
+            # Better error handling for JSON parsing
+            try:
+                # Try to parse as-is first
+                extracted_info = json.loads(content)
+            except json.JSONDecodeError as json_err:
+                logger.warning(f"Initial JSON parsing failed: {json_err}")
+                
+                # Try to clean up the content - sometimes models add text before/after JSON
+                import re
+                json_match = re.search(r'(\{.*\})', content, re.DOTALL)
+                if json_match:
+                    try:
+                        # Try to parse just the JSON object part
+                        json_part = json_match.group(1)
+                        logger.debug(f"Extracted JSON part: {json_part}")
+                        extracted_info = json.loads(json_part)
+                    except json.JSONDecodeError:
+                        # If that fails, return an empty object
+                        logger.error(f"Failed to parse extracted JSON part")
+                        return {}
+                else:
+                    # If we can't find JSON pattern, return empty object
+                    logger.error(f"No JSON object found in response")
+                    return {}
             
             return extracted_info
             
@@ -611,7 +741,7 @@ class ChatMemoryManager:
             
             # Use OpenRouter client for chat completion
             response = self.openrouter_client.chat.completions.create(
-                model="anthropic/claude-3-haiku-20240307",
+                model="anthropic/claude-3.7-sonnet",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt}
