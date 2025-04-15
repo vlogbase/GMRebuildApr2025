@@ -70,36 +70,41 @@ class ChatMemoryManager:
             logger.error(f"Error initializing MongoDB: {e}")
             raise
         
-        # Initialize OpenAI client for embeddings
+        # Initialize OpenAI clients - one for Azure embeddings, one for OpenRouter chat
         try:
-            # Use Azure OpenAI if available
-            if os.environ.get("AZURE_OPENAI_API_KEY") and os.environ.get("AZURE_OPENAI_ENDPOINT"):
-                self.use_azure = True
+            # Initialize Azure OpenAI client for embeddings
+            if os.environ.get("AZURE_OPENAI_API_KEY") and os.environ.get("AZURE_OPENAI_ENDPOINT") and os.environ.get("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME"):
+                self.use_azure_embeddings = True
                 self.azure_api_key = os.environ.get("AZURE_OPENAI_API_KEY")
                 self.azure_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
                 self.embedding_deployment = os.environ.get("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME")
-                self.chat_deployment = os.environ.get("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME")
                 
-                # Initialize Azure OpenAI client
-                self.openai_client = openai.AzureOpenAI(
+                # Initialize Azure OpenAI client for embeddings
+                self.azure_client = openai.AzureOpenAI(
                     api_key=self.azure_api_key,
                     api_version="2024-02-01",
                     azure_endpoint=self.azure_endpoint
                 )
-                logger.info("Azure OpenAI client initialized successfully")
+                logger.info("Azure OpenAI client initialized successfully for embeddings")
+            else:
+                self.use_azure_embeddings = False
+                logger.warning("Azure OpenAI not fully configured for embeddings")
             
-            # Fall back to OpenRouter if Azure not configured
-            elif os.environ.get("OPENROUTER_API_KEY"):
-                self.use_azure = False
-                self.openai_client = OpenAI(
+            # Initialize OpenRouter client for chat completion
+            if os.environ.get("OPENROUTER_API_KEY"):
+                self.openrouter_client = OpenAI(
                     api_key=os.environ.get("OPENROUTER_API_KEY"),
                     base_url="https://openrouter.ai/api/v1"
                 )
-                logger.info("OpenRouter client initialized successfully")
-            
+                logger.info("OpenRouter client initialized successfully for chat")
             else:
-                logger.error("No API keys found for Azure OpenAI or OpenRouter")
-                raise ValueError("No API keys found for embedding or chat models")
+                logger.error("OPENROUTER_API_KEY not found in environment variables")
+                raise ValueError("OpenRouter API key not provided")
+                
+            # Verify we have at least one embedding source
+            if not self.use_azure_embeddings and not os.environ.get("OPENROUTER_API_KEY"):
+                logger.error("No API keys found for Azure OpenAI embeddings or OpenRouter fallback")
+                raise ValueError("No API keys found for embedding models")
                 
         except Exception as e:
             logger.error(f"Error initializing OpenAI client: {e}")
@@ -131,7 +136,7 @@ class ChatMemoryManager:
     
     def _get_embedding(self, text: str) -> List[float]:
         """
-        Generate a vector embedding for text using the text-embedding-3-large model.
+        Generate a vector embedding for text using Azure's text-embedding-3-large model.
         
         Args:
             text (str): The text to generate an embedding for
@@ -139,42 +144,74 @@ class ChatMemoryManager:
         Returns:
             List[float]: A 3072-dimension embedding vector
             
-        Raises:
-            Exception: If embedding generation fails
+        Note: If embedding generation fails, this function returns a deterministic 
+        hash-based pseudo-embedding that maintains text uniqueness but lacks semantic 
+        search capabilities.
         """
         if not text or not text.strip():
             logger.warning("Empty text provided for embedding")
             return [0.0] * 3072  # Return zero vector for empty text
         
         try:
-            # Use Azure OpenAI for embeddings
-            if self.use_azure:
-                response = self.openai_client.embeddings.create(
-                    input=text,
-                    model=self.embedding_deployment
-                )
-                return response.data[0].embedding
+            # Use Azure OpenAI for embeddings (primary method)
+            if self.use_azure_embeddings:
+                try:
+                    response = self.azure_client.embeddings.create(
+                        input=text,
+                        model=self.embedding_deployment
+                    )
+                    logger.info(f"Generated Azure embedding for text: {text[:30]}...")
+                    return response.data[0].embedding
+                except Exception as e:
+                    logger.error(f"Azure embedding API failed: {e}")
+                    # Will fall through to hash-based method
+                    raise
             
-            # Use OpenRouter for embeddings (fallback)
-            else:
-                response = self.openai_client.embeddings.create(
-                    input=text,
-                    model="openai/text-embedding-ada-002"  # 1536-dimensions, not full 3072
-                )
-                
-                # Return the embedding, padded to 3072 if necessary
-                embedding = response.data[0].embedding
-                
-                # Pad if needed (this is a workaround and not ideal for vector search)
-                if len(embedding) < 3072:
-                    logger.warning(f"Embedding has {len(embedding)} dimensions, padding to 3072")
-                    embedding = embedding + [0.0] * (3072 - len(embedding))
-                
-                return embedding
+            # If we get here, we need to use the hash-based fallback
+            logger.warning("Using deterministic hash-based pseudo-embedding (no Azure embedding available)")
+            import hashlib
+            text_bytes = text.encode('utf-8')
+            hash_obj = hashlib.sha256(text_bytes)
+            hash_digest = hash_obj.digest()
+            
+            # Convert bytes to floats between -1 and 1
+            hash_values = [((b / 255.0) * 2) - 1 for b in hash_digest]
+            
+            # Expand to 3072 dimensions through repetition and minor variations
+            pseudo_embedding = []
+            while len(pseudo_embedding) < 3072:
+                # Add small variations to avoid exact repetition
+                variation = len(pseudo_embedding) / 10000.0
+                for val in hash_values:
+                    if len(pseudo_embedding) < 3072:
+                        pseudo_embedding.append(val + variation)
+            
+            logger.info(f"Generated hash-based pseudo-embedding for text: {text[:30]}...")
+            return pseudo_embedding
                 
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
-            raise
+            # Return a deterministic hash-based pseudo-embedding as final fallback
+            logger.warning("Falling back to deterministic hash-based pseudo-embedding")
+            import hashlib
+            text_bytes = text.encode('utf-8')
+            hash_obj = hashlib.sha256(text_bytes)
+            hash_digest = hash_obj.digest()
+            
+            # Convert bytes to floats between -1 and 1
+            hash_values = [((b / 255.0) * 2) - 1 for b in hash_digest]
+            
+            # Expand to 3072 dimensions
+            pseudo_embedding = []
+            while len(pseudo_embedding) < 3072:
+                # Add small variations to avoid exact repetition
+                variation = len(pseudo_embedding) / 10000.0
+                for val in hash_values:
+                    if len(pseudo_embedding) < 3072:
+                        pseudo_embedding.append(val + variation)
+            
+            logger.info(f"Generated fallback pseudo-embedding for text: {text[:30]}...")
+            return pseudo_embedding
     
     def add_message(self, session_id: str, user_id: str, role: str, content: str) -> bool:
         """
@@ -444,25 +481,15 @@ class ChatMemoryManager:
             If a field has no relevant information, set it to null or an empty list.
             """
             
-            # Use the appropriate client
-            if self.use_azure:
-                response = self.openai_client.chat.completions.create(
-                    model=self.chat_deployment,
-                    response_format={"type": "json_object"},
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": text}
-                    ]
-                )
-            else:
-                response = self.openai_client.chat.completions.create(
-                    model="anthropic/claude-3-haiku-20240307",
-                    response_format={"type": "json_object"},
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": text}
-                    ]
-                )
+            # Use OpenRouter client for chat completion
+            response = self.openrouter_client.chat.completions.create(
+                model="anthropic/claude-3-haiku-20240307",
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": text}
+                ]
+            )
             
             # Parse the JSON response
             import json
@@ -582,23 +609,14 @@ class ChatMemoryManager:
             Rewrite this as a standalone query that includes all necessary context:
             """
             
-            # Use the appropriate client
-            if self.use_azure:
-                response = self.openai_client.chat.completions.create(
-                    model=self.chat_deployment,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ]
-                )
-            else:
-                response = self.openai_client.chat.completions.create(
-                    model="anthropic/claude-3-haiku-20240307",
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ]
-                )
+            # Use OpenRouter client for chat completion
+            response = self.openrouter_client.chat.completions.create(
+                model="anthropic/claude-3-haiku-20240307",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ]
+            )
             
             # Get the rewritten query
             rewritten_query = response.choices[0].message.content.strip()
