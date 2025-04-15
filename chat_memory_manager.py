@@ -159,7 +159,7 @@ class ChatMemoryManager:
             else:
                 response = self.openai_client.embeddings.create(
                     input=text,
-                    model="google/text-embedding-004"  # 768-dimensions, not full 3072
+                    model="openai/text-embedding-ada-002"  # 1536-dimensions, not full 3072
                 )
                 
                 # Return the embedding, padded to 3072 if necessary
