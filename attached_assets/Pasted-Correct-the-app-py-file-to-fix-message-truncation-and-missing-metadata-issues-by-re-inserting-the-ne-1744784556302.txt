@@ -1,0 +1,71 @@
+Correct the app.py file to fix message truncation and missing metadata issues by re-inserting the necessary code block that processes the completed stream response.
+
+1. Modify app.py:
+
+Locate the generate() function inside the chat endpoint.
+Find the end of the main stream processing loop (for line in response.iter_lines():). This loop ends around line 365 in the provided code.
+Immediately after this for loop finishes (and before the except Exception as e: block that handles the whole generate function, around line 367), insert the following code block:
+Python
+
+# === CODE TO INSERT INTO app.py AFTER THE STREAM PROCESSING LOOP ===
+
+        # --- Stream processing finished ---
+        
+        # Combine the full response
+        full_response_text = ''.join(assistant_response_content)
+        
+        # Save the complete assistant message to the database NOW if content exists
+        if full_response_text: 
+            try:
+                from models import Message # Ensure import is available
+                # Ensure conversation_id and model_id (requested) are available from outer scope
+                assistant_db_message = Message(
+                    conversation_id=conversation_id,
+                    role='assistant',
+                    content=full_response_text,
+                    model=model_id, # Original requested model shorthand/ID from outer scope
+                    model_id_used=final_model_id_used, # Actual model used from API
+                    prompt_tokens=final_prompt_tokens,
+                    completion_tokens=final_completion_tokens,
+                    rating=None # Default rating
+                )
+                db.session.add(assistant_db_message)
+                db.session.commit()
+                assistant_message_id = assistant_db_message.id # Get the ID
+                logger.info(f"Saved assistant message {assistant_message_id} with metadata.")
+
+                # Save to memory system if enabled (ensure ENABLE_MEMORY_SYSTEM etc. are available)
+                if ENABLE_MEMORY_SYSTEM:
+                     try:
+                         # Ensure current_user and save_message_with_memory are available
+                         memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation_id}"
+                         save_message_with_memory(
+                             session_id=str(conversation_id),
+                             user_id=memory_user_id,
+                             role='assistant',
+                             content=full_response_text
+                         )
+                     except Exception as e:
+                         logger.error(f"Error saving assistant message to memory: {e}")
+
+                # Yield the final metadata to the client
+                yield f"data: {json.dumps({'type': 'metadata', 'metadata': {'id': assistant_message_id, 'model_id_used': final_model_id_used, 'prompt_tokens': final_prompt_tokens, 'completion_tokens': final_completion_tokens}})}\n\n"
+
+            except Exception as db_error:
+                logger.exception("Error saving assistant message or metadata to DB")
+                db.session.rollback()
+                yield f"data: {json.dumps({'type': 'error', 'error': 'Error saving message to database'})}\n\n"
+                # Still yield done even if DB save fails? Or return? Let's yield done for now.
+        
+        # Finally, signal completion (even if no text content was generated)
+        # Ensure conversation_id is available
+        yield f"data: {json.dumps({'type': 'done', 'done': True, 'conversation_id': conversation_id})}\n\n"
+        logger.info("Stream generation complete.")
+
+# === END OF CODE TO INSERT ===
+Make sure this inserted block is correctly indented within the try block of the generate function.
+2. No Changes Needed:
+
+static/js/script.js should already be correct based on the provided code and does not need further changes for this specific fix.
+models.py is also correct.
+Apply this specific insertion to app.py. This should restore the logic needed to save the message correctly, send the metadata event, and send the stream completion event, fixing both reported issues.
