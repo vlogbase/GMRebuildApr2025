@@ -135,31 +135,25 @@ def index():
 
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
-    # Basic placeholder - Needs proper implementation
     try:
         from models import Conversation
-        existing_convo = Conversation.query.first() 
-        if not existing_convo:
-             title = "Demo Conversation"
-             share_id = generate_share_id()
-             conversation = Conversation(title=title, share_id=share_id)
-             db.session.add(conversation)
-             try:
-                 db.session.commit()
-                 logger.info("Created initial Demo Conversation")
-                 conversations = [{"id": conversation.id, "title": conversation.title}]
-             except Exception as e:
-                  logger.exception("Error committing demo conversation")
-                  db.session.rollback()
-                  conversations = []
-        else:
-             # Replace with actual user-specific query later
-             conversations = [{"id": existing_convo.id, "title": existing_convo.title}]
+        
+        # --- Fetch all conversations, newest first ---
+        all_conversations = Conversation.query.order_by(Conversation.created_at.desc()).all()
 
-        return jsonify({"conversations": conversations})
+        conversations_data = [
+            {
+                "id": convo.id,
+                "title": convo.title or "New Conversation", # Default title
+                "created_at": convo.created_at.isoformat() # ISO format date
+            } for convo in all_conversations
+        ]
+        
+        logger.info(f"Fetched {len(conversations_data)} conversations for sidebar.")
+        return jsonify({"conversations": conversations_data})
     except Exception as e:
         logger.exception("Error getting conversations")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"conversations": [], "error": str(e)}), 500
 
 # --- SYNCHRONOUS CHAT ENDPOINT (Using Requests) ---
 @app.route('/chat', methods=['POST'])
@@ -433,7 +427,7 @@ def chat(): # Synchronous function
 
                         # Yield the final metadata event
                         logger.info(f"==> Preparing to yield METADATA for message {assistant_message_id}")
-                        yield f"data: {json.dumps({'type': 'metadata', 'metadata': {'id': assistant_message_id, 'model_id_used': final_model_id_used, 'prompt_tokens': final_prompt_tokens, 'completion_tokens': final_completion_tokens}})}\n\n"
+                        yield f"data: {json.dumps({'type': 'metadata', 'metadata': {'id': assistant_message_id, 'model_id_used': final_model_id_used, 'prompt_tokens': final_prompt_tokens, 'completion_tokens': final_completion_tokens}, 'conversation_id': current_conv_id})}\n\n"
                         logger.info(f"==> SUCCESSFULLY yielded METADATA for message {assistant_message_id}")
 
                     except Exception as db_error:
