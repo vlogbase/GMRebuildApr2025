@@ -841,7 +841,11 @@ document.addEventListener('DOMContentLoaded', function() {
                                             if (meta.prompt_tokens !== null && meta.completion_tokens !== null) {
                                                  metadataText += ` · Tokens: ${meta.prompt_tokens} prompt + ${meta.completion_tokens} completion`;
                                             }
+                                            console.log("Setting metadata text:", metadataText);
                                             metadataContainer.textContent = metadataText;
+                                            
+                                            // Add a class to highlight the metadata as visible
+                                            metadataContainer.classList.add('metadata-visible');
                                         }
 
                                         // Update action buttons now that we have the final message ID
