@@ -842,6 +842,59 @@ document.addEventListener('DOMContentLoaded', function() {
                                         // Optionally refresh conversation list
                                         // fetchConversations(); 
                                     }
+                                } else if (parsedData.type === 'reasoning') {
+                                    console.log("==> Processing type: reasoning");
+                                    
+                                    if (parsedData.reasoning) {
+                                        // Get or create the reasoning container
+                                        let reasoningContainer = assistantMessageElement.querySelector('.message-reasoning');
+                                        if (!reasoningContainer) {
+                                            reasoningContainer = document.createElement('div');
+                                            reasoningContainer.className = 'message-reasoning';
+                                            
+                                            // Create a collapsible header
+                                            const reasoningHeader = document.createElement('div');
+                                            reasoningHeader.className = 'reasoning-header';
+                                            reasoningHeader.innerHTML = '<span class="reasoning-toggle">▶</span> View Reasoning';
+                                            reasoningHeader.addEventListener('click', function() {
+                                                const reasoningContent = this.nextElementSibling;
+                                                const toggle = this.querySelector('.reasoning-toggle');
+                                                
+                                                if (reasoningContent.style.display === 'none' || !reasoningContent.style.display) {
+                                                    reasoningContent.style.display = 'block';
+                                                    toggle.textContent = '▼';
+                                                    this.parentElement.classList.add('reasoning-expanded');
+                                                } else {
+                                                    reasoningContent.style.display = 'none';
+                                                    toggle.textContent = '▶';
+                                                    this.parentElement.classList.remove('reasoning-expanded');
+                                                }
+                                            });
+                                            
+                                            // Create content container
+                                            const reasoningContent = document.createElement('div');
+                                            reasoningContent.className = 'reasoning-content';
+                                            reasoningContent.style.display = 'none'; // Collapsed by default
+                                            
+                                            reasoningContainer.appendChild(reasoningHeader);
+                                            reasoningContainer.appendChild(reasoningContent);
+                                            
+                                            // Insert after the main message content
+                                            const messageWrapper = assistantMessageElement.querySelector('.message-wrapper');
+                                            if (messageWrapper) {
+                                                const metadataContainer = messageWrapper.querySelector('.message-metadata');
+                                                if (metadataContainer) {
+                                                    messageWrapper.insertBefore(reasoningContainer, metadataContainer);
+                                                } else {
+                                                    messageWrapper.appendChild(reasoningContainer);
+                                                }
+                                            }
+                                        }
+                                        
+                                        // Append the reasoning chunk to the content
+                                        const reasoningContent = reasoningContainer.querySelector('.reasoning-content');
+                                        reasoningContent.textContent += parsedData.reasoning;
+                                    }
                                 
                                 } else if (parsedData.type === 'metadata') {
                                     console.log("==> Processing type: metadata"); 

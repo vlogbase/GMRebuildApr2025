@@ -276,9 +276,10 @@ def chat(): # Synchronous function
         payload = {
             'model': openrouter_model,
             'messages': messages,
-            'stream': True
+            'stream': True,
+            'reasoning': {}  # Enable reasoning tokens for all models that support it
         }
-        logger.debug(f"Sending request to OpenRouter with model: {openrouter_model}. History length: {len(messages)}")
+        logger.debug(f"Sending request to OpenRouter with model: {openrouter_model}. History length: {len(messages)}, reasoning enabled")
 
         # --- Define the SYNC Generator using requests ---
         def generate():
@@ -345,17 +346,33 @@ def chat(): # Synchronous function
                                     json_data = json.loads(data_to_parse)
                                     logger.debug(f"JSON parsed successfully: type '{json_data.get('type', 'N/A')}'")
 
-                                    # --- Extract Content ---
+                                    # --- Extract Content and Reasoning ---
                                     content_chunk = None
+                                    reasoning_chunk = None
+                                    
                                     if 'choices' in json_data and len(json_data['choices']) > 0:
                                         choice = json_data['choices'][0]
-                                        if 'delta' in choice and choice['delta'].get('content') is not None:
-                                            content_chunk = choice['delta']['content']
+                                        delta = choice.get('delta', {})
+                                        
+                                        # Extract content if available
+                                        if delta.get('content') is not None:
+                                            content_chunk = delta['content']
+                                            
+                                        # Extract reasoning if available
+                                        if delta.get('reasoning') is not None:
+                                            reasoning_chunk = delta['reasoning']
+                                            logger.debug(f"Received reasoning chunk: {reasoning_chunk[:50]}...")
 
+                                    # Handle content chunk
                                     if content_chunk:
                                         assistant_response_content.append(content_chunk)
                                         # Yield content chunk to the client
                                         yield f"data: {json.dumps({'type': 'content', 'content': content_chunk, 'conversation_id': current_conv_id})}\n\n"
+                                    
+                                    # Handle reasoning chunk
+                                    if reasoning_chunk:
+                                        # Yield reasoning chunk to the client
+                                        yield f"data: {json.dumps({'type': 'reasoning', 'reasoning': reasoning_chunk, 'conversation_id': current_conv_id})}\n\n"
 
                                     # --- Extract Usage/Model ---
                                     if 'usage' in json_data and json_data['usage']: 

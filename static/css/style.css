@@ -234,7 +234,7 @@ body {
     background-color: #1e3a8a;
 }
 
-/* Message actions and metadata */
+/* Message actions, reasoning, and metadata */
 .message-actions {
     display: flex;
     gap: 8px;
@@ -269,6 +269,58 @@ body {
     color: var(--accent-color);
 }
 
+/* Reasoning styles */
+.message-reasoning {
+    margin-top: 12px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+.reasoning-header {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--secondary-text);
+    background-color: rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background-color 0.2s;
+}
+
+.reasoning-header:hover {
+    background-color: rgba(0, 0, 0, 0.3);
+    color: var(--text-color);
+}
+
+.reasoning-toggle {
+    font-size: 10px;
+    transition: transform 0.2s;
+}
+
+.reasoning-content {
+    padding: 12px;
+    font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #a8a8a8;
+    white-space: pre-wrap;
+    overflow-x: auto;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.reasoning-expanded {
+    border-color: var(--accent-color);
+}
+
+.reasoning-expanded .reasoning-header {
+    color: var(--accent-color);
+}
+
+/* Metadata styles */
 .message-metadata {
     font-size: 12px;
     color: var(--secondary-text);
