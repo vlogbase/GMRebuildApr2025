@@ -91,24 +91,47 @@
             <!-- Input Area -->
             <div class="chat-input-container">
                 <div class="model-buttons">
-                    <button class="model-btn active" data-model="gemini-1.5-pro">
-                        <i class="fa-solid fa-robot"></i> Gemini 1.5 Pro
+                    <button class="model-preset-btn" data-preset-id="1">
+                        <i class="fa-solid fa-robot model-icon"></i>
+                        <span class="model-name">Gemini 2.5</span>
+                        <i class="fa-solid fa-chevron-down selector-icon"></i>
                     </button>
-                    <button class="model-btn" data-model="claude-3-sonnet">
-                        <i class="fa-solid fa-robot"></i> Claude 3 Sonnet
+                    <button class="model-preset-btn" data-preset-id="2">
+                        <i class="fa-solid fa-robot model-icon"></i>
+                        <span class="model-name">Claude 3.7</span>
+                        <i class="fa-solid fa-chevron-down selector-icon"></i>
                     </button>
-                    <button class="model-btn" data-model="mistral-large">
-                        <i class="fa-solid fa-robot"></i> Mistral Large
+                    <button class="model-preset-btn" data-preset-id="3">
+                        <i class="fa-solid fa-brain model-icon"></i>
+                        <span class="model-name">Reasoning</span>
+                        <i class="fa-solid fa-chevron-down selector-icon"></i>
                     </button>
-                    <button class="model-btn" data-model="gpt-4o">
-                        <i class="fa-solid fa-robot"></i> GPT-4o
+                    <button class="model-preset-btn" data-preset-id="4">
+                        <i class="fa-solid fa-image model-icon"></i>
+                        <span class="model-name">Multimodal</span>
+                        <i class="fa-solid fa-chevron-down selector-icon"></i>
                     </button>
-                    <button class="model-btn" data-model="sonar-pro">
-                        <i class="fa-solid fa-robot"></i> Sonar Pro
+                    <button class="model-preset-btn" data-preset-id="5">
+                        <i class="fa-solid fa-search model-icon"></i>
+                        <span class="model-name">Perplexity</span>
+                        <i class="fa-solid fa-chevron-down selector-icon"></i>
                     </button>
-                    <button class="model-btn free-model" data-model="free-gemini">
-                        <i class="fa-solid fa-robot"></i> Free: Gemini
+                    <button class="model-preset-btn free-preset" data-preset-id="6">
+                        <i class="fa-solid fa-gift model-icon"></i>
+                        <span class="model-name">Free</span>
+                        <i class="fa-solid fa-chevron-down selector-icon"></i>
                     </button>
+                </div>
+                
+                <!-- Model Selector UI -->
+                <div id="model-selector" class="model-selector">
+                    <div class="selector-header">
+                        <input type="text" id="model-search" placeholder="Search models...">
+                        <button id="close-selector" class="close-selector"><i class="fa-solid fa-times"></i></button>
+                    </div>
+                    <div class="model-list-container">
+                        <ul id="model-list" class="model-list"></ul>
+                    </div>
                 </div>
                 
                 <div class="input-group">

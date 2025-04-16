@@ -2,7 +2,9 @@ import os
 import logging
 import json
 import requests
-from flask import Flask, render_template, request, Response, stream_with_context
+import uuid
+import time
+from flask import Flask, render_template, request, Response, session, stream_with_context
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user
@@ -53,15 +55,42 @@ def load_user(user_id):
     from models import User
     return User.query.get(int(user_id))
 
-# OpenRouter model mappings
-OPENROUTER_MODELS = {
-    "gemini-1.5-pro": "google/gemini-pro-1.5",  # Updated to correct ID
-    "claude-3-sonnet": "anthropic/claude-3-sonnet",
-    "mistral-large": "mistralai/mistral-large",
-    "gpt-4o": "openai/gpt-4o",
-    "sonar-pro": "anthropic/claude-3-opus",  # "Sonar Pro" maps to Claude 3 Opus
-    "free-gemini": "google/gemma-3-27b-it:free"  # Free tier Gemini model
+# Default model preset configuration
+DEFAULT_PRESET_MODELS = {
+    "1": "google/gemini-2.5-pro-preview-03-25",
+    "2": "anthropic/claude-3.7-sonnet",
+    "3": "openai/o3-Mini-High",
+    "4": "openai/gpt-4.1-mini",
+    "5": "perplexity/sonar-pro",
+    "6": "google/gemini-2.0-flash-exp:free"  # Will try several free models
 }
+
+# Free model fallback list - in order of preference
+FREE_MODEL_FALLBACKS = [
+    "google/gemini-2.0-flash-exp:free",
+    "qwen/qwq-32b:free",
+    "deepseek/deepseek-r1-distill-qwen-32b:free",
+    "deepseek/deepseek-r1-distill-llama-70b:free",
+    "openrouter/optimus-alpha"
+]
+
+# Cache for OpenRouter models
+OPENROUTER_MODELS_CACHE = {
+    "data": None,
+    "timestamp": 0,
+    "expiry": 3600  # Cache expiry in seconds (1 hour)
+}
+
+# Helper function to get the current user identifier
+def get_user_identifier():
+    if current_user and current_user.is_authenticated:
+        return f"user_{current_user.id}"
+    
+    # If not logged in, use a session-based identifier
+    if 'user_identifier' not in session:
+        session['user_identifier'] = f"temp_{uuid.uuid4().hex}"
+    
+    return session['user_identifier']
 
 @app.route('/')
 def index():
@@ -320,6 +349,160 @@ def chat():
     
     except Exception as e:
         logger.exception("Error in chat endpoint")
+        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+@app.route('/models', methods=['GET'])
+def get_models():
+    """
+    Fetch available models from OpenRouter and cache the results
+    Adds helper flags for filtering models by type
+    """
+    try:
+        # Check if models are already cached and not expired
+        current_time = time.time()
+        if (OPENROUTER_MODELS_CACHE["data"] is not None and 
+            (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]):
+            return Response(json.dumps(OPENROUTER_MODELS_CACHE["data"]), content_type='application/json')
+        
+        # Get API key from environment
+        api_key = os.environ.get('OPENROUTER_API_KEY')
+        if not api_key:
+            logger.error("OPENROUTER_API_KEY not found in environment variables")
+            return Response(json.dumps({"error": "API key not configured"}), 
+                           content_type='application/json', status=500)
+        
+        # Prepare headers for OpenRouter API
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Fetch models from OpenRouter
+        response = requests.get(
+            'https://openrouter.ai/api/v1/models',
+            headers=headers
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+            return Response(json.dumps({"error": f"API Error: {response.status_code}"}), 
+                           content_type='application/json', status=500)
+        
+        # Parse the response
+        models_data = response.json()
+        
+        # Process models to add custom flags for filtering
+        for model in models_data.get('data', []):
+            model_id = model.get('id', '').lower()
+            model_name = model.get('name', '').lower()
+            model_description = model.get('description', '').lower()
+            
+            # Set flags based on model properties
+            model['is_free'] = ':free' in model_id or model.get('pricing', {}).get('prompt') == 0
+            model['is_multimodal'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
+                                        for keyword in ['vision', 'image', 'multi', 'gpt-4o'])
+            model['is_perplexity'] = 'perplexity' in model_id or 'perplexity' in model_name
+            model['is_reasoning'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
+                                      for keyword in ['reasoning', 'large', 'opus', 'small'])
+        
+        # Update cache
+        OPENROUTER_MODELS_CACHE["data"] = models_data
+        OPENROUTER_MODELS_CACHE["timestamp"] = current_time
+        
+        return Response(json.dumps(models_data), content_type='application/json')
+    
+    except Exception as e:
+        logger.exception("Error fetching models")
+        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+@app.route('/save_preference', methods=['POST'])
+def save_preference():
+    """
+    Save user model preference for a specific preset button
+    """
+    try:
+        data = request.get_json()
+        preset_id = data.get('preset_id')
+        model_id = data.get('model_id')
+        
+        # Validate input
+        if not preset_id or not model_id:
+            return Response(json.dumps({"error": "Missing preset_id or model_id"}), 
+                           content_type='application/json', status=400)
+        
+        try:
+            preset_id = int(preset_id)
+            if preset_id < 1 or preset_id > 6:
+                return Response(json.dumps({"error": "preset_id must be between 1 and 6"}), 
+                               content_type='application/json', status=400)
+        except ValueError:
+            return Response(json.dumps({"error": "preset_id must be a number"}), 
+                           content_type='application/json', status=400)
+        
+        # Get user identifier
+        user_identifier = get_user_identifier()
+        
+        # Import UserPreference model
+        from models import UserPreference
+        
+        # Check if preference already exists
+        preference = UserPreference.query.filter_by(
+            user_identifier=user_identifier,
+            preset_id=preset_id
+        ).first()
+        
+        if preference:
+            # Update existing preference
+            preference.model_id = model_id
+        else:
+            # Create new preference
+            preference = UserPreference(
+                user_identifier=user_identifier,
+                preset_id=preset_id,
+                model_id=model_id,
+                user_id=current_user.id if current_user and current_user.is_authenticated else None
+            )
+            db.session.add(preference)
+        
+        db.session.commit()
+        
+        return Response(json.dumps({"success": True, "message": "Preference saved successfully"}), 
+                       content_type='application/json')
+    
+    except Exception as e:
+        logger.exception("Error saving preference")
+        db.session.rollback()
+        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+@app.route('/get_preferences', methods=['GET'])
+def get_preferences():
+    """
+    Get all user preferences for model presets
+    """
+    try:
+        # Get user identifier
+        user_identifier = get_user_identifier()
+        
+        # Import UserPreference model
+        from models import UserPreference
+        
+        # Query for preferences
+        preferences = UserPreference.query.filter_by(user_identifier=user_identifier).all()
+        
+        # Build response with preferences
+        result = {}
+        for preference in preferences:
+            result[str(preference.preset_id)] = preference.model_id
+        
+        # Add default models for presets not yet configured
+        for preset_id in map(str, range(1, 7)):
+            if preset_id not in result:
+                result[preset_id] = DEFAULT_PRESET_MODELS[preset_id]
+        
+        return Response(json.dumps({"preferences": result}), content_type='application/json')
+    
+    except Exception as e:
+        logger.exception("Error getting preferences")
         return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
 if __name__ == '__main__':

@@ -14,6 +14,7 @@ class User(UserMixin, db.Model):
     
     # Relationships
     conversations = db.relationship('Conversation', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    preferences = db.relationship('UserPreference', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     
     def set_password(self, password):
         """Set the password hash"""
@@ -54,3 +55,21 @@ class Message(db.Model):
     
     def __repr__(self):
         return f'<Message {self.id}: {self.role}>'
+
+
+class UserPreference(db.Model):
+    """User model preferences for preset model buttons"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_identifier = db.Column(db.String(64), nullable=False, index=True)  # Temporary identifier or User ID
+    preset_id = db.Column(db.Integer, nullable=False)  # 1-6 corresponding to preset number
+    model_id = db.Column(db.String(64), nullable=False)  # OpenRouter model ID
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Link to user when logged in
+    
+    # Create a unique constraint for user_identifier and preset_id
+    __table_args__ = (
+        db.UniqueConstraint('user_identifier', 'preset_id', name='user_preset_unique'),
+    )
+    
+    def __repr__(self):
+        return f'<UserPreference {self.user_identifier}: Preset {self.preset_id} -> {self.model_id}>'

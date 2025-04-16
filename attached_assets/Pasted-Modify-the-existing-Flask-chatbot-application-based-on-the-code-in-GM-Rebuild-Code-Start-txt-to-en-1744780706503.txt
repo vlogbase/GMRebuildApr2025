@@ -1,0 +1,71 @@
+Modify the existing Flask chatbot application (based on the code in GM Rebuild Code Start.txt) to enhance the six model preset buttons below the chat input area. Implement the following features precisely, using server-side storage for user preferences:
+
+1. Backend Modifications (app.py, models.py):
+
+Database Model (models.py):
+Define a new SQLAlchemy model (e.g., UserPreference) to store user choices for presets.
+It should include columns for:
+id (Primary Key)
+user_identifier (String, to store a temporary session ID for now, will later link to the User model ID after Google Login)
+preset_id (Integer, 1 through 6)
+model_id (String, the selected OpenRouter model ID)
+Possibly timestamp (DateTime, to know when it was last updated).
+Ensure there's a unique constraint or logic to handle updating the preference for a specific user and preset ID (e.g., only one model_id per user_identifier and preset_id).
+Update the database schema (ensure the new table is created when the app runs).
+User Identification (Temporary):
+Use Flask's session (from flask import session) to store a unique identifier for users who aren't logged in yet. Generate a unique ID (e.g., uuid.uuid4()) and store it in session['user_identifier'] if one doesn't exist.
+Set a SECRET_KEY for your Flask app (use Replit Secrets) to enable sessions.
+Fetch OpenRouter Models (/models endpoint):
+(Keep this endpoint as described in the previous prompt): Fetch the list from OpenRouter (https://openrouter.ai/api/v1/models), cache it, process it to add helper flags (is_free, is_multimodal, is_perplexity, is_reasoning based on keywords/pricing/ID), and return it as JSON. Use the OPENROUTER_API_KEY secret.
+Save User Preference Endpoint (e.g., POST /save_preference):
+Create a new route that accepts POST requests.
+The request body should contain the preset_id (1-6) and the selected model_id.
+Get the user_identifier from the Flask session.
+Find or create the corresponding UserPreference record in the database, updating the model_id for the given user_identifier and preset_id.
+Return a success or error JSON response.
+Fetch User Preferences Endpoint (e.g., GET /get_preferences):
+Create a new route that accepts GET requests.
+Get the user_identifier from the Flask session.
+Query the database for all UserPreference records matching the user_identifier.
+Return the preferences as a JSON object (e.g., {'1': 'model_id_for_preset1', '3': 'model_id_for_preset3', ...}). Include all 6 presets, potentially falling back to defaults if no preference is saved for a specific preset number on the backend.
+Model Name Shortening Utility: (Keep this as described previously) Recommend implementing this utility function, potentially callable from the backend or replicated in JS.
+2. Frontend Modifications (index.html, static/js/script.js, static/css/style.css):
+
+Preset Button Structure (index.html): (Keep this structure as described previously) Modify buttons to include preset number, type icon, shortened name space, and the corner selector icon (<i class="fa-solid fa-chevron-down selector-icon"></i>). Assign data-preset-id from "1" to "6".
+Model Selector UI (index.html, style.css): (Keep this structure as described previously) Hidden div for the modal/dropdown, search input, scrollable list container. Style appropriately.
+Core JavaScript Logic (script.js):
+Fetch Initial Data: On page load, make asynchronous requests to:
+/models to get the global list of all available models.
+/get_preferences to get the current user's saved preferences from the backend.
+Preset State Management:
+Remove all localStorage usage for storing/retrieving preset model choices.
+Use the preferences fetched from /get_preferences to initialize the state of the preset buttons. If a preference isn't returned for a preset, use the hardcoded default model for that preset (see point 3).
+Initialize the text and icon on each preset button accordingly.
+Button Event Listeners: (Keep interaction logic mostly the same as previously described)
+Main Button Click: Sets the clicked button's model as active_model for the next chat, adds 'active' class.
+Selector Trigger (Desktop Click / Mobile Long-Press): Opens the model selector UI for the specific preset.
+Model Selector Logic:
+Open Selector: Display and position the UI.
+Populate List: Filter the global model list based on the rules for the specific preset being configured (see point 3).
+Sorting: Sort the filtered list alphabetically by shortened name. (Removed sorting by user history to simplify, as history is not being fetched from the backend in this iteration).
+Render List: Display sorted, filtered models (shortened name). Add click listeners.
+Live Search: Filter models currently in the selector based on search input. Ensure efficiency.
+Select Model: When a model is clicked in the selector list:
+Get the selected model's full ID.
+Update the corresponding preset button's display (name, icon).
+Send the update to the backend: Make an asynchronous POST request to /save_preference with the preset_id and the selected model_id. Handle success/error responses.
+Close/hide the model selector UI.
+Shorten Names (JS): Implement or refine the model name shortening logic in JavaScript.
+Styling (style.css): (Keep styling requirements as described previously) Style buttons, selector UI, active state, distinct style for Preset 6.
+3. Preset Defaults, Filtering, and Icons:
+
+Define the default model ID, filtering rules, and icons for each preset button in your JavaScript logic (used when no preference is loaded from the backend /get_preferences for that preset number). Use the exact Model IDs provided:
+Preset 1: Filter: All. Default: google/gemini-2.5-pro-preview-03-25. Icon: fa-robot.
+Preset 2: Filter: All. Default: anthropic/claude-3.7-sonnet. Icon: fa-robot.
+Preset 3: Filter: Reasoning (is_reasoning == true). Default: openai/o3-Mini-High. Icon: fa-brain.
+Preset 4: Filter: Multimodal (is_multimodal == true). Default: openai/gpt-4.1-mini. Icon: fa-image.
+Preset 5: Filter: Perplexity (is_perplexity == true). Default: perplexity/sonar-pro. Icon: fa-search.
+Preset 6: Filter: Free (is_free == true). Default Logic (use exact IDs): Check free list for google/gemini-2.0-flash-exp:free, then qwen/qwq-32b:free, then deepseek/deepseek-r1-distill-qwen-32b:free, then deepseek/deepseek-r1-distill-llama-70b:free, then openrouter/optimus-alpha. Use the first one found. If none are found, use the first model in the filtered free list. Icon: fa-gift. Visual Distinction: Apply unique CSS.
+4. Safety and Efficiency: (Keep requirements as described previously) Ensure non-blocking JS, handle API errors, efficient loops, use try-catch for async operations.
+
+Provide updated code for app.py, models.py, templates/index.html, static/js/script.js, and static/css/style.css reflecting these changes, ensuring the new database model is defined and used for storing preferences via the new backend endpoints.
