@@ -1067,27 +1067,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                     // sendButton.disabled = false;
                                     
                                     // After conversation completes, refresh the conversation list to get updated titles
-                                    // Add multiple refreshes with increasing delays to ensure we eventually catch the updated title
-                                    // This addresses potential race conditions with the async title generation
-                                    console.log("Scheduling multiple conversation list refreshes to ensure we get updated titles...");
+                                    // Schedule a single refresh after a 3-second delay
+                                    // This gives the backend time to generate the title
+                                    console.log("Scheduling a 3-second delayed refresh to fetch updated title...");
                                     
-                                    // First refresh - quick check in case title was generated quickly
                                     setTimeout(() => {
-                                        console.log("First refresh attempt (1.5s) - to catch fast title generation");
+                                        console.log("Refreshing conversation list after 3s delay to get updated title");
                                         fetchConversations(true);
-                                    }, 1500); // 1.5 second initial delay
-                                    
-                                    // Second refresh - give more time for backend processing
-                                    setTimeout(() => {
-                                        console.log("Second refresh attempt (3s) - allowing more time for title generation");
-                                        fetchConversations(true);
-                                    }, 3000); // 3 second follow-up
-                                    
-                                    // Final refresh - last attempt to catch any delayed title updates
-                                    setTimeout(() => {
-                                        console.log("Final refresh attempt (5s) - final check for title updates");
-                                        fetchConversations(true);
-                                    }, 5000); // 5 second final check
+                                    }, 3000);
                                     
                                     return; // Exit the processing loop
                                 } else {
