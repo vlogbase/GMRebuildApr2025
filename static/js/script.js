@@ -234,9 +234,10 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace('llama ', 'Llama ');
         
         // Truncate if too long - different lengths depending on context
-        const maxLength = isFreePrefixed ? 8 : 12;
+        // Increase max length to avoid excessive truncation
+        const maxLength = isFreePrefixed ? 12 : 20;
         if (name.length > maxLength) {
-            name = name.substring(0, maxLength - 2) + '...';
+            name = name.substring(0, maxLength - 3) + '...';
         }
         
         return name;
@@ -806,7 +807,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     }
                                 
                                 } else if (parsedData.type === 'metadata') {
-                                    console.log("==> Processing type: metadata"); // ADD THIS LOG
+                                    console.log("==> Processing type: metadata"); 
                                     // Metadata received (usually after content stream ends)
                                     console.log("Received metadata:", parsedData.metadata);
                                     if (parsedData.metadata) {
