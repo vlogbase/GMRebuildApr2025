@@ -13,6 +13,7 @@ from typing import BinaryIO, Dict, List, Optional, Union, Any
 from io import BytesIO
 from datetime import datetime
 import hashlib
+from zipfile import ZipFile
 
 # Document parsing libraries
 try:
@@ -95,7 +96,11 @@ class DocumentProcessor:
             self._get_embedding = self._generate_hash_based_embedding
     
     def _ensure_indexes(self):
-        """Create necessary indexes on MongoDB collections."""
+        """
+        Create necessary standard indexes on MongoDB collections.
+        Note: The vector search index (named 'vector_index') must be created manually 
+        in the MongoDB Atlas UI on the 'memory.document_chunks' collection.
+        """
         if not self.db_initialized:
             logger.warning("MongoDB not available. Skipping index creation.")
             return
@@ -109,15 +114,11 @@ class DocumentProcessor:
             self.chunks_collection.create_index([("document_id", pymongo.ASCENDING)])
             self.chunks_collection.create_index([("user_id", pymongo.ASCENDING)])
             
-            # Create vector search index if not exists
-            if "vector_index" not in self.chunks_collection.index_information():
-                self.chunks_collection.create_index(
-                    [("embedding", pymongo.ASCENDING)],
-                    name="vector_index",
-                    sparse=True
-                )
+            # Note: The vector search index named 'vector_index' must be created manually
+            # in the MongoDB Atlas UI, configured for the 'embedding' field with the
+            # correct dimensionality (3072) and similarity metric.
             
-            logger.info("MongoDB indexes created successfully")
+            logger.info("MongoDB standard indexes created successfully")
         except PyMongoError as e:
             logger.error(f"Error creating MongoDB indexes: {e}")
     
@@ -221,6 +222,35 @@ class DocumentProcessor:
                 # Extract text from CSV/TSV
                 return file_data.decode('utf-8', errors='replace')
                 
+            elif file_ext in ['.xml']:
+                # Extract text from XML
+                try:
+                    xml_text = file_data.decode('utf-8', errors='replace')
+                    soup = BeautifulSoup(xml_text, 'xml')
+                    # Remove tags but keep their content
+                    text = soup.get_text(separator="\n")
+                    return text
+                except Exception as e:
+                    logger.warning(f"Error parsing XML file {filename}: {e}")
+                    # Fallback to plain text
+                    return file_data.decode('utf-8', errors='replace')
+                    
+            elif file_ext in ['.odt']:
+                # Extract text from ODT (OpenDocument Text)
+                try:
+                    # ODT files are ZIP archives with content in content.xml
+                    with ZipFile(BytesIO(file_data)) as odt_zip:
+                        if 'content.xml' in odt_zip.namelist():
+                            content_xml = odt_zip.read('content.xml').decode('utf-8')
+                            soup = BeautifulSoup(content_xml, 'xml')
+                            text = soup.get_text(separator="\n")
+                            return text
+                    logger.warning(f"Could not find content.xml in ODT file: {filename}")
+                    return None
+                except Exception as e:
+                    logger.warning(f"Error extracting text from ODT file {filename}: {e}")
+                    return None
+                    
             else:
                 # For unsupported formats, try to extract as plain text
                 try:
@@ -367,7 +397,7 @@ class DocumentProcessor:
     
     def retrieve_relevant_chunks(self, query_text: str, user_id: Union[str, int], limit: int = 5) -> List[Dict[str, Any]]:
         """
-        Retrieve text chunks relevant to a query using vector search.
+        Retrieve text chunks relevant to a query using MongoDB Atlas Vector Search.
         
         Args:
             query_text: The query text
@@ -385,52 +415,27 @@ class DocumentProcessor:
             # Generate embedding for the query
             query_embedding = self._get_embedding(query_text)
             
-            # Perform aggregation to find similar chunks
+            # Perform aggregation using Atlas Vector Search
             pipeline = [
                 {
-                    "$match": {
-                        "user_id": str(user_id),
-                        "embedding": {"$exists": True}
-                    }
-                },
-                {
-                    "$addFields": {
-                        "similarity_score": {
-                            "$function": {
-                                "body": """
-                                function(a, b) {
-                                    if (!a || !b || a.length !== b.length) return 0;
-                                    let dotProduct = 0;
-                                    let normA = 0;
-                                    let normB = 0;
-                                    for (let i = 0; i < a.length; i++) {
-                                        dotProduct += a[i] * b[i];
-                                        normA += a[i] * a[i];
-                                        normB += b[i] * b[i];
-                                    }
-                                    if (normA === 0 || normB === 0) return 0;
-                                    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
-                                }
-                                """,
-                                "args": ["$embedding", query_embedding],
-                                "lang": "js"
-                            }
+                    '$vectorSearch': {
+                        'index': 'vector_index',  # Use the correct Atlas Vector Search index name
+                        'path': 'embedding',      # Field containing the vectors
+                        'queryVector': query_embedding, # The embedding vector of the query
+                        'numCandidates': 150,  # Number of candidates to consider
+                        'limit': limit,          # Max number of results to return
+                        'filter': {
+                            'user_id': str(user_id) # Filter by the correct user ID
                         }
                     }
                 },
-                {
-                    "$sort": {"similarity_score": -1}
-                },
-                {
-                    "$limit": limit
-                },
-                {
-                    "$project": {
-                        "_id": 0,
-                        "text_chunk": 1,
-                        "source_document_name": 1,
-                        "chunk_index": 1,
-                        "score": "$similarity_score"
+                { # Project the desired fields and the relevance score
+                    '$project': {
+                        '_id': 0,
+                        'text_chunk': 1,
+                        'source_document_name': 1,
+                        'chunk_index': 1,
+                        'score': { '$meta': 'vectorSearchScore' } # Get the relevance score from $vectorSearch
                     }
                 }
             ]
