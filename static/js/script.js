@@ -26,12 +26,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Filter configurations for each preset
     const presetFilters = {
-        '1': (model) => true, // All models
-        '2': (model) => true, // All models
-        '3': (model) => model.is_reasoning === true,
-        '4': (model) => model.is_multimodal === true,
-        '5': (model) => model.is_perplexity === true,
-        '6': (model) => model.is_free === true
+        '1': (model) => !model.is_free, // All non-free models
+        '2': (model) => !model.is_free, // All non-free models
+        '3': (model) => model.is_reasoning === true && !model.is_free,
+        '4': (model) => model.is_multimodal === true && !model.is_free,
+        '5': (model) => model.is_perplexity === true && !model.is_free,
+        '6': (model) => model.is_free === true // Only free models
     };
     
     // Default model IDs for each preset button
@@ -164,7 +164,23 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 if (data.preferences) {
-                    userPreferences = data.preferences;
+                    // Validate preferences to ensure presets 1-5 don't have free models
+                    const validatedPreferences = {};
+                    
+                    for (const presetId in data.preferences) {
+                        const modelId = data.preferences[presetId];
+                        const isFreeModel = modelId.includes(':free');
+                        
+                        // If it's preset 1-5 and has a free model, use the default non-free model
+                        if (presetId !== '6' && isFreeModel) {
+                            console.warn(`Preset ${presetId} has a free model (${modelId}), reverting to default`);
+                            validatedPreferences[presetId] = defaultModels[presetId];
+                        } else {
+                            validatedPreferences[presetId] = modelId;
+                        }
+                    }
+                    
+                    userPreferences = validatedPreferences;
                     console.log('Loaded user preferences:', userPreferences);
                     
                     // Update button text to reflect preferences
@@ -401,6 +417,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to select a model for a preset and save the preference
     function selectModelForPreset(presetId, modelId) {
+        // Check if trying to assign a free model to a non-free preset
+        const isFreeModel = modelId.includes(':free');
+        if (presetId !== '6' && isFreeModel) {
+            alert('Free models can only be selected for Preset 6');
+            return;
+        }
+        
         // Update the UI
         const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
         if (button) {
@@ -798,10 +821,17 @@ document.addEventListener('DOMContentLoaded', function() {
                                     console.log("==> Processing type: content"); // ADD THIS LOG
                                     // Append content
                                     if (parsedData.content) {
+                                        // Track if we need to scroll
+                                        const shouldScroll = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
+                                        
                                         responseText += parsedData.content;
                                         // Use your existing formatMessage function
                                         messageContent.innerHTML = formatMessage(responseText); 
-                                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                                        
+                                        // Only auto-scroll if user was already at the bottom
+                                        if (shouldScroll) {
+                                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                                        }
                                     }
                                     // Update conversation ID if it's the first message
                                     if (parsedData.conversation_id && !currentConversationId) {
