@@ -13,6 +13,16 @@ document.addEventListener('DOMContentLoaded', function() {
     const modelSearch = document.getElementById('model-search');
     const closeSelector = document.getElementById('close-selector');
     
+    // Document upload elements
+    const uploadDocumentsBtn = document.getElementById('upload-documents-btn');
+    const documentUploadModal = document.getElementById('document-upload-modal');
+    const closeUploadModal = document.getElementById('close-upload-modal');
+    const uploadDropzone = document.getElementById('upload-dropzone');
+    const fileUploadInput = document.getElementById('file-upload-input');
+    const uploadFileList = document.getElementById('upload-file-list');
+    const uploadFilesBtn = document.getElementById('upload-files-btn');
+    const uploadStatus = document.getElementById('upload-status');
+    
     // App state
     let activePresetButton = null; // Currently selected preset button
     let currentModel = null; // Model ID of the currently selected preset
@@ -1310,4 +1320,194 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize by focusing on the input
     messageInput.focus();
+    
+    // ====== Document Upload Handlers ======
+    
+    // Store selected files
+    let selectedFiles = [];
+    
+    // Toggle upload modal
+    if (uploadDocumentsBtn) {
+        uploadDocumentsBtn.addEventListener('click', function() {
+            documentUploadModal.style.display = 'flex';
+        });
+    }
+    
+    // Close upload modal
+    if (closeUploadModal) {
+        closeUploadModal.addEventListener('click', function() {
+            documentUploadModal.style.display = 'none';
+        });
+    }
+    
+    // Close modal when clicking outside
+    if (documentUploadModal) {
+        documentUploadModal.addEventListener('click', function(e) {
+            if (e.target === documentUploadModal) {
+                documentUploadModal.style.display = 'none';
+            }
+        });
+    }
+    
+    // Handle dropzone click
+    if (uploadDropzone) {
+        uploadDropzone.addEventListener('click', function() {
+            fileUploadInput.click();
+        });
+        
+        // Handle file drag over
+        uploadDropzone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.add('dragover');
+        });
+        
+        // Handle file drag leave
+        uploadDropzone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.remove('dragover');
+        });
+        
+        // Handle file drop
+        uploadDropzone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelection(files);
+            }
+        });
+    }
+    
+    // Handle file input change
+    if (fileUploadInput) {
+        fileUploadInput.addEventListener('change', function() {
+            handleFileSelection(this.files);
+        });
+    }
+    
+    // Handle file selection
+    function handleFileSelection(files) {
+        if (!files || files.length === 0) return;
+        
+        // Add files to the selected files array
+        Array.from(files).forEach(file => {
+            // Check if file is already in the list
+            const isDuplicate = selectedFiles.some(f => f.name === file.name && f.size === file.size);
+            if (!isDuplicate) {
+                selectedFiles.push(file);
+            }
+        });
+        
+        // Update the file list UI
+        updateFileList();
+    }
+    
+    // Update file list display
+    function updateFileList() {
+        if (!uploadFileList) return;
+        
+        uploadFileList.innerHTML = '';
+        
+        selectedFiles.forEach((file, index) => {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'upload-file-item';
+            
+            // Determine file icon based on file type
+            let iconClass = 'fa-file';
+            const fileExt = file.name.split('.').pop().toLowerCase();
+            
+            if (['pdf'].includes(fileExt)) {
+                iconClass = 'fa-file-pdf';
+            } else if (['doc', 'docx'].includes(fileExt)) {
+                iconClass = 'fa-file-word';
+            } else if (['txt', 'md'].includes(fileExt)) {
+                iconClass = 'fa-file-alt';
+            } else if (['jpg', 'jpeg', 'png', 'gif'].includes(fileExt)) {
+                iconClass = 'fa-file-image';
+            } else if (['html', 'htm', 'xml'].includes(fileExt)) {
+                iconClass = 'fa-file-code';
+            } else if (['csv', 'xls', 'xlsx'].includes(fileExt)) {
+                iconClass = 'fa-file-excel';
+            }
+            
+            fileItem.innerHTML = `
+                <div class="file-info">
+                    <i class="fa-solid ${iconClass} file-icon"></i>
+                    <span class="file-name">${file.name}</span>
+                </div>
+                <button class="remove-file" data-index="${index}">
+                    <i class="fa-solid fa-times"></i>
+                </button>
+            `;
+            
+            uploadFileList.appendChild(fileItem);
+        });
+        
+        // Add event listeners to remove buttons
+        document.querySelectorAll('.remove-file').forEach(button => {
+            button.addEventListener('click', function() {
+                const index = parseInt(this.getAttribute('data-index'));
+                selectedFiles.splice(index, 1);
+                updateFileList();
+            });
+        });
+        
+        // Show or hide the upload button based on file selection
+        if (uploadFilesBtn) {
+            uploadFilesBtn.style.display = selectedFiles.length > 0 ? 'block' : 'none';
+        }
+    }
+    
+    // Handle the upload process
+    if (uploadFilesBtn) {
+        uploadFilesBtn.addEventListener('click', function() {
+            if (selectedFiles.length === 0) return;
+            
+            uploadStatus.innerHTML = `<p>Uploading ${selectedFiles.length} file(s)...</p>
+                                     <div class="upload-progress"><div class="upload-progress-bar"></div></div>`;
+            
+            const formData = new FormData();
+            selectedFiles.forEach(file => {
+                formData.append('files[]', file);
+            });
+            
+            // Disable the upload button during upload
+            this.disabled = true;
+            
+            // Send the files to the server
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    uploadStatus.innerHTML = `<p>✅ Successfully processed ${selectedFiles.length} file(s). Your files will now be used to enhance AI responses.</p>`;
+                    // Clear selected files
+                    selectedFiles = [];
+                    updateFileList();
+                    
+                    // Close modal after 3 seconds
+                    setTimeout(() => {
+                        documentUploadModal.style.display = 'none';
+                        uploadStatus.innerHTML = '';
+                    }, 3000);
+                } else {
+                    uploadStatus.innerHTML = `<p>❌ Error: ${data.error}</p>`;
+                }
+            })
+            .catch(error => {
+                uploadStatus.innerHTML = `<p>❌ Upload failed: ${error.message}</p>`;
+                console.error('Upload error:', error);
+            })
+            .finally(() => {
+                // Re-enable the upload button
+                this.disabled = false;
+            });
+        });
+    }
 });

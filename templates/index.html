@@ -90,6 +90,42 @@
                         <span class="model-name">Free</span>
                         <i class="fa-solid fa-chevron-down selector-icon"></i>
                     </button>
+                    <button id="upload-documents-btn" class="upload-documents-btn" title="Upload documents to enhance responses with your data">
+                        <i class="fa-solid fa-file-upload"></i>
+                    </button>
+                </div>
+                
+                <!-- Document Upload UI -->
+                <div id="document-upload-modal" class="document-upload-modal">
+                    <div class="document-upload-content">
+                        <div class="document-upload-header">
+                            <h3>Upload Documents</h3>
+                            <button id="close-upload-modal" class="close-upload-modal">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="document-upload-body">
+                            <p>Upload documents to enhance the AI's responses with your own data.</p>
+                            <p>Supported formats: PDF, Word, Text, HTML, CSV, and more.</p>
+                            
+                            <div id="upload-dropzone" class="upload-dropzone">
+                                <i class="fa-solid fa-file-arrow-up upload-icon"></i>
+                                <p>Drag files here or click to upload</p>
+                                <input type="file" id="file-upload-input" multiple accept=".txt,.pdf,.docx,.md,.html,.json,.csv,.tsv,.xml,.yaml,.yml,.rtf,.srt,.vtt,.log,.py,.js,.java,.c,.cpp,.cs,.rb,.php">
+                            </div>
+                            
+                            <div id="upload-file-list" class="upload-file-list">
+                                <!-- File list will be populated dynamically -->
+                            </div>
+                            
+                            <div id="upload-status" class="upload-status">
+                                <!-- Upload status will be shown here -->
+                            </div>
+                        </div>
+                        <div class="document-upload-footer">
+                            <button id="upload-files-btn" class="upload-files-btn">Upload Files</button>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Model Selector UI -->

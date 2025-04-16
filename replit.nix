@@ -1,5 +1,8 @@
 {pkgs}: {
   deps = [
+    pkgs.libyaml
+    pkgs.zlib
+    pkgs.xcodebuild
     pkgs.libev
     pkgs.rustc
     pkgs.libiconv

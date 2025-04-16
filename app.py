@@ -4,6 +4,7 @@ from gevent import monkey
 monkey.patch_all()
 
 import os
+import io
 import logging
 import json
 import requests # Use requests for synchronous calls
@@ -12,13 +13,17 @@ import uuid
 import time
 import base64
 import secrets
+import threading
 from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context # Added stream_with_context back
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
-from flask_login import LoginManager, current_user
+from flask_login import LoginManager, current_user, login_required
 
 # Check if we should enable advanced memory features
 ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
+
+# Check if we should enable RAG features
+ENABLE_RAG = os.environ.get('ENABLE_RAG', 'true').lower() == 'true'
 
 if ENABLE_MEMORY_SYSTEM:
     try:
@@ -33,6 +38,16 @@ else:
         pass # No-op
     def enrich_prompt_with_memory(session_id, user_id, user_message, conversation_history):
         return conversation_history # Return original history
+        
+# Initialize document processor for RAG if enabled
+if ENABLE_RAG:
+    try:
+        from document_processor import DocumentProcessor
+        document_processor = DocumentProcessor()
+        logging.info("RAG functionality enabled")
+    except ImportError as e:
+        logging.warning(f"Failed to import document processor: {e}")
+        ENABLE_RAG = False
 
 
 # Configure logging
@@ -451,6 +466,63 @@ def chat(): # Synchronous function
                 messages = enriched_messages
             except Exception as e:
                  logger.error(f"Error enriching with memory: {e}")
+                 
+        # --- Incorporate document context from RAG system ---
+        if ENABLE_RAG:
+            try:
+                # Get user ID for retrieving documents
+                rag_user_id = str(current_user.id) if current_user and current_user.is_authenticated else get_user_identifier()
+                
+                # Retrieve relevant document chunks
+                relevant_chunks = document_processor.retrieve_relevant_chunks(
+                    query_text=user_message,
+                    user_id=rag_user_id,
+                    limit=5  # Retrieve top 5 most relevant chunks
+                )
+                
+                if relevant_chunks and len(relevant_chunks) > 0:
+                    # Format document chunks as context
+                    context_text = "Below is relevant information from your documents:\n\n"
+                    
+                    for i, chunk in enumerate(relevant_chunks):
+                        source = chunk.get('source_document_name', 'Unknown')
+                        text = chunk.get('text_chunk', '')
+                        score = chunk.get('score', 0)
+                        
+                        # Add formatted chunk with source attribution
+                        context_text += f"[Document: {source}]\n{text}\n\n"
+                    
+                    # Add a context system message at the beginning of the conversation
+                    context_message = {
+                        "role": "system",
+                        "content": (
+                            "The following information from the user's documents is relevant to their question. "
+                            "Use this information to provide accurate answers and refer to the sources when appropriate.\n\n"
+                            f"{context_text}\n"
+                            "If the user's question cannot be fully answered with the given context, "
+                            "acknowledge what information you have and what might be missing."
+                        )
+                    }
+                    
+                    # Add context to the start of messages if message list is not empty
+                    if len(messages) > 0:
+                        # Check if the first message is already a system message
+                        if messages[0].get('role') == 'system':
+                            # Append context to existing system message
+                            messages[0]['content'] = context_message['content'] + "\n\n" + messages[0]['content']
+                        else:
+                            # Insert new system message at the beginning
+                            messages.insert(0, context_message)
+                    else:
+                        # Just add the context message
+                        messages.append(context_message)
+                    
+                    logger.info(f"Added context from {len(relevant_chunks)} document chunks for RAG")
+                else:
+                    logger.info("No relevant document chunks found for the query")
+                    
+            except Exception as e:
+                logger.error(f"Error incorporating RAG context: {e}")
 
         # --- Prepare Payload ---
         payload = {
@@ -853,6 +925,98 @@ def view_shared_conversation(share_id):
         logger.exception(f"Error viewing shared conversation {share_id}")
         flash("An error occurred while trying to load the shared conversation.", "error")
         return redirect(url_for('index'))
+
+@app.route('/upload', methods=['POST'])
+def upload_documents():
+    """
+    Route to handle document uploads for RAG functionality.
+    Processes and stores documents in MongoDB for later retrieval.
+    """
+    if not ENABLE_RAG:
+        return jsonify({"error": "RAG functionality is not enabled"}), 400
+        
+    try:
+        # Get user ID - use either authenticated user or session-based identifier
+        if current_user and current_user.is_authenticated:
+            user_id = str(current_user.id)
+        else:
+            user_id = get_user_identifier()
+            
+        # Check if files were uploaded
+        if 'files[]' not in request.files:
+            return jsonify({"error": "No files were uploaded"}), 400
+            
+        files = request.files.getlist('files[]')
+        if not files or len(files) == 0:
+            return jsonify({"error": "No files were selected"}), 400
+            
+        # Define allowed file extensions based on our supported formats
+        allowed_extensions = {
+            '.txt', '.pdf', '.docx', '.md', '.html', '.htm', 
+            '.json', '.yaml', '.yml', '.csv', '.tsv', '.rtf',
+            '.srt', '.vtt', '.log', '.py', '.js', '.java', 
+            '.c', '.cpp', '.cs', '.rb', '.php'
+        }
+        
+        # Process each file
+        results = []
+        
+        for file in files:
+            if file.filename == '':
+                results.append({"filename": "unnamed", "success": False, "message": "File has no name"})
+                continue
+                
+            # Check file extension
+            filename = file.filename
+            ext = os.path.splitext(filename)[1].lower()
+            
+            if ext not in allowed_extensions:
+                results.append({
+                    "filename": filename,
+                    "success": False,
+                    "message": f"File type {ext} is not supported"
+                })
+                continue
+                
+            # Start a background thread to process the file
+            def process_file_task(file_data, filename, user_id):
+                try:
+                    # Process and store the document
+                    result = document_processor.process_and_store_document(file_data, filename, user_id)
+                    logger.info(f"Document processing completed for {filename}: {result}")
+                except Exception as e:
+                    logger.exception(f"Error processing document {filename}: {e}")
+            
+            # Create a copy of the file data for background processing
+            file_data = file.stream.read()
+            file_stream = io.BytesIO(file_data)
+            
+            # Start background processing
+            processing_thread = threading.Thread(
+                target=process_file_task,
+                args=(file_stream, filename, user_id)
+            )
+            processing_thread.daemon = True  # Allow the thread to be terminated when the main program exits
+            processing_thread.start()
+            
+            results.append({
+                "filename": filename,
+                "success": True,
+                "message": "Processing started in background"
+            })
+        
+        return jsonify({
+            "success": True,
+            "message": f"Processing {len(files)} documents in the background",
+            "results": results
+        })
+        
+    except Exception as e:
+        logger.exception(f"Error handling document upload: {e}")
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
 
 # --- Main Execution ---
 if __name__ == '__main__':
