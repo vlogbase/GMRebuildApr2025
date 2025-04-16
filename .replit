@@ -3,9 +3,12 @@ modules = ["nodejs-20", "python-3.11"]
 [nix]
 channel = "stable-24_05"
 
+# This deployment section might be used for Replit Deployments, 
+# consider updating it too if you deploy that way.
 [deployment]
 deploymentTarget = "autoscale"
-run = ["gunicorn", "--bind", "0.0.0.0:5000", "main:app"]
+# Added -k uvicorn.workers.UvicornWorker here as well for deployment consistency
+run = ["gunicorn", "app:app", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:5000"]
 
 [workflows]
 runButton = "Project"
@@ -13,7 +16,7 @@ runButton = "Project"
 [[workflows.workflow]]
 name = "Project"
 mode = "parallel"
-author = "agent"
+author = "agent" # You can change author if you like
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
@@ -21,7 +24,7 @@ args = "Start application"
 
 [[workflows.workflow]]
 name = "Start application"
-author = "agent"
+author = "agent" # You can change author if you like
 
 [workflows.workflow.metadata]
 agentRequireRestartOnSave = false
@@ -31,7 +34,8 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app"
+# Added "-k", "uvicorn.workers.UvicornWorker" to this command list
+args = ["gunicorn", "app:app", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:5000", "--reuse-port", "--reload"]
 waitForPort = 5000
 
 [[ports]]
