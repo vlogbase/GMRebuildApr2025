@@ -748,8 +748,17 @@ def view_shared_conversation(share_id):
 
 # --- Main Execution ---
 if __name__ == '__main__':
-    logger.info("Starting Flask development server")
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Run the Flask server')
+    parser.add_argument('--port', type=int, default=5000, help='Port to run the server on')
+    args = parser.parse_args()
+    
+    port = args.port
+    logger.info(f"Starting Flask development server on port {port}")
+    
     # Use debug=False if running with Gunicorn/Uvicorn in production
     # The threaded=True option might offer slightly better handling of concurrent requests
     # for the dev server compared to the default, but Gunicorn handles concurrency differently.
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
