@@ -6,7 +6,7 @@ import uuid
 import time
 import base64
 import secrets
-from flask import Flask, render_template, request, Response, session, stream_with_context, jsonify, abort
+from flask import Flask, render_template, request, Response, session, stream_with_context, jsonify, abort, url_for, redirect, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user
@@ -611,6 +611,62 @@ def rate_message(message_id):
         logger.exception("Error saving rating")
         db.session.rollback()
         return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+@app.route('/conversation/<int:conversation_id>/share', methods=['POST'])
+def share_conversation(conversation_id):
+    """
+    Generate or retrieve a share link for a conversation
+    
+    Returns a JSON object with the share URL
+    """
+    try:
+        # Import the model
+        from models import Conversation
+        
+        # Get the conversation
+        conversation = Conversation.query.get(conversation_id)
+        if not conversation:
+            return Response(json.dumps({"error": "Conversation not found"}), 
+                          content_type='application/json', status=404)
+        
+        # If the conversation doesn't have a share_id yet, generate one
+        if not conversation.share_id:
+            conversation.share_id = generate_share_id()
+            db.session.commit()
+        
+        # Return the share URL
+        share_url = f'/share/{conversation.share_id}'
+        return Response(json.dumps({"share_url": share_url}), content_type='application/json')
+    
+    except Exception as e:
+        logger.exception("Error sharing conversation")
+        db.session.rollback()
+        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+@app.route('/share/<share_id>')
+def view_shared_conversation(share_id):
+    """
+    Display a shared conversation
+    
+    This endpoint renders the same chat template but with a readonly flag
+    """
+    try:
+        # Import the model
+        from models import Conversation
+        
+        # Find the conversation by share_id
+        conversation = Conversation.query.filter_by(share_id=share_id).first()
+        if not conversation:
+            flash("The shared conversation link is invalid or has expired.")
+            return redirect(url_for('index'))
+        
+        # In a real implementation, you would load the messages and render them
+        # For now, just redirect to the home page
+        return redirect(url_for('index'))
+    
+    except Exception as e:
+        logger.exception("Error viewing shared conversation")
+        return redirect(url_for('index'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
