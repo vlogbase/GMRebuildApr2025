@@ -965,6 +965,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     // messageInput.disabled = false;
                                     // sendButton.disabled = false;
                                     
+                                    // After conversation completes, refresh the conversation list to get updated titles
+                                    // Add a small delay to ensure the backend has had time to process the title generation
+                                    setTimeout(() => {
+                                        console.log("Refreshing conversation list to get updated titles");
+                                        fetchConversations();
+                                    }, 1000); // 1 second delay
+                                    
                                     return; // Exit the processing loop
                                 } else {
                                     console.warn("==> Received unknown data type:", parsedData.type, parsedData); // ADD THIS LOG

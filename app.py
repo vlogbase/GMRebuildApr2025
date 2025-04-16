@@ -247,26 +247,31 @@ def index():
 
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
-    # Basic placeholder - Needs proper implementation
+    """Get all conversations for the current user"""
     try:
         from models import Conversation
-        existing_convo = Conversation.query.first() 
-        if not existing_convo:
-             title = "Demo Conversation"
-             share_id = generate_share_id()
-             conversation = Conversation(title=title, share_id=share_id)
-             db.session.add(conversation)
-             try:
-                 db.session.commit()
-                 logger.info("Created initial Demo Conversation")
-                 conversations = [{"id": conversation.id, "title": conversation.title}]
-             except Exception as e:
-                  logger.exception("Error committing demo conversation")
-                  db.session.rollback()
-                  conversations = []
+        
+        # Get all conversations, ordered by most recently updated first
+        all_conversations = Conversation.query.filter_by(is_active=True).order_by(Conversation.updated_at.desc()).all()
+        
+        if not all_conversations:
+            # Create a demo conversation if none exist
+            title = "New Conversation"
+            share_id = generate_share_id()
+            conversation = Conversation(title=title, share_id=share_id)
+            db.session.add(conversation)
+            try:
+                db.session.commit()
+                logger.info("Created initial Demo Conversation")
+                conversations = [{"id": conversation.id, "title": conversation.title}]
+            except Exception as e:
+                logger.exception("Error committing demo conversation")
+                db.session.rollback()
+                conversations = []
         else:
-             # Replace with actual user-specific query later
-             conversations = [{"id": existing_convo.id, "title": existing_convo.title}]
+            # Convert all conversations to the format expected by the frontend
+            conversations = [{"id": conv.id, "title": conv.title} for conv in all_conversations]
+            logger.info(f"Returning {len(conversations)} conversations")
 
         return jsonify({"conversations": conversations})
     except Exception as e:
