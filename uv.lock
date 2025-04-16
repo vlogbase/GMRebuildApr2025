@@ -766,7 +766,7 @@ requires-dist = [
     { name = "flask", extras = ["async"], specifier = ">=3.1.0" },
     { name = "flask-login", specifier = ">=0.6.3" },
     { name = "flask-sqlalchemy", specifier = ">=3.1.1" },
-    { name = "gunicorn", specifier = ">=23.0.0" },
+    { name = "gunicorn", extras = ["uvicorn"], specifier = ">=23.0.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "openai", specifier = ">=1.74.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },

@@ -1,0 +1,26 @@
+The previous attempts to fix the streaming have become confusing. Let's reset to the correct configuration for asynchronous streaming with httpx and uvicorn. Please perform ONLY the following steps precisely:
+
+Delete wsgi.py: Delete the wsgi.py file that was created in the previous attempts, as it's likely unnecessary and may interfere.
+
+Bash
+
+rm -f wsgi.py 
+Verify/Correct .replit Run Command:
+
+Open the .replit file.
+Find the [[workflows.workflow.tasks]] section under the workflow named "Start application".
+Ensure the args list for the shell.exec task that runs gunicorn exactly matches the following (using app:app - change to main:app ONLY if your Flask app object app is definitely in main.py):
+Ini, TOML
+
+# Example args list within the correct task:
+args = ["gunicorn", "app:app", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:5000", "--reuse-port", "--reload"] 
+If it doesn't match, edit the args list within .replit to be exactly as shown above.
+Restore app.py to Async/httpx:
+
+Replace the entire chat() endpoint function in app.py (from @app.route('/chat', methods=['POST']) down to its return Response(...) line) with the correct async version using httpx. Use the exact code provided in the previous "Minimal Re-Fix Prompt (Async/httpx)" (message ID Pasted-Okay--you-re-right--That-last-prompt-combined-too-many-things--Let-s-simplify-and-focus--only--on-ge-1744789781111.txt approx - the one starting @app.route('/chat', methods=['POST'])\nasync def chat():...). Ensure the previous synchronous version is completely removed.
+Verify Dependencies: Run this command in the Shell one more time to ensure all needed packages are installed and registered:
+
+Bash
+
+uv pip install httpx uvicorn "Flask[async]"
+Restart: Stop and Run the application using the Replit buttons. Check the initial startup logs in the Replit Console to see if it mentions "Using worker: uvicorn.workers.UvicornWorker" or similar (it might not always be explicit, but ensure no sync worker message appears and no immediate errors occur on startup).

@@ -157,7 +157,7 @@ def get_conversations():
 
 
 @app.route('/chat', methods=['POST'])
-async def chat(): # Make the endpoint async
+async def chat():
     """
     Endpoint to handle chat messages and stream responses from OpenRouter using httpx
     """
@@ -182,9 +182,8 @@ async def chat(): # Make the endpoint async
         # Get API key from environment
         api_key = os.environ.get('OPENROUTER_API_KEY')
         if not api_key:
-            logger.error("OPENROUTER_API_KEY not found in environment variables")
-            return Response(json.dumps({"error": "API key not configured"}), 
-                           content_type='application/json', status=500)
+            logger.error("OPENROUTER_API_KEY not found")
+            abort(500, description="API key not configured")
         
         # Prepare headers for OpenRouter API
         headers = {
