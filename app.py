@@ -157,7 +157,7 @@ def get_conversations():
 
 
 @app.route('/chat', methods=['POST'])
-async def chat():
+def chat():
     """
     Endpoint to handle chat messages and stream responses from OpenRouter
     """
@@ -286,8 +286,8 @@ async def chat():
         
         logger.debug(f"Sending request to OpenRouter with model: {openrouter_model}")
         
-        # Stream the response using async httpx
-        async def generate():
+        # Stream the response using regular requests
+        def generate():
             # Buffer to collect the assistant's response text
             assistant_response_content = [] 
             # Variables to store metadata found during stream
@@ -297,93 +297,94 @@ async def chat():
             assistant_message_id = None # To store the ID after saving
 
             try:
-                # Use httpx for async streaming request
-                async with httpx.AsyncClient(timeout=300.0) as client: # Increased timeout
-                    async with client.stream(
-                        'POST',
-                        'https://openrouter.ai/api/v1/chat/completions',
-                        headers=headers, # Assumes headers is defined in the outer scope (chat endpoint)
-                        json=payload,    # Assumes payload is defined in the outer scope (chat endpoint)
-                    ) as response:
+                response = requests.post(
+                    'https://openrouter.ai/api/v1/chat/completions',
+                    headers=headers,
+                    json=payload,
+                    stream=True,
+                    timeout=300.0  # Increased timeout to 300 seconds
+                )
 
-                        if response.status_code != 200:
-                            # Handle non-200 status codes
-                            error_content = await response.aread() # Read error body
-                            logger.error(f"OpenRouter API error: {response.status_code} - {error_content.decode()}")
-                            yield f"data: {json.dumps({'type': 'error', 'error': f'API Error: {response.status_code}'})}\n\n"
-                            return
+                if response.status_code != 200:
+                    error_msg = response.text
+                    logger.error(f"OpenRouter API error: {response.status_code} - {error_msg}")
+                    yield f"data: {json.dumps({'type': 'error', 'error': f'API Error: {response.status_code}'})}\n\n"
+                    return
 
-                        # Process the streaming response asynchronously
-                        async for line in response.aiter_lines():
-                            if line:
-                                if line.strip() == '': # SSE lines often have empty lines
-                                    continue 
+                # Process the streaming response
+                for line in response.iter_lines():
+                    if line:
+                        if line.strip() == b'':
+                            continue # Skip keep-alive lines
+                        
+                        line_text = line.decode('utf-8')
+                        
+                        if line_text.startswith('data: '):
+                            sse_data = line_text[6:].strip() # Remove prefix and potential trailing whitespace
+                            
+                            if sse_data == '[DONE]':
+                                continue # Skip done message, we'll handle completion after all data is processed
+                                
+                            try:
+                                # Ensure we are parsing valid JSON data
+                                if not sse_data: 
+                                    continue
+                                json_data = json.loads(sse_data)
+                                
+                                # --- Extract Content ---
+                                content_chunk = None
+                                if 'choices' in json_data and len(json_data['choices']) > 0:
+                                    choice = json_data['choices'][0]
+                                    # Check for delta and content, ensuring it's not null
+                                    if 'delta' in choice and choice['delta'].get('content') is not None:
+                                        content_chunk = choice['delta']['content']
+                                
+                                if content_chunk:
+                                    assistant_response_content.append(content_chunk)
+                                    # Yield content chunk to the client
+                                    yield f"data: {json.dumps({'type': 'content', 'content': content_chunk, 'conversation_id': conversation_id})}\n\n"
 
-                                line_text = line # Already decoded by aiter_lines usually
+                                # --- Extract Usage/Model ---
+                                if 'usage' in json_data and json_data['usage']: 
+                                    usage = json_data['usage']
+                                    final_prompt_tokens = usage.get('prompt_tokens')
+                                    final_completion_tokens = usage.get('completion_tokens')
+                                    logger.debug(f"Found usage data: P:{final_prompt_tokens} C:{final_completion_tokens}")
+                                
+                                if 'model' in json_data and json_data['model']:
+                                    final_model_id_used = json_data.get('model')
+                                    logger.debug(f"Found model used: {final_model_id_used}")
 
-                                if line_text.startswith('data: '):
-                                    sse_data = line_text[6:].strip() 
-
-                                    if sse_data == '[DONE]':
-                                        continue 
-
-                                    try:
-                                        if not sse_data: 
-                                            continue
-                                        json_data = json.loads(sse_data)
-
-                                        # --- Extract Content ---
-                                        content_chunk = None
-                                        if 'choices' in json_data and len(json_data['choices']) > 0:
-                                            choice = json_data['choices'][0]
-                                            if 'delta' in choice and choice['delta'].get('content') is not None:
-                                                content_chunk = choice['delta']['content']
-
-                                        if content_chunk:
-                                            assistant_response_content.append(content_chunk)
-                                            # Yield content chunk to the client
-                                            yield f"data: {json.dumps({'type': 'content', 'content': content_chunk, 'conversation_id': conversation_id})}\n\n"
-
-                                        # --- Extract Usage/Model ---
-                                        if 'usage' in json_data and json_data['usage']: 
-                                            usage = json_data['usage']
-                                            final_prompt_tokens = usage.get('prompt_tokens')
-                                            final_completion_tokens = usage.get('completion_tokens')
-                                            logger.debug(f"Found usage data: P:{final_prompt_tokens} C:{final_completion_tokens}")
-
-                                        if 'model' in json_data and json_data['model']:
-                                            final_model_id_used = json_data.get('model')
-                                            logger.debug(f"Found model used: {final_model_id_used}")
-
-                                    except json.JSONDecodeError as e:
-                                        logger.error(f"JSON decode error: {e} on line content: {sse_data}")
-                                        yield f"data: {json.dumps({'type': 'error', 'error': 'JSON parsing error'})}\n\n"
-                                        return 
+                            except json.JSONDecodeError as e:
+                                logger.error(f"JSON decode error: {e} on line content: {sse_data}")
+                                yield f"data: {json.dumps({'type': 'error', 'error': 'JSON parsing error'})}\n\n"
+                                return # Stop processing on parsing error
 
                 # --- Stream processing finished ---
-
+                # Combine the full response
                 full_response_text = ''.join(assistant_response_content)
-
+                
+                # Save the complete assistant message to the database NOW if content exists
                 if full_response_text: 
                     try:
                         from models import Message # Ensure import is available
-                        # Ensure conversation_id and model_id (requested) are available
+                        # Ensure conversation_id and model_id (requested) are available from outer scope
                         assistant_db_message = Message(
                             conversation_id=conversation_id,
                             role='assistant',
                             content=full_response_text,
-                            model=model_id, 
-                            model_id_used=final_model_id_used, 
+                            model=model_id, # Original requested model shorthand/ID from outer scope
+                            model_id_used=final_model_id_used, # Actual model used from API
                             prompt_tokens=final_prompt_tokens,
                             completion_tokens=final_completion_tokens,
-                            rating=None 
+                            rating=None # Default rating
                         )
                         db.session.add(assistant_db_message)
                         db.session.commit()
-                        assistant_message_id = assistant_db_message.id 
+                        assistant_message_id = assistant_db_message.id # Get the ID
                         logger.info(f"Saved assistant message {assistant_message_id} with metadata.")
 
-                        # Save to memory system if enabled 
+                        # Save to memory system if enabled (ensure ENABLE_MEMORY_SYSTEM etc. are available)
                         if ENABLE_MEMORY_SYSTEM:
                              try:
                                  memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation_id}"
@@ -405,27 +406,27 @@ async def chat():
                         logger.exception("Error saving assistant message or metadata to DB")
                         db.session.rollback()
                         yield f"data: {json.dumps({'type': 'error', 'error': 'Error saving message to database'})}\n\n"
-
+                
                 # Finally, signal completion
                 logger.info("==> Preparing to yield DONE event")
                 yield f"data: {json.dumps({'type': 'done', 'done': True, 'conversation_id': conversation_id})}\n\n"
                 logger.info("==> SUCCESSFULLY yielded DONE event. Stream generation complete.")
 
-            except httpx.RequestError as e:
-                 logger.exception(f"httpx request error: {e}")
-                 yield f"data: {json.dumps({'type': 'error', 'error': f'Connection error: {e}'})}\n\n"
+            except requests.RequestException as e:
+                logger.exception(f"Request error: {e}")
+                yield f"data: {json.dumps({'type': 'error', 'error': f'Connection error: {e}'})}\n\n"
             except Exception as e:
-                logger.exception("Error during async stream generation")
+                logger.exception("Error during stream generation")
                 yield f"data: {json.dumps({'type': 'error', 'error': f'Stream Error: {str(e)}'})}\n\n"
         
-        return Response(generate(), content_type='text/event-stream')
+        return Response(stream_with_context(generate()), content_type='text/event-stream')
     
     except Exception as e:
         logger.exception("Error in chat endpoint")
         return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
 @app.route('/models', methods=['GET'])
-async def get_models():
+def get_models():
     """
     Fetch available models from OpenRouter and cache the results
     Adds helper flags for filtering models by type
@@ -450,20 +451,20 @@ async def get_models():
             'Content-Type': 'application/json'
         }
         
-        # Fetch models from OpenRouter using async httpx
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            response = await client.get(
-                'https://openrouter.ai/api/v1/models',
-                headers=headers
-            )
-            
-            if response.status_code != 200:
-                logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
-                return Response(json.dumps({"error": f"API Error: {response.status_code}"}), 
-                              content_type='application/json', status=500)
-            
-            # Parse the response
-            models_data = response.json()
+        # Fetch models from OpenRouter using regular requests
+        response = requests.get(
+            'https://openrouter.ai/api/v1/models',
+            headers=headers,
+            timeout=10.0
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+            return Response(json.dumps({"error": f"API Error: {response.status_code}"}), 
+                          content_type='application/json', status=500)
+        
+        # Parse the response
+        models_data = response.json()
         
         # Process models to add custom flags for filtering
         for model in models_data.get('data', []):
