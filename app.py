@@ -153,10 +153,9 @@ def generate_summary(conversation_id):
         else:
             print(f"[SUMMARIZE {conversation_id}] No existing summary found, proceeding.") # ADDED
             
-        # Get the first user message and first assistant message
+        # Get all messages, ordered by creation time
         messages = Message.query.filter_by(conversation_id=conversation_id)\
             .order_by(Message.created_at)\
-            .limit(2)\
             .all()
             
         if len(messages) < 2:
@@ -164,10 +163,20 @@ def generate_summary(conversation_id):
             logger.warning(f"Not enough messages in conversation {conversation_id} to generate summary")
             return
         else:
-            print(f"[SUMMARIZE {conversation_id}] Found {len(messages)} initial messages.") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] Found {len(messages)} total messages.") # ADDED
             
-        user_message = next((m.content for m in messages if m.role == 'user'), None)
-        assistant_message = next((m.content for m in messages if m.role == 'assistant'), None)
+        # Find the first user message and its corresponding assistant response
+        user_message = None
+        assistant_message = None
+        
+        for i, message in enumerate(messages):
+            if message.role == 'user':
+                # Try to find the assistant message that follows this user message
+                if i + 1 < len(messages) and messages[i + 1].role == 'assistant':
+                    user_message = message.content
+                    assistant_message = messages[i + 1].content
+                    print(f"[SUMMARIZE {conversation_id}] Found user-assistant pair at positions {i} and {i+1}") # ADDED
+                    break  # Found a user-assistant pair, we can stop searching
         
         if not user_message or not assistant_message:
             print(f"[SUMMARIZE {conversation_id}] Missing user or assistant message.") # ADDED
@@ -188,11 +197,11 @@ def generate_summary(conversation_id):
         summary_prompt = [
             {
                 "role": "system", 
-                "content": "You are a helpful assistant. Your task is to generate a very short, descriptive title (maximum 5 words) for a conversation based on its content."
+                "content": "You are a specialized AI that creates concise, descriptive conversation titles. Create extremely short titles (3-5 words maximum) that accurately capture the conversation's main topic. Always respond with ONLY the title text - no quotes, explanations, or additional text."
             },
             {
                 "role": "user", 
-                "content": f"Create a concise title (5 words maximum) that summarizes what this conversation is about.\n\nUser: {user_message}\n\nAssistant: {assistant_message[:500]}..."
+                "content": f"Generate a concise, descriptive title (3-5 words maximum) for this conversation:\n\nUser: {user_message}\n\nAssistant: {assistant_message[:300]}...\n\nTitle:"
             }
         ]
         
@@ -213,13 +222,26 @@ def generate_summary(conversation_id):
         
         # Make the API request
         print(f"[SUMMARIZE {conversation_id}] Prompt constructed. About to call API with model {model_id}.") # ADDED
+        print(f"[SUMMARIZE {conversation_id}] API Key: {'VALID' if api_key else 'MISSING'}")
+        print(f"[SUMMARIZE {conversation_id}] Headers: {headers}")
+        print(f"[SUMMARIZE {conversation_id}] Payload: {payload}")
         logger.info(f"Sending title generation request to OpenRouter with model: {model_id}")
-        response = requests.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            headers=headers,
-            json=payload,
-            timeout=10.0  # Short timeout since this should be a quick operation
-        )
+        
+        try:
+            response = requests.post(
+                'https://openrouter.ai/api/v1/chat/completions',
+                headers=headers,
+                json=payload,
+                timeout=20.0  # Increased timeout for more reliability
+            )
+        except requests.exceptions.Timeout:
+            print(f"[SUMMARIZE {conversation_id}] API request timed out after 20 seconds")
+            logger.error(f"OpenRouter API timeout during title generation for conversation {conversation_id}")
+            return
+        except requests.exceptions.RequestException as e:
+            print(f"[SUMMARIZE {conversation_id}] API request error: {e}")
+            logger.error(f"OpenRouter API error during title generation: {e}")
+            return
         
         print(f"[SUMMARIZE {conversation_id}] API call finished. Status: {response.status_code}") # ADDED
         
@@ -239,12 +261,14 @@ def generate_summary(conversation_id):
             if len(title_text) > 50:
                 title_text = title_text[:47] + "..."
                 
-            # Update the conversation title
+            # Update the conversation title and updated_at timestamp
+            from datetime import datetime 
             conversation.title = title_text
-            print(f"[SUMMARIZE {conversation_id}] Updating DB title.") # ADDED
+            conversation.updated_at = datetime.utcnow()  # Explicitly update the timestamp
+            print(f"[SUMMARIZE {conversation_id}] Updating DB title with fresh timestamp") # ADDED
             db.session.commit()
             print(f"[SUMMARIZE {conversation_id}] DB commit successful.") # ADDED
-            logger.info(f"Updated conversation {conversation_id} title to: '{title_text}'")
+            logger.info(f"Updated conversation {conversation_id} title to: '{title_text}' with new timestamp")
         else:
             print(f"[SUMMARIZE {conversation_id}] Failed to extract title from API response: {response_data}") # ADDED
             logger.warning(f"Failed to extract title from API response: {response_data}")
@@ -277,7 +301,13 @@ def get_conversations():
     try:
         from models import Conversation
         
+        # Log if this is a cache-busting request
+        if request.args.get('_'):
+            logger.info(f"Received cache-busting request for conversations at timestamp: {request.args.get('_')}")
+        
         # Get all conversations, ordered by most recently updated first
+        # Force a fresh query from the database (don't use cached results)
+        db.session.expire_all()
         all_conversations = Conversation.query.filter_by(is_active=True).order_by(Conversation.updated_at.desc()).all()
         
         if not all_conversations:
@@ -289,14 +319,21 @@ def get_conversations():
             try:
                 db.session.commit()
                 logger.info("Created initial Demo Conversation")
-                conversations = [{"id": conversation.id, "title": conversation.title}]
+                # Include created_at timestamp for proper date formatting in the UI
+                conversations = [{"id": conversation.id, "title": conversation.title, "created_at": conversation.created_at.isoformat()}]
             except Exception as e:
                 logger.exception("Error committing demo conversation")
                 db.session.rollback()
                 conversations = []
         else:
             # Convert all conversations to the format expected by the frontend
-            conversations = [{"id": conv.id, "title": conv.title} for conv in all_conversations]
+            # Include created_at date for proper date formatting in the UI
+            conversations = [{"id": conv.id, "title": conv.title, "created_at": conv.created_at.isoformat()} for conv in all_conversations]
+            
+            # Log each conversation's details for debugging
+            for conv in conversations:
+                print(f"[CONVERSATIONS] ID: {conv['id']}, Title: '{conv['title']}', Created: {conv['created_at']}")
+            
             logger.info(f"Returning {len(conversations)} conversations")
 
         return jsonify({"conversations": conversations})
@@ -586,7 +623,15 @@ def chat(): # Synchronous function
                             if assistant_count == 1:
                                 logger.info(f"First assistant message detected for conversation {current_conv_id}. Triggering title generation.")
                                 # Call the generate_summary function - non-blocking under gevent
-                                generate_summary(current_conv_id)
+                                # Ensure we've patched gevent beforehand to make this properly async
+                                print(f"[CHAT] About to generate title for conversation {current_conv_id}")
+                                try:
+                                    generate_summary(current_conv_id)
+                                    print(f"[CHAT] Title generation for conversation {current_conv_id} initiated successfully")
+                                except Exception as e:
+                                    import traceback
+                                    print(f"[CHAT] Error initiating title generation: {e}")
+                                    traceback.print_exc()
                         except Exception as e:
                             logger.error(f"Error checking message count or triggering title generation: {e}")
                             # Don't raise the exception - we want to continue even if this fails

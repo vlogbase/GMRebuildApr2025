@@ -676,10 +676,28 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to fetch conversations from the backend
     function fetchConversations(bustCache = false) {
-        // Add a cache-busting parameter if requested
-        const url = bustCache ? `/conversations?_=${Date.now()}` : '/conversations';
+        // ALWAYS use cache busting to ensure we get the latest titles
+        const url = `/conversations?_=${Date.now()}`;
         
-        console.log("Fetching conversations list" + (bustCache ? " with cache busting" : ""));
+        console.log("Fetching conversations list with cache busting");
+        
+        // Show loading indicator if conversations list element exists
+        if (conversationsList) {
+            // Check if loading indicator already exists
+            let loadingIndicator = conversationsList.querySelector('.loading-indicator');
+            if (!loadingIndicator) {
+                // Create loading indicator if it doesn't exist
+                loadingIndicator = document.createElement('div');
+                loadingIndicator.className = 'loading-indicator';
+                loadingIndicator.innerHTML = `
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading conversations...</div>
+                `;
+                conversationsList.innerHTML = '';
+                conversationsList.appendChild(loadingIndicator);
+            }
+        }
+        
         fetch(url)
             .then(response => {
                 if (!response.ok) {
@@ -688,26 +706,73 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
+                console.log("Got conversations data:", data);
                 if (data.conversations && data.conversations.length > 0) {
                     // Clear existing conversations
                     if (conversationsList) {
+                        console.log("Clearing and rebuilding conversation list...");
                         conversationsList.innerHTML = '';
                         
                         // Add each conversation to the sidebar
                         data.conversations.forEach(conversation => {
+                            console.log(`Adding conversation to UI: ID=${conversation.id}, Title='${conversation.title}'`);
                             const conversationItem = document.createElement('div');
                             conversationItem.className = 'conversation-item';
                             conversationItem.dataset.id = conversation.id;
-                            conversationItem.textContent = conversation.title;
+                            
+                            // Create title and date elements to match the HTML structure
+                            const titleDiv = document.createElement('div');
+                            titleDiv.className = 'conversation-title';
+                            titleDiv.textContent = conversation.title;
+                            
+                            const dateDiv = document.createElement('div');
+                            dateDiv.className = 'conversation-date';
+                            
+                            // Format the date (using relative time if possible)
+                            const createdDate = new Date(conversation.created_at);
+                            const now = new Date();
+                            const diffDays = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+                            
+                            if (diffDays < 1) {
+                                dateDiv.textContent = 'Today';
+                            } else if (diffDays === 1) {
+                                dateDiv.textContent = 'Yesterday';
+                            } else if (diffDays < 7) {
+                                dateDiv.textContent = `${diffDays} days ago`;
+                            } else {
+                                dateDiv.textContent = createdDate.toLocaleDateString();
+                            }
+                            
+                            // Append title and date to conversation item
+                            conversationItem.appendChild(titleDiv);
+                            conversationItem.appendChild(dateDiv);
                             
                             // Add click event to load conversation
                             conversationItem.addEventListener('click', function() {
+                                console.log(`Loading conversation: ${conversation.id}`);
+                                
+                                // Remove active class from all conversation items
+                                const allItems = conversationsList.querySelectorAll('.conversation-item');
+                                allItems.forEach(item => item.classList.remove('active'));
+                                
+                                // Add active class to this item
+                                conversationItem.classList.add('active');
+                                
+                                // Load the conversation
                                 loadConversation(conversation.id);
                             });
                             
                             conversationsList.appendChild(conversationItem);
                         });
+                        
+                        // Verify the DOM was updated correctly
+                        const itemsAdded = conversationsList.querySelectorAll('.conversation-item');
+                        console.log(`Conversation list rebuilt with ${itemsAdded.length} items`);
+                    } else {
+                        console.error("Cannot update conversation list - conversationsList element not found");
                     }
+                } else {
+                    console.warn("No conversations returned from server or empty array");
                 }
             })
             .catch(error => {
@@ -722,9 +787,36 @@ document.addEventListener('DOMContentLoaded', function() {
         messageHistory = [];
         currentConversationId = conversationId;
         
-        // In a full implementation, you would fetch the messages for this conversation
-        // For now, simply set the current conversation ID
         console.log(`Loading conversation ID: ${conversationId}`);
+        
+        // Highlight active conversation in sidebar
+        if (conversationsList) {
+            const allConversations = conversationsList.querySelectorAll('.conversation-item');
+            allConversations.forEach(item => {
+                item.classList.remove('active');
+                if (item.dataset.id === conversationId.toString()) {
+                    item.classList.add('active');
+                }
+            });
+        }
+        
+        // In a full implementation, we would fetch the messages for this conversation
+        // TODO: Implement this functionality to display previous messages
+        
+        // Add a loading indicator to chat area
+        const loadingMessage = document.createElement('div');
+        loadingMessage.className = 'system-message';
+        loadingMessage.textContent = 'Loading conversation...';
+        chatMessages.appendChild(loadingMessage);
+        
+        // For now, just display the conversation ID in the message area
+        setTimeout(() => {
+            chatMessages.removeChild(loadingMessage);
+            const infoMessage = document.createElement('div');
+            infoMessage.className = 'system-message';
+            infoMessage.textContent = `Viewing conversation #${conversationId} - conversation loading will be implemented in a future update`;
+            chatMessages.appendChild(infoMessage);
+        }, 500);
     }
     
     // Function to send message to backend and process streaming response
@@ -838,13 +930,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                         }
                                     }
                                     // Update conversation ID if it's the first message
-                                    if (parsedData.conversation_id && !currentConversationId) {
+                                    if (parsedData.conversation_id) {
+                                        // Always update the current conversation ID to ensure it's correct
                                         currentConversationId = parsedData.conversation_id;
                                         console.log(`Setting conversation ID: ${currentConversationId}`);
-                                        // Store conversation ID on the message element if needed
-                                        // assistantMessageElement.dataset.conversationId = currentConversationId; 
-                                        // Optionally refresh conversation list
-                                        // fetchConversations(); 
+                                        // Store conversation ID on the message element for reference
+                                        assistantMessageElement.dataset.conversationId = currentConversationId;
+                                        
+                                        // If this is a new conversation, refresh the list immediately
+                                        if (!document.querySelector(`.conversation-item[data-id="${currentConversationId}"]`)) {
+                                            console.log("New conversation detected, refreshing list");
+                                            fetchConversations(true);
+                                        }
                                     }
                                 } else if (parsedData.type === 'reasoning') {
                                     console.log("==> Processing type: reasoning");
@@ -970,14 +1067,27 @@ document.addEventListener('DOMContentLoaded', function() {
                                     // sendButton.disabled = false;
                                     
                                     // After conversation completes, refresh the conversation list to get updated titles
-                                    // Add a delay to ensure the backend has had time to process the title generation
-                                    // and for the database transaction to fully commit
-                                    console.log("Scheduling conversation list refresh to get updated titles shortly...");
+                                    // Add multiple refreshes with increasing delays to ensure we eventually catch the updated title
+                                    // This addresses potential race conditions with the async title generation
+                                    console.log("Scheduling multiple conversation list refreshes to ensure we get updated titles...");
+                                    
+                                    // First refresh - quick check in case title was generated quickly
                                     setTimeout(() => {
-                                        console.log("Refreshing conversation list now to get updated titles");
-                                        // Use cache busting to ensure we get the latest data with updated titles
+                                        console.log("First refresh attempt (1.5s) - to catch fast title generation");
                                         fetchConversations(true);
-                                    }, 1500); // 1.5 second delay to avoid race condition with database commit
+                                    }, 1500); // 1.5 second initial delay
+                                    
+                                    // Second refresh - give more time for backend processing
+                                    setTimeout(() => {
+                                        console.log("Second refresh attempt (3s) - allowing more time for title generation");
+                                        fetchConversations(true);
+                                    }, 3000); // 3 second follow-up
+                                    
+                                    // Final refresh - last attempt to catch any delayed title updates
+                                    setTimeout(() => {
+                                        console.log("Final refresh attempt (5s) - final check for title updates");
+                                        fetchConversations(true);
+                                    }, 5000); // 5 second final check
                                     
                                     return; // Exit the processing loop
                                 } else {
