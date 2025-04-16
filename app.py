@@ -405,7 +405,8 @@ def chat(): # Synchronous function
 
                 # Signal completion to the client
                 logger.info("==> Preparing to yield DONE event")
-                yield f"data: {json.dumps({'type': 'done', 'done': True, 'conversation_id': current_conv_id})}\n\n"
+                # Add an additional newline at the end to properly terminate the SSE stream
+                yield f"data: {json.dumps({'type': 'done', 'done': True, 'conversation_id': current_conv_id})}\n\n\n"
                 logger.info("==> SUCCESSFULLY yielded DONE event. Stream generation complete.")
 
             except requests.exceptions.RequestException as e: # Catch requests errors

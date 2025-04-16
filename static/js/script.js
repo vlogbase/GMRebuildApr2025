@@ -773,7 +773,14 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (!data) continue; // Skip empty data lines
 
                             try {
-                                const parsedData = JSON.parse(data);
+                                // Trim the data to ensure there's no whitespace causing parsing issues
+                                const trimmedData = data.trim();
+                                if (!trimmedData) {
+                                    console.log("Empty data after trimming, skipping");
+                                    continue;
+                                }
+                                
+                                const parsedData = JSON.parse(trimmedData);
                                 console.log("==> Received SSE Data:", parsedData); // ADD THIS LOG
                                 
                                 // --- Handle different data types ---
