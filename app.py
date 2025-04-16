@@ -316,18 +316,33 @@ def chat(): # Synchronous function
                         line_text = line.decode('utf-8')
 
                         if line_text.startswith('data: '):
+                            # Get raw data without the 'data: ' prefix
+                            raw_data = line_text[6:].strip()
+                            # Get bytes data for byte-level comparisons
                             sse_data = line[6:].strip()
 
-                            # *** FIX APPLIED HERE: Check for [DONE] before parsing ***
-                            # Explicitly handle [DONE] marker first
-                            if sse_data == '[DONE]':
-                                logger.debug("Received [DONE] marker.")
+                            # *** ENHANCED FIX: More thorough check for [DONE] marker ***
+                            # Check both string and bytes versions for more robustness
+                            if raw_data == '[DONE]' or sse_data == b'[DONE]':
+                                logger.debug("Received [DONE] marker. Skipping without JSON parsing.")
                                 continue # Go to next line, post-loop logic handles completion
+                            elif not raw_data:
+                                logger.debug("Empty SSE data, skipping.")
+                                continue # Skip empty data
                             else:
                                 # --- If it's not [DONE], *then* try to parse JSON ---
                                 try: 
-                                    if not sse_data: continue # Skip if data part is empty after stripping
-                                    json_data = json.loads(sse_data)
+                                    # Decode the raw bytes to string for JSON parsing if needed
+                                    data_to_parse = raw_data if isinstance(raw_data, str) else raw_data.decode('utf-8')
+                                    if not data_to_parse: 
+                                        continue # Skip if data part is empty after stripping
+                                    
+                                    # Check again for [DONE] string just to be sure
+                                    if data_to_parse == '[DONE]':
+                                        logger.debug("Detected [DONE] during JSON parsing. Skipping.")
+                                        continue
+                                        
+                                    json_data = json.loads(data_to_parse)
                                     logger.debug(f"JSON parsed successfully: type '{json_data.get('type', 'N/A')}'")
 
                                     # --- Extract Content ---
@@ -354,10 +369,18 @@ def chat(): # Synchronous function
                                         logger.debug(f"Extracted model used: {final_model_id_used}")
 
                                 except json.JSONDecodeError as e:
-                                    # This now only catches errors parsing actual data, not "[DONE]"
-                                    logger.error(f"JSON decode error: {e} on line content (SHOULD NOT BE '[DONE]'): {sse_data}") 
+                                    # This should only catch legitimate JSON parsing errors, not [DONE] markers
+                                    data_info = f"'{data_to_parse}'" if len(str(data_to_parse)) < 100 else f"'{data_to_parse[:100]}...' (truncated)"
+                                    logger.error(f"JSON decode error: {e} on input data: {data_info}")
+                                    
+                                    # If we suspect this is a [DONE] marker that wasn't caught earlier, just skip it
+                                    if '[DONE]' in str(data_to_parse):
+                                        logger.warning("Detected possible [DONE] in error data - skipping without error")
+                                        continue
+                                    
+                                    # Otherwise, treat it as a real error
                                     yield f"data: {json.dumps({'type': 'error', 'error': 'JSON parsing error'})}\n\n"
-                                    return # Stop generation on parsing error
+                                    return # Stop generation on genuine parsing error
 
                 # --- Stream processing finished ---
                 full_response_text = ''.join(assistant_response_content)
