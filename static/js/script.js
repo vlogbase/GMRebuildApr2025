@@ -78,13 +78,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Model preset button click handlers
     modelPresetButtons.forEach(button => {
+        // Find selector icon within this button
+        const selectorIcon = button.querySelector('.selector-icon');
+        
+        // Add click event to the model button
         button.addEventListener('click', function(e) {
             const presetId = this.getAttribute('data-preset-id');
             
             // If shift key or right-click, open model selector
             if (e.shiftKey || e.button === 2) {
                 e.preventDefault();
-                openModelSelector(presetId);
+                openModelSelector(presetId, this);
                 return;
             }
             
@@ -96,8 +100,19 @@ document.addEventListener('DOMContentLoaded', function() {
         button.addEventListener('contextmenu', function(e) {
             e.preventDefault();
             const presetId = this.getAttribute('data-preset-id');
-            openModelSelector(presetId);
+            openModelSelector(presetId, this);
         });
+        
+        // Add click event to the selector icon
+        if (selectorIcon) {
+            selectorIcon.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation(); // Prevent button click from firing
+                
+                const presetId = button.getAttribute('data-preset-id');
+                openModelSelector(presetId, button);
+            });
+        }
     });
     
     // Close model selector on button click
@@ -180,24 +195,32 @@ document.addEventListener('DOMContentLoaded', function() {
             if (button) {
                 const nameSpan = button.querySelector('.model-name');
                 if (nameSpan) {
-                    nameSpan.textContent = formatModelName(modelId);
+                    // Special handling for preset 6 (Free Model)
+                    if (presetId === '6') {
+                        nameSpan.textContent = 'FREE - ' + formatModelName(modelId, true);
+                    } else {
+                        nameSpan.textContent = formatModelName(modelId);
+                    }
                 }
             }
         }
     }
     
     // Function to format model ID into a display name
-    function formatModelName(modelId) {
+    function formatModelName(modelId, isFreePrefixed = false) {
         if (!modelId) return 'Unknown';
         
-        // Handle special cases
-        if (modelId.includes(':free')) {
+        // Handle special cases for free models
+        if (modelId.includes(':free') && !isFreePrefixed) {
             return 'Free Model';
         }
         
         // Split by / and get the last part
         const parts = modelId.split('/');
         let name = parts[parts.length - 1];
+        
+        // Remove the :free suffix if present
+        name = name.replace(':free', '');
         
         // Replace dashes with spaces and capitalize
         name = name.replace(/-/g, ' ');
@@ -210,9 +233,10 @@ document.addEventListener('DOMContentLoaded', function() {
             .replace('mistral ', 'Mistral ')
             .replace('llama ', 'Llama ');
         
-        // Truncate if too long
-        if (name.length > 12) {
-            name = name.substring(0, 10) + '...';
+        // Truncate if too long - different lengths depending on context
+        const maxLength = isFreePrefixed ? 8 : 12;
+        if (name.length > maxLength) {
+            name = name.substring(0, maxLength - 2) + '...';
         }
         
         return name;
@@ -239,14 +263,38 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to open the model selector for a specific preset
-    function openModelSelector(presetId) {
+    function openModelSelector(presetId, buttonElement) {
         // Set current editing preset
         currentlyEditingPresetId = presetId;
         
-        // Position the selector below the button
-        const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
+        // Position the selector relative to the button
+        const button = buttonElement || document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
         if (button) {
             const rect = button.getBoundingClientRect();
+            const selectorRect = modelSelector.getBoundingClientRect();
+            
+            // Calculate position
+            // First try to position above the button with a gap
+            const gap = 10; // Gap in pixels between button and selector
+            
+            // Get dimensions
+            const selectorHeight = selectorRect.height || 300; // Default if not visible yet
+            let topPosition = rect.top - selectorHeight - gap;
+            
+            // Check if there's enough space above
+            if (topPosition < 0) {
+                // Not enough space above, position below the button
+                topPosition = rect.bottom + gap;
+            }
+            
+            // Center horizontally relative to the button
+            const leftPosition = rect.left + (rect.width / 2) - 150; // 150 = half of selector width
+            
+            // Apply the position
+            modelSelector.style.top = `${topPosition}px`;
+            modelSelector.style.left = `${leftPosition}px`;
+            
+            // Make visible
             modelSelector.style.display = 'block';
             
             // Clear search input
@@ -357,7 +405,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (button) {
             const nameSpan = button.querySelector('.model-name');
             if (nameSpan) {
-                nameSpan.textContent = formatModelName(modelId);
+                // Special handling for preset 6 (Free Model)
+                if (presetId === '6') {
+                    nameSpan.textContent = 'FREE - ' + formatModelName(modelId, true);
+                } else {
+                    nameSpan.textContent = formatModelName(modelId);
+                }
             }
         }
         

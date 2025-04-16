@@ -292,7 +292,7 @@ body {
 /* Model Selector */
 .model-selector {
     display: none;
-    position: absolute;
+    position: fixed;
     width: 300px;
     max-height: 400px;
     background-color: var(--bg-color);
@@ -301,9 +301,7 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
     z-index: 100;
     overflow: hidden;
-    left: 50%;
-    transform: translateX(-50%);
-    bottom: 170px;
+    /* Position will be set dynamically via JavaScript */
 }
 
 .selector-header {
