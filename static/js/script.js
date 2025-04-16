@@ -674,6 +674,54 @@ document.addEventListener('DOMContentLoaded', function() {
         return addMessage('', 'assistant', true);
     }
     
+    // Function to generate a summary title for a conversation
+    function summarizeConversation(conversationId) {
+        if (!conversationId) {
+            console.error('Cannot summarize: No conversation ID available');
+            return;
+        }
+        
+        console.log(`Requesting summary for conversation ${conversationId}`);
+        
+        fetch(`/conversation/${conversationId}/summarize`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.title) {
+                console.log(`Generated title: ${data.title}`);
+                
+                // Update the sidebar item with the new title
+                const conversationItem = document.querySelector(`.conversation-item[data-id="${conversationId}"]`);
+                if (conversationItem) {
+                    // Check if there's a title div inside
+                    const titleElement = conversationItem.querySelector('.conversation-title');
+                    
+                    if (titleElement) {
+                        // Update existing title element
+                        titleElement.textContent = data.title;
+                    } else {
+                        // If no title element exists, update the item directly (older structure)
+                        conversationItem.textContent = data.title;
+                    }
+                } else {
+                    console.log('Conversation item not found in sidebar, will be updated on next refresh');
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error generating conversation summary:', error);
+        });
+    }
+    
     // Function to fetch conversations from the backend
     function fetchConversations() {
         fetch('/conversations')
@@ -694,7 +742,31 @@ document.addEventListener('DOMContentLoaded', function() {
                             const conversationItem = document.createElement('div');
                             conversationItem.className = 'conversation-item';
                             conversationItem.dataset.id = conversation.id;
-                            conversationItem.textContent = conversation.title;
+                            
+                            // Create the title and date elements
+                            const titleElement = document.createElement('div');
+                            titleElement.className = 'conversation-title';
+                            titleElement.textContent = conversation.title;
+                            
+                            const dateElement = document.createElement('div');
+                            dateElement.className = 'conversation-date';
+                            
+                            // Format the date (simple for now)
+                            const createdDate = new Date(conversation.created_at);
+                            const now = new Date();
+                            const diffDays = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
+                            
+                            if (diffDays === 0) {
+                                dateElement.textContent = 'Today';
+                            } else if (diffDays === 1) {
+                                dateElement.textContent = 'Yesterday';
+                            } else {
+                                dateElement.textContent = `${diffDays} days ago`;
+                            }
+                            
+                            // Add elements to the conversation item
+                            conversationItem.appendChild(titleElement);
+                            conversationItem.appendChild(dateElement);
                             
                             // Add click event to load conversation
                             conversationItem.addEventListener('click', function() {
@@ -959,6 +1031,15 @@ document.addEventListener('DOMContentLoaded', function() {
                                     } else if (responseText && messageHistory.length > 0 && messageHistory[messageHistory.length - 1]?.role === 'assistant') {
                                         // Update the last history entry's content if needed (less likely needed now)
                                         // messageHistory[messageHistory.length - 1].content = responseText;
+                                    }
+                                    
+                                    // Check if this is the first exchange (2 messages - user + assistant)
+                                    // We check for exact count 3 (including system message) to ensure we only 
+                                    // trigger summarization after the first complete exchange
+                                    if (messageHistory.length === 3 && currentConversationId) {
+                                        console.log("First complete exchange detected, triggering conversation summarization");
+                                        // Trigger conversation summary generation
+                                        summarizeConversation(currentConversationId);
                                     }
                                     
                                     // Re-enable input, etc. 
