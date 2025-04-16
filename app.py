@@ -603,6 +603,40 @@ def rate_message(message_id):
         abort(500, description=str(e))
 
 
+@app.route('/conversation/<int:conversation_id>/messages', methods=['GET'])
+def get_conversation_messages(conversation_id):
+    """ Get all messages in a conversation """
+    try:
+        from models import Conversation, Message
+        
+        # Get the conversation
+        conversation = db.session.get(Conversation, conversation_id)
+        if not conversation:
+            abort(404, description="Conversation not found")
+        
+        # Get all messages in the conversation, ordered by creation time
+        messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
+        
+        # Format messages for the response
+        formatted_messages = []
+        for message in messages:
+            formatted_messages.append({
+                "id": message.id,
+                "role": message.role,
+                "content": message.content,
+                "model_id_used": message.model_id_used,
+                "prompt_tokens": message.prompt_tokens,
+                "completion_tokens": message.completion_tokens,
+                "rating": message.rating,
+                "created_at": message.created_at.isoformat() if message.created_at else None
+            })
+        
+        return jsonify({"messages": formatted_messages})
+    except Exception as e:
+        logger.exception(f"Error getting messages for conversation {conversation_id}")
+        abort(500, description=str(e))
+
+
 @app.route('/conversation/<int:conversation_id>/share', methods=['POST']) 
 def share_conversation(conversation_id):
     """ Generate or retrieve share link """

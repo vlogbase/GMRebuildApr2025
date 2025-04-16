@@ -73,8 +73,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     sendButton.addEventListener('click', sendMessage);
     
-    // Initialize model data
+    // Initialize data
     fetchUserPreferences();
+    
+    // Load conversation sidebar
+    fetchConversations();
     
     // Model preset button click handlers
     modelPresetButtons.forEach(button => {
@@ -481,8 +484,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // New chat button
     newChatButton.addEventListener('click', function() {
-        // Clear chat messages except the welcome message
+        // Clear chat messages and start a new conversation
         clearChat();
+        
+        // Reset conversation ID to create a new conversation
+        currentConversationId = null;
+        
+        // Remove active class from any conversation items
+        document.querySelectorAll('.conversation-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        console.log("Starting new conversation");
     });
     
     // Clear conversations button
@@ -819,14 +832,113 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to load a specific conversation
     function loadConversation(conversationId) {
-        // Clear the current chat
+        if (!conversationId) {
+            console.error('No conversation ID provided');
+            return;
+        }
+        
+        console.log(`Loading conversation ID: ${conversationId}`);
+        
+        // Clear the current chat and set the new conversation ID
         chatMessages.innerHTML = '';
         messageHistory = [];
         currentConversationId = conversationId;
         
-        // In a full implementation, you would fetch the messages for this conversation
-        // For now, simply set the current conversation ID
-        console.log(`Loading conversation ID: ${conversationId}`);
+        // Show loading indicator
+        const loadingIndicator = document.createElement('div');
+        loadingIndicator.className = 'loading-messages';
+        loadingIndicator.innerHTML = '<div class="spinner"></div><p>Loading conversation...</p>';
+        chatMessages.appendChild(loadingIndicator);
+        
+        // Fetch the conversation messages from the API
+        fetch(`/conversation/${conversationId}/messages`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Remove loading indicator
+                chatMessages.removeChild(loadingIndicator);
+                
+                if (data.messages && data.messages.length > 0) {
+                    // Reset message history
+                    messageHistory = [];
+                    
+                    // Sort messages by creation time
+                    const sortedMessages = data.messages.sort((a, b) => 
+                        new Date(a.created_at) - new Date(b.created_at)
+                    );
+                    
+                    // Add each message to the UI and history
+                    sortedMessages.forEach(message => {
+                        // Skip system messages in the UI (but keep in history)
+                        if (message.role === 'system') {
+                            messageHistory.push({
+                                role: message.role,
+                                content: message.content
+                            });
+                            return;
+                        }
+                        
+                        // Add message to UI
+                        const messageElement = addMessage(
+                            message.content, 
+                            message.role,
+                            false, // Not typing
+                            {
+                                id: message.id,
+                                model_id_used: message.model_id_used,
+                                prompt_tokens: message.prompt_tokens,
+                                completion_tokens: message.completion_tokens,
+                                rating: message.rating
+                            }
+                        );
+                        
+                        // Add message to history
+                        messageHistory.push({
+                            role: message.role,
+                            content: message.content
+                        });
+                        
+                        // If the message has a rating, update the UI
+                        if (message.rating === 1 || message.rating === -1) {
+                            const upvoteBtn = messageElement.querySelector('.upvote-btn');
+                            const downvoteBtn = messageElement.querySelector('.downvote-btn');
+                            
+                            if (message.rating === 1 && upvoteBtn) {
+                                upvoteBtn.classList.add('voted');
+                            } else if (message.rating === -1 && downvoteBtn) {
+                                downvoteBtn.classList.add('voted');
+                            }
+                        }
+                    });
+                    
+                    // Scroll to bottom after loading all messages
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                } else {
+                    // Handle empty conversation
+                    const emptyMessage = document.createElement('div');
+                    emptyMessage.className = 'empty-conversation-message';
+                    emptyMessage.textContent = 'This conversation is empty. Start by sending a message.';
+                    chatMessages.appendChild(emptyMessage);
+                }
+            })
+            .catch(error => {
+                // Remove loading indicator
+                if (loadingIndicator.parentNode) {
+                    chatMessages.removeChild(loadingIndicator);
+                }
+                
+                console.error('Error loading conversation:', error);
+                
+                // Show error message
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'error-message';
+                errorMessage.textContent = `Error loading conversation: ${error.message}`;
+                chatMessages.appendChild(errorMessage);
+            });
     }
     
     // Function to send message to backend and process streaming response
