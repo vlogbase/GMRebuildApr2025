@@ -675,8 +675,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to fetch conversations from the backend
-    function fetchConversations() {
-        fetch('/conversations')
+    function fetchConversations(bustCache = false) {
+        // Add a cache-busting parameter if requested
+        const url = bustCache ? `/conversations?_=${Date.now()}` : '/conversations';
+        
+        console.log("Fetching conversations list" + (bustCache ? " with cache busting" : ""));
+        fetch(url)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -966,11 +970,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                     // sendButton.disabled = false;
                                     
                                     // After conversation completes, refresh the conversation list to get updated titles
-                                    // Add a small delay to ensure the backend has had time to process the title generation
+                                    // Add a delay to ensure the backend has had time to process the title generation
+                                    // and for the database transaction to fully commit
+                                    console.log("Scheduling conversation list refresh to get updated titles shortly...");
                                     setTimeout(() => {
-                                        console.log("Refreshing conversation list to get updated titles");
-                                        fetchConversations();
-                                    }, 1000); // 1 second delay
+                                        console.log("Refreshing conversation list now to get updated titles");
+                                        // Use cache busting to ensure we get the latest data with updated titles
+                                        fetchConversations(true);
+                                    }, 1500); // 1.5 second delay to avoid race condition with database commit
                                     
                                     return; // Exit the processing loop
                                 } else {

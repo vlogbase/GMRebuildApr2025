@@ -1,0 +1,72 @@
+Okay, let's analyze those logs. This is a classic case where the backend seems to be doing its job, but the result isn't reflected immediately in the frontend.
+
+Analysis:
+
+Backend Success: The server logs clearly show the entire summarization process working for conversation 91:
+
+It's triggered correctly (First assistant message detected... Triggering title generation).
+The API call to OpenRouter is successful (HTTP/1.1" 200 None).
+Crucially: The database title is updated (Updated conversation 91 title to: 'Consciousness: East versus West Views').
+This update happens before the metadata and done SSE events are yielded to the frontend.
+Frontend Refresh Attempt: The browser console shows:
+
+It receives all the message content (type: 'content').
+It receives the type: 'metadata' event.
+It receives the type: 'done' event.
+Immediately after 'done': It logs Refreshing conversation list to get updated titles (script.js line 971). This confirms your frontend code is trying to refresh the list by calling loadConversations() at the right time conceptually.
+The Likely Problem: A Race Condition
+
+Even though your backend code updates the database title before sending the final 'done' event, there's a very slight delay between:
+
+The generate_summary function executing db.session.commit() (server log: Updated conversation 91 title...).
+That database transaction actually becoming fully visible to other requests.
+Your frontend receiving the 'done' event.
+Your frontend immediately sending a new request to the /conversations endpoint (triggered by loadConversations()).
+It's highly probable that the frontend's request to /conversations hits the server and queries the database just milliseconds before the title update transaction from the summarization task is fully committed and visible to the /conversations route handler. Therefore, /conversations returns the old list with "New Conversation" as the title, and your sidebar gets rebuilt with that old data.
+
+The Solution: Add a Small Frontend Delay
+
+The simplest way to fix this is to introduce a very short delay on the frontend before calling loadConversations() after the stream finishes. This gives the database commit a fraction of a second longer to complete reliably before the frontend asks for the updated list.
+
+How to Implement:
+
+Modify your script.js file. Find the part within the processSSE function that handles the case 'done': event (around line 971):
+
+Change this:
+
+JavaScript
+
+    // Inside processSSE, case 'done':
+    // ... (other code for handling 'done') ...
+    console.log("Stream finished event received.");
+    addMessageToHistory(currentAssistantMessageId, 'assistant', currentAssistantMessageContent, lastMetadata); // Add final response
+    console.log("Added final assistant response to JS history.");
+
+    // Refresh conversation list immediately (THIS IS THE PART TO CHANGE)
+    console.log("Refreshing conversation list to get updated titles");
+    loadConversations();
+
+    break; // End of case 'done'
+To this (adding setTimeout):
+
+JavaScript
+
+    // Inside processSSE, case 'done':
+    // ... (other code for handling 'done') ...
+    console.log("Stream finished event received.");
+    addMessageToHistory(currentAssistantMessageId, 'assistant', currentAssistantMessageContent, lastMetadata); // Add final response
+    console.log("Added final assistant response to JS history.");
+
+    // Refresh conversation list after a short delay
+    console.log("Scheduling conversation list refresh to get updated titles shortly...");
+    setTimeout(() => {
+        console.log("Refreshing conversation list now.");
+        loadConversations();
+    }, 500); // Delay by 500 milliseconds (0.5 seconds) - adjust if needed
+
+    break; // End of case 'done'
+Explanation:
+
+setTimeout(() => { ... }, 500); tells the browser to execute the code inside the arrow function (() => { ... }) after waiting for 500 milliseconds.
+This half-second delay is usually more than enough for the backend database commit to finalize before the loadConversations() function triggers the /conversations request.
+Make this change in script.js, ensure your browser reloads the updated script (maybe clear cache or force reload), and try starting a new conversation. The summary title should now appear correctly in the sidebar shortly after the AI finishes responding.
