@@ -630,6 +630,103 @@ def share_conversation(conversation_id):
         abort(500, description=str(e))
 
 
+@app.route('/conversation/<int:conversation_id>/summarize', methods=['POST'])
+def summarize_conversation(conversation_id):
+    """ Generate a title summary for a conversation """
+    try:
+        # Import models
+        from models import Conversation, Message, UserPreference
+        
+        # Get the conversation
+        conversation = db.session.get(Conversation, conversation_id)
+        if not conversation: 
+            abort(404, description="Conversation not found")
+        
+        # Get the first user message and first assistant message
+        first_user_message = conversation.messages.filter_by(role='user').order_by(Message.created_at).first()
+        first_assistant_message = conversation.messages.filter_by(role='assistant').order_by(Message.created_at).first()
+        
+        if not first_user_message or not first_assistant_message:
+            return jsonify({"title": "New Conversation", "error": "Incomplete conversation"})
+        
+        # Get the model ID for Preset 6 (free model)
+        user_identifier = get_user_identifier()
+        preset_6_preference = UserPreference.query.filter_by(
+            user_identifier=user_identifier, 
+            preset_id=6
+        ).first()
+        
+        if preset_6_preference:
+            model_id = preset_6_preference.model_id
+        else:
+            # Default free model
+            model_id = "meta-llama/llama-3.2-3b-instruct:free"
+        
+        # Construct the prompt
+        prompt = f"""Generate a concise title (max 5 words) for this conversation start:
+
+User: {first_user_message.content}
+Assistant: {first_assistant_message.content}
+
+Title:"""
+        
+        # Get API Key
+        api_key = os.environ.get('OPENROUTER_API_KEY')
+        if not api_key:
+            logger.error("OPENROUTER_API_KEY not found")
+            abort(500, description="API key not configured")
+        
+        # Prepare headers
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json'
+        }
+        
+        # Prepare payload
+        payload = {
+            'model': model_id,
+            'messages': [{"role": "user", "content": prompt}],
+            'max_tokens': 15,  # Short response
+            'temperature': 0.7
+        }
+        
+        # Make non-streaming request to OpenRouter
+        logger.debug(f"Sending summarization request to OpenRouter with model: {model_id}")
+        response = requests.post(
+            'https://openrouter.ai/api/v1/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=15.0  # Short timeout for title generation
+        )
+        
+        response.raise_for_status()
+        result = response.json()
+        
+        # Extract the title from the response
+        generated_title = result['choices'][0]['message']['content'].strip()
+        
+        # Clean up the title (remove quotes or any other unwanted characters)
+        generated_title = generated_title.strip('"\'').strip()
+        
+        # Truncate if too long (max 100 chars as per DB column)
+        if len(generated_title) > 100:
+            generated_title = generated_title[:97] + "..."
+        
+        # Update the conversation title
+        conversation.title = generated_title
+        db.session.commit()
+        
+        logger.info(f"Generated title for conversation {conversation_id}: {generated_title}")
+        return jsonify({"title": generated_title})
+        
+    except Exception as e:
+        logger.exception(f"Error summarizing conversation {conversation_id}")
+        db.session.rollback()
+        
+        # Return a generic title in case of error
+        return jsonify({"title": "New Conversation", "error": str(e)})
+
+
 @app.route('/share/<share_id>')
 def view_shared_conversation(share_id):
     """ Display shared conversation (Placeholder) """
