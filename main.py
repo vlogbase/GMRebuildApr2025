@@ -1,4 +1,7 @@
-# --- Simplified main.py (Remove WsgiToAsgi) ---
+# --- Simplified main.py with Gevent monkey patching ---
+from gevent import monkey
+monkey.patch_all()  # IMPORTANT: This must be first, before any other imports!
+
 import logging
 from app import app # Import the Flask app object directly
 from app import db  # Import db from the app module
