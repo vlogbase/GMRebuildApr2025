@@ -732,36 +732,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
-                if (data.conversations && data.conversations.length > 0) {
-                    // Clear existing conversations
-                    if (conversationsList) {
-                        conversationsList.innerHTML = '';
-                        
+                // Clear existing conversations
+                if (conversationsList) {
+                    conversationsList.innerHTML = '';
+                    
+                    // Show appropriate UI based on whether there are conversations
+                    if (data.conversations && data.conversations.length > 0) {
                         // Add each conversation to the sidebar
                         data.conversations.forEach(conversation => {
                             const conversationItem = document.createElement('div');
                             conversationItem.className = 'conversation-item';
                             conversationItem.dataset.id = conversation.id;
                             
+                            // Highlight active conversation
+                            if (currentConversationId && conversation.id == currentConversationId) {
+                                conversationItem.classList.add('active');
+                            }
+                            
                             // Create the title and date elements
                             const titleElement = document.createElement('div');
                             titleElement.className = 'conversation-title';
-                            titleElement.textContent = conversation.title;
+                            titleElement.textContent = conversation.title || 'New Conversation';
                             
                             const dateElement = document.createElement('div');
                             dateElement.className = 'conversation-date';
                             
-                            // Format the date (simple for now)
-                            const createdDate = new Date(conversation.created_at);
-                            const now = new Date();
-                            const diffDays = Math.floor((now - createdDate) / (1000 * 60 * 60 * 24));
-                            
-                            if (diffDays === 0) {
-                                dateElement.textContent = 'Today';
-                            } else if (diffDays === 1) {
-                                dateElement.textContent = 'Yesterday';
+                            // Format the date more elegantly
+                            if (conversation.created_at) {
+                                const createdDate = new Date(conversation.created_at);
+                                const now = new Date();
+                                const yesterday = new Date(now);
+                                yesterday.setDate(yesterday.getDate() - 1);
+                                
+                                if (createdDate.toDateString() === now.toDateString()) {
+                                    // Today - show the time
+                                    dateElement.textContent = createdDate.toLocaleTimeString([], { 
+                                        hour: '2-digit', 
+                                        minute: '2-digit' 
+                                    });
+                                } else if (createdDate.toDateString() === yesterday.toDateString()) {
+                                    dateElement.textContent = 'Yesterday';
+                                } else {
+                                    // Other days - show the date
+                                    dateElement.textContent = createdDate.toLocaleDateString([], {
+                                        month: 'short',
+                                        day: 'numeric'
+                                    });
+                                }
                             } else {
-                                dateElement.textContent = `${diffDays} days ago`;
+                                dateElement.textContent = 'New';
                             }
                             
                             // Add elements to the conversation item
@@ -770,11 +789,26 @@ document.addEventListener('DOMContentLoaded', function() {
                             
                             // Add click event to load conversation
                             conversationItem.addEventListener('click', function() {
+                                // Remove active class from all conversations
+                                document.querySelectorAll('.conversation-item').forEach(item => {
+                                    item.classList.remove('active');
+                                });
+                                
+                                // Add active class to this conversation
+                                this.classList.add('active');
+                                
+                                // Load the conversation
                                 loadConversation(conversation.id);
                             });
                             
                             conversationsList.appendChild(conversationItem);
                         });
+                    } else {
+                        // Show "No conversations" message
+                        const emptyMessage = document.createElement('div');
+                        emptyMessage.className = 'empty-conversations';
+                        emptyMessage.textContent = 'No conversations yet';
+                        conversationsList.appendChild(emptyMessage);
                     }
                 }
             })
@@ -1019,6 +1053,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                     // Stream finished successfully
                                     console.log("Stream finished event received.");
                                     
+                                    // Get conversation ID reliably from either parsedData or the current state
+                                    const finalConversationId = parsedData.conversation_id || currentConversationId;
+                                    
                                     // Ensure the final response text is added to JS history
                                     if (responseText && (!messageHistory.length || messageHistory[messageHistory.length - 1]?.role !== 'assistant')) {
                                          // Add only if history is empty or last message wasn't assistant's
@@ -1033,13 +1070,15 @@ document.addEventListener('DOMContentLoaded', function() {
                                         // messageHistory[messageHistory.length - 1].content = responseText;
                                     }
                                     
-                                    // Check if this is the first exchange (2 messages - user + assistant)
-                                    // We check for exact count 3 (including system message) to ensure we only 
-                                    // trigger summarization after the first complete exchange
-                                    if (messageHistory.length === 3 && currentConversationId) {
-                                        console.log("First complete exchange detected, triggering conversation summarization");
+                                    // Check if this is the first exchange (1 user + 1 assistant = length 2)
+                                    if (messageHistory.length === 2 && finalConversationId) {
+                                        console.log("First exchange done, triggering summarization for convo:", finalConversationId);
                                         // Trigger conversation summary generation
-                                        summarizeConversation(currentConversationId);
+                                        summarizeConversation(finalConversationId);
+                                        
+                                        // If we just created a new conversation, refresh the sidebar list
+                                        console.log("New conversation finished first exchange. Refreshing sidebar.");
+                                        fetchConversations(); // Reload the conversation list from the backend
                                     }
                                     
                                     // Re-enable input, etc. 
