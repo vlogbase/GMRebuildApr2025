@@ -1,0 +1,164 @@
+The server logs indicate the Gunicorn worker process is crashing during the requests.post stream processing (iter_lines), preventing the post-stream code (database save, metadata/done events) from executing. To fix this, replace the synchronous requests call with an asynchronous httpx call.
+
+1. Add Dependency:
+
+Ensure httpx is added to your Python dependencies. If you have a requirements.txt or pyproject.toml, add httpx there. Alternatively, run pip install httpx in the Replit Shell.
+2. Modify app.py:
+
+Import httpx: Add import httpx near the top of app.py.
+
+Make Endpoint Async: Change the chat endpoint definition from def chat(): to async def chat():.
+
+Replace generate() Function: Replace the entire generate() function definition inside async def chat(): with the following asynchronous version using httpx:
+
+Python
+
+# === CODE TO REPLACE THE generate() FUNCTION IN app.py ===
+async def generate():
+    # Buffer to collect the assistant's response text
+    assistant_response_content = [] 
+    # Variables to store metadata found during stream
+    final_prompt_tokens = None
+    final_completion_tokens = None
+    final_model_id_used = None
+    assistant_message_id = None # To store the ID after saving
+
+    try:
+        # Use httpx for async streaming request
+        async with httpx.AsyncClient(timeout=300.0) as client: # Increased timeout
+            async with client.stream(
+                'POST',
+                'https://openrouter.ai/api/v1/chat/completions',
+                headers=headers, # Assumes headers is defined in the outer scope (chat endpoint)
+                json=payload,    # Assumes payload is defined in the outer scope (chat endpoint)
+            ) as response:
+
+                if response.status_code != 200:
+                    # Handle non-200 status codes
+                    error_content = await response.aread() # Read error body
+                    logger.error(f"OpenRouter API error: {response.status_code} - {error_content.decode()}")
+                    yield f"data: {json.dumps({'type': 'error', 'error': f'API Error: {response.status_code}'})}\n\n"
+                    return
+
+                # Process the streaming response asynchronously
+                async for line in response.aiter_lines():
+                    if line:
+                        if line.strip() == '': # SSE lines often have empty lines
+                            continue 
+
+                        line_text = line # Already decoded by aiter_lines usually
+
+                        if line_text.startswith('data: '):
+                            sse_data = line_text[6:].strip() 
+
+                            if sse_data == '[DONE]':
+                                continue 
+
+                            try:
+                                if not sse_data: 
+                                    continue
+                                json_data = json.loads(sse_data)
+
+                                # --- Extract Content ---
+                                content_chunk = None
+                                if 'choices' in json_data and len(json_data['choices']) > 0:
+                                    choice = json_data['choices'][0]
+                                    if 'delta' in choice and choice['delta'].get('content') is not None:
+                                        content_chunk = choice['delta']['content']
+
+                                if content_chunk:
+                                    assistant_response_content.append(content_chunk)
+                                    # Yield content chunk to the client
+                                    yield f"data: {json.dumps({'type': 'content', 'content': content_chunk, 'conversation_id': conversation_id})}\n\n"
+
+                                # --- Extract Usage/Model ---
+                                if 'usage' in json_data and json_data['usage']: 
+                                    usage = json_data['usage']
+                                    final_prompt_tokens = usage.get('prompt_tokens')
+                                    final_completion_tokens = usage.get('completion_tokens')
+                                    logger.debug(f"Found usage data: P:{final_prompt_tokens} C:{final_completion_tokens}")
+
+                                if 'model' in json_data and json_data['model']:
+                                    final_model_id_used = json_data.get('model')
+                                    logger.debug(f"Found model used: {final_model_id_used}")
+
+                            except json.JSONDecodeError as e:
+                                logger.error(f"JSON decode error: {e} on line content: {sse_data}")
+                                yield f"data: {json.dumps({'type': 'error', 'error': 'JSON parsing error'})}\n\n"
+                                return 
+
+        # --- Stream processing finished ---
+
+        full_response_text = ''.join(assistant_response_content)
+
+        if full_response_text: 
+            try:
+                from models import Message # Ensure import is available
+                # Ensure conversation_id and model_id (requested) are available
+                assistant_db_message = Message(
+                    conversation_id=conversation_id,
+                    role='assistant',
+                    content=full_response_text,
+                    model=model_id, 
+                    model_id_used=final_model_id_used, 
+                    prompt_tokens=final_prompt_tokens,
+                    completion_tokens=final_completion_tokens,
+                    rating=None 
+                )
+                db.session.add(assistant_db_message)
+                db.session.commit()
+                assistant_message_id = assistant_db_message.id 
+                logger.info(f"Saved assistant message {assistant_message_id} with metadata.")
+
+                # Save to memory system if enabled 
+                if ENABLE_MEMORY_SYSTEM:
+                     try:
+                         memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation_id}"
+                         save_message_with_memory(
+                             session_id=str(conversation_id),
+                             user_id=memory_user_id,
+                             role='assistant',
+                             content=full_response_text
+                         )
+                     except Exception as e:
+                         logger.error(f"Error saving assistant message to memory: {e}")
+
+                # Yield the final metadata to the client
+                logger.info(f"==> Preparing to yield METADATA for message {assistant_message_id}")
+                yield f"data: {json.dumps({'type': 'metadata', 'metadata': {'id': assistant_message_id, 'model_id_used': final_model_id_used, 'prompt_tokens': final_prompt_tokens, 'completion_tokens': final_completion_tokens}})}\n\n"
+                logger.info(f"==> SUCCESSFULLY yielded METADATA for message {assistant_message_id}")
+
+            except Exception as db_error:
+                logger.exception("Error saving assistant message or metadata to DB")
+                db.session.rollback()
+                yield f"data: {json.dumps({'type': 'error', 'error': 'Error saving message to database'})}\n\n"
+
+        # Finally, signal completion
+        logger.info("==> Preparing to yield DONE event")
+        yield f"data: {json.dumps({'type': 'done', 'done': True, 'conversation_id': conversation_id})}\n\n"
+        logger.info("==> SUCCESSFULLY yielded DONE event. Stream generation complete.")
+
+    except httpx.RequestError as e:
+         logger.exception(f"httpx request error: {e}")
+         yield f"data: {json.dumps({'type': 'error', 'error': f'Connection error: {e}'})}\n\n"
+    except Exception as e:
+        logger.exception("Error during async stream generation")
+        yield f"data: {json.dumps({'type': 'error', 'error': f'Stream Error: {str(e)}'})}\n\n"
+# === END OF REPLACEMENT CODE FOR generate() ===
+Confirm Response Wrapper: Ensure the return statement at the end of the async def chat(): endpoint correctly returns the async generator. Flask usually handles this directly, but using stream_with_context is also safe:
+
+Python
+
+return Response(stream_with_context(generate()), content_type='text/event-stream')
+3. No Changes Needed:
+
+static/js/script.js should not require changes, as it was already set up to handle the metadata and done events correctly.
+models.py is correct.
+Explanation:
+
+We're changing the underlying HTTP library from requests (synchronous) to httpx (asynchronous).
+async def makes the Flask endpoint and the generator non-blocking.
+httpx.AsyncClient().stream(...) handles the streaming connection asynchronously.
+async for line in response.aiter_lines(): iterates over the stream asynchronously.
+This approach generally works better with ASGI servers like Gunicorn/Hypercorn when dealing with long-lived streaming responses and should prevent the worker crashes seen in the logs. We also added an explicit timeout to httpx.AsyncClient.
+Apply these changes, ensure httpx is installed, restart the Flask app, clear the browser cache, and test again. Monitor both the server logs and the browser console/network tab.
