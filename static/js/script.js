@@ -73,11 +73,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     sendButton.addEventListener('click', sendMessage);
     
-    // Initialize data
+    // Initialize model data
     fetchUserPreferences();
-    
-    // Load conversation sidebar
-    fetchConversations();
     
     // Model preset button click handlers
     modelPresetButtons.forEach(button => {
@@ -484,18 +481,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // New chat button
     newChatButton.addEventListener('click', function() {
-        // Clear chat messages and start a new conversation
+        // Clear chat messages except the welcome message
         clearChat();
-        
-        // Reset conversation ID to create a new conversation
-        currentConversationId = null;
-        
-        // Remove active class from any conversation items
-        document.querySelectorAll('.conversation-item').forEach(item => {
-            item.classList.remove('active');
-        });
-        
-        console.log("Starting new conversation");
     });
     
     // Clear conversations button
@@ -687,54 +674,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return addMessage('', 'assistant', true);
     }
     
-    // Function to generate a summary title for a conversation
-    function summarizeConversation(conversationId) {
-        if (!conversationId) {
-            console.error('Cannot summarize: No conversation ID available');
-            return;
-        }
-        
-        console.log(`Requesting summary for conversation ${conversationId}`);
-        
-        fetch(`/conversation/${conversationId}/summarize`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.title) {
-                console.log(`Generated title: ${data.title}`);
-                
-                // Update the sidebar item with the new title
-                const conversationItem = document.querySelector(`.conversation-item[data-id="${conversationId}"]`);
-                if (conversationItem) {
-                    // Check if there's a title div inside
-                    const titleElement = conversationItem.querySelector('.conversation-title');
-                    
-                    if (titleElement) {
-                        // Update existing title element
-                        titleElement.textContent = data.title;
-                    } else {
-                        // If no title element exists, update the item directly (older structure)
-                        conversationItem.textContent = data.title;
-                    }
-                } else {
-                    console.log('Conversation item not found in sidebar, will be updated on next refresh');
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error generating conversation summary:', error);
-        });
-    }
-    
     // Function to fetch conversations from the backend
     function fetchConversations() {
         fetch('/conversations')
@@ -745,83 +684,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
-                // Clear existing conversations
-                if (conversationsList) {
-                    conversationsList.innerHTML = '';
-                    
-                    // Show appropriate UI based on whether there are conversations
-                    if (data.conversations && data.conversations.length > 0) {
+                if (data.conversations && data.conversations.length > 0) {
+                    // Clear existing conversations
+                    if (conversationsList) {
+                        conversationsList.innerHTML = '';
+                        
                         // Add each conversation to the sidebar
                         data.conversations.forEach(conversation => {
                             const conversationItem = document.createElement('div');
                             conversationItem.className = 'conversation-item';
                             conversationItem.dataset.id = conversation.id;
-                            
-                            // Highlight active conversation
-                            if (currentConversationId && conversation.id == currentConversationId) {
-                                conversationItem.classList.add('active');
-                            }
-                            
-                            // Create the title and date elements
-                            const titleElement = document.createElement('div');
-                            titleElement.className = 'conversation-title';
-                            titleElement.textContent = conversation.title || 'New Conversation';
-                            
-                            const dateElement = document.createElement('div');
-                            dateElement.className = 'conversation-date';
-                            
-                            // Format the date more elegantly
-                            if (conversation.created_at) {
-                                const createdDate = new Date(conversation.created_at);
-                                const now = new Date();
-                                const yesterday = new Date(now);
-                                yesterday.setDate(yesterday.getDate() - 1);
-                                
-                                if (createdDate.toDateString() === now.toDateString()) {
-                                    // Today - show the time
-                                    dateElement.textContent = createdDate.toLocaleTimeString([], { 
-                                        hour: '2-digit', 
-                                        minute: '2-digit' 
-                                    });
-                                } else if (createdDate.toDateString() === yesterday.toDateString()) {
-                                    dateElement.textContent = 'Yesterday';
-                                } else {
-                                    // Other days - show the date
-                                    dateElement.textContent = createdDate.toLocaleDateString([], {
-                                        month: 'short',
-                                        day: 'numeric'
-                                    });
-                                }
-                            } else {
-                                dateElement.textContent = 'New';
-                            }
-                            
-                            // Add elements to the conversation item
-                            conversationItem.appendChild(titleElement);
-                            conversationItem.appendChild(dateElement);
+                            conversationItem.textContent = conversation.title;
                             
                             // Add click event to load conversation
                             conversationItem.addEventListener('click', function() {
-                                // Remove active class from all conversations
-                                document.querySelectorAll('.conversation-item').forEach(item => {
-                                    item.classList.remove('active');
-                                });
-                                
-                                // Add active class to this conversation
-                                this.classList.add('active');
-                                
-                                // Load the conversation
                                 loadConversation(conversation.id);
                             });
                             
                             conversationsList.appendChild(conversationItem);
                         });
-                    } else {
-                        // Show "No conversations" message
-                        const emptyMessage = document.createElement('div');
-                        emptyMessage.className = 'empty-conversations';
-                        emptyMessage.textContent = 'No conversations yet';
-                        conversationsList.appendChild(emptyMessage);
                     }
                 }
             })
@@ -832,113 +713,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to load a specific conversation
     function loadConversation(conversationId) {
-        if (!conversationId) {
-            console.error('No conversation ID provided');
-            return;
-        }
-        
-        console.log(`Loading conversation ID: ${conversationId}`);
-        
-        // Clear the current chat and set the new conversation ID
+        // Clear the current chat
         chatMessages.innerHTML = '';
         messageHistory = [];
         currentConversationId = conversationId;
         
-        // Show loading indicator
-        const loadingIndicator = document.createElement('div');
-        loadingIndicator.className = 'loading-messages';
-        loadingIndicator.innerHTML = '<div class="spinner"></div><p>Loading conversation...</p>';
-        chatMessages.appendChild(loadingIndicator);
-        
-        // Fetch the conversation messages from the API
-        fetch(`/conversation/${conversationId}/messages`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                // Remove loading indicator
-                chatMessages.removeChild(loadingIndicator);
-                
-                if (data.messages && data.messages.length > 0) {
-                    // Reset message history
-                    messageHistory = [];
-                    
-                    // Sort messages by creation time
-                    const sortedMessages = data.messages.sort((a, b) => 
-                        new Date(a.created_at) - new Date(b.created_at)
-                    );
-                    
-                    // Add each message to the UI and history
-                    sortedMessages.forEach(message => {
-                        // Skip system messages in the UI (but keep in history)
-                        if (message.role === 'system') {
-                            messageHistory.push({
-                                role: message.role,
-                                content: message.content
-                            });
-                            return;
-                        }
-                        
-                        // Add message to UI
-                        const messageElement = addMessage(
-                            message.content, 
-                            message.role,
-                            false, // Not typing
-                            {
-                                id: message.id,
-                                model_id_used: message.model_id_used,
-                                prompt_tokens: message.prompt_tokens,
-                                completion_tokens: message.completion_tokens,
-                                rating: message.rating
-                            }
-                        );
-                        
-                        // Add message to history
-                        messageHistory.push({
-                            role: message.role,
-                            content: message.content
-                        });
-                        
-                        // If the message has a rating, update the UI
-                        if (message.rating === 1 || message.rating === -1) {
-                            const upvoteBtn = messageElement.querySelector('.upvote-btn');
-                            const downvoteBtn = messageElement.querySelector('.downvote-btn');
-                            
-                            if (message.rating === 1 && upvoteBtn) {
-                                upvoteBtn.classList.add('voted');
-                            } else if (message.rating === -1 && downvoteBtn) {
-                                downvoteBtn.classList.add('voted');
-                            }
-                        }
-                    });
-                    
-                    // Scroll to bottom after loading all messages
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                } else {
-                    // Handle empty conversation
-                    const emptyMessage = document.createElement('div');
-                    emptyMessage.className = 'empty-conversation-message';
-                    emptyMessage.textContent = 'This conversation is empty. Start by sending a message.';
-                    chatMessages.appendChild(emptyMessage);
-                }
-            })
-            .catch(error => {
-                // Remove loading indicator
-                if (loadingIndicator.parentNode) {
-                    chatMessages.removeChild(loadingIndicator);
-                }
-                
-                console.error('Error loading conversation:', error);
-                
-                // Show error message
-                const errorMessage = document.createElement('div');
-                errorMessage.className = 'error-message';
-                errorMessage.textContent = `Error loading conversation: ${error.message}`;
-                chatMessages.appendChild(errorMessage);
-            });
+        // In a full implementation, you would fetch the messages for this conversation
+        // For now, simply set the current conversation ID
+        console.log(`Loading conversation ID: ${conversationId}`);
     }
     
     // Function to send message to backend and process streaming response
@@ -1165,9 +947,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     // Stream finished successfully
                                     console.log("Stream finished event received.");
                                     
-                                    // Get conversation ID reliably from either parsedData or the current state
-                                    const finalConversationId = parsedData.conversation_id || currentConversationId;
-                                    
                                     // Ensure the final response text is added to JS history
                                     if (responseText && (!messageHistory.length || messageHistory[messageHistory.length - 1]?.role !== 'assistant')) {
                                          // Add only if history is empty or last message wasn't assistant's
@@ -1180,17 +959,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     } else if (responseText && messageHistory.length > 0 && messageHistory[messageHistory.length - 1]?.role === 'assistant') {
                                         // Update the last history entry's content if needed (less likely needed now)
                                         // messageHistory[messageHistory.length - 1].content = responseText;
-                                    }
-                                    
-                                    // Check if this is the first exchange (1 user + 1 assistant = length 2)
-                                    if (messageHistory.length === 2 && finalConversationId) {
-                                        console.log("First exchange done, triggering summarization for convo:", finalConversationId);
-                                        // Trigger conversation summary generation
-                                        summarizeConversation(finalConversationId);
-                                        
-                                        // If we just created a new conversation, refresh the sidebar list
-                                        console.log("New conversation finished first exchange. Refreshing sidebar.");
-                                        fetchConversations(); // Reload the conversation list from the backend
                                     }
                                     
                                     // Re-enable input, etc. 

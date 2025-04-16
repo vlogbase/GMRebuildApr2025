@@ -135,25 +135,31 @@ def index():
 
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
+    # Basic placeholder - Needs proper implementation
     try:
         from models import Conversation
-        
-        # --- Fetch all conversations, newest first ---
-        all_conversations = Conversation.query.order_by(Conversation.created_at.desc()).all()
+        existing_convo = Conversation.query.first() 
+        if not existing_convo:
+             title = "Demo Conversation"
+             share_id = generate_share_id()
+             conversation = Conversation(title=title, share_id=share_id)
+             db.session.add(conversation)
+             try:
+                 db.session.commit()
+                 logger.info("Created initial Demo Conversation")
+                 conversations = [{"id": conversation.id, "title": conversation.title}]
+             except Exception as e:
+                  logger.exception("Error committing demo conversation")
+                  db.session.rollback()
+                  conversations = []
+        else:
+             # Replace with actual user-specific query later
+             conversations = [{"id": existing_convo.id, "title": existing_convo.title}]
 
-        conversations_data = [
-            {
-                "id": convo.id,
-                "title": convo.title or "New Conversation", # Default title
-                "created_at": convo.created_at.isoformat() # ISO format date
-            } for convo in all_conversations
-        ]
-        
-        logger.info(f"Fetched {len(conversations_data)} conversations for sidebar.")
-        return jsonify({"conversations": conversations_data})
+        return jsonify({"conversations": conversations})
     except Exception as e:
         logger.exception("Error getting conversations")
-        return jsonify({"conversations": [], "error": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 # --- SYNCHRONOUS CHAT ENDPOINT (Using Requests) ---
 @app.route('/chat', methods=['POST'])
@@ -427,7 +433,7 @@ def chat(): # Synchronous function
 
                         # Yield the final metadata event
                         logger.info(f"==> Preparing to yield METADATA for message {assistant_message_id}")
-                        yield f"data: {json.dumps({'type': 'metadata', 'metadata': {'id': assistant_message_id, 'model_id_used': final_model_id_used, 'prompt_tokens': final_prompt_tokens, 'completion_tokens': final_completion_tokens}, 'conversation_id': current_conv_id})}\n\n"
+                        yield f"data: {json.dumps({'type': 'metadata', 'metadata': {'id': assistant_message_id, 'model_id_used': final_model_id_used, 'prompt_tokens': final_prompt_tokens, 'completion_tokens': final_completion_tokens}})}\n\n"
                         logger.info(f"==> SUCCESSFULLY yielded METADATA for message {assistant_message_id}")
 
                     except Exception as db_error:
@@ -603,40 +609,6 @@ def rate_message(message_id):
         abort(500, description=str(e))
 
 
-@app.route('/conversation/<int:conversation_id>/messages', methods=['GET'])
-def get_conversation_messages(conversation_id):
-    """ Get all messages in a conversation """
-    try:
-        from models import Conversation, Message
-        
-        # Get the conversation
-        conversation = db.session.get(Conversation, conversation_id)
-        if not conversation:
-            abort(404, description="Conversation not found")
-        
-        # Get all messages in the conversation, ordered by creation time
-        messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
-        
-        # Format messages for the response
-        formatted_messages = []
-        for message in messages:
-            formatted_messages.append({
-                "id": message.id,
-                "role": message.role,
-                "content": message.content,
-                "model_id_used": message.model_id_used,
-                "prompt_tokens": message.prompt_tokens,
-                "completion_tokens": message.completion_tokens,
-                "rating": message.rating,
-                "created_at": message.created_at.isoformat() if message.created_at else None
-            })
-        
-        return jsonify({"messages": formatted_messages})
-    except Exception as e:
-        logger.exception(f"Error getting messages for conversation {conversation_id}")
-        abort(500, description=str(e))
-
-
 @app.route('/conversation/<int:conversation_id>/share', methods=['POST']) 
 def share_conversation(conversation_id):
     """ Generate or retrieve share link """
@@ -656,103 +628,6 @@ def share_conversation(conversation_id):
         logger.exception(f"Error sharing conversation {conversation_id}")
         db.session.rollback()
         abort(500, description=str(e))
-
-
-@app.route('/conversation/<int:conversation_id>/summarize', methods=['POST'])
-def summarize_conversation(conversation_id):
-    """ Generate a title summary for a conversation """
-    try:
-        # Import models
-        from models import Conversation, Message, UserPreference
-        
-        # Get the conversation
-        conversation = db.session.get(Conversation, conversation_id)
-        if not conversation: 
-            abort(404, description="Conversation not found")
-        
-        # Get the first user message and first assistant message
-        first_user_message = conversation.messages.filter_by(role='user').order_by(Message.created_at).first()
-        first_assistant_message = conversation.messages.filter_by(role='assistant').order_by(Message.created_at).first()
-        
-        if not first_user_message or not first_assistant_message:
-            return jsonify({"title": "New Conversation", "error": "Incomplete conversation"})
-        
-        # Get the model ID for Preset 6 (free model)
-        user_identifier = get_user_identifier()
-        preset_6_preference = UserPreference.query.filter_by(
-            user_identifier=user_identifier, 
-            preset_id=6
-        ).first()
-        
-        if preset_6_preference:
-            model_id = preset_6_preference.model_id
-        else:
-            # Default free model
-            model_id = "meta-llama/llama-3.2-3b-instruct:free"
-        
-        # Construct the prompt
-        prompt = f"""Generate a concise title (max 5 words) for this conversation start:
-
-User: {first_user_message.content}
-Assistant: {first_assistant_message.content}
-
-Title:"""
-        
-        # Get API Key
-        api_key = os.environ.get('OPENROUTER_API_KEY')
-        if not api_key:
-            logger.error("OPENROUTER_API_KEY not found")
-            abort(500, description="API key not configured")
-        
-        # Prepare headers
-        headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json'
-        }
-        
-        # Prepare payload
-        payload = {
-            'model': model_id,
-            'messages': [{"role": "user", "content": prompt}],
-            'max_tokens': 15,  # Short response
-            'temperature': 0.7
-        }
-        
-        # Make non-streaming request to OpenRouter
-        logger.debug(f"Sending summarization request to OpenRouter with model: {model_id}")
-        response = requests.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            headers=headers,
-            json=payload,
-            timeout=15.0  # Short timeout for title generation
-        )
-        
-        response.raise_for_status()
-        result = response.json()
-        
-        # Extract the title from the response
-        generated_title = result['choices'][0]['message']['content'].strip()
-        
-        # Clean up the title (remove quotes or any other unwanted characters)
-        generated_title = generated_title.strip('"\'').strip()
-        
-        # Truncate if too long (max 100 chars as per DB column)
-        if len(generated_title) > 100:
-            generated_title = generated_title[:97] + "..."
-        
-        # Update the conversation title
-        conversation.title = generated_title
-        db.session.commit()
-        
-        logger.info(f"Generated title for conversation {conversation_id}: {generated_title}")
-        return jsonify({"title": generated_title})
-        
-    except Exception as e:
-        logger.exception(f"Error summarizing conversation {conversation_id}")
-        db.session.rollback()
-        
-        # Return a generic title in case of error
-        return jsonify({"title": "New Conversation", "error": str(e)})
 
 
 @app.route('/share/<share_id>')
@@ -776,17 +651,8 @@ def view_shared_conversation(share_id):
 
 # --- Main Execution ---
 if __name__ == '__main__':
-    import argparse
-    
-    # Parse command line arguments
-    parser = argparse.ArgumentParser(description='Run the Flask server')
-    parser.add_argument('--port', type=int, default=5000, help='Port to run the server on')
-    args = parser.parse_args()
-    
-    port = args.port
-    logger.info(f"Starting Flask development server on port {port}")
-    
+    logger.info("Starting Flask development server")
     # Use debug=False if running with Gunicorn/Uvicorn in production
     # The threaded=True option might offer slightly better handling of concurrent requests
     # for the dev server compared to the default, but Gunicorn handles concurrency differently.
-    app.run(host='0.0.0.0', port=port, debug=False, threaded=True)
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
