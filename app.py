@@ -122,6 +122,118 @@ def get_user_identifier():
 
     return session['user_identifier']
 
+def generate_summary(conversation_id):
+    """
+    Generate a short, descriptive title for a conversation using OpenRouter LLM.
+    This function runs non-blocking under gevent to avoid blocking the server.
+    
+    Args:
+        conversation_id: The ID of the conversation to summarize
+    """
+    try:
+        logger.info(f"Generating summary for conversation {conversation_id}")
+        from models import Conversation, Message
+        
+        # Check if title is already customized (not the default)
+        conversation = db.session.get(Conversation, conversation_id)
+        if not conversation:
+            logger.warning(f"Conversation {conversation_id} not found when generating summary")
+            return
+            
+        if conversation.title != "New Conversation":
+            logger.info(f"Conversation {conversation_id} already has a custom title: '{conversation.title}'. Skipping.")
+            return
+            
+        # Get the first user message and first assistant message
+        messages = Message.query.filter_by(conversation_id=conversation_id)\
+            .order_by(Message.created_at)\
+            .limit(2)\
+            .all()
+            
+        if len(messages) < 2:
+            logger.warning(f"Not enough messages in conversation {conversation_id} to generate summary")
+            return
+            
+        user_message = next((m.content for m in messages if m.role == 'user'), None)
+        assistant_message = next((m.content for m in messages if m.role == 'assistant'), None)
+        
+        if not user_message or not assistant_message:
+            logger.warning(f"Missing user or assistant message in conversation {conversation_id}")
+            return
+            
+        # Get API Key
+        api_key = os.environ.get('OPENROUTER_API_KEY')
+        if not api_key:
+            logger.error("OPENROUTER_API_KEY not found while generating summary")
+            return
+            
+        # Use the free model for summarization
+        model_id = DEFAULT_PRESET_MODELS.get('6', 'google/gemini-2.0-flash-exp:free')
+        
+        # Prepare the prompt for summarization
+        summary_prompt = [
+            {
+                "role": "system", 
+                "content": "You are a helpful assistant. Your task is to generate a very short, descriptive title (maximum 5 words) for a conversation based on its content."
+            },
+            {
+                "role": "user", 
+                "content": f"Create a concise title (5 words maximum) that summarizes what this conversation is about.\n\nUser: {user_message}\n\nAssistant: {assistant_message[:500]}..."
+            }
+        ]
+        
+        # Prepare headers
+        headers = {
+            'Authorization': f'Bearer {api_key}',
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'http://localhost:5000'  # Adjust if needed
+        }
+        
+        # Prepare payload - use a lower max_tokens since we only need a short title
+        payload = {
+            'model': model_id,
+            'messages': summary_prompt,
+            'max_tokens': 20,  # Limit token count since we only need a short title
+            'temperature': 0.7  # Slightly creative but not too random
+        }
+        
+        # Make the API request
+        logger.info(f"Sending title generation request to OpenRouter with model: {model_id}")
+        response = requests.post(
+            'https://openrouter.ai/api/v1/chat/completions',
+            headers=headers,
+            json=payload,
+            timeout=10.0  # Short timeout since this should be a quick operation
+        )
+        
+        if response.status_code != 200:
+            logger.error(f"OpenRouter API error while generating title: {response.status_code} - {response.text}")
+            return
+            
+        # Process the response
+        response_data = response.json()
+        if 'choices' in response_data and len(response_data['choices']) > 0:
+            title_text = response_data['choices'][0]['message']['content'].strip()
+            
+            # Clean up the title (remove quotes, etc.)
+            title_text = title_text.strip('"\'')
+            if len(title_text) > 50:
+                title_text = title_text[:47] + "..."
+                
+            # Update the conversation title
+            conversation.title = title_text
+            db.session.commit()
+            logger.info(f"Updated conversation {conversation_id} title to: '{title_text}'")
+        else:
+            logger.warning(f"Failed to extract title from API response: {response_data}")
+            
+    except Exception as e:
+        logger.exception(f"Error generating summary for conversation {conversation_id}: {e}")
+        try:
+            db.session.rollback()
+        except:
+            pass
+
 def generate_share_id(length=12):
     random_bytes = secrets.token_bytes(length)
     share_id = base64.urlsafe_b64encode(random_bytes).decode('utf-8')
@@ -208,8 +320,8 @@ def chat(): # Synchronous function
                  conversation_id = None 
 
         if not conversation_id: 
-            title = user_message[:50] + "..." if len(user_message) > 50 else user_message
-            if not title: title = "New Conversation"
+            # Always start with "New Conversation" title to allow for automatic title generation later
+            title = "New Conversation"
             share_id = generate_share_id() 
             conversation = Conversation(title=title, share_id=share_id)
             # if current_user and current_user.is_authenticated: # Add user linking if needed
@@ -430,6 +542,23 @@ def chat(): # Synchronous function
                                  )
                              except Exception as e:
                                  logger.error(f"Error saving assistant message to memory: {e}")
+                        
+                        # Check if this is the first assistant message and generate a title
+                        try:
+                            # Count assistant messages in this conversation
+                            assistant_count = Message.query.filter_by(
+                                conversation_id=current_conv_id, 
+                                role='assistant'
+                            ).count()
+                            
+                            # If this is the first assistant message, trigger title generation
+                            if assistant_count == 1:
+                                logger.info(f"First assistant message detected for conversation {current_conv_id}. Triggering title generation.")
+                                # Call the generate_summary function - non-blocking under gevent
+                                generate_summary(current_conv_id)
+                        except Exception as e:
+                            logger.error(f"Error checking message count or triggering title generation: {e}")
+                            # Don't raise the exception - we want to continue even if this fails
 
                         # Yield the final metadata event
                         logger.info(f"==> Preparing to yield METADATA for message {assistant_message_id}")
