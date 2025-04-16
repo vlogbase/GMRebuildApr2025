@@ -1,0 +1,31 @@
+ease implement automatic conversation summaries for the sidebar in my Flask application.
+
+Goal:
+Automatically generate a short title/summary for each new conversation and display it in the left sidebar, replacing the default "New Conversation" text.
+
+Requirements:
+
+Trigger: The summary generation should be triggered after the first assistant message in a conversation has been fully received and saved to the database.
+Model: Use the LLM currently assigned to "Preset 6" (the free tier button) for generating the summary. If no preference is set for Preset 6, use a default free model like "meta-llama/llama-3.2-3b-instruct:free"
+Backend (app.py, models.py):
+Add a title field (e.g., db.Column(db.String(100), nullable=True, default="New Conversation")) to the Conversation model in models.py if it doesn't exist. Run migrations if necessary.
+Create a new Flask route: POST /conversation/<conversation_id>/summarize.
+This route should:
+Accept a conversation_id.
+Retrieve the first user message and the first assistant message for that conversation_id from the database.   
+Fetch the appropriate free model ID (Preset 6 preference  or default).   
+Construct a prompt for the LLM asking it to generate a concise title (e.g., "Generate a concise title (max 5 words) for this conversation start:\n\nUser: [user message content]\nAssistant: [assistant message content]\n\nTitle:").
+Make a synchronous, non-streaming API call to the OpenRouter /chat/completions endpoint  using the chosen free model ID and the constructed prompt. Use the requests library for this. Set a reasonable max_tokens (e.g., 15) and timeout.   
+Parse the LLM response to get the generated title text. Clean up any extraneous characters (like quotes).
+Update the title field of the corresponding Conversation record  in the database.   
+Return the generated title in a JSON response (e.g., {'title': '...'}).
+Include basic error handling for the database operations and the API call.
+Frontend (static/js/script.js):
+In the JavaScript code that handles the Server-Sent Events (SSE) stream, locate the logic that processes the {'type': 'done'} event for assistant messages.   
+After handling the done event for an assistant message, check if this was the first assistant message in the current conversation (e.g., by checking the length of the relevant conversationHistory array, which should be 2 - user message + assistant message).
+If it is the first exchange, make a fetch call (Method: POST) to the new /conversation/<conversation_id>/summarize endpoint created in the backend.
+On receiving a successful JSON response ({'title': '...'}), find the corresponding conversation item element in the sidebar list (it should have a data-conversation-id attribute matching the conversation_id).
+Update the text content of the sidebar item (e.g., the element with class .conversation-title inside the item) to display the received title.
+Include basic error handling (.catch) for the fetch call to log potential issues without breaking the UI.
+Avoid Interference: Ensure the summarization API call and processing do not block or interfere with the primary chat message streaming. Implementing it via a separate frontend fetch call after the stream is 'done' achieves this separation.   
+Please apply these changes to the relevant files (app.py, models.py, static/js/script.js).
