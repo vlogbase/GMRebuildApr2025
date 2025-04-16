@@ -33,6 +33,7 @@ class Conversation(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(128), nullable=False, default="New Conversation")
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    share_id = db.Column(db.String(64), unique=True, index=True)  # Shareable identifier for public access
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
@@ -51,6 +52,10 @@ class Message(db.Model):
     role = db.Column(db.String(20), nullable=False)  # 'user', 'assistant', 'system'
     content = db.Column(db.Text, nullable=False)
     model = db.Column(db.String(64), nullable=True)  # Which AI model was used
+    rating = db.Column(db.Integer, nullable=True, default=None)  # User feedback: +1 for upvote, -1 for downvote
+    model_id_used = db.Column(db.String(64), nullable=True)  # Exact model ID returned by the API
+    prompt_tokens = db.Column(db.Integer, nullable=True)  # Number of prompt tokens used
+    completion_tokens = db.Column(db.Integer, nullable=True)  # Number of completion tokens used
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def __repr__(self):

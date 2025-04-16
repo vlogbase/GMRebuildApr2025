@@ -4,7 +4,9 @@ import json
 import requests
 import uuid
 import time
-from flask import Flask, render_template, request, Response, session, stream_with_context
+import base64
+import secrets
+from flask import Flask, render_template, request, Response, session, stream_with_context, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user
@@ -102,6 +104,26 @@ def get_user_identifier():
     
     return session['user_identifier']
 
+# Generate a unique, URL-safe share ID for conversations
+def generate_share_id(length=12):
+    """
+    Generate a cryptographically secure random ID for sharing conversations
+    
+    Args:
+        length (int): Length of the resulting ID
+        
+    Returns:
+        str: A URL-safe, base64-encoded random string
+    """
+    # Generate random bytes and encode to URL-safe base64
+    random_bytes = secrets.token_bytes(length)
+    share_id = base64.urlsafe_b64encode(random_bytes).decode('utf-8')
+    
+    # Remove any padding characters and trim to desired length
+    share_id = share_id.replace('=', '')[:length]
+    
+    return share_id
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -188,7 +210,8 @@ def chat():
         if not conversation:
             # Create a new conversation with a title based on the first message
             title = user_message[:50] + "..." if len(user_message) > 50 else user_message
-            conversation = Conversation(title=title)
+            share_id = generate_share_id()
+            conversation = Conversation(title=title, share_id=share_id)
             db.session.add(conversation)
             db.session.commit()
             conversation_id = conversation.id
@@ -297,11 +320,16 @@ def chat():
                             if sse_data.strip() == '[DONE]':
                                 # Save the complete assistant response to the database
                                 full_response = ''.join(assistant_response)
+                                
+                                # Create the message with additional metadata fields
                                 assistant_db_message = Message(
                                     conversation_id=conversation_id,
                                     role='assistant',
                                     content=full_response,
-                                    model=model_id
+                                    model=model_id,
+                                    model_id_used=None,  # Will be updated if available
+                                    prompt_tokens=None,  # Will be updated if available
+                                    completion_tokens=None  # Will be updated if available
                                 )
                                 db.session.add(assistant_db_message)
                                 db.session.commit()
@@ -328,6 +356,33 @@ def chat():
                             
                             # Parse the data as JSON
                             json_data = json.loads(sse_data)
+                            
+                            # Extract usage information if available (usually in the final chunk)
+                            if 'usage' in json_data:
+                                usage = json_data['usage']
+                                prompt_tokens = usage.get('prompt_tokens')
+                                completion_tokens = usage.get('completion_tokens')
+                                
+                                # Get the exact model ID that was used
+                                model_id_used = json_data.get('model', None)
+                                
+                                # Update the latest assistant message with this information
+                                # This assumes the message has already been saved to the database
+                                try:
+                                    from models import Message
+                                    latest_message = Message.query.filter_by(
+                                        conversation_id=conversation_id,
+                                        role='assistant'
+                                    ).order_by(Message.created_at.desc()).first()
+                                    
+                                    if latest_message:
+                                        latest_message.prompt_tokens = prompt_tokens
+                                        latest_message.completion_tokens = completion_tokens
+                                        latest_message.model_id_used = model_id_used
+                                        db.session.commit()
+                                        logger.debug(f"Updated message {latest_message.id} with token usage: {prompt_tokens}/{completion_tokens}")
+                                except Exception as e:
+                                    logger.error(f"Error updating token usage: {e}")
                             
                             # Extract the content from the choices
                             if 'choices' in json_data and len(json_data['choices']) > 0:
@@ -518,6 +573,43 @@ def get_preferences():
     
     except Exception as e:
         logger.exception("Error getting preferences")
+        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+
+@app.route('/rate_message/<int:message_id>', methods=['POST'])
+def rate_message(message_id):
+    """
+    Rate a message with an upvote or downvote
+    
+    Accepts a POST request with JSON body: {'rating': 1} or {'rating': -1}
+    """
+    try:
+        data = request.get_json()
+        rating = data.get('rating')
+        
+        # Validate input
+        if rating is None or rating not in [1, -1, 0]:
+            return Response(json.dumps({"error": "Rating must be 1, -1, or 0"}), 
+                          content_type='application/json', status=400)
+        
+        # Import Message model
+        from models import Message
+        
+        # Get the message
+        message = Message.query.get(message_id)
+        if not message:
+            return Response(json.dumps({"error": "Message not found"}), 
+                          content_type='application/json', status=404)
+        
+        # Update the rating
+        message.rating = rating
+        db.session.commit()
+        
+        return Response(json.dumps({"success": True, "message": "Rating saved"}), 
+                       content_type='application/json')
+    
+    except Exception as e:
+        logger.exception("Error saving rating")
+        db.session.rollback()
         return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
 
 if __name__ == '__main__':
