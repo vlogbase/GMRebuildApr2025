@@ -285,135 +285,140 @@ def chat():
         
         logger.debug(f"Sending request to OpenRouter with model: {openrouter_model}")
         
-        # Buffer to collect the assistant's response
-        assistant_response = []
-        
         # Stream the response using requests
         def generate():
-            response = requests.post(
-                'https://openrouter.ai/api/v1/chat/completions',
-                headers=headers,
-                json=payload,
-                stream=True
-            )
-            
-            if response.status_code != 200:
-                logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
-                yield f"data: {json.dumps({'error': f'API Error: {response.status_code}'})}\n\n"
-                return
-            
-            # Process the streaming response
-            for line in response.iter_lines():
-                if line:
-                    # Skip keep-alive lines
-                    if line.strip() == b'':
-                        continue
-                    
-                    line_text = line.decode('utf-8')
-                    
-                    # Handle SSE format from OpenRouter
-                    if line_text.startswith('data: '):
-                        try:
-                            sse_data = line_text[6:]  # Remove 'data: ' prefix
+            # Buffer to collect the assistant's response text
+            assistant_response_content = [] 
+            # Variables to store metadata found during stream
+            final_prompt_tokens = None
+            final_completion_tokens = None
+            final_model_id_used = None
+            assistant_message_id = None # To store the ID after saving
+
+            try:
+                response = requests.post(
+                    'https://openrouter.ai/api/v1/chat/completions',
+                    headers=headers, # Assumes headers is defined in the outer scope (chat endpoint)
+                    json=payload,    # Assumes payload is defined in the outer scope (chat endpoint)
+                    stream=True
+                )
+
+                if response.status_code != 200:
+                    logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
+                    yield f"data: {json.dumps({'type': 'error', 'error': f'API Error: {response.status_code}'})}\n\n"
+                    return
+
+                # Process the streaming response
+                for line in response.iter_lines():
+                    if line:
+                        if line.strip() == b'':
+                            continue # Skip keep-alive lines
+                        
+                        line_text = line.decode('utf-8')
+                        
+                        if line_text.startswith('data: '):
+                            sse_data = line_text[6:].strip() # Remove prefix and potential trailing whitespace
                             
-                            # Check for [DONE] marker
-                            if sse_data.strip() == '[DONE]':
-                                # Save the complete assistant response to the database
-                                full_response = ''.join(assistant_response)
+                            if sse_data == '[DONE]':
+                                # We will handle completion after the loop finishes fully processing all data
+                                continue 
                                 
-                                # Create the message with additional metadata fields
-                                assistant_db_message = Message(
-                                    conversation_id=conversation_id,
-                                    role='assistant',
-                                    content=full_response,
-                                    model=model_id,
-                                    model_id_used=None,  # Will be updated if available
-                                    prompt_tokens=None,  # Will be updated if available
-                                    completion_tokens=None  # Will be updated if available
-                                )
-                                db.session.add(assistant_db_message)
-                                db.session.commit()
-                                
-                                # Save to memory system if enabled
-                                if ENABLE_MEMORY_SYSTEM:
-                                    try:
-                                        # The current user ID (use conversation ID if user not logged in)
-                                        memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation_id}"
-                                        
-                                        # Asynchronously save to memory
-                                        save_message_with_memory(
-                                            session_id=str(conversation_id),
-                                            user_id=memory_user_id,
-                                            role='assistant',
-                                            content=full_response
-                                        )
-                                    except Exception as e:
-                                        logger.error(f"Error saving to memory: {e}")
-                                
-                                # Send the DONE marker to the client
-                                yield f"data: {json.dumps({'done': True, 'conversation_id': conversation_id})}\n\n"
-                                continue
-                            
-                            # Parse the data as JSON
-                            json_data = json.loads(sse_data)
-                            
-                            # Extract usage information if available (usually in the final chunk)
-                            if 'usage' in json_data:
-                                usage = json_data['usage']
-                                prompt_tokens = usage.get('prompt_tokens')
-                                completion_tokens = usage.get('completion_tokens')
-                                
-                                # Get the exact model ID that was used
-                                model_id_used = json_data.get('model', None)
-                                
-                                # Update the latest assistant message with this information
-                                # This assumes the message has already been saved to the database
-                                try:
-                                    from models import Message
-                                    latest_message = Message.query.filter_by(
-                                        conversation_id=conversation_id,
-                                        role='assistant'
-                                    ).order_by(Message.created_at.desc()).first()
-                                    
-                                    if latest_message:
-                                        latest_message.prompt_tokens = prompt_tokens
-                                        latest_message.completion_tokens = completion_tokens
-                                        latest_message.model_id_used = model_id_used
-                                        db.session.commit()
-                                        logger.debug(f"Updated message {latest_message.id} with token usage: {prompt_tokens}/{completion_tokens}")
-                                except Exception as e:
-                                    logger.error(f"Error updating token usage: {e}")
-                            
-                            # Extract the content from the choices
-                            if 'choices' in json_data and len(json_data['choices']) > 0:
-                                choice = json_data['choices'][0]
-                                
-                                # Handle different response formats
-                                content = None
-                                if 'delta' in choice and 'content' in choice['delta']:
-                                    # OpenAI-like format
-                                    content = choice['delta']['content']
-                                elif 'delta' in choice and choice['delta'].get('content', None) is None:
-                                    # Empty delta content, just continue
+                            try:
+                                # Ensure we are parsing valid JSON data
+                                if not sse_data: 
                                     continue
-                                elif 'text' in choice:
-                                    # Some models might use 'text' directly
-                                    content = choice['text']
-                                elif 'content' in choice:
-                                    # Some models might include content directly
-                                    content = choice['content']
+                                json_data = json.loads(sse_data)
                                 
-                                if content:
-                                    # Add content to the buffer
-                                    assistant_response.append(content)
-                                    
-                                    # Send content to the client
-                                    yield f"data: {json.dumps({'content': content, 'conversation_id': conversation_id})}\n\n"
-                                    logger.debug(f"Streamed content chunk: {content[:20]}...")
-                        except json.JSONDecodeError as e:
-                            logger.error(f"JSON decode error: {e}")
-                            logger.error(f"Problematic line: {line_text}")
-                            yield f"data: {json.dumps({'error': 'JSON parsing error'})}\n\n"
+                                # --- Extract Content ---
+                                content_chunk = None
+                                if 'choices' in json_data and len(json_data['choices']) > 0:
+                                    choice = json_data['choices'][0]
+                                    # Check for delta and content, ensuring it's not null
+                                    if 'delta' in choice and choice['delta'].get('content') is not None:
+                                        content_chunk = choice['delta']['content']
+                                    # Add other formats if necessary (e.g., 'text') - check your specific models
+                                
+                                if content_chunk:
+                                    assistant_response_content.append(content_chunk)
+                                    # Yield content chunk to the client
+                                    # Ensure conversation_id is available from outer scope
+                                    yield f"data: {json.dumps({'type': 'content', 'content': content_chunk, 'conversation_id': conversation_id})}\n\n"
+                                    # logger.debug(f"Streamed content chunk: {content_chunk[:20]}...") # Optional: reduce logging verbosity
+
+                                # --- Extract Usage/Model (often in final non-content chunk) ---
+                                # Check if 'usage' exists and has content
+                                if 'usage' in json_data and json_data['usage']: 
+                                    usage = json_data['usage']
+                                    final_prompt_tokens = usage.get('prompt_tokens')
+                                    final_completion_tokens = usage.get('completion_tokens')
+                                    logger.debug(f"Found usage data: P:{final_prompt_tokens} C:{final_completion_tokens}")
+                                
+                                # Check if 'model' exists and has content
+                                if 'model' in json_data and json_data['model']:
+                                    # Capture the specific model string returned by the API response
+                                    final_model_id_used = json_data.get('model')
+                                    logger.debug(f"Found model used: {final_model_id_used}")
+
+                            except json.JSONDecodeError as e:
+                                logger.error(f"JSON decode error: {e} on line content: {sse_data}")
+                                yield f"data: {json.dumps({'type': 'error', 'error': 'JSON parsing error'})}\n\n"
+                                return # Stop processing on parsing error
+
+                # --- Stream processing finished ---
+                
+                # Combine the full response
+                full_response_text = ''.join(assistant_response_content)
+                
+                # Save the complete assistant message to the database NOW if content exists
+                if full_response_text: 
+                    try:
+                        from models import Message # Ensure import is available
+                        # Ensure conversation_id and model_id (requested) are available from outer scope
+                        assistant_db_message = Message(
+                            conversation_id=conversation_id,
+                            role='assistant',
+                            content=full_response_text,
+                            model=model_id, # Original requested model shorthand/ID from outer scope
+                            model_id_used=final_model_id_used, # Actual model used from API
+                            prompt_tokens=final_prompt_tokens,
+                            completion_tokens=final_completion_tokens,
+                            rating=None # Default rating
+                        )
+                        db.session.add(assistant_db_message)
+                        db.session.commit()
+                        assistant_message_id = assistant_db_message.id # Get the ID
+                        logger.info(f"Saved assistant message {assistant_message_id} with metadata.")
+
+                        # Save to memory system if enabled (ensure ENABLE_MEMORY_SYSTEM etc. are available)
+                        if ENABLE_MEMORY_SYSTEM:
+                             try:
+                                 memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation_id}"
+                                 save_message_with_memory(
+                                     session_id=str(conversation_id),
+                                     user_id=memory_user_id,
+                                     role='assistant',
+                                     content=full_response_text
+                                 )
+                             except Exception as e:
+                                 logger.error(f"Error saving assistant message to memory: {e}")
+
+                        # Yield the final metadata to the client
+                        yield f"data: {json.dumps({'type': 'metadata', 'metadata': {'id': assistant_message_id, 'model_id_used': final_model_id_used, 'prompt_tokens': final_prompt_tokens, 'completion_tokens': final_completion_tokens}})}\n\n"
+
+                    except Exception as db_error:
+                        logger.exception("Error saving assistant message or metadata to DB")
+                        db.session.rollback()
+                        yield f"data: {json.dumps({'type': 'error', 'error': 'Error saving message to database'})}\n\n"
+                        # Still yield done even if DB save fails? Or return? Let's yield done for now.
+                
+                # Finally, signal completion (even if no text content was generated)
+                # Ensure conversation_id is available
+                yield f"data: {json.dumps({'type': 'done', 'done': True, 'conversation_id': conversation_id})}\n\n"
+                logger.info("Stream generation complete.")
+
+            except Exception as e:
+                logger.exception("Error during stream generation")
+                yield f"data: {json.dumps({'type': 'error', 'error': f'Stream Error: {str(e)}'})}\n\n"
         
         return Response(stream_with_context(generate()), content_type='text/event-stream')
     

@@ -749,108 +749,160 @@ document.addEventListener('DOMContentLoaded', function() {
             function processChunks() {
                 return reader.read().then(({ done, value }) => {
                     if (done) {
-                        // Add the complete assistant response to the message history
-                        if (responseText) {
-                            messageHistory.push({
-                                role: 'assistant',
-                                content: responseText
-                            });
-                        }
+                        console.log("Stream closed by server");
+                        // We now let the done/metadata events handle completion
                         return;
                     }
                     
                     // Decode the chunk and add to buffer
                     buffer += decoder.decode(value, { stream: true });
                     
-                    // Process each line in the buffer
-                    const lines = buffer.split('\n\n');
-                    buffer = lines.pop(); // Keep the last incomplete line in the buffer
-                    
-                    // Process each complete line
-                    for (const line of lines) {
-                        if (line.trim() === '') continue;
+                    // Split by double newlines (SSE standard)
+                    const potentialMessages = buffer.split('\n\n');
+                    // Keep the last (potentially incomplete) chunk in the buffer
+                    buffer = potentialMessages.pop(); // Keep incomplete message in buffer
+
+                    // Process each complete message
+                    for (const message of potentialMessages) {
+                        if (message.trim() === '') continue;
                         
-                        // Check if line starts with 'data: '
-                        if (line.startsWith('data: ')) {
-                            const data = line.substring(6); // Remove 'data: ' prefix
+                        if (message.startsWith('data: ')) {
+                            const data = message.substring(6).trim(); // Remove 'data: ' and trim
                             
-                            // Check for [DONE] marker
-                            if (data.trim() === '[DONE]') {
-                                continue;
-                            }
-                            
+                            if (!data) continue; // Skip empty data lines
+
                             try {
                                 const parsedData = JSON.parse(data);
                                 
-                                if (parsedData.error) {
-                                    messageContent.innerHTML = `<span class="error">Error: ${parsedData.error}</span>`;
-                                    return;
-                                }
+                                // --- Handle different data types ---
+                                if (parsedData.type === 'error' || parsedData.error) {
+                                    const errorMsg = parsedData.error || 'Unknown error occurred';
+                                    messageContent.innerHTML = `<span class="error">Error: ${errorMsg}</span>`;
+                                    console.error("Received error from backend:", errorMsg);
+                                    // Optionally re-enable input/button here if desired
+                                    // messageInput.disabled = false;
+                                    // sendButton.disabled = false;
+                                    return; // Stop processing on error
                                 
-                                // Update conversation ID if provided
-                                if (parsedData.conversation_id && !currentConversationId) {
-                                    currentConversationId = parsedData.conversation_id;
-                                    console.log(`Setting conversation ID: ${currentConversationId}`);
+                                } else if (parsedData.type === 'content') {
+                                    // Append content
+                                    if (parsedData.content) {
+                                        responseText += parsedData.content;
+                                        // Use your existing formatMessage function
+                                        messageContent.innerHTML = formatMessage(responseText); 
+                                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                                    }
+                                    // Update conversation ID if it's the first message
+                                    if (parsedData.conversation_id && !currentConversationId) {
+                                        currentConversationId = parsedData.conversation_id;
+                                        console.log(`Setting conversation ID: ${currentConversationId}`);
+                                        // Store conversation ID on the message element if needed
+                                        // assistantMessageElement.dataset.conversationId = currentConversationId; 
+                                        // Optionally refresh conversation list
+                                        // fetchConversations(); 
+                                    }
+                                
+                                } else if (parsedData.type === 'metadata') {
+                                    // Metadata received (usually after content stream ends)
+                                    console.log("Received metadata:", parsedData.metadata);
+                                    if (parsedData.metadata) {
+                                        const meta = parsedData.metadata;
+                                        
+                                        // Set the definitive message ID on the element
+                                        assistantMessageElement.dataset.messageId = meta.id;
+                                        
+                                        // Update/Create metadata display section
+                                        const messageWrapper = assistantMessageElement.querySelector('.message-wrapper');
+                                        if (messageWrapper) { // Check if wrapper exists
+                                            let metadataContainer = messageWrapper.querySelector('.message-metadata');
+                                            if (!metadataContainer) {
+                                                metadataContainer = document.createElement('div');
+                                                metadataContainer.className = 'message-metadata';
+                                                // Insert metadata before action buttons if they exist
+                                                const actionsContainer = messageWrapper.querySelector('.message-actions');
+                                                if (actionsContainer) {
+                                                    messageWrapper.insertBefore(metadataContainer, actionsContainer);
+                                                } else {
+                                                    // Append if actions aren't there (e.g., if they load later)
+                                                    messageWrapper.appendChild(metadataContainer); 
+                                                }
+                                            }
+                                            
+                                            // Format metadata text
+                                            let metadataText = '';
+                                            const modelName = meta.model_id_used ? formatModelName(meta.model_id_used) : 'N/A';
+                                            metadataText += `Model: ${modelName}`;
+                                            
+                                            if (meta.prompt_tokens !== null && meta.completion_tokens !== null) {
+                                                 metadataText += ` · Tokens: ${meta.prompt_tokens} prompt + ${meta.completion_tokens} completion`;
+                                            }
+                                            metadataContainer.textContent = metadataText;
+                                        }
+
+                                        // Update action buttons now that we have the final message ID
+                                        updateActionButtonsWithMessageId(assistantMessageElement, meta.id);
+                                    }
+                                
+                                } else if (parsedData.type === 'done') {
+                                    // Stream finished successfully
+                                    console.log("Stream finished event received.");
                                     
-                                    // Refresh conversations list to show the new conversation
-                                    fetchConversations();
-                                }
-                                
-                                // Handle done marker
-                                if (parsedData.done) {
-                                    console.log("Conversation finished");
-                                    return;
-                                }
-                                
-                                // Handle content
-                                if (parsedData.content) {
-                                    responseText += parsedData.content;
-                                    messageContent.innerHTML = formatMessage(responseText);
-                                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                                }
-                                
-                                // Update message element with metadata if provided at end of stream
-                                if (parsedData.metadata) {
-                                    // Store the message ID for later use (rating, etc.)
-                                    assistantMessageElement.dataset.messageId = parsedData.metadata.id;
-                                    
-                                    // Update with metadata display
-                                    const messageWrapper = assistantMessageElement.querySelector('.message-wrapper');
-                                    
-                                    // Create or update metadata container
-                                    let metadataContainer = messageWrapper.querySelector('.message-metadata');
-                                    if (!metadataContainer) {
-                                        metadataContainer = document.createElement('div');
-                                        metadataContainer.className = 'message-metadata';
-                                        messageWrapper.appendChild(metadataContainer);
+                                    // Ensure the final response text is added to JS history
+                                    if (responseText && (!messageHistory.length || messageHistory[messageHistory.length - 1]?.role !== 'assistant')) {
+                                         // Add only if history is empty or last message wasn't assistant's
+                                         // This prevents duplicates if content was added earlier
+                                        messageHistory.push({
+                                            role: 'assistant',
+                                            content: responseText 
+                                        });
+                                        console.log("Added final assistant response to JS history.");
+                                    } else if (responseText && messageHistory.length > 0 && messageHistory[messageHistory.length - 1]?.role === 'assistant') {
+                                        // Update the last history entry's content if needed (less likely needed now)
+                                        // messageHistory[messageHistory.length - 1].content = responseText;
                                     }
                                     
-                                    // Format metadata
-                                    let metadataText = '';
-                                    if (parsedData.metadata.model_id_used) {
-                                        const shortModelName = formatModelName(parsedData.metadata.model_id_used);
-                                        metadataText += `Model: ${shortModelName}`;
-                                    } else if (parsedData.metadata.model) {
-                                        const shortModelName = formatModelName(parsedData.metadata.model);
-                                        metadataText += `Model: ${shortModelName}`;
-                                    }
+                                    // Re-enable input, etc. 
+                                    // messageInput.disabled = false;
+                                    // sendButton.disabled = false;
                                     
-                                    if (parsedData.metadata.prompt_tokens && parsedData.metadata.completion_tokens) {
-                                        if (metadataText) metadataText += ' · ';
-                                        metadataText += `Tokens: ${parsedData.metadata.prompt_tokens} prompt + ${parsedData.metadata.completion_tokens} completion`;
-                                    }
-                                    
-                                    metadataContainer.textContent = metadataText;
+                                    return; // Exit the processing loop
                                 }
+                                
                             } catch (error) {
-                                console.error('Error parsing SSE data:', error, data);
+                                console.error('Error parsing SSE data JSON:', error, data);
+                                // messageContent.innerHTML = `<span class="error">Error processing response data.</span>`;
+                                // return; // Stop processing on parsing error
                             }
+                        } else {
+                            // Handle lines that don't start with 'data: ' if necessary (e.g., comments)
+                            // console.log("Received non-data line:", message); 
                         }
-                    }
+                    } // End of loop processing complete messages
                     
-                    // Continue reading
+                    // Continue reading from the stream
                     return processChunks();
-                });
+                }); // End of reader.read().then()
+            } // End of processChunks function definition
+
+            // Helper function to update action buttons with the message ID
+            function updateActionButtonsWithMessageId(messageElement, messageId) {
+                // Ensure messageElement is valid
+                if (!messageElement) return; 
+                
+                const upvoteBtn = messageElement.querySelector('.upvote-btn');
+                const downvoteBtn = messageElement.querySelector('.downvote-btn');
+                const copyBtn = messageElement.querySelector('.copy-btn');
+                const shareBtn = messageElement.querySelector('.share-btn');
+
+                // Check if buttons exist before setting dataset properties
+                if (upvoteBtn) upvoteBtn.dataset.messageId = messageId;
+                if (downvoteBtn) downvoteBtn.dataset.messageId = messageId;
+                if (copyBtn) copyBtn.dataset.messageId = messageId; 
+                if (shareBtn) shareBtn.dataset.messageId = messageId;
+                
+                // If using delegated listeners, no need to re-attach handlers.
+                // If attaching directly in addMessage, ensure they are attached
+                // after the message ID is set.
             }
             
             return processChunks();
