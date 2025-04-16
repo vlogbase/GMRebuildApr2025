@@ -1,0 +1,105 @@
+The most likely reason the summaries aren't showing up is the incorrect placement of the gevent monkey-patching call.
+
+The Problem:
+
+In your app.py, gevent.monkey.patch_all() (line 262) is called after several crucial libraries like Flask, SQLAlchemy, requests, etc., have already been imported (lines 265-283 and onwards).
+Monkey-patching MUST happen before these libraries are imported. Otherwise, libraries like requests will load their standard, blocking versions, and gevent won't be able to make their I/O operations non-blocking. This means the requests.post call inside your generate_summary function (line 742) is likely still blocking the gevent worker, potentially causing unexpected behavior or preventing the summary generation from completing correctly before something else interferes or times out.
+How to Fix:
+
+Move monkey.patch_all(): Cut the following lines from their current position (around 261-262) in app.py:
+
+Python
+
+from gevent import monkey
+monkey.patch_all()
+Paste at the Very Top: Paste these two lines at the absolute top of your app.py file, before any other import statements.
+
+Python
+
+# --- Start of app.py ---
+from gevent import monkey
+monkey.patch_all()
+
+# Now import everything else
+import os
+import json
+import logging
+# ... all your other imports like Flask, requests, sqlalchemy, etc. ...
+
+# --- Rest of your app.py code ---
+Further Debugging (If the fix above doesn't work):
+
+If moving monkey.patch_all() doesn't solve it, let's add some print statements inside the generate_summary function to see how far it gets:
+
+Add Print Statements: Modify app.py inside the generate_summary function (starting around line 709):
+
+Python
+
+def generate_summary(conversation_id):
+    """Fetches messages, calls LLM for summary, and updates DB."""
+    print(f"[SUMMARIZE {conversation_id}] Function called.") # ADDED
+    try:
+        # ... (keep existing code) ...
+
+        # Check if already summarized
+        conversation = Conversation.query.get(conversation_id)
+        if conversation and conversation.title and conversation.title != "New Conversation":
+             print(f"[SUMMARIZE {conversation_id}] Already summarized with title: {conversation.title}") # ADDED
+             return
+        else:
+             print(f"[SUMMARIZE {conversation_id}] No existing summary found, proceeding.") # ADDED
+
+
+        messages = Message.query.filter_by(conversation_id=conversation_id)\
+                                .order_by(Message.timestamp)\
+                                .limit(2).all()
+        if len(messages) < 2:
+            print(f"[SUMMARIZE {conversation_id}] Not enough messages ({len(messages)}) to summarize.") # ADDED
+            return
+        else:
+            print(f"[SUMMARIZE {conversation_id}] Found {len(messages)} initial messages.") # ADDED
+
+
+        # ... (keep logic for model ID and prompt) ...
+        print(f"[SUMMARIZE {conversation_id}] Prompt constructed. About to call API.") # ADDED
+
+        # Call OpenRouter API
+        response = requests.post(
+            # ... (keep existing API call details) ...
+        )
+
+        print(f"[SUMMARIZE {conversation_id}] API call finished. Status: {response.status_code}") # ADDED
+        response.raise_for_status() # Check for HTTP errors
+
+        summary_data = response.json()
+        summary_title = summary_data['choices'][0]['message']['content'].strip().strip('"')
+        print(f"[SUMMARIZE {conversation_id}] Summary extracted: {summary_title}") # ADDED
+
+
+        # Update the Conversation title in the DB
+        if conversation and summary_title:
+            conversation.title = summary_title
+            print(f"[SUMMARIZE {conversation_id}] Updating DB title.") # ADDED
+            db.session.commit()
+            print(f"[SUMMARIZE {conversation_id}] DB commit successful.") # ADDED
+        else:
+             # This condition might need refinement - conversation should exist if we got this far
+             print(f"[SUMMARIZE {conversation_id}] Failed to update DB - conversation object missing or empty summary.") # ADDED
+
+
+    except Exception as e:
+        db.session.rollback()
+        # Use traceback for more detail
+        import traceback
+        print(f"[SUMMARIZE {conversation_id}] Error during summarization:") # ADDED
+        traceback.print_exc() # ADDED for detailed error
+        # print(f"Error summarizing conversation {conversation_id}: {e}") # Keep or replace with traceback
+Run and Check Console: After making the monkey.patch_all() fix and adding these prints, run your application again. Start a new conversation and send a message. After the AI responds, check the Replit Console output carefully. Look for lines starting with [SUMMARIZE ...]. This will tell you:
+
+If the function is being called at all.
+If it's exiting early (e.g., finding an existing summary or not enough messages).
+If the API call is being made and what its status code is.
+If the summary is extracted correctly.
+If it attempts to update the database.
+If any errors (Exception) occur during the process.
+Start by fixing the monkey.patch_all() placement, as that's the most likely cause. If problems persist, the diagnostic prints should give us more clues.

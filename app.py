@@ -1,4 +1,8 @@
 # --- Complete app.py (Synchronous Version - Reverted & Fixed) ---
+# IMPORTANT: Monkey patching must happen at the very top, before any other imports
+from gevent import monkey
+monkey.patch_all()
+
 import os
 import logging
 import json
@@ -130,6 +134,7 @@ def generate_summary(conversation_id):
     Args:
         conversation_id: The ID of the conversation to summarize
     """
+    print(f"[SUMMARIZE {conversation_id}] Function called.") # ADDED
     try:
         logger.info(f"Generating summary for conversation {conversation_id}")
         from models import Conversation, Message
@@ -137,12 +142,16 @@ def generate_summary(conversation_id):
         # Check if title is already customized (not the default)
         conversation = db.session.get(Conversation, conversation_id)
         if not conversation:
+            print(f"[SUMMARIZE {conversation_id}] Conversation not found in database.") # ADDED
             logger.warning(f"Conversation {conversation_id} not found when generating summary")
             return
             
         if conversation.title != "New Conversation":
+            print(f"[SUMMARIZE {conversation_id}] Already has title: {conversation.title}") # ADDED
             logger.info(f"Conversation {conversation_id} already has a custom title: '{conversation.title}'. Skipping.")
             return
+        else:
+            print(f"[SUMMARIZE {conversation_id}] No existing summary found, proceeding.") # ADDED
             
         # Get the first user message and first assistant message
         messages = Message.query.filter_by(conversation_id=conversation_id)\
@@ -151,19 +160,24 @@ def generate_summary(conversation_id):
             .all()
             
         if len(messages) < 2:
+            print(f"[SUMMARIZE {conversation_id}] Not enough messages ({len(messages)}) to summarize.") # ADDED
             logger.warning(f"Not enough messages in conversation {conversation_id} to generate summary")
             return
+        else:
+            print(f"[SUMMARIZE {conversation_id}] Found {len(messages)} initial messages.") # ADDED
             
         user_message = next((m.content for m in messages if m.role == 'user'), None)
         assistant_message = next((m.content for m in messages if m.role == 'assistant'), None)
         
         if not user_message or not assistant_message:
+            print(f"[SUMMARIZE {conversation_id}] Missing user or assistant message.") # ADDED
             logger.warning(f"Missing user or assistant message in conversation {conversation_id}")
             return
             
         # Get API Key
         api_key = os.environ.get('OPENROUTER_API_KEY')
         if not api_key:
+            print(f"[SUMMARIZE {conversation_id}] OPENROUTER_API_KEY not found.") # ADDED
             logger.error("OPENROUTER_API_KEY not found while generating summary")
             return
             
@@ -198,6 +212,7 @@ def generate_summary(conversation_id):
         }
         
         # Make the API request
+        print(f"[SUMMARIZE {conversation_id}] Prompt constructed. About to call API with model {model_id}.") # ADDED
         logger.info(f"Sending title generation request to OpenRouter with model: {model_id}")
         response = requests.post(
             'https://openrouter.ai/api/v1/chat/completions',
@@ -206,7 +221,10 @@ def generate_summary(conversation_id):
             timeout=10.0  # Short timeout since this should be a quick operation
         )
         
+        print(f"[SUMMARIZE {conversation_id}] API call finished. Status: {response.status_code}") # ADDED
+        
         if response.status_code != 200:
+            print(f"[SUMMARIZE {conversation_id}] API error: {response.status_code} - {response.text[:100]}") # ADDED
             logger.error(f"OpenRouter API error while generating title: {response.status_code} - {response.text}")
             return
             
@@ -214,6 +232,7 @@ def generate_summary(conversation_id):
         response_data = response.json()
         if 'choices' in response_data and len(response_data['choices']) > 0:
             title_text = response_data['choices'][0]['message']['content'].strip()
+            print(f"[SUMMARIZE {conversation_id}] Summary extracted: {title_text}") # ADDED
             
             # Clean up the title (remove quotes, etc.)
             title_text = title_text.strip('"\'')
@@ -222,12 +241,19 @@ def generate_summary(conversation_id):
                 
             # Update the conversation title
             conversation.title = title_text
+            print(f"[SUMMARIZE {conversation_id}] Updating DB title.") # ADDED
             db.session.commit()
+            print(f"[SUMMARIZE {conversation_id}] DB commit successful.") # ADDED
             logger.info(f"Updated conversation {conversation_id} title to: '{title_text}'")
         else:
+            print(f"[SUMMARIZE {conversation_id}] Failed to extract title from API response: {response_data}") # ADDED
             logger.warning(f"Failed to extract title from API response: {response_data}")
             
     except Exception as e:
+        # Use traceback for more detailed error information
+        import traceback
+        print(f"[SUMMARIZE {conversation_id}] Error during summarization:") # ADDED
+        traceback.print_exc() # ADDED for detailed error
         logger.exception(f"Error generating summary for conversation {conversation_id}: {e}")
         try:
             db.session.rollback()
