@@ -1,13 +1,14 @@
+# --- Complete app.py (Synchronous Version - Reverted & Fixed) ---
 import os
 import logging
 import json
-import requests
-import httpx
+import requests # Use requests for synchronous calls
+# import httpx # No longer needed
 import uuid
 import time
 import base64
 import secrets
-from flask import Flask, render_template, request, Response, session, stream_with_context, jsonify, abort, url_for, redirect, flash
+from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context # Added stream_with_context back
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user
@@ -22,6 +23,13 @@ if ENABLE_MEMORY_SYSTEM:
     except ImportError as e:
         logging.warning(f"Failed to import memory integration: {e}")
         ENABLE_MEMORY_SYSTEM = False
+else:
+    # Define dummy functions if memory system is disabled to avoid errors later
+    def save_message_with_memory(*args, **kwargs):
+        pass # No-op
+    def enrich_prompt_with_memory(session_id, user_id, user_message, conversation_history):
+        return conversation_history # Return original history
+
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -36,9 +44,17 @@ db = SQLAlchemy(model_class=Base)
 # Create Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "developmentsecretkey")
+if not app.secret_key:
+     logger.warning("SESSION_SECRET environment variable not set. Using default for development.")
+     app.secret_key = "default-dev-secret-key-please-change"
+
 
 # Configure database
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+if not app.config["SQLALCHEMY_DATABASE_URI"]:
+    logger.error("DATABASE_URL environment variable not set.")
+    # Handle this critical error appropriately
+
 app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
     "pool_recycle": 300,
     "pool_pre_ping": True,
@@ -51,14 +67,19 @@ db.init_app(app)
 # Initialize LoginManager
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'login' # Replace 'login' with your actual login route if different
 
 @login_manager.user_loader
 def load_user(user_id):
-    from models import User
-    return User.query.get(int(user_id))
+    from models import User 
+    try:
+        # Use db.session.get() for primary key lookup if using SQLAlchemy 2.0+ style
+        return db.session.get(User, int(user_id))
+    except Exception as e:
+        logger.error(f"Error loading user {user_id}: {e}")
+        return None
 
-# OpenRouter model mappings
+# --- Model Mappings & Defaults ---
 OPENROUTER_MODELS = {
     "gemini-1.5-pro": "google/gemini-2.5-pro-preview-03-25",
     "claude-3-sonnet": "anthropic/claude-3.7-sonnet",
@@ -67,18 +88,14 @@ OPENROUTER_MODELS = {
     "sonar-pro": "perplexity/sonar-pro",
     "free-gemini": "google/gemini-2.0-flash-exp:free"
 }
-
-# Default model preset configuration
 DEFAULT_PRESET_MODELS = {
     "1": "google/gemini-2.5-pro-preview-03-25",
     "2": "anthropic/claude-3.7-sonnet",
     "3": "openai/o3-Mini-High",
     "4": "openai/gpt-4.1-mini",
     "5": "perplexity/sonar-pro",
-    "6": "google/gemini-2.0-flash-exp:free"  # Will try several free models
+    "6": "google/gemini-2.0-flash-exp:free"
 }
-
-# Free model fallback list - in order of preference
 FREE_MODEL_FALLBACKS = [
     "google/gemini-2.0-flash-exp:free",
     "qwen/qwq-32b:free",
@@ -94,315 +111,287 @@ OPENROUTER_MODELS_CACHE = {
     "expiry": 3600  # Cache expiry in seconds (1 hour)
 }
 
-# Helper function to get the current user identifier
+# --- Helper Functions ---
 def get_user_identifier():
     if current_user and current_user.is_authenticated:
         return f"user_{current_user.id}"
-    
-    # If not logged in, use a session-based identifier
+
     if 'user_identifier' not in session:
         session['user_identifier'] = f"temp_{uuid.uuid4().hex}"
-    
+        logger.debug(f"Generated new temporary user ID: {session['user_identifier']}")
+
     return session['user_identifier']
 
-# Generate a unique, URL-safe share ID for conversations
 def generate_share_id(length=12):
-    """
-    Generate a cryptographically secure random ID for sharing conversations
-    
-    Args:
-        length (int): Length of the resulting ID
-        
-    Returns:
-        str: A URL-safe, base64-encoded random string
-    """
-    # Generate random bytes and encode to URL-safe base64
     random_bytes = secrets.token_bytes(length)
     share_id = base64.urlsafe_b64encode(random_bytes).decode('utf-8')
-    
-    # Remove any padding characters and trim to desired length
     share_id = share_id.replace('=', '')[:length]
-    
     return share_id
 
+# --- Routes ---
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
-    """Get all conversations for the current user or create a new conversation"""
-    # If user is logged in, get their conversations
-    # Otherwise return a limited set of conversations or empty list
+    # Basic placeholder - Needs proper implementation
     try:
-        from models import Conversation, Message
-        
-        # For now, just return a list of dummy conversations
-        # In a real implementation, you would filter by current_user.id
-        conversations = []
-        
-        # Create a test conversation if none exist
-        if len(conversations) == 0:
-            # For now, create a demo conversation
-            conversation = Conversation(title="Demo Conversation")
-            db.session.add(conversation)
-            db.session.commit()
-            
-            conversations = [{"id": conversation.id, "title": conversation.title}]
-        
-        return Response(json.dumps({"conversations": conversations}), content_type='application/json')
+        from models import Conversation
+        existing_convo = Conversation.query.first() 
+        if not existing_convo:
+             title = "Demo Conversation"
+             share_id = generate_share_id()
+             conversation = Conversation(title=title, share_id=share_id)
+             db.session.add(conversation)
+             try:
+                 db.session.commit()
+                 logger.info("Created initial Demo Conversation")
+                 conversations = [{"id": conversation.id, "title": conversation.title}]
+             except Exception as e:
+                  logger.exception("Error committing demo conversation")
+                  db.session.rollback()
+                  conversations = []
+        else:
+             # Replace with actual user-specific query later
+             conversations = [{"id": existing_convo.id, "title": existing_convo.title}]
+
+        return jsonify({"conversations": conversations})
     except Exception as e:
         logger.exception("Error getting conversations")
-        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+        return jsonify({"error": str(e)}), 500
 
-
+# --- SYNCHRONOUS CHAT ENDPOINT (Using Requests) ---
 @app.route('/chat', methods=['POST'])
-def chat():
+def chat(): # Synchronous function
     """
-    Endpoint to handle chat messages and stream responses from OpenRouter
+    Endpoint to handle chat messages and stream responses from OpenRouter (SYNC Version)
     """
     try:
+        # --- Get request data ---
         data = request.get_json()
+        if not data:
+            logger.error("Request body is not JSON or is empty")
+            abort(400, description="Invalid request body. JSON expected.")
+
         user_message = data.get('message', '')
-        model_id = data.get('model', 'gemini-1.5-pro')
+        # Use .get for default model to avoid KeyError if '1' isn't present initially
+        model_id = data.get('model', DEFAULT_PRESET_MODELS.get('1', 'google/gemini-flash-1.5')) 
         message_history = data.get('history', [])
         conversation_id = data.get('conversation_id', None)
-        
-        # Import models for database operations
-        from models import Conversation, Message
-        
-        # Check if this is a direct model ID or one of our shorthand names
-        if model_id in OPENROUTER_MODELS:
-            # Convert shorthand name to OpenRouter model ID
-            openrouter_model = OPENROUTER_MODELS[model_id]
-        else:
-            # Assume it's already a direct OpenRouter model ID
-            openrouter_model = model_id
-        
-        # Get API key from environment
+
+        from models import Conversation, Message # Ensure models are imported
+
+        # --- Determine OpenRouter Model ID ---
+        openrouter_model = OPENROUTER_MODELS.get(model_id, model_id) # Use .get fallback
+
+        # --- Get API Key ---
         api_key = os.environ.get('OPENROUTER_API_KEY')
         if not api_key:
             logger.error("OPENROUTER_API_KEY not found")
             abort(500, description="API key not configured")
-        
-        # Prepare headers for OpenRouter API
+
+        # --- Prepare Headers ---
         headers = {
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
-            'HTTP-Referer': request.headers.get('Referer', 'https://gloriamundo.com')
+            'HTTP-Referer': request.headers.get('Referer', 'http://localhost:5000') # Adjust if needed
         }
-        
-        # Prepare messages array with a detailed system prompt
-        system_message = (
-            "You are a helpful assistant at GloriaMundo, an advanced AI chat platform. "
-            "Provide detailed, accurate, and helpful responses to user queries. "
-            "Write in a conversational yet professional tone. "
-            "If you don't know something, say so rather than making up information. "
-            "Format responses with clear structure using paragraphs, lists, and emphasis when appropriate."
-        )
-        messages = [{'role': 'system', 'content': system_message}]
-        
-        # Get or create a conversation
+
+        # --- Get/Create Conversation & Save User Message ---
+        # (Using the logic refined during async attempts)
         conversation = None
         if conversation_id:
-            conversation = Conversation.query.get(conversation_id)
-        
-        if not conversation:
-            # Create a new conversation with a title based on the first message
+            conversation = db.session.get(Conversation, conversation_id) 
+            if not conversation:
+                 logger.warning(f"Conversation ID {conversation_id} not found, creating new.")
+                 conversation_id = None 
+
+        if not conversation_id: 
             title = user_message[:50] + "..." if len(user_message) > 50 else user_message
-            share_id = generate_share_id()
+            if not title: title = "New Conversation"
+            share_id = generate_share_id() 
             conversation = Conversation(title=title, share_id=share_id)
+            # if current_user and current_user.is_authenticated: # Add user linking if needed
+            #    conversation.user_id = current_user.id
             db.session.add(conversation)
-            db.session.commit()
-            conversation_id = conversation.id
-        
-        # Save the user message to the database
+            try:
+                db.session.commit()
+                conversation_id = conversation.id 
+                logger.info(f"Created new conversation with ID: {conversation_id}")
+            except Exception as e:
+                 logger.exception("Error committing new conversation")
+                 db.session.rollback()
+                 abort(500, description="Database error creating conversation")
+
+        if not conversation or not conversation.id:
+             logger.error("Failed to get or create a valid conversation object.")
+             abort(500, description="Failed to establish conversation context.")
+
         user_db_message = Message(
-            conversation_id=conversation.id,
-            role='user',
-            content=user_message
+            conversation_id=conversation.id, role='user', content=user_message
         )
         db.session.add(user_db_message)
-        db.session.commit()
-        
-        # Save user message to memory system if enabled
+        try:
+             db.session.commit()
+             logger.info(f"Saved user message {user_db_message.id} for conversation {conversation.id}")
+        except Exception as e:
+             logger.exception(f"Error committing user message {user_db_message.id}")
+             db.session.rollback()
+             abort(500, description="Database error saving user message")
+
+
+        # --- Prepare Message History ---
+        system_message = ( # Make sure this is defined correctly
+             "You are a helpful assistant at GloriaMundo, an advanced AI chat platform. "
+             "Provide detailed, accurate, and helpful responses to user queries. "
+             "Write in a conversational yet professional tone. "
+             "If you don't know something, say so rather than making up information. "
+             "Format responses with clear structure using paragraphs, lists, and emphasis when appropriate."
+         )
+        messages = [{'role': 'system', 'content': system_message}]
+
+        db_messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.created_at).all()
+        for msg in db_messages:
+             if msg.id != user_db_message.id: 
+                 messages.append({'role': msg.role, 'content': msg.content})
+
+        messages.append({'role': 'user', 'content': user_message}) 
+
+        # --- Enrich with memory if needed ---
         if ENABLE_MEMORY_SYSTEM:
             try:
-                # The current user ID (use conversation ID if user not logged in)
-                memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation_id}"
-                
-                # Asynchronously save to memory
-                save_message_with_memory(
-                    session_id=str(conversation_id),
-                    user_id=memory_user_id,
-                    role='user',
-                    content=user_message
+                memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation.id}"
+                enriched_messages = enrich_prompt_with_memory(
+                     session_id=str(conversation.id), user_id=memory_user_id, 
+                     user_message=user_message, conversation_history=messages
                 )
+                if len(enriched_messages) > len(messages):
+                     logger.info(f"Added {len(enriched_messages) - len(messages)} context messages from memory system")
+                messages = enriched_messages
             except Exception as e:
-                logger.error(f"Error saving user message to memory: {e}")
-        
-        # Add message history if available from the request
-        if message_history:
-            messages.extend(message_history)
-        else:
-            # If no history in request, load from database
-            db_messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.created_at).all()
-            for msg in db_messages:
-                messages.append({'role': msg.role, 'content': msg.content})
-        
-        # Add the current user message
-        messages.append({'role': 'user', 'content': user_message})
-        
-        # Enrich with memory if enabled
-        if ENABLE_MEMORY_SYSTEM:
-            try:
-                # The current user ID (use conversation ID if user not logged in)
-                memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation_id}"
-                
-                # Enrich the messages with relevant memory
-                original_message_count = len(messages)
-                messages = enrich_prompt_with_memory(
-                    session_id=str(conversation_id),
-                    user_id=memory_user_id,
-                    user_message=user_message,
-                    conversation_history=messages
-                )
-                
-                if len(messages) > original_message_count:
-                    logger.info(f"Added {len(messages) - original_message_count} context messages from memory system")
-            except Exception as e:
-                logger.error(f"Error enriching with memory: {e}")
-                # Continue without memory enrichment if it fails
-        
-        logger.debug(f"Sending message history with {len(messages)} messages")
-        
-        # Prepare payload for OpenRouter
+                 logger.error(f"Error enriching with memory: {e}")
+
+        # --- Prepare Payload ---
         payload = {
             'model': openrouter_model,
             'messages': messages,
             'stream': True
         }
-        
-        logger.debug(f"Sending request to OpenRouter with model: {openrouter_model}")
-        
-        # Define the sync Generator using standard requests (as copied from fix_code.txt)
+        logger.debug(f"Sending request to OpenRouter with model: {openrouter_model}. History length: {len(messages)}")
+
+        # --- Define the SYNC Generator using requests ---
         def generate():
-            # Buffer to collect the assistant's response text
             assistant_response_content = [] 
-            # Variables to store metadata found during stream
             final_prompt_tokens = None
             final_completion_tokens = None
             final_model_id_used = None
-            assistant_message_id = None # To store the ID after saving
+            assistant_message_id = None 
+            current_conv_id = conversation.id 
+            requested_model_id = model_id 
 
             try:
+                # Use standard requests.post with stream=True
                 response = requests.post(
                     'https://openrouter.ai/api/v1/chat/completions',
-                    headers=headers, # Assumes headers is defined in the outer scope (chat endpoint)
-                    json=payload,    # Assumes payload is defined in the outer scope (chat endpoint)
-                    stream=True
+                    headers=headers, 
+                    json=payload,    
+                    stream=True,
+                    # Consider a timeout for the entire request duration if needed
+                    timeout=300.0 
                 )
 
+                # Check status *after* making the request
                 if response.status_code != 200:
-                    logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
-                    yield f"data: {json.dumps({'type': 'error', 'error': f'API Error: {response.status_code}'})}\n\n"
-                    return
+                    error_text = response.text 
+                    logger.error(f"OpenRouter API error: {response.status_code} - {error_text}")
+                    yield f"data: {json.dumps({'type': 'error', 'error': f'API Error: {response.status_code} - {error_text}'})}\n\n"
+                    return # Stop generation
 
-                # Process the streaming response
+                # Iterate over the stream using iter_lines
                 for line in response.iter_lines():
                     if line:
-                        if line.strip() == b'':
-                            continue # Skip keep-alive lines
-                        
+                        if line.strip() == b'': continue 
+
                         line_text = line.decode('utf-8')
-                        
+
                         if line_text.startswith('data: '):
-                            sse_data = line_text[6:].strip() # Remove prefix and potential trailing whitespace
-                            
+                            sse_data = line[6:].strip()
+
+                            # *** FIX APPLIED HERE: Check for [DONE] before parsing ***
+                            # Explicitly handle [DONE] marker first
                             if sse_data == '[DONE]':
-                                # We will handle completion after the loop finishes fully processing all data
-                                continue 
-                                
-                            try:
-                                # Ensure we are parsing valid JSON data
-                                if not sse_data: 
-                                    continue
-                                json_data = json.loads(sse_data)
-                                
-                                # --- Extract Content ---
-                                content_chunk = None
-                                if 'choices' in json_data and len(json_data['choices']) > 0:
-                                    choice = json_data['choices'][0]
-                                    # Check for delta and content, ensuring it's not null
-                                    if 'delta' in choice and choice['delta'].get('content') is not None:
-                                        content_chunk = choice['delta']['content']
-                                    # Add other formats if necessary (e.g., 'text') - check your specific models
-                                
-                                if content_chunk:
-                                    assistant_response_content.append(content_chunk)
-                                    # Yield content chunk to the client
-                                    # Ensure conversation_id is available from outer scope
-                                    yield f"data: {json.dumps({'type': 'content', 'content': content_chunk, 'conversation_id': conversation_id})}\n\n"
-                                    # logger.debug(f"Streamed content chunk: {content_chunk[:20]}...") # Optional: reduce logging verbosity
+                                logger.debug("Received [DONE] marker.")
+                                continue # Go to next line, post-loop logic handles completion
+                            else:
+                                # --- If it's not [DONE], *then* try to parse JSON ---
+                                try: 
+                                    if not sse_data: continue # Skip if data part is empty after stripping
+                                    json_data = json.loads(sse_data)
+                                    logger.debug(f"JSON parsed successfully: type '{json_data.get('type', 'N/A')}'")
 
-                                # --- Extract Usage/Model (often in final non-content chunk) ---
-                                # Check if 'usage' exists and has content
-                                if 'usage' in json_data and json_data['usage']: 
-                                    usage = json_data['usage']
-                                    final_prompt_tokens = usage.get('prompt_tokens')
-                                    final_completion_tokens = usage.get('completion_tokens')
-                                    logger.debug(f"Found usage data: P:{final_prompt_tokens} C:{final_completion_tokens}")
-                                
-                                # Check if 'model' exists and has content
-                                if 'model' in json_data and json_data['model']:
-                                    # Capture the specific model string returned by the API response
-                                    final_model_id_used = json_data.get('model')
-                                    logger.debug(f"Found model used: {final_model_id_used}")
+                                    # --- Extract Content ---
+                                    content_chunk = None
+                                    if 'choices' in json_data and len(json_data['choices']) > 0:
+                                        choice = json_data['choices'][0]
+                                        if 'delta' in choice and choice['delta'].get('content') is not None:
+                                            content_chunk = choice['delta']['content']
 
-                            except json.JSONDecodeError as e:
-                                logger.error(f"JSON decode error: {e} on line content: {sse_data}")
-                                yield f"data: {json.dumps({'type': 'error', 'error': 'JSON parsing error'})}\n\n"
-                                return # Stop processing on parsing error
+                                    if content_chunk:
+                                        assistant_response_content.append(content_chunk)
+                                        # Yield content chunk to the client
+                                        yield f"data: {json.dumps({'type': 'content', 'content': content_chunk, 'conversation_id': current_conv_id})}\n\n"
+
+                                    # --- Extract Usage/Model ---
+                                    if 'usage' in json_data and json_data['usage']: 
+                                        usage = json_data['usage']
+                                        final_prompt_tokens = usage.get('prompt_tokens')
+                                        final_completion_tokens = usage.get('completion_tokens')
+                                        logger.debug(f"Extracted usage data: P:{final_prompt_tokens} C:{final_completion_tokens}")
+
+                                    if 'model' in json_data and json_data['model']:
+                                        final_model_id_used = json_data.get('model')
+                                        logger.debug(f"Extracted model used: {final_model_id_used}")
+
+                                except json.JSONDecodeError as e:
+                                    # This now only catches errors parsing actual data, not "[DONE]"
+                                    logger.error(f"JSON decode error: {e} on line content (SHOULD NOT BE '[DONE]'): {sse_data}") 
+                                    yield f"data: {json.dumps({'type': 'error', 'error': 'JSON parsing error'})}\n\n"
+                                    return # Stop generation on parsing error
 
                 # --- Stream processing finished ---
-                
-                # Combine the full response
                 full_response_text = ''.join(assistant_response_content)
-                
-                # Save the complete assistant message to the database NOW if content exists
-                if full_response_text: 
+
+                if full_response_text: # Only save if there was actual content
                     try:
-                        from models import Message # Ensure import is available
-                        # Ensure conversation_id and model_id (requested) are available from outer scope
+                        from models import Message 
                         assistant_db_message = Message(
-                            conversation_id=conversation_id,
-                            role='assistant',
+                            conversation_id=current_conv_id, 
+                            role='assistant', 
                             content=full_response_text,
-                            model=model_id, # Original requested model shorthand/ID from outer scope
-                            model_id_used=final_model_id_used, # Actual model used from API
-                            prompt_tokens=final_prompt_tokens,
+                            model=requested_model_id, 
+                            model_id_used=final_model_id_used, 
+                            prompt_tokens=final_prompt_tokens, 
                             completion_tokens=final_completion_tokens,
-                            rating=None # Default rating
+                            rating=None 
                         )
                         db.session.add(assistant_db_message)
                         db.session.commit()
-                        assistant_message_id = assistant_db_message.id # Get the ID
+                        assistant_message_id = assistant_db_message.id 
                         logger.info(f"Saved assistant message {assistant_message_id} with metadata.")
 
-                        # Save to memory system if enabled (ensure ENABLE_MEMORY_SYSTEM etc. are available)
+                        # Save to memory system if enabled
                         if ENABLE_MEMORY_SYSTEM:
                              try:
-                                 memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation_id}"
+                                 memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{current_conv_id}"
                                  save_message_with_memory(
-                                     session_id=str(conversation_id),
-                                     user_id=memory_user_id,
-                                     role='assistant',
-                                     content=full_response_text
+                                     session_id=str(current_conv_id), user_id=memory_user_id, 
+                                     role='assistant', content=full_response_text
                                  )
                              except Exception as e:
                                  logger.error(f"Error saving assistant message to memory: {e}")
 
-                        # Yield the final metadata to the client
+                        # Yield the final metadata event
                         logger.info(f"==> Preparing to yield METADATA for message {assistant_message_id}")
                         yield f"data: {json.dumps({'type': 'metadata', 'metadata': {'id': assistant_message_id, 'model_id_used': final_model_id_used, 'prompt_tokens': final_prompt_tokens, 'completion_tokens': final_completion_tokens}})}\n\n"
                         logger.info(f"==> SUCCESSFULLY yielded METADATA for message {assistant_message_id}")
@@ -411,272 +400,218 @@ def chat():
                         logger.exception("Error saving assistant message or metadata to DB")
                         db.session.rollback()
                         yield f"data: {json.dumps({'type': 'error', 'error': 'Error saving message to database'})}\n\n"
-                        # Still yield done even if DB save fails? Or return? Let's yield done for now.
-                
-                # Finally, signal completion (even if no text content was generated)
-                # Ensure conversation_id is available
+                else:
+                     logger.info("Assistant response was empty, not saving to DB or yielding metadata.")
+
+                # Signal completion to the client
                 logger.info("==> Preparing to yield DONE event")
-                yield f"data: {json.dumps({'type': 'done', 'done': True, 'conversation_id': conversation_id})}\n\n"
+                yield f"data: {json.dumps({'type': 'done', 'done': True, 'conversation_id': current_conv_id})}\n\n"
                 logger.info("==> SUCCESSFULLY yielded DONE event. Stream generation complete.")
 
+            except requests.exceptions.RequestException as e: # Catch requests errors
+                 logger.exception(f"Requests error during stream: {e}")
+                 yield f"data: {json.dumps({'type': 'error', 'error': f'Connection error: {e}'})}\n\n"
             except Exception as e:
-                logger.exception("Error during stream generation")
-                yield f"data: {json.dumps({'type': 'error', 'error': f'Stream Error: {str(e)}'})}\n\n"
-        
-        # Use stream_with_context for sync worker to maintain the context during streaming
-        return Response(stream_with_context(generate()), content_type='text/event-stream')
-    
-    except Exception as e:
-        logger.exception("Error in chat endpoint")
-        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+                # Catch any other unexpected errors during generation
+                logger.exception("Error during sync stream generation processing")
+                yield f"data: {json.dumps({'type': 'error', 'error': f'Stream Processing Error: {str(e)}'})}\n\n"
 
+        # --- Return the Response object wrapping the sync generator with context ---
+        # Use stream_with_context for sync generators in Flask
+        return Response(stream_with_context(generate()), content_type='text/event-stream') 
+
+    except Exception as e:
+        # Catch errors during initial setup before generation starts
+        logger.exception("Error in chat endpoint setup")
+        abort(500, description=f"Chat endpoint setup error: {str(e)}") 
+# === END OF SYNC chat() ENDPOINT ===
+
+
+# --- Other Synchronous Routes (Keep As Is) ---
 @app.route('/models', methods=['GET'])
 def get_models():
-    """
-    Fetch available models from OpenRouter and cache the results
-    Adds helper flags for filtering models by type
-    """
+    """ Fetch available models """
     try:
-        # Check if models are already cached and not expired
         current_time = time.time()
         if (OPENROUTER_MODELS_CACHE["data"] is not None and 
             (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]):
-            return Response(json.dumps(OPENROUTER_MODELS_CACHE["data"]), content_type='application/json')
-        
-        # Get API key from environment
+            logger.debug("Returning cached models")
+            return jsonify(OPENROUTER_MODELS_CACHE["data"])
+
         api_key = os.environ.get('OPENROUTER_API_KEY')
         if not api_key:
-            logger.error("OPENROUTER_API_KEY not found in environment variables")
-            return Response(json.dumps({"error": "API key not configured"}), 
-                           content_type='application/json', status=500)
-        
-        # Prepare headers for OpenRouter API
-        headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json'
-        }
-        
-        # Fetch models from OpenRouter using regular requests
-        response = requests.get(
+            logger.error("OPENROUTER_API_KEY not found")
+            abort(500, description="API key not configured")
+
+        headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+
+        logger.debug("Fetching models from OpenRouter...")
+        response = requests.get( # Make sure requests is imported
             'https://openrouter.ai/api/v1/models',
             headers=headers,
-            timeout=10.0
+            timeout=15.0 
         )
-        
-        if response.status_code != 200:
-            logger.error(f"OpenRouter API error: {response.status_code} - {response.text}")
-            return Response(json.dumps({"error": f"API Error: {response.status_code}"}), 
-                          content_type='application/json', status=500)
-        
-        # Parse the response
+
+        response.raise_for_status() 
         models_data = response.json()
-        
-        # Process models to add custom flags for filtering
+
+        processed_models = []
         for model in models_data.get('data', []):
             model_id = model.get('id', '').lower()
             model_name = model.get('name', '').lower()
             model_description = model.get('description', '').lower()
-            
-            # Set flags based on model properties
-            model['is_free'] = ':free' in model_id or model.get('pricing', {}).get('prompt') == 0
+
+            try:
+                prompt_price = float(model.get('pricing', {}).get('prompt', '1.0'))
+            except (ValueError, TypeError):
+                prompt_price = 1.0 
+
+            model['is_free'] = ':free' in model_id or prompt_price == 0.0
             model['is_multimodal'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
-                                        for keyword in ['vision', 'image', 'multi', 'gpt-4o'])
-            model['is_perplexity'] = 'perplexity' in model_id or 'perplexity' in model_name
+                                           for keyword in ['vision', 'image', 'multi', 'gpt-4o'])
+            model['is_perplexity'] = 'perplexity/' in model_id
             model['is_reasoning'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
-                                      for keyword in ['reasoning', 'large', 'opus', 'small'])
-        
-        # Update cache
-        OPENROUTER_MODELS_CACHE["data"] = models_data
+                                           for keyword in ['reasoning', 'opus', 'o1', 'o3']) 
+            processed_models.append(model)
+
+        result_data = {"data": processed_models} 
+
+        OPENROUTER_MODELS_CACHE["data"] = result_data
         OPENROUTER_MODELS_CACHE["timestamp"] = current_time
-        
-        return Response(json.dumps(models_data), content_type='application/json')
-    
+        logger.info(f"Fetched and cached {len(processed_models)} models from OpenRouter")
+
+        return jsonify(result_data)
+
+    except requests.exceptions.RequestException as e:
+        logger.exception("Error fetching models from OpenRouter API")
+        abort(500, description=f"API Error fetching models: {e}")
     except Exception as e:
-        logger.exception("Error fetching models")
-        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+        logger.exception("Error processing models data")
+        abort(500, description=f"Server error processing models: {e}")
+
 
 @app.route('/save_preference', methods=['POST'])
 def save_preference():
-    """
-    Save user model preference for a specific preset button
-    """
+    """ Save user model preference """
     try:
         data = request.get_json()
+        if not data: abort(400, description="Invalid request body. JSON expected.")
         preset_id = data.get('preset_id')
         model_id = data.get('model_id')
-        
-        # Validate input
-        if not preset_id or not model_id:
-            return Response(json.dumps({"error": "Missing preset_id or model_id"}), 
-                           content_type='application/json', status=400)
-        
+        if not preset_id or not model_id: abort(400, description="Missing preset_id or model_id")
         try:
             preset_id = int(preset_id)
-            if preset_id < 1 or preset_id > 6:
-                return Response(json.dumps({"error": "preset_id must be between 1 and 6"}), 
-                               content_type='application/json', status=400)
-        except ValueError:
-            return Response(json.dumps({"error": "preset_id must be a number"}), 
-                           content_type='application/json', status=400)
-        
-        # Get user identifier
+            if not 1 <= preset_id <= 6: abort(400, description="preset_id must be between 1 and 6")
+        except ValueError: abort(400, description="preset_id must be a number")
+
         user_identifier = get_user_identifier()
-        
-        # Import UserPreference model
-        from models import UserPreference
-        
-        # Check if preference already exists
-        preference = UserPreference.query.filter_by(
-            user_identifier=user_identifier,
-            preset_id=preset_id
-        ).first()
-        
+        from models import UserPreference 
+
+        preference = UserPreference.query.filter_by(user_identifier=user_identifier, preset_id=preset_id).first()
+
         if preference:
-            # Update existing preference
             preference.model_id = model_id
         else:
-            # Create new preference
             preference = UserPreference(
-                user_identifier=user_identifier,
-                preset_id=preset_id,
-                model_id=model_id,
-                user_id=current_user.id if current_user and current_user.is_authenticated else None
-            )
+                user_identifier=user_identifier, preset_id=preset_id, model_id=model_id,
+                user_id=current_user.id if current_user and current_user.is_authenticated else None )
             db.session.add(preference)
-        
+
         db.session.commit()
-        
-        return Response(json.dumps({"success": True, "message": "Preference saved successfully"}), 
-                       content_type='application/json')
-    
+        return jsonify({"success": True, "message": "Preference saved successfully"})
     except Exception as e:
         logger.exception("Error saving preference")
         db.session.rollback()
-        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+        abort(500, description=str(e))
+
 
 @app.route('/get_preferences', methods=['GET'])
 def get_preferences():
-    """
-    Get all user preferences for model presets
-    """
+    """ Get all user preferences """
     try:
-        # Get user identifier
         user_identifier = get_user_identifier()
-        
-        # Import UserPreference model
-        from models import UserPreference
-        
-        # Query for preferences
+        from models import UserPreference 
+
         preferences = UserPreference.query.filter_by(user_identifier=user_identifier).all()
-        
-        # Build response with preferences
-        result = {}
-        for preference in preferences:
-            result[str(preference.preset_id)] = preference.model_id
-        
-        # Add default models for presets not yet configured
-        for preset_id in map(str, range(1, 7)):
-            if preset_id not in result:
-                result[preset_id] = DEFAULT_PRESET_MODELS[preset_id]
-        
-        return Response(json.dumps({"preferences": result}), content_type='application/json')
-    
+        result = {str(p.preset_id): p.model_id for p in preferences}
+
+        for preset_id_str, default_model in DEFAULT_PRESET_MODELS.items():
+            if preset_id_str not in result:
+                result[preset_id_str] = default_model
+
+        return jsonify({"preferences": result})
     except Exception as e:
         logger.exception("Error getting preferences")
-        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+        abort(500, description=str(e))
 
-@app.route('/rate_message/<int:message_id>', methods=['POST'])
+
+@app.route('/message/<int:message_id>/rate', methods=['POST']) 
 def rate_message(message_id):
-    """
-    Rate a message with an upvote or downvote
-    
-    Accepts a POST request with JSON body: {'rating': 1} or {'rating': -1}
-    """
+    """ Rate a message """
     try:
         data = request.get_json()
+        if not data: abort(400, description="Invalid request body. JSON expected.")
         rating = data.get('rating')
-        
-        # Validate input
-        if rating is None or rating not in [1, -1, 0]:
-            return Response(json.dumps({"error": "Rating must be 1, -1, or 0"}), 
-                          content_type='application/json', status=400)
-        
-        # Import Message model
-        from models import Message
-        
-        # Get the message
-        message = Message.query.get(message_id)
-        if not message:
-            return Response(json.dumps({"error": "Message not found"}), 
-                          content_type='application/json', status=404)
-        
-        # Update the rating
-        message.rating = rating
-        db.session.commit()
-        
-        return Response(json.dumps({"success": True, "message": "Rating saved"}), 
-                       content_type='application/json')
-    
-    except Exception as e:
-        logger.exception("Error saving rating")
-        db.session.rollback()
-        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+        if rating is None or rating not in [1, -1, 0]: abort(400, description="Rating must be 1, -1, or 0")
 
-@app.route('/conversation/<int:conversation_id>/share', methods=['POST'])
+        from models import Message 
+        message = db.session.get(Message, message_id) 
+        if not message: abort(404, description="Message not found")
+
+        message.rating = rating if rating in [1, -1] else None 
+        db.session.commit()
+        logger.info(f"Saved rating {rating} for message {message_id}")
+        return jsonify({"success": True, "message": "Rating saved"})
+    except Exception as e:
+        logger.exception(f"Error saving rating for message {message_id}")
+        db.session.rollback()
+        abort(500, description=str(e))
+
+
+@app.route('/conversation/<int:conversation_id>/share', methods=['POST']) 
 def share_conversation(conversation_id):
-    """
-    Generate or retrieve a share link for a conversation
-    
-    Returns a JSON object with the share URL
-    """
+    """ Generate or retrieve share link """
     try:
-        # Import the model
-        from models import Conversation
-        
-        # Get the conversation
-        conversation = Conversation.query.get(conversation_id)
-        if not conversation:
-            return Response(json.dumps({"error": "Conversation not found"}), 
-                          content_type='application/json', status=404)
-        
-        # If the conversation doesn't have a share_id yet, generate one
+        from models import Conversation 
+        conversation = db.session.get(Conversation, conversation_id) 
+        if not conversation: abort(404, description="Conversation not found")
+
         if not conversation.share_id:
             conversation.share_id = generate_share_id()
             db.session.commit()
-        
-        # Return the share URL
-        share_url = f'/share/{conversation.share_id}'
-        return Response(json.dumps({"share_url": share_url}), content_type='application/json')
-    
+            logger.info(f"Generated share ID for conversation {conversation_id}")
+
+        share_url_path = url_for('view_shared_conversation', share_id=conversation.share_id, _external=False) # Ensure relative path
+        return jsonify({"share_url": share_url_path})
     except Exception as e:
-        logger.exception("Error sharing conversation")
+        logger.exception(f"Error sharing conversation {conversation_id}")
         db.session.rollback()
-        return Response(json.dumps({"error": str(e)}), content_type='application/json', status=500)
+        abort(500, description=str(e))
+
 
 @app.route('/share/<share_id>')
 def view_shared_conversation(share_id):
-    """
-    Display a shared conversation
-    
-    This endpoint renders the same chat template but with a readonly flag
-    """
+    """ Display shared conversation (Placeholder) """
     try:
-        # Import the model
-        from models import Conversation
-        
-        # Find the conversation by share_id
+        from models import Conversation 
         conversation = Conversation.query.filter_by(share_id=share_id).first()
         if not conversation:
-            flash("The shared conversation link is invalid or has expired.")
+            flash("The shared conversation link is invalid or has expired.", "warning")
             return redirect(url_for('index'))
-        
-        # In a real implementation, you would load the messages and render them
-        # For now, just redirect to the home page
-        return redirect(url_for('index'))
-    
-    except Exception as e:
-        logger.exception("Error viewing shared conversation")
+
+        logger.info(f"Viewing shared conversation placeholder for ID: {share_id}")
+        flash(f"Shared conversation view not yet implemented (ID: {share_id}).", "info")
         return redirect(url_for('index'))
 
+    except Exception as e:
+        logger.exception(f"Error viewing shared conversation {share_id}")
+        flash("An error occurred while trying to load the shared conversation.", "error")
+        return redirect(url_for('index'))
+
+# --- Main Execution ---
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    logger.info("Starting Flask development server")
+    # Use debug=False if running with Gunicorn/Uvicorn in production
+    # The threaded=True option might offer slightly better handling of concurrent requests
+    # for the dev server compared to the default, but Gunicorn handles concurrency differently.
+    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
