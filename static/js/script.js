@@ -773,9 +773,11 @@ document.addEventListener('DOMContentLoaded', function() {
 
                             try {
                                 const parsedData = JSON.parse(data);
+                                console.log("==> Received SSE Data:", parsedData); // ADD THIS LOG
                                 
                                 // --- Handle different data types ---
                                 if (parsedData.type === 'error' || parsedData.error) {
+                                    console.log("==> Processing type: error"); // ADD THIS LOG
                                     const errorMsg = parsedData.error || 'Unknown error occurred';
                                     messageContent.innerHTML = `<span class="error">Error: ${errorMsg}</span>`;
                                     console.error("Received error from backend:", errorMsg);
@@ -785,6 +787,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     return; // Stop processing on error
                                 
                                 } else if (parsedData.type === 'content') {
+                                    console.log("==> Processing type: content"); // ADD THIS LOG
                                     // Append content
                                     if (parsedData.content) {
                                         responseText += parsedData.content;
@@ -803,6 +806,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     }
                                 
                                 } else if (parsedData.type === 'metadata') {
+                                    console.log("==> Processing type: metadata"); // ADD THIS LOG
                                     // Metadata received (usually after content stream ends)
                                     console.log("Received metadata:", parsedData.metadata);
                                     if (parsedData.metadata) {
@@ -844,6 +848,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     }
                                 
                                 } else if (parsedData.type === 'done') {
+                                    console.log("==> Processing type: done"); // ADD THIS LOG
                                     // Stream finished successfully
                                     console.log("Stream finished event received.");
                                     
@@ -866,6 +871,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                     // sendButton.disabled = false;
                                     
                                     return; // Exit the processing loop
+                                } else {
+                                    console.warn("==> Received unknown data type:", parsedData.type, parsedData); // ADD THIS LOG
                                 }
                                 
                             } catch (error) {

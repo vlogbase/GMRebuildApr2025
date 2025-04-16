@@ -403,7 +403,9 @@ def chat():
                                  logger.error(f"Error saving assistant message to memory: {e}")
 
                         # Yield the final metadata to the client
+                        logger.info(f"==> Preparing to yield METADATA for message {assistant_message_id}")
                         yield f"data: {json.dumps({'type': 'metadata', 'metadata': {'id': assistant_message_id, 'model_id_used': final_model_id_used, 'prompt_tokens': final_prompt_tokens, 'completion_tokens': final_completion_tokens}})}\n\n"
+                        logger.info(f"==> SUCCESSFULLY yielded METADATA for message {assistant_message_id}")
 
                     except Exception as db_error:
                         logger.exception("Error saving assistant message or metadata to DB")
@@ -413,8 +415,9 @@ def chat():
                 
                 # Finally, signal completion (even if no text content was generated)
                 # Ensure conversation_id is available
+                logger.info("==> Preparing to yield DONE event")
                 yield f"data: {json.dumps({'type': 'done', 'done': True, 'conversation_id': conversation_id})}\n\n"
-                logger.info("Stream generation complete.")
+                logger.info("==> SUCCESSFULLY yielded DONE event. Stream generation complete.")
 
             except Exception as e:
                 logger.exception("Error during stream generation")
