@@ -511,10 +511,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to add message to chat
-    function addMessage(content, sender, isTyping = false) {
+    function addMessage(content, sender, isTyping = false, metadata = null) {
+        // Create the main message container
         const messageElement = document.createElement('div');
         messageElement.className = `message message-${sender}`;
+        messageElement.dataset.messageId = metadata ? metadata.id : Date.now(); // Use actual message ID if available
         
+        // Create avatar
         const avatar = document.createElement('div');
         avatar.className = `message-avatar ${sender}`;
         
@@ -524,6 +527,11 @@ document.addEventListener('DOMContentLoaded', function() {
             avatar.textContent = 'A';
         }
         
+        // Create wrapper for content, actions, and metadata
+        const messageWrapper = document.createElement('div');
+        messageWrapper.className = 'message-wrapper';
+        
+        // Create content container
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         
@@ -534,9 +542,103 @@ document.addEventListener('DOMContentLoaded', function() {
             messageContent.innerHTML = formatMessage(content);
         }
         
-        messageElement.appendChild(avatar);
-        messageElement.appendChild(messageContent);
+        // Add message content to wrapper
+        messageWrapper.appendChild(messageContent);
         
+        // Only add action buttons and metadata if not a typing indicator
+        if (!isTyping) {
+            // Create action buttons container
+            const actionsContainer = document.createElement('div');
+            actionsContainer.className = 'message-actions';
+            
+            // Add copy button for all messages
+            const copyButton = document.createElement('button');
+            copyButton.className = 'copy-btn';
+            copyButton.title = 'Copy text';
+            copyButton.innerHTML = '<i class="fa-regular fa-copy"></i> Copy';
+            copyButton.addEventListener('click', function() {
+                copyMessageText(messageElement);
+            });
+            actionsContainer.appendChild(copyButton);
+            
+            // For assistant messages only, add additional buttons
+            if (sender === 'assistant') {
+                // Share button (using conversation share ID)
+                const shareButton = document.createElement('button');
+                shareButton.className = 'share-btn';
+                shareButton.title = 'Copy share link';
+                shareButton.innerHTML = '<i class="fa-solid fa-share-nodes"></i> Share';
+                shareButton.addEventListener('click', function() {
+                    shareConversation(messageElement);
+                });
+                actionsContainer.appendChild(shareButton);
+                
+                // Upvote button
+                const upvoteButton = document.createElement('button');
+                upvoteButton.className = 'upvote-btn';
+                upvoteButton.title = 'Upvote';
+                upvoteButton.innerHTML = '<i class="fa-regular fa-thumbs-up"></i>';
+                // If there's a rating of 1, add the 'voted' class
+                if (metadata && metadata.rating === 1) {
+                    upvoteButton.classList.add('voted');
+                }
+                upvoteButton.addEventListener('click', function() {
+                    rateMessage(messageElement, 1);
+                });
+                actionsContainer.appendChild(upvoteButton);
+                
+                // Downvote button
+                const downvoteButton = document.createElement('button');
+                downvoteButton.className = 'downvote-btn';
+                downvoteButton.title = 'Downvote';
+                downvoteButton.innerHTML = '<i class="fa-regular fa-thumbs-down"></i>';
+                // If there's a rating of -1, add the 'voted' class
+                if (metadata && metadata.rating === -1) {
+                    downvoteButton.classList.add('voted');
+                }
+                downvoteButton.addEventListener('click', function() {
+                    rateMessage(messageElement, -1);
+                });
+                actionsContainer.appendChild(downvoteButton);
+                
+                // Add metadata display for assistant messages
+                if (metadata) {
+                    const metadataContainer = document.createElement('div');
+                    metadataContainer.className = 'message-metadata';
+                    
+                    // If we have model and token information, display it
+                    let metadataText = '';
+                    
+                    if (metadata.model_id_used) {
+                        // Format and shorten the model name
+                        const shortModelName = formatModelName(metadata.model_id_used);
+                        metadataText += `Model: ${shortModelName}`;
+                    } else if (metadata.model) {
+                        const shortModelName = formatModelName(metadata.model);
+                        metadataText += `Model: ${shortModelName}`;
+                    }
+                    
+                    if (metadata.prompt_tokens && metadata.completion_tokens) {
+                        if (metadataText) metadataText += ' · ';
+                        metadataText += `Tokens: ${metadata.prompt_tokens} prompt + ${metadata.completion_tokens} completion`;
+                    }
+                    
+                    metadataContainer.textContent = metadataText;
+                    if (metadataText) {
+                        messageWrapper.appendChild(metadataContainer);
+                    }
+                }
+            }
+            
+            // Add actions container to wrapper
+            messageWrapper.appendChild(actionsContainer);
+        }
+        
+        // Assemble the message element
+        messageElement.appendChild(avatar);
+        messageElement.appendChild(messageWrapper);
+        
+        // Add to chat container
         chatMessages.appendChild(messageElement);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         
@@ -706,6 +808,40 @@ document.addEventListener('DOMContentLoaded', function() {
                                     messageContent.innerHTML = formatMessage(responseText);
                                     chatMessages.scrollTop = chatMessages.scrollHeight;
                                 }
+                                
+                                // Update message element with metadata if provided at end of stream
+                                if (parsedData.metadata) {
+                                    // Store the message ID for later use (rating, etc.)
+                                    assistantMessageElement.dataset.messageId = parsedData.metadata.id;
+                                    
+                                    // Update with metadata display
+                                    const messageWrapper = assistantMessageElement.querySelector('.message-wrapper');
+                                    
+                                    // Create or update metadata container
+                                    let metadataContainer = messageWrapper.querySelector('.message-metadata');
+                                    if (!metadataContainer) {
+                                        metadataContainer = document.createElement('div');
+                                        metadataContainer.className = 'message-metadata';
+                                        messageWrapper.appendChild(metadataContainer);
+                                    }
+                                    
+                                    // Format metadata
+                                    let metadataText = '';
+                                    if (parsedData.metadata.model_id_used) {
+                                        const shortModelName = formatModelName(parsedData.metadata.model_id_used);
+                                        metadataText += `Model: ${shortModelName}`;
+                                    } else if (parsedData.metadata.model) {
+                                        const shortModelName = formatModelName(parsedData.metadata.model);
+                                        metadataText += `Model: ${shortModelName}`;
+                                    }
+                                    
+                                    if (parsedData.metadata.prompt_tokens && parsedData.metadata.completion_tokens) {
+                                        if (metadataText) metadataText += ' · ';
+                                        metadataText += `Tokens: ${parsedData.metadata.prompt_tokens} prompt + ${parsedData.metadata.completion_tokens} completion`;
+                                    }
+                                    
+                                    metadataContainer.textContent = metadataText;
+                                }
                             } catch (error) {
                                 console.error('Error parsing SSE data:', error, data);
                             }
@@ -752,6 +888,117 @@ document.addEventListener('DOMContentLoaded', function() {
         text = text.replace(/\n/g, '<br>');
         
         return text;
+    }
+    
+    // Function to copy message text to clipboard
+    function copyMessageText(messageElement) {
+        const messageContent = messageElement.querySelector('.message-content');
+        // Get the text content without HTML formatting
+        const tempElement = document.createElement('div');
+        tempElement.innerHTML = messageContent.innerHTML;
+        const textToCopy = tempElement.textContent || tempElement.innerText;
+        
+        navigator.clipboard.writeText(textToCopy)
+            .then(() => {
+                // Visual feedback that copy worked
+                const copyButton = messageElement.querySelector('.copy-btn');
+                copyButton.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+                copyButton.classList.add('copied');
+                
+                // Reset after 2 seconds
+                setTimeout(() => {
+                    copyButton.innerHTML = '<i class="fa-regular fa-copy"></i> Copy';
+                    copyButton.classList.remove('copied');
+                }, 2000);
+            })
+            .catch(err => {
+                console.error('Error copying text: ', err);
+                alert('Failed to copy text. Please try again.');
+            });
+    }
+    
+    // Function to share conversation
+    function shareConversation(messageElement) {
+        // Get the current URL and add a share parameter
+        const shareButton = messageElement.querySelector('.share-btn');
+        
+        if (currentConversationId) {
+            // Use fetch to get a shareable link from the server
+            fetch(`/conversation/${currentConversationId}/share`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.share_url) {
+                    const shareUrl = window.location.origin + data.share_url;
+                    navigator.clipboard.writeText(shareUrl)
+                        .then(() => {
+                            // Visual feedback
+                            shareButton.innerHTML = '<i class="fa-solid fa-check"></i> Copied link';
+                            
+                            // Reset after 2 seconds
+                            setTimeout(() => {
+                                shareButton.innerHTML = '<i class="fa-solid fa-share-nodes"></i> Share';
+                            }, 2000);
+                        })
+                        .catch(err => {
+                            console.error('Error copying share link: ', err);
+                            alert('Failed to copy share link. Please try again.');
+                        });
+                } else {
+                    console.error('No share URL returned');
+                    alert('Could not generate share link. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Error sharing conversation:', error);
+                alert('Failed to share conversation. Please try again.');
+            });
+        } else {
+            console.error('No conversation ID available for sharing');
+            alert('Cannot share this conversation yet. Please send at least one message first.');
+        }
+    }
+    
+    // Function to rate a message (upvote/downvote)
+    function rateMessage(messageElement, rating) {
+        const messageId = messageElement.dataset.messageId;
+        const upvoteButton = messageElement.querySelector('.upvote-btn');
+        const downvoteButton = messageElement.querySelector('.downvote-btn');
+        
+        if (!messageId) {
+            console.error('No message ID available for rating');
+            return;
+        }
+        
+        // Send rating to server
+        fetch(`/message/${messageId}/rate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                rating: rating
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update UI based on the rating
+                if (rating === 1) {
+                    upvoteButton.classList.add('voted');
+                    downvoteButton.classList.remove('voted');
+                } else if (rating === -1) {
+                    downvoteButton.classList.add('voted');
+                    upvoteButton.classList.remove('voted');
+                }
+            } else {
+                console.error('Rating was not successful:', data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error rating message:', error);
+        });
     }
     
     // Function to clear chat
