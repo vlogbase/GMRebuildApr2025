@@ -418,7 +418,7 @@ async def chat():
                 logger.exception("Error during async stream generation")
                 yield f"data: {json.dumps({'type': 'error', 'error': f'Stream Error: {str(e)}'})}\n\n"
         
-        return Response(stream_with_context(generate()), content_type='text/event-stream')
+        return Response(generate(), content_type='text/event-stream')
     
     except Exception as e:
         logger.exception("Error in chat endpoint")
