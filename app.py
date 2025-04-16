@@ -55,6 +55,16 @@ def load_user(user_id):
     from models import User
     return User.query.get(int(user_id))
 
+# OpenRouter model mappings
+OPENROUTER_MODELS = {
+    "gemini-1.5-pro": "google/gemini-2.5-pro-preview-03-25",
+    "claude-3-sonnet": "anthropic/claude-3.7-sonnet",
+    "mistral-large": "mistralai/mistral-large",
+    "gpt-4o": "openai/gpt-4o",
+    "sonar-pro": "perplexity/sonar-pro",
+    "free-gemini": "google/gemini-2.0-flash-exp:free"
+}
+
 # Default model preset configuration
 DEFAULT_PRESET_MODELS = {
     "1": "google/gemini-2.5-pro-preview-03-25",
@@ -138,8 +148,13 @@ def chat():
         # Import models for database operations
         from models import Conversation, Message
         
-        # Get the corresponding OpenRouter model ID
-        openrouter_model = OPENROUTER_MODELS.get(model_id, OPENROUTER_MODELS['gemini-1.5-pro'])
+        # Check if this is a direct model ID or one of our shorthand names
+        if model_id in OPENROUTER_MODELS:
+            # Convert shorthand name to OpenRouter model ID
+            openrouter_model = OPENROUTER_MODELS[model_id]
+        else:
+            # Assume it's already a direct OpenRouter model ID
+            openrouter_model = model_id
         
         # Get API key from environment
         api_key = os.environ.get('OPENROUTER_API_KEY')

@@ -3,20 +3,58 @@ document.addEventListener('DOMContentLoaded', function() {
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-btn');
     const chatMessages = document.getElementById('chat-messages');
-    const modelButtons = document.querySelectorAll('.model-btn');
+    const modelPresetButtons = document.querySelectorAll('.model-preset-btn');
     const newChatButton = document.getElementById('new-chat-btn');
     const clearConversationsButton = document.getElementById('clear-conversations-btn');
     const exampleQuestionButton = document.getElementById('example-question-btn');
     const conversationsList = document.getElementById('conversations-list');
+    const modelSelector = document.getElementById('model-selector');
+    const modelList = document.getElementById('model-list');
+    const modelSearch = document.getElementById('model-search');
+    const closeSelector = document.getElementById('close-selector');
     
-    // Current selected model
-    let currentModel = 'gemini-1.5-pro';
-    
-    // Current conversation ID
+    // App state
+    let activePresetButton = null; // Currently selected preset button
+    let currentModel = null; // Model ID of the currently selected preset
+    let currentPresetId = '1'; // Default to first preset
     let currentConversationId = null;
-    
-    // Conversation history
     let messageHistory = [];
+    
+    // Model data
+    let allModels = []; // All models from OpenRouter
+    let userPreferences = {}; // User preferences for preset buttons
+    
+    // Filter configurations for each preset
+    const presetFilters = {
+        '1': (model) => true, // All models
+        '2': (model) => true, // All models
+        '3': (model) => model.is_reasoning === true,
+        '4': (model) => model.is_multimodal === true,
+        '5': (model) => model.is_perplexity === true,
+        '6': (model) => model.is_free === true
+    };
+    
+    // Default model IDs for each preset button
+    const defaultModels = {
+        '1': 'google/gemini-2.5-pro-preview-03-25',
+        '2': 'anthropic/claude-3.7-sonnet',
+        '3': 'openai/o3-Mini-High',
+        '4': 'openai/gpt-4.1-mini',
+        '5': 'perplexity/sonar-pro',
+        '6': 'google/gemini-2.0-flash-exp:free'
+    };
+    
+    // Free model fallbacks (in order of preference)
+    const freeModelFallbacks = [
+        'google/gemini-2.0-flash-exp:free',
+        'qwen/qwq-32b:free',
+        'deepseek/deepseek-r1-distill-qwen-32b:free',
+        'deepseek/deepseek-r1-distill-llama-70b:free',
+        'openrouter/optimus-alpha'
+    ];
+    
+    // Open selector variable - tracks which preset is being configured
+    let currentlyEditingPresetId = null;
     
     // Fetch conversations on load
     fetchConversations();
@@ -35,20 +73,334 @@ document.addEventListener('DOMContentLoaded', function() {
     
     sendButton.addEventListener('click', sendMessage);
     
-    // Model selection buttons
-    modelButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // Remove active class from all buttons
-            modelButtons.forEach(btn => btn.classList.remove('active'));
+    // Initialize model data
+    fetchUserPreferences();
+    
+    // Model preset button click handlers
+    modelPresetButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            const presetId = this.getAttribute('data-preset-id');
             
-            // Add active class to clicked button
-            this.classList.add('active');
+            // If shift key or right-click, open model selector
+            if (e.shiftKey || e.button === 2) {
+                e.preventDefault();
+                openModelSelector(presetId);
+                return;
+            }
             
-            // Update current model
-            currentModel = this.getAttribute('data-model');
-            console.log('Selected model:', currentModel);
+            // Otherwise, select this preset
+            selectPresetButton(presetId);
+        });
+        
+        // Add context menu to open selector
+        button.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            const presetId = this.getAttribute('data-preset-id');
+            openModelSelector(presetId);
         });
     });
+    
+    // Close model selector on button click
+    closeSelector.addEventListener('click', function() {
+        closeModelSelector();
+    });
+    
+    // Close model selector when clicking outside
+    document.addEventListener('click', function(e) {
+        if (modelSelector.style.display === 'block' && 
+            !modelSelector.contains(e.target) && 
+            !e.target.matches('.model-preset-btn') && 
+            !e.target.closest('.model-preset-btn')) {
+            closeModelSelector();
+        }
+    });
+    
+    // Search functionality for model selector
+    modelSearch.addEventListener('input', function() {
+        filterModelList(this.value.toLowerCase());
+    });
+    
+    // Function to select a preset button and update the current model
+    function selectPresetButton(presetId) {
+        // Remove active class from all buttons
+        modelPresetButtons.forEach(btn => btn.classList.remove('active'));
+        
+        // Add active class to selected button
+        const activeButton = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
+        if (activeButton) {
+            activeButton.classList.add('active');
+            activePresetButton = activeButton;
+            currentPresetId = presetId;
+            
+            // Get the model ID for this preset
+            currentModel = userPreferences[presetId] || defaultModels[presetId];
+            console.log(`Selected preset ${presetId} with model: ${currentModel}`);
+        }
+    }
+    
+    // Function to fetch user preferences for model presets
+    function fetchUserPreferences() {
+        fetch('/get_preferences')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.preferences) {
+                    userPreferences = data.preferences;
+                    console.log('Loaded user preferences:', userPreferences);
+                    
+                    // Update button text to reflect preferences
+                    updatePresetButtonLabels();
+                    
+                    // Select the first preset by default
+                    selectPresetButton('1');
+                }
+                
+                // After loading preferences, fetch available models
+                fetchAvailableModels();
+            })
+            .catch(error => {
+                console.error('Error fetching preferences:', error);
+                // Still try to fetch models if preferences fail
+                fetchAvailableModels();
+                
+                // Use defaults and select first preset
+                selectPresetButton('1');
+            });
+    }
+    
+    // Function to update the model preset button labels
+    function updatePresetButtonLabels() {
+        for (const presetId in userPreferences) {
+            const modelId = userPreferences[presetId];
+            const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
+            if (button) {
+                const nameSpan = button.querySelector('.model-name');
+                if (nameSpan) {
+                    nameSpan.textContent = formatModelName(modelId);
+                }
+            }
+        }
+    }
+    
+    // Function to format model ID into a display name
+    function formatModelName(modelId) {
+        if (!modelId) return 'Unknown';
+        
+        // Handle special cases
+        if (modelId.includes(':free')) {
+            return 'Free Model';
+        }
+        
+        // Split by / and get the last part
+        const parts = modelId.split('/');
+        let name = parts[parts.length - 1];
+        
+        // Replace dashes with spaces and capitalize
+        name = name.replace(/-/g, ' ');
+        
+        // Shorten common prefixes
+        name = name
+            .replace('claude ', 'Claude ')
+            .replace('gemini ', 'Gemini ')
+            .replace('gpt ', 'GPT ')
+            .replace('mistral ', 'Mistral ')
+            .replace('llama ', 'Llama ');
+        
+        // Truncate if too long
+        if (name.length > 12) {
+            name = name.substring(0, 10) + '...';
+        }
+        
+        return name;
+    }
+    
+    // Function to fetch available models from OpenRouter
+    function fetchAvailableModels() {
+        fetch('/models')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.data && Array.isArray(data.data)) {
+                    allModels = data.data;
+                    console.log(`Loaded ${allModels.length} models from OpenRouter`);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching models:', error);
+            });
+    }
+    
+    // Function to open the model selector for a specific preset
+    function openModelSelector(presetId) {
+        // Set current editing preset
+        currentlyEditingPresetId = presetId;
+        
+        // Position the selector below the button
+        const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
+        if (button) {
+            const rect = button.getBoundingClientRect();
+            modelSelector.style.display = 'block';
+            
+            // Clear search input
+            modelSearch.value = '';
+            
+            // Populate model list for this preset
+            populateModelList(presetId);
+        }
+    }
+    
+    // Function to close the model selector
+    function closeModelSelector() {
+        modelSelector.style.display = 'none';
+        currentlyEditingPresetId = null;
+    }
+    
+    // Function to populate the model list based on preset filters
+    function populateModelList(presetId) {
+        // Clear existing items
+        modelList.innerHTML = '';
+        
+        if (!allModels || allModels.length === 0) {
+            const placeholder = document.createElement('li');
+            placeholder.textContent = 'Loading models...';
+            modelList.appendChild(placeholder);
+            return;
+        }
+        
+        // Get filter function for this preset
+        const filterFn = presetFilters[presetId] || (() => true);
+        
+        // Filter and sort models
+        const filteredModels = allModels
+            .filter(filterFn)
+            .sort((a, b) => {
+                // Free models at the bottom
+                if (a.is_free && !b.is_free) return 1;
+                if (!a.is_free && b.is_free) return -1;
+                
+                // Sort by pricing (cheapest first)
+                const aPrice = a.pricing?.prompt || 0;
+                const bPrice = b.pricing?.prompt || 0;
+                return aPrice - bPrice;
+            });
+        
+        // Add each model to the list
+        filteredModels.forEach(model => {
+            const li = document.createElement('li');
+            li.dataset.modelId = model.id;
+            
+            // Create model name element
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'model-name';
+            nameSpan.textContent = model.name;
+            
+            // Create provider badge
+            const providerSpan = document.createElement('span');
+            providerSpan.className = 'model-provider';
+            providerSpan.textContent = model.id.split('/')[0];
+            
+            // Add badge for free models
+            if (model.is_free) {
+                const freeTag = document.createElement('span');
+                freeTag.className = 'free-tag';
+                freeTag.textContent = 'FREE';
+                li.appendChild(freeTag);
+            }
+            
+            li.appendChild(nameSpan);
+            li.appendChild(providerSpan);
+            
+            // Add click handler to select this model
+            li.addEventListener('click', function() {
+                selectModelForPreset(currentlyEditingPresetId, model.id);
+            });
+            
+            modelList.appendChild(li);
+        });
+        
+        // If no models match the filter
+        if (filteredModels.length === 0) {
+            const noResults = document.createElement('li');
+            noResults.textContent = 'No models found';
+            modelList.appendChild(noResults);
+        }
+    }
+    
+    // Function to filter the model list by search term
+    function filterModelList(searchTerm) {
+        const items = modelList.querySelectorAll('li');
+        
+        items.forEach(item => {
+            const modelName = item.querySelector('.model-name')?.textContent.toLowerCase() || '';
+            const modelProvider = item.querySelector('.model-provider')?.textContent.toLowerCase() || '';
+            
+            if (modelName.includes(searchTerm) || modelProvider.includes(searchTerm)) {
+                item.style.display = '';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+    
+    // Function to select a model for a preset and save the preference
+    function selectModelForPreset(presetId, modelId) {
+        // Update the UI
+        const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
+        if (button) {
+            const nameSpan = button.querySelector('.model-name');
+            if (nameSpan) {
+                nameSpan.textContent = formatModelName(modelId);
+            }
+        }
+        
+        // Update local state
+        userPreferences[presetId] = modelId;
+        
+        // If this is the active preset, update the current model
+        if (presetId === currentPresetId) {
+            currentModel = modelId;
+        }
+        
+        // Save preference to server
+        saveModelPreference(presetId, modelId);
+        
+        // Close the selector
+        closeModelSelector();
+    }
+    
+    // Function to save model preference to the server
+    function saveModelPreference(presetId, modelId) {
+        fetch('/save_preference', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                preset_id: presetId,
+                model_id: modelId
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Preference saved:', data);
+        })
+        .catch(error => {
+            console.error('Error saving preference:', error);
+        });
+    }
     
     // New chat button
     newChatButton.addEventListener('click', function() {
@@ -193,12 +545,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to send message to backend and process streaming response
-    function sendMessageToBackend(message, model, typingIndicator) {
+    function sendMessageToBackend(message, modelId, typingIndicator) {
         // Add user message to history
         messageHistory.push({
             role: 'user',
             content: message
         });
+        
+        // If no model selected, use default
+        if (!modelId) {
+            modelId = defaultModels['1'];
+            console.warn('No model selected, using default:', modelId);
+        }
         
         // Create fetch request to /chat endpoint
         fetch('/chat', {
@@ -208,7 +566,7 @@ document.addEventListener('DOMContentLoaded', function() {
             },
             body: JSON.stringify({
                 message: message,
-                model: model,
+                model: modelId,
                 history: messageHistory,
                 conversation_id: currentConversationId
             })

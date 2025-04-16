@@ -374,6 +374,15 @@ body {
     margin-left: auto;
 }
 
+.model-list li .free-tag {
+    background-color: var(--accent-color);
+    color: white;
+    font-size: 10px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    margin-right: 6px;
+}
+
 .input-group {
     display: flex;
     align-items: flex-end;
