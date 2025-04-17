@@ -17,6 +17,9 @@ import base64
 import secrets
 import threading
 import datetime
+import mimetypes
+from pathlib import Path
+from PIL import Image  # For image processing
 from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context # Added stream_with_context back
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
@@ -124,6 +127,20 @@ FREE_MODEL_FALLBACKS = [
     "deepseek/deepseek-r1-distill-qwen-32b:free",
     "deepseek/deepseek-r1-distill-llama-70b:free",
     "openrouter/optimus-alpha"
+]
+
+# Multimodal models that support image inputs
+MULTIMODAL_MODELS = [
+    "google/gemini-2.5-pro-preview-03-25",
+    "google/gemini-2.5-flash-preview-03-25",
+    "anthropic/claude-3.7-sonnet", 
+    "anthropic/claude-3.7-haiku",
+    "anthropic/claude-3.5-sonnet",
+    "anthropic/claude-3-sonnet", 
+    "anthropic/claude-3-opus",
+    "openai/gpt-4o", 
+    "openai/gpt-4-turbo", 
+    "openai/gpt-4-vision"
 ]
 
 # Cache for OpenRouter models
@@ -313,6 +330,90 @@ def generate_share_id(length=12):
 def index():
     return render_template('index.html')
 
+@app.route('/upload_image', methods=['POST'])
+def upload_image():
+    """
+    Route to handle image uploads for multimodal messages.
+    Processes, resizes if needed, and stores images for use with multimodal models.
+    """
+    try:
+        # Verify a file was uploaded
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+            
+        file = request.files['file']
+        if not file or file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+            
+        # Validate file type
+        filename = file.filename
+        extension = Path(filename).suffix.lower()
+        allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+        
+        if extension not in allowed_extensions:
+            return jsonify({
+                "error": f"File type {extension} is not supported. Please upload an image in jpg, png, gif, or webp format."
+            }), 400
+            
+        # Generate a unique filename to avoid collisions
+        unique_filename = f"{uuid.uuid4().hex}{extension}"
+        
+        # Create uploads directory if it doesn't exist
+        upload_dir = Path('static/uploads')
+        upload_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Full path where the image will be saved
+        file_path = upload_dir / unique_filename
+        
+        # Process image - resize if too large
+        max_dimension = 1024  # Maximum width or height
+        
+        # Read the image into memory
+        image_data = file.read()
+        image_stream = io.BytesIO(image_data)
+        
+        try:
+            with Image.open(image_stream) as img:
+                # Check dimensions
+                width, height = img.size
+                if width > max_dimension or height > max_dimension:
+                    # Calculate new dimensions maintaining aspect ratio
+                    if width > height:
+                        new_width = max_dimension
+                        new_height = int(height * (max_dimension / width))
+                    else:
+                        new_height = max_dimension
+                        new_width = int(width * (max_dimension / height))
+                    
+                    # Resize the image
+                    img = img.resize((new_width, new_height), Image.LANCZOS)
+                    
+                # Save the processed image
+                img.save(file_path)
+                logger.info(f"Saved resized image to {file_path}")
+        except Exception as e:
+            logger.exception(f"Error processing image: {e}")
+            # If processing fails, save the original
+            with open(file_path, 'wb') as f:
+                image_stream.seek(0)
+                f.write(image_stream.read())
+            logger.info(f"Saved original image to {file_path}")
+            
+        # Generate the URL for the image
+        # In production, this would use the actual domain
+        image_url = url_for('static', filename=f'uploads/{unique_filename}', _external=True)
+        
+        return jsonify({
+            "success": True,
+            "image_url": image_url
+        })
+        
+    except Exception as e:
+        logger.exception(f"Error handling image upload: {e}")
+        return jsonify({
+            "error": f"Server error: {str(e)}"
+        }), 500
+
 @app.route('/conversations', methods=['GET'])
 def get_conversations():
     """Get all conversations for the current user"""
@@ -373,6 +474,8 @@ def chat(): # Synchronous function
             abort(400, description="Invalid request body. JSON expected.")
 
         user_message = data.get('message', '')
+        # Get optional image URL for multimodal messages
+        image_url = data.get('image_url', None)
         # Use .get for default model to avoid KeyError if '1' isn't present initially
         model_id = data.get('model', DEFAULT_PRESET_MODELS.get('1', 'google/gemini-flash-1.5')) 
         message_history = data.get('history', [])
@@ -427,12 +530,18 @@ def chat(): # Synchronous function
              abort(500, description="Failed to establish conversation context.")
 
         user_db_message = Message(
-            conversation_id=conversation.id, role='user', content=user_message
+            conversation_id=conversation.id, 
+            role='user', 
+            content=user_message,
+            image_url=image_url  # Save image URL if provided
         )
         db.session.add(user_db_message)
         try:
              db.session.commit()
              logger.info(f"Saved user message {user_db_message.id} for conversation {conversation.id}")
+             # Log if multimodal content was included
+             if image_url:
+                logger.info(f"Image URL saved with message: {image_url[:50]}...")
         except Exception as e:
              logger.exception(f"Error committing user message {user_db_message.id}")
              db.session.rollback()
@@ -449,12 +558,30 @@ def chat(): # Synchronous function
          )
         messages = [{'role': 'system', 'content': system_message}]
 
+        # Load conversation history from database
         db_messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.created_at).all()
         for msg in db_messages:
              if msg.id != user_db_message.id: 
+                 # Only include text content for history messages (not their images)
                  messages.append({'role': msg.role, 'content': msg.content})
 
-        messages.append({'role': 'user', 'content': user_message}) 
+        # Format the current user message, possibly with image
+        # Check if this is a multimodal message (has image) and model supports it
+        if image_url and openrouter_model in MULTIMODAL_MODELS:
+            # Format as multimodal message with both text and image
+            user_content = [
+                {"type": "text", "text": user_message},
+                {"type": "image_url", "image_url": {"url": image_url}}
+            ]
+            messages.append({'role': 'user', 'content': user_content})
+            logger.info(f"Added multimodal message with image to {openrouter_model}")
+        else:
+            # Standard text-only message
+            messages.append({'role': 'user', 'content': user_message})
+            
+            # Log if image was provided but model doesn't support it
+            if image_url and openrouter_model not in MULTIMODAL_MODELS:
+                logger.warning(f"Image URL provided but model {openrouter_model} doesn't support multimodal input. Image ignored.") 
 
         # --- Enrich with memory if needed ---
         if ENABLE_MEMORY_SYSTEM:

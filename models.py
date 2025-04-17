@@ -56,6 +56,7 @@ class Message(db.Model):
     model_id_used = db.Column(db.String(64), nullable=True)  # Exact model ID returned by the API
     prompt_tokens = db.Column(db.Integer, nullable=True)  # Number of prompt tokens used
     completion_tokens = db.Column(db.Integer, nullable=True)  # Number of completion tokens used
+    image_url = db.Column(db.String(512), nullable=True)  # URL to an image for multimodal messages
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def __repr__(self):
