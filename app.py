@@ -6,6 +6,8 @@ monkey.patch_all()
 import os
 import io
 import logging
+# Configure pymongo logging to reduce noise
+logging.getLogger('pymongo').setLevel(logging.WARNING)
 import json
 import requests # Use requests for synchronous calls
 # import httpx # No longer needed
