@@ -128,16 +128,103 @@ class ChatMemoryManager:
             # Standard indexes for user_profiles
             self.user_profiles.create_index([("user_id", pymongo.ASCENDING)], unique=True)
             
-            logger.info("MongoDB indexes created successfully")
+            # Ensure we also have an index on the userId field for vector search compatibility
+            try:
+                self.user_profiles.create_index([("userId", pymongo.ASCENDING)])
+                logger.info("Added userId index for vector search compatibility")
+            except Exception as idx_err:
+                logger.warning(f"Could not create userId index: {idx_err}")
             
-            # Note: Vector search indexes must be created via Atlas UI or API
-            # They cannot be created via the driver directly
-            # Index names should be 'idx_message_embedding_large' for chat_sessions
-            # and 'idx_preference_embedding_large' for user_profiles
+            logger.info("MongoDB standard indexes created successfully")
+            
+            # Log detailed instructions for creating vector search indexes in MongoDB Atlas
+            logger.info("""
+MEMORY: MongoDB Atlas Search Configuration for Long-Term Memory
+----------------------------------------------------------------------
+For the long-term memory functionality to work properly, you need to create TWO indexes in MongoDB Atlas:
+
+1. First index: Vector Search Index for semantic similarity (REQUIRED)
+   - Index Name: 'memory_vector_index'
+   - Database and Collection: 'chatbot_memory_large.user_profiles'
+   - JSON Definition:
+
+{
+  "fields": [
+    {
+      "type": "vector",
+      "path": "preferences_embeddings.embedding",
+      "numDimensions": 3072,
+      "similarity": "cosine"
+    },
+    {
+      "path": "userId",
+      "type": "filter"
+    }
+  ]
+}
+
+2. Second index: Standard Search Index for filtering (REQUIRED)
+   - Index Name: 'memory_standard_filter_index'
+   - Database and Collection: 'chatbot_memory_large.user_profiles'
+   - JSON Definition:
+
+{
+  "mappings": {
+    "dynamic": false,
+    "fields": {
+      "userId": {
+        "type": "token"
+      }
+    }
+  }
+}
+
+Step-by-step instructions:
+1. Go to MongoDB Atlas Console (https://cloud.mongodb.com)
+2. Select your cluster and navigate to the 'Search' tab
+3. Click 'Create Index' and choose 'JSON Editor'
+4. Paste the first index definition, set the index name to 'memory_vector_index'
+5. Set Database and Collection to 'chatbot_memory_large.user_profiles'
+6. Click 'Create Index'
+7. Repeat steps 3-6 for the second index definition with name 'memory_standard_filter_index'
+
+BOTH indexes are required for proper long-term memory functionality.
+Without these indexes, the long-term memory retrieval will fall back to using only facts.
+
+MEMORY: MongoDB Atlas Search Configuration for Short-Term Memory
+----------------------------------------------------------------------
+For the short-term memory functionality, you also need to create a vector search index:
+
+- Index Name: 'short_term_memory_vector_index'
+- Database and Collection: 'chatbot_memory_large.chat_sessions'
+- JSON Definition:
+
+{
+  "fields": [
+    {
+      "type": "vector",
+      "path": "message_history.embedding",
+      "numDimensions": 3072,
+      "similarity": "cosine"
+    },
+    {
+      "path": "session_id",
+      "type": "filter"
+    },
+    {
+      "path": "userId",
+      "type": "filter"
+    }
+  ]
+}
+
+Follow the same steps as above to create this index.
+----------------------------------------------------------------------
+""")
             
         except Exception as e:
             logger.error(f"Error creating MongoDB indexes: {e}")
-            raise
+            # Continue without indexes rather than fail entirely
     
     def _get_embedding(self, text: str) -> List[float]:
         """
@@ -208,7 +295,9 @@ class ChatMemoryManager:
             bool: True if successful, False otherwise
         """
         try:
-            logger.info(f"MEMORY: Adding message to session {session_id} for user {user_id}, role: {role}")
+            # Convert user_id to string for consistency
+            user_id_str = str(user_id)
+            logger.info(f"MEMORY: Adding message to session {session_id} for user {user_id_str}, role: {role}")
             
             # Generate embedding for the content
             logger.info(f"MEMORY: Generating embedding for content: '{content[:50]}...'")
@@ -233,41 +322,35 @@ class ChatMemoryManager:
                 "metadata": {"message_id": message_id}
             }
             
-            # First check if the document already exists (check both field names)
-            query = {"session_id": session_id, "$or": [{"user_id": user_id}, {"userId": user_id}]}
+            # First check if the document already exists (using standardized userId field)
+            query = {"session_id": session_id, "userId": user_id_str}
             existing = self.chat_sessions.find_one(query)
             
             # Build the update operation based on what exists
             update_op = {
                 "$push": {"message_history": message},
-                "$set": {"updated_at": datetime.datetime.utcnow()}
+                "$set": {
+                    "updated_at": datetime.datetime.utcnow(),
+                    "userId": user_id_str  # Always ensure userId is set correctly
+                }
             }
             
-            # For existing documents, check for field consistency
+            # For existing documents, ensure user_id exists for backward compatibility
             if existing:
-                # Check for mismatched field names
-                user_id_exists = "user_id" in existing
-                userId_exists = "userId" in existing
-                
-                # Only add missing fields
-                if user_id_exists and not userId_exists:
-                    update_op["$set"]["userId"] = user_id
-                    logger.info(f"MEMORY: Adding missing 'userId' field to chat session")
-                elif userId_exists and not user_id_exists:
-                    update_op["$set"]["user_id"] = user_id
-                    logger.info(f"MEMORY: Adding missing 'user_id' field to chat session")
+                if "user_id" not in existing:
+                    update_op["$set"]["user_id"] = user_id_str
+                    logger.info(f"MEMORY: Adding 'user_id' field for backward compatibility")
             else:
                 # For new documents, set both field names and creation time
-                logger.info(f"MEMORY: Creating new chat session with both field names")
+                logger.info(f"MEMORY: Creating new chat session")
                 update_op["$setOnInsert"] = {
-                    "user_id": user_id,
-                    "userId": user_id,
+                    "user_id": user_id_str,  # Keep for backward compatibility
                     "created_at": datetime.datetime.utcnow()
                 }
             
-            # Store both user_id and userId for compatibility with MongoDB Atlas Vector Search
+            # Use standardized userId field in query to avoid duplication
             result = self.chat_sessions.update_one(
-                {"session_id": session_id, "$or": [{"user_id": user_id}, {"userId": user_id}]},
+                {"session_id": session_id, "userId": user_id_str},
                 update_op,
                 upsert=True
             )
@@ -306,14 +389,15 @@ class ChatMemoryManager:
             List[Dict]: A list of message dictionaries
         """
         try:
-            # Get the most recent messages chronologically (use both field names)
+            # Convert user_id to string for consistency
+            user_id_str = str(user_id)
+            logger.info(f"MEMORY: Retrieving short-term memory for session {session_id}, user {user_id_str}")
+            
+            # Get the most recent messages chronologically (standardize on userId)
             recent_messages_cursor = self.chat_sessions.aggregate([
                 {"$match": {
                     "session_id": session_id, 
-                    "$or": [
-                        {"user_id": user_id},
-                        {"userId": user_id}
-                    ]
+                    "userId": user_id_str
                 }},
                 {"$unwind": "$message_history"},
                 {"$sort": {"message_history.timestamp": -1}},
@@ -328,99 +412,81 @@ class ChatMemoryManager:
             ])
             
             recent_messages = list(recent_messages_cursor)
+            logger.info(f"MEMORY: Retrieved {len(recent_messages)} recent messages chronologically")
             
             # If query text is provided, perform vector similarity search
             similar_messages = []
             if query_text:
                 # Generate embedding for the query text
+                logger.info(f"MEMORY: Generating embedding for query: '{query_text[:50]}...'")
                 query_embedding = self._get_embedding(query_text)
+                
                 if query_embedding:
-                    # Perform vector search using $vectorSearch
+                    logger.info(f"MEMORY: Generated query embedding with {len(query_embedding)} dimensions")
+                    
+                    # Use $vectorSearch directly on chat_sessions collection
                     try:
-                        # MongoDB Atlas requires $vectorSearch to be the first stage in the pipeline
-                        # Extract session first, then use $vectorSearch on the message_history
-                        # Use both field names for compatibility
-                        session_data = self.chat_sessions.find_one({
-                            "session_id": session_id, 
-                            "$or": [
-                                {"user_id": user_id},
-                                {"userId": user_id}
-                            ]
-                        })
+                        logger.info(f"MEMORY: Executing $vectorSearch for session {session_id}")
                         
-                        if session_data and "message_history" in session_data:
-                            # Now we can run vector search on the messages
-                            message_docs = []
-                            for msg in session_data["message_history"]:
-                                # Add each message as a document for vector search
-                                if "embedding" in msg:
-                                    msg_doc = {
-                                        "embedding": msg["embedding"],
-                                        "role": msg["role"],
-                                        "content": msg["content"],
-                                        "timestamp": msg["timestamp"],
-                                        "message_id": msg["metadata"]["message_id"] if "metadata" in msg and "message_id" in msg["metadata"] else ""
+                        # Define the $vectorSearch pipeline
+                        vector_pipeline = [
+                            {
+                                '$vectorSearch': {
+                                    'index': 'short_term_memory_vector_index',  # Index name to be created manually in MongoDB Atlas
+                                    'path': 'message_history.embedding',  # Path to the embedding field
+                                    'queryVector': query_embedding,
+                                    'numCandidates': 100,  # Number of candidates to consider
+                                    'limit': vector_search_limit * 2,  # Get more than we need to account for possible filtering
+                                    'filter': {
+                                        'session_id': session_id,
+                                        'userId': user_id_str
                                     }
-                                    message_docs.append(msg_doc)
-                            
-                            # If we have messages with embeddings, create a temporary collection for vector search
-                            if message_docs:
-                                # Create a unique temp collection name
-                                import uuid
-                                temp_coll_name = f"temp_vector_search_{uuid.uuid4().hex[:8]}"
-                                temp_coll = self.db.get_collection(temp_coll_name)
-                                
-                                # Insert the message documents
-                                temp_coll.insert_many(message_docs)
-                                
-                                # Create the index on the temp collection
-                                temp_coll.create_index([("embedding", pymongo.ASCENDING)])
-                                
-                                # Now run a simple vector similarity search (not using $vectorSearch)
-                                # We'll approximate it using dot product
-                                pipeline = [
-                                    {"$project": {
-                                        "role": 1,
-                                        "content": 1,
-                                        "timestamp": 1,
-                                        "message_id": 1,
-                                        "similarity": {
-                                            "$reduce": {
-                                                "input": {"$zip": {"inputs": ["$embedding", query_embedding]}},
-                                                "initialValue": 0,
-                                                "in": {"$add": ["$$value", {"$multiply": [{"$arrayElemAt": ["$$this", 0]}, {"$arrayElemAt": ["$$this", 1]}]}]}
-                                            }
-                                        }
-                                    }},
-                                    {"$sort": {"similarity": -1}},
-                                    {"$limit": vector_search_limit},
-                                    {"$project": {
-                                        "_id": 0,
-                                        "role": 1,
-                                        "content": 1,
-                                        "timestamp": 1,
-                                        "message_id": 1,
-                                        "score": "$similarity"
-                                    }}
-                                ]
-                                
-                                vector_results = temp_coll.aggregate(pipeline)
-                                
-                                # Clean up the temp collection after use
-                                self.db.drop_collection(temp_coll_name)
-                            else:
-                                # No messages with embeddings
-                                vector_results = []
-                        else:
-                            # No session data
-                            vector_results = []
+                                }
+                            },
+                            {
+                                '$unwind': '$message_history'  # Unwind the array to access individual messages
+                            },
+                            {
+                                '$match': {
+                                    '$expr': {
+                                        '$eq': ['$message_history.embedding', '$$SEARCH_META.embedding']
+                                    }
+                                }
+                            },
+                            {
+                                '$project': {
+                                    '_id': 0,
+                                    'role': '$message_history.role',
+                                    'content': '$message_history.content',
+                                    'timestamp': '$message_history.timestamp',
+                                    'message_id': {'$ifNull': ['$message_history.metadata.message_id', '']},
+                                    'score': {
+                                        '$meta': 'vectorSearchScore'
+                                    }
+                                }
+                            },
+                            {
+                                '$limit': vector_search_limit  # Final limit
+                            }
+                        ]
                         
-                        similar_messages = list(vector_results)
+                        # Execute the $vectorSearch pipeline
+                        vector_results_cursor = self.chat_sessions.aggregate(vector_pipeline)
+                        similar_messages = list(vector_results_cursor)
                         
-                    except OperationFailure as e:
-                        # Vector search might fail if index is not set up
-                        logger.error(f"Vector search failed: {e}")
-                        # Fallback to recent messages only
+                        logger.info(f"MEMORY: $vectorSearch returned {len(similar_messages)} semantically similar messages")
+                        
+                        # Log the top result if available
+                        if similar_messages:
+                            top_result = similar_messages[0]
+                            logger.info(f"MEMORY: Top similar message: '{top_result.get('content', '')[:50]}...' (score: {top_result.get('score', 'N/A')})")
+                        
+                    except Exception as ve:
+                        logger.error(f"MEMORY: $vectorSearch failed: {ve}")
+                        logger.info("MEMORY: Note that you must create the 'short_term_memory_vector_index' index in MongoDB Atlas manually")
+                        logger.info("MEMORY: Falling back to chronological messages only")
+                else:
+                    logger.error("MEMORY: Failed to generate embedding for query text")
             
             # Combine and deduplicate messages
             all_messages = recent_messages + similar_messages
@@ -430,17 +496,19 @@ class ChatMemoryManager:
             unique_messages = []
             
             for message in all_messages:
-                if message.get("message_id") not in message_ids:
-                    message_ids.add(message.get("message_id"))
+                msg_id = message.get("message_id")
+                if msg_id and msg_id not in message_ids:
+                    message_ids.add(msg_id)
                     unique_messages.append(message)
             
             # Sort by timestamp
             unique_messages.sort(key=lambda x: x.get("timestamp", datetime.datetime.min))
             
+            logger.info(f"MEMORY: Returning {len(unique_messages)} unique messages (combined chronological and vector search)")
             return unique_messages
             
         except Exception as e:
-            logger.error(f"Error retrieving short-term memory: {e}")
+            logger.error(f"MEMORY: Error retrieving short-term memory: {e}")
             return []
     
     def retrieve_long_term_memory(
@@ -451,7 +519,7 @@ class ChatMemoryManager:
         vector_search_limit: int = 5
     ) -> Dict:
         """
-        Retrieve user profile facts and semantically similar preferences.
+        Retrieve user profile facts and semantically similar preferences using MongoDB Atlas Vector Search.
         
         Args:
             user_id (str): The ID of the user
@@ -466,156 +534,109 @@ class ChatMemoryManager:
             logger.info(f"MEMORY: Retrieving long-term memory for user {user_id}")
             logger.info(f"MEMORY: Query text: '{query_text[:50]}...'")
             
-            # Build the match query - include both user_id and userId for compatibility
-            match_query = {"$or": [{"user_id": user_id}, {"userId": user_id}]}
+            # Convert user_id to string for consistency
+            user_id_str = str(user_id)
+            
+            # Get the user's facts first (standard query)
+            # Use userId field for compatibility with MongoDB Atlas vector search
+            match_query = {"userId": user_id_str}
             if fact_filters:
                 for key, value in fact_filters.items():
                     match_query[f"facts.{key}"] = value
                 logger.debug(f"MEMORY: Applied fact filters: {fact_filters}")
             
-            logger.debug(f"MEMORY: Using match query: {match_query}")
+            logger.debug(f"MEMORY: Using match query for facts: {match_query}")
             
+            # Fetch the user profile for facts
+            profile_data = self.user_profiles.find_one(match_query)
+            facts = {} if not profile_data else profile_data.get("facts", {})
+            
+            # Initialize result structure
+            result = {
+                "matching_facts": facts,
+                "similar_preferences": []
+            }
+            
+            # If no query text provided, return just the facts
+            if not query_text:
+                logger.info(f"MEMORY: No query text provided, returning only facts")
+                return result
+                
             # Generate embedding for the query text
-            query_embedding = None
-            if query_text:
-                logger.info(f"MEMORY: Generating embedding for query text")
-                query_embedding = self._get_embedding(query_text)
-                if query_embedding:
-                    embed_dims = len(query_embedding)
-                    logger.info(f"MEMORY: Generated query embedding with {embed_dims} dimensions")
-                else:
-                    logger.error("MEMORY: Failed to generate embedding for query text")
+            logger.info(f"MEMORY: Generating embedding for query text")
+            query_embedding = self._get_embedding(query_text)
+            if not query_embedding:
+                logger.error("MEMORY: Failed to generate embedding for query text")
+                return result
+                
+            embed_dims = len(query_embedding)
+            logger.info(f"MEMORY: Generated query embedding with {embed_dims} dimensions")
             
-            if query_embedding:
-                # Perform vector search
-                try:
-                    # First, get the user profile data
-                    logger.info(f"MEMORY: Retrieving user profile data")
-                    profile_data = self.user_profiles.find_one(match_query)
-                    
-                    if profile_data:
-                        logger.info(f"MEMORY: Found user profile with ID: {profile_data.get('_id')}")
-                        
-                        # Ensure the profile has both user_id and userId fields
-                        try:
-                            # Add missing fields if needed
-                            if "user_id" in profile_data and "userId" not in profile_data:
-                                self.user_profiles.update_one(
-                                    {"_id": profile_data["_id"]},
-                                    {"$set": {"userId": profile_data["user_id"]}}
-                                )
-                                logger.info(f"MEMORY: Added missing userId field to profile")
-                            elif "userId" in profile_data and "user_id" not in profile_data:
-                                self.user_profiles.update_one(
-                                    {"_id": profile_data["_id"]},
-                                    {"$set": {"user_id": profile_data["userId"]}}
-                                )
-                                logger.info(f"MEMORY: Added missing user_id field to profile")
-                        except Exception as fix_error:
-                            logger.error(f"MEMORY: Error fixing user ID fields: {fix_error}")
-                        
-                    if profile_data and "preferences_embeddings" in profile_data:
-                        # Get facts from profile
-                        facts = profile_data.get("facts", {})
-                        
-                        # Prepare preference documents for similarity search
-                        pref_docs = []
-                        for pref in profile_data["preferences_embeddings"]:
-                            if "embedding" in pref:
-                                pref_doc = {
-                                    "embedding": pref["embedding"],
-                                    "text": pref.get("text", ""),
-                                    "source_message_id": pref.get("source_message_id", ""),
-                                    "timestamp": pref.get("timestamp", datetime.datetime.utcnow())
-                                }
-                                pref_docs.append(pref_doc)
-                        
-                        # If we have preferences with embeddings
-                        if pref_docs:
-                            # Create a temporary collection
-                            import uuid
-                            temp_coll_name = f"temp_pref_search_{uuid.uuid4().hex[:8]}"
-                            temp_coll = self.db.get_collection(temp_coll_name)
-                            
-                            # Insert preference documents
-                            temp_coll.insert_many(pref_docs)
-                            
-                            # Create the index
-                            temp_coll.create_index([("embedding", pymongo.ASCENDING)])
-                            
-                            # Run similarity search
-                            pipeline = [
-                                {"$project": {
-                                    "text": 1,
-                                    "source_message_id": 1,
-                                    "timestamp": 1,
-                                    "similarity": {
-                                        "$reduce": {
-                                            "input": {"$zip": {"inputs": ["$embedding", query_embedding]}},
-                                            "initialValue": 0,
-                                            "in": {"$add": ["$$value", {"$multiply": [{"$arrayElemAt": ["$$this", 0]}, {"$arrayElemAt": ["$$this", 1]}]}]}
-                                        }
-                                    }
-                                }},
-                                {"$sort": {"similarity": -1}},
-                                {"$limit": vector_search_limit},
-                                {"$project": {
-                                    "_id": 0,
-                                    "text": 1,
-                                    "source_message_id": 1,
-                                    "timestamp": 1,
-                                    "score": "$similarity"
-                                }}
-                            ]
-                            
-                            similar_prefs = list(temp_coll.aggregate(pipeline))
-                            
-                            # Clean up
-                            self.db.drop_collection(temp_coll_name)
-                            
-                            # Prepare result
-                            result = {
-                                "matching_facts": facts,
-                                "similar_preferences": similar_prefs
+            # Prepare $vectorSearch aggregation pipeline
+            try:
+                logger.info(f"MEMORY: Running $vectorSearch for semantic similarity")
+                
+                # Define the $vectorSearch pipeline
+                pipeline = [
+                    {
+                        '$vectorSearch': {
+                            'index': 'memory_vector_index',  # Index name to be created manually in MongoDB Atlas
+                            'path': 'preferences_embeddings.embedding',  # Path to the embedding field
+                            'queryVector': query_embedding,
+                            'numCandidates': 100,  # Number of candidates to consider
+                            'limit': vector_search_limit,  # Max number of results to return
+                            'filter': {
+                                'userId': user_id_str  # Filter by the correct user ID field
                             }
-                            
-                            return result
-                    
-                    # Return an empty result with just the facts
-                    if profile_data:
-                        results = [{
-                            "facts": profile_data.get("facts", {}),
-                            "similar_preferences": []
-                        }]
-                    else:
-                        results = []
-                    
-                    if results:
-                        return {
-                            "matching_facts": results[0].get("facts", {}),
-                            "similar_preferences": results[0].get("similar_preferences", [])
                         }
+                    },
+                    {
+                        '$unwind': '$preferences_embeddings'  # Unwind the array to access individual preferences
+                    },
+                    {
+                        '$match': {
+                            '$expr': {
+                                '$eq': ['$preferences_embeddings.embedding', '$$SEARCH_META.embedding']
+                            }
+                        }
+                    },
+                    {
+                        '$project': {
+                            '_id': 0,
+                            'text': '$preferences_embeddings.text',
+                            'source_message_id': '$preferences_embeddings.source_message_id',
+                            'timestamp': '$preferences_embeddings.timestamp',
+                            'score': {
+                                '$meta': 'vectorSearchScore'
+                            }
+                        }
+                    }
+                ]
+                
+                # Execute the pipeline
+                vector_results = list(self.user_profiles.aggregate(pipeline))
+                logger.info(f"MEMORY: $vectorSearch returned {len(vector_results)} similar preferences")
+                
+                # Add the vector search results to the output
+                if vector_results:
+                    # Log the top result
+                    top_result = vector_results[0]
+                    logger.info(f"MEMORY: Top similar preference: '{top_result.get('text', '')[:50]}...' (score: {top_result.get('score', 'N/A')})")
                     
-                except OperationFailure as e:
-                    # Vector search might fail if index is not set up
-                    logger.error(f"Vector search failed in long-term memory: {e}")
+                    # Update the result with the similar preferences
+                    result["similar_preferences"] = vector_results
+                
+            except Exception as search_error:
+                logger.error(f"MEMORY: Error during $vectorSearch: {search_error}")
+                logger.info("MEMORY: Note that you must create the 'memory_vector_index' index in MongoDB Atlas manually")
+                
+                # Fallback to just returning facts if vector search fails
+                logger.info(f"MEMORY: Falling back to facts-only response due to search error")
             
-            # Fallback to standard query without vector search
-            profile = self.user_profiles.find_one(
-                match_query,
-                {"_id": 0, "facts": 1}
-            )
-            
-            if profile:
-                return {
-                    "matching_facts": profile.get("facts", {}),
-                    "similar_preferences": []
-                }
-            
-            return {"matching_facts": {}, "similar_preferences": []}
+            return result
             
         except Exception as e:
-            logger.error(f"Error retrieving long-term memory: {e}")
+            logger.error(f"MEMORY: Error retrieving long-term memory: {e}")
             return {"matching_facts": {}, "similar_preferences": []}
     
     def extract_structured_info(self, text: str) -> Dict:
@@ -710,30 +731,32 @@ class ChatMemoryManager:
             bool: True if successful, False otherwise
         """
         try:
-            logger.info(f"MEMORY: Updating user profile for user {user_id}")
+            # Convert user_id to string for consistency
+            user_id_str = str(user_id)
+            logger.info(f"MEMORY: Updating user profile for user {user_id_str}")
             logger.debug(f"MEMORY: Profile update info: {info}")
             
-            # First check if the document already exists (check both field names)
-            existing = self.user_profiles.find_one({"$or": [{"user_id": user_id}, {"userId": user_id}]})
+            # First check if the document already exists (using standardized userId field)
+            existing = self.user_profiles.find_one({"userId": user_id_str})
+            
+            # If not found with userId, try the user_id field for backward compatibility
+            if not existing:
+                existing = self.user_profiles.find_one({"user_id": user_id_str})
+                if existing:
+                    logger.info(f"MEMORY: Found profile using legacy 'user_id' field")
             
             # Prepare updates for facts
             update_operations = {
                 "$set": {
-                    "updated_at": datetime.datetime.utcnow()
+                    "updated_at": datetime.datetime.utcnow(),
+                    "userId": user_id_str  # Always ensure userId is set correctly
                 }
             }
             
-            # Check for mismatched field names
-            if existing:
-                user_id_exists = "user_id" in existing
-                userId_exists = "userId" in existing
-                
-                if user_id_exists and not userId_exists:
-                    logger.info(f"MEMORY: Adding missing 'userId' field to existing profile")
-                    update_operations["$set"]["userId"] = user_id
-                elif userId_exists and not user_id_exists:
-                    logger.info(f"MEMORY: Adding missing 'user_id' field to existing profile")
-                    update_operations["$set"]["user_id"] = existing["userId"]
+            # For existing documents, ensure user_id exists for backward compatibility
+            if existing and "user_id" not in existing:
+                update_operations["$set"]["user_id"] = user_id_str
+                logger.info(f"MEMORY: Adding 'user_id' field for backward compatibility")
             
             # Update simple fields
             for field in ["name", "location", "profession"]:
@@ -790,16 +813,12 @@ class ChatMemoryManager:
             
             # Set created_at on insert and ensure both user_id and userId exist
             update_operations["$setOnInsert"] = {
-                "user_id": user_id,
-                "userId": user_id,  # Add userId field to match Atlas vector search index path
+                "user_id": user_id_str,  # Keep for backward compatibility
                 "created_at": datetime.datetime.utcnow()
             }
             
-            # Define query - use both fields if existing, just user_id if new
-            if existing:
-                query = {"$or": [{"user_id": user_id}, {"userId": user_id}]}
-            else:
-                query = {"user_id": user_id}
+            # Use standardized userId field in query for MongoDB Atlas vector search compatibility
+            query = {"userId": user_id_str}
             
             # Perform the update
             result = self.user_profiles.update_one(
@@ -809,7 +828,7 @@ class ChatMemoryManager:
             )
             
             if result.acknowledged:
-                logger.info(f"MEMORY: Successfully updated profile for user {user_id}")
+                logger.info(f"MEMORY: Successfully updated profile for user {user_id_str}")
                 logger.debug(f"MEMORY: MongoDB result - matched: {result.matched_count}, modified: {result.modified_count}, upserted_id: {result.upserted_id}")
             else:
                 logger.warning("MEMORY: MongoDB operation not acknowledged")

@@ -1046,12 +1046,20 @@ def memory_diagnostics():
             "system_info": {
                 "memory_enabled": ENABLE_MEMORY_SYSTEM,
                 "rag_enabled": ENABLE_RAG,
+                "vector_search_refactored": True,  # Flag to indicate refactored implementation
                 "timestamp": datetime.datetime.utcnow().isoformat(),
                 "azure_creds_available": all([
                     os.environ.get('AZURE_OPENAI_API_KEY'),
                     os.environ.get('AZURE_OPENAI_ENDPOINT'),
                     os.environ.get('AZURE_OPENAI_DEPLOYMENT')
-                ])
+                ]),
+                "vector_search_info": {
+                    "index_name": "memory_vector_index",
+                    "collection": "user_profiles",
+                    "embedding_path": "preferences_embeddings.embedding",
+                    "dimensions": 3072,
+                    "notes": "The MongoDB Atlas vector search index must be created manually in the Atlas console."
+                }
             }
         }
         
