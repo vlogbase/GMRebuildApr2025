@@ -412,8 +412,14 @@ class DocumentProcessor:
             return []
         
         try:
+            logger.info(f"RAG [Processor]: Retrieving chunks for user '{user_id}' with query: '{query_text[:50]}...'")
+            
             # Generate embedding for the query
             query_embedding = self._get_embedding(query_text)
+            if not query_embedding:
+                logger.warning("RAG [Processor]: Could not generate query embedding.")
+                return []
+            logger.info(f"RAG [Processor]: Generated query embedding (Type: {type(query_embedding)}, Len: {len(query_embedding) if isinstance(query_embedding, list) else 'N/A'})")
             
             # Perform aggregation using Atlas Vector Search
             pipeline = [
@@ -440,10 +446,16 @@ class DocumentProcessor:
                 }
             ]
             
-            # Execute the pipeline
-            results = list(self.chunks_collection.aggregate(pipeline))
-            logger.info(f"Retrieved {len(results)} relevant chunks for query")
+            logger.info(f"RAG [Processor]: Executing $vectorSearch pipeline...")
+            results = [] # Initialize results
+            try:
+                results = list(self.chunks_collection.aggregate(pipeline))
+                logger.info(f"RAG [Processor]: $vectorSearch aggregation successful.")
+            except Exception as agg_error:
+                logger.error(f"RAG [Processor]: Error during $vectorSearch aggregation: {agg_error}")
+                return [] # Return empty on error
             
+            logger.info(f"RAG [Processor]: Retrieved {len(results)} relevant chunks.")
             return results
             
         except Exception as e:

@@ -472,6 +472,7 @@ def chat(): # Synchronous function
             try:
                 # Get user ID for retrieving documents
                 rag_user_id = str(current_user.id) if current_user and current_user.is_authenticated else get_user_identifier()
+                logger.info(f"RAG: Attempting retrieval for user_id: {rag_user_id}, Query: '{user_message[:50]}...'")
                 
                 # Retrieve relevant document chunks
                 relevant_chunks = document_processor.retrieve_relevant_chunks(
@@ -479,6 +480,7 @@ def chat(): # Synchronous function
                     user_id=rag_user_id,
                     limit=5  # Retrieve top 5 most relevant chunks
                 )
+                logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks.")
                 
                 if relevant_chunks and len(relevant_chunks) > 0:
                     # Format document chunks as context
@@ -491,6 +493,8 @@ def chat(): # Synchronous function
                         
                         # Add formatted chunk with source attribution
                         context_text += f"[Document: {source}]\n{text}\n\n"
+                    
+                    logger.info(f"RAG: Formatted context text (first 100 chars): {context_text[:100]}...")
                     
                     # Add a context system message at the beginning of the conversation
                     context_message = {
@@ -531,6 +535,16 @@ def chat(): # Synchronous function
             'stream': True,
             'reasoning': {}  # Enable reasoning tokens for all models that support it
         }
+        
+        # --- ADD LOGGING FOR FINAL PROMPT ---
+        try:
+            # Use json.dumps for clean logging of the potentially large messages list
+            final_messages_json = json.dumps(messages, indent=2)
+            logger.debug(f"RAG DEBUG: Final messages list being sent to LLM:\n{final_messages_json}")
+        except Exception as json_err:
+            logger.error(f"RAG DEBUG: Error serializing messages for logging: {json_err}")
+        # --- END OF ADDED LOGGING ---
+        
         logger.debug(f"Sending request to OpenRouter with model: {openrouter_model}. History length: {len(messages)}, reasoning enabled")
 
         # --- Define the SYNC Generator using requests ---
@@ -980,12 +994,14 @@ def upload_documents():
                 
             # Start a background thread to process the file
             def process_file_task(file_data, filename, user_id):
+                logger.info(f"BACKGROUND TASK STARTED for {filename}, user {user_id}")
                 try:
                     # Process and store the document
                     result = document_processor.process_and_store_document(file_data, filename, user_id)
                     logger.info(f"Document processing completed for {filename}: {result}")
                 except Exception as e:
                     logger.exception(f"Error processing document {filename}: {e}")
+                logger.info(f"BACKGROUND TASK FINISHED for {filename}, user {user_id}")
             
             # Create a copy of the file data for background processing
             file_data = file.stream.read()
