@@ -810,23 +810,72 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        // In a full implementation, we would fetch the messages for this conversation
-        // TODO: Implement this functionality to display previous messages
-        
         // Add a loading indicator to chat area
         const loadingMessage = document.createElement('div');
         loadingMessage.className = 'system-message';
         loadingMessage.textContent = 'Loading conversation...';
         chatMessages.appendChild(loadingMessage);
         
-        // For now, just display the conversation ID in the message area
-        setTimeout(() => {
-            chatMessages.removeChild(loadingMessage);
-            const infoMessage = document.createElement('div');
-            infoMessage.className = 'system-message';
-            infoMessage.textContent = `Viewing conversation #${conversationId} - conversation loading will be implemented in a future update`;
-            chatMessages.appendChild(infoMessage);
-        }, 500);
+        // Fetch conversation messages from the server
+        fetch(`/conversation/${conversationId}/messages`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Remove loading indicator
+                chatMessages.removeChild(loadingMessage);
+                
+                console.log(`Loaded ${data.messages.length} messages for conversation ${conversationId}`);
+                
+                // Check if there are messages
+                if (data.messages.length === 0) {
+                    // Display empty conversation message
+                    const emptyMessage = document.createElement('div');
+                    emptyMessage.className = 'system-message';
+                    emptyMessage.textContent = 'This conversation is empty. Start chatting now!';
+                    chatMessages.appendChild(emptyMessage);
+                    return;
+                }
+                
+                // Add messages to UI and update message history
+                data.messages.forEach(message => {
+                    // Add to message history (skip system messages)
+                    if (message.role !== 'system') {
+                        messageHistory.push({
+                            role: message.role,
+                            content: message.content
+                        });
+                    }
+                    
+                    // Add message to UI (skip system messages)
+                    if (message.role !== 'system') {
+                        const metadata = {
+                            id: message.id,
+                            model: message.model,
+                            rating: message.rating,
+                            created_at: message.created_at
+                        };
+                        addMessage(message.content, message.role, false, metadata);
+                    }
+                });
+                
+                // Scroll to bottom of chat
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            })
+            .catch(error => {
+                console.error('Error loading conversation:', error);
+                
+                // Remove loading indicator and show error message
+                chatMessages.removeChild(loadingMessage);
+                
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'system-message error';
+                errorMessage.textContent = `Error loading conversation: ${error.message}`;
+                chatMessages.appendChild(errorMessage);
+            });
     }
     
     // Function to send message to backend and process streaming response

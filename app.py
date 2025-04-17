@@ -920,6 +920,46 @@ def get_preferences():
         abort(500, description=str(e))
 
 
+@app.route('/conversation/<int:conversation_id>/messages', methods=['GET'])
+def get_conversation_messages(conversation_id):
+    """ Get all messages for a specific conversation """
+    try:
+        from models import Conversation, Message 
+        
+        # Check if conversation exists
+        conversation = db.session.get(Conversation, conversation_id)
+        if not conversation:
+            abort(404, description="Conversation not found")
+            
+        # Get all messages for this conversation, ordered by creation time
+        messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
+        
+        # Format messages for the frontend
+        formatted_messages = []
+        for msg in messages:
+            formatted_message = {
+                "id": msg.id,
+                "role": msg.role,
+                "content": msg.content,
+                "created_at": msg.created_at.isoformat(),
+                "rating": msg.rating,
+                "model": msg.model
+            }
+            formatted_messages.append(formatted_message)
+            
+        logger.info(f"Returning {len(formatted_messages)} messages for conversation {conversation_id}")
+        return jsonify({
+            "conversation": {
+                "id": conversation.id,
+                "title": conversation.title,
+                "created_at": conversation.created_at.isoformat()
+            },
+            "messages": formatted_messages
+        })
+    except Exception as e:
+        logger.exception(f"Error getting messages for conversation {conversation_id}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/message/<int:message_id>/rate', methods=['POST']) 
 def rate_message(message_id):
     """ Rate a message """
