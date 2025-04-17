@@ -208,40 +208,80 @@ class ChatMemoryManager:
             bool: True if successful, False otherwise
         """
         try:
-            # Generate embedding for the content
-            embedding = self._get_embedding(content)
-            if not embedding:
-                logger.error("Failed to generate embedding for message")
-                return False
+            logger.info(f"MEMORY: Adding message to session {session_id} for user {user_id}, role: {role}")
             
-            # Create the message document
+            # Generate embedding for the content
+            logger.info(f"MEMORY: Generating embedding for content: '{content[:50]}...'")
+            embedding = self._get_embedding(content)
+            
+            if not embedding:
+                logger.error("MEMORY: Failed to generate embedding for message")
+                return False
+                
+            # Log embedding details for debugging
+            embed_dims = len(embedding)
+            logger.info(f"MEMORY: Generated embedding with {embed_dims} dimensions")
+            logger.debug(f"MEMORY: Sample values from embedding: {embedding[:3]}...")
+            
+            # Create the message document with message_id
+            message_id = f"{session_id}_{datetime.datetime.utcnow().timestamp()}"
             message = {
                 "role": role,
                 "content": content,
                 "timestamp": datetime.datetime.utcnow(),
                 "embedding": embedding,
-                "metadata": {"message_id": f"{session_id}_{datetime.datetime.utcnow().timestamp()}"}
+                "metadata": {"message_id": message_id}
             }
             
-            # Update or create the chat session
+            # First check if the document already exists (check both field names)
+            query = {"session_id": session_id, "$or": [{"user_id": user_id}, {"userId": user_id}]}
+            existing = self.chat_sessions.find_one(query)
+            
+            # Build the update operation based on what exists
+            update_op = {
+                "$push": {"message_history": message},
+                "$set": {"updated_at": datetime.datetime.utcnow()}
+            }
+            
+            # For existing documents, check for field consistency
+            if existing:
+                # Check for mismatched field names
+                user_id_exists = "user_id" in existing
+                userId_exists = "userId" in existing
+                
+                # Only add missing fields
+                if user_id_exists and not userId_exists:
+                    update_op["$set"]["userId"] = user_id
+                    logger.info(f"MEMORY: Adding missing 'userId' field to chat session")
+                elif userId_exists and not user_id_exists:
+                    update_op["$set"]["user_id"] = user_id
+                    logger.info(f"MEMORY: Adding missing 'user_id' field to chat session")
+            else:
+                # For new documents, set both field names and creation time
+                logger.info(f"MEMORY: Creating new chat session with both field names")
+                update_op["$setOnInsert"] = {
+                    "user_id": user_id,
+                    "userId": user_id,
+                    "created_at": datetime.datetime.utcnow()
+                }
+            
+            # Store both user_id and userId for compatibility with MongoDB Atlas Vector Search
             result = self.chat_sessions.update_one(
-                {"session_id": session_id, "user_id": user_id},
-                {
-                    "$push": {"message_history": message},
-                    "$set": {"updated_at": datetime.datetime.utcnow()},
-                    "$setOnInsert": {
-                        "user_id": user_id,
-                        "created_at": datetime.datetime.utcnow()
-                    }
-                },
+                {"session_id": session_id, "$or": [{"user_id": user_id}, {"userId": user_id}]},
+                update_op,
                 upsert=True
             )
             
-            logger.info(f"Added message to session {session_id} for user {user_id}")
+            if result.acknowledged:
+                logger.info(f"MEMORY: Successfully added message {message_id} to session {session_id}")
+                logger.debug(f"MEMORY: MongoDB result - matched: {result.matched_count}, modified: {result.modified_count}, upserted_id: {result.upserted_id}")
+            else:
+                logger.warning("MEMORY: MongoDB operation not acknowledged")
+                
             return True
             
         except Exception as e:
-            logger.error(f"Error adding message: {e}")
+            logger.error(f"MEMORY: Error adding message: {e}")
             return False
     
     def retrieve_short_term_memory(
@@ -266,9 +306,15 @@ class ChatMemoryManager:
             List[Dict]: A list of message dictionaries
         """
         try:
-            # Get the most recent messages chronologically
+            # Get the most recent messages chronologically (use both field names)
             recent_messages_cursor = self.chat_sessions.aggregate([
-                {"$match": {"session_id": session_id, "user_id": user_id}},
+                {"$match": {
+                    "session_id": session_id, 
+                    "$or": [
+                        {"user_id": user_id},
+                        {"userId": user_id}
+                    ]
+                }},
                 {"$unwind": "$message_history"},
                 {"$sort": {"message_history.timestamp": -1}},
                 {"$limit": last_n},
@@ -293,9 +339,14 @@ class ChatMemoryManager:
                     try:
                         # MongoDB Atlas requires $vectorSearch to be the first stage in the pipeline
                         # Extract session first, then use $vectorSearch on the message_history
-                        session_data = self.chat_sessions.find_one(
-                            {"session_id": session_id, "user_id": user_id}
-                        )
+                        # Use both field names for compatibility
+                        session_data = self.chat_sessions.find_one({
+                            "session_id": session_id, 
+                            "$or": [
+                                {"user_id": user_id},
+                                {"userId": user_id}
+                            ]
+                        })
                         
                         if session_data and "message_history" in session_data:
                             # Now we can run vector search on the messages
@@ -412,23 +463,57 @@ class ChatMemoryManager:
             Dict: A dictionary containing matching facts and similar preferences
         """
         try:
-            # Build the match query
-            match_query = {"user_id": user_id}
+            logger.info(f"MEMORY: Retrieving long-term memory for user {user_id}")
+            logger.info(f"MEMORY: Query text: '{query_text[:50]}...'")
+            
+            # Build the match query - include both user_id and userId for compatibility
+            match_query = {"$or": [{"user_id": user_id}, {"userId": user_id}]}
             if fact_filters:
                 for key, value in fact_filters.items():
                     match_query[f"facts.{key}"] = value
+                logger.debug(f"MEMORY: Applied fact filters: {fact_filters}")
+            
+            logger.debug(f"MEMORY: Using match query: {match_query}")
             
             # Generate embedding for the query text
             query_embedding = None
             if query_text:
+                logger.info(f"MEMORY: Generating embedding for query text")
                 query_embedding = self._get_embedding(query_text)
+                if query_embedding:
+                    embed_dims = len(query_embedding)
+                    logger.info(f"MEMORY: Generated query embedding with {embed_dims} dimensions")
+                else:
+                    logger.error("MEMORY: Failed to generate embedding for query text")
             
             if query_embedding:
                 # Perform vector search
                 try:
                     # First, get the user profile data
+                    logger.info(f"MEMORY: Retrieving user profile data")
                     profile_data = self.user_profiles.find_one(match_query)
                     
+                    if profile_data:
+                        logger.info(f"MEMORY: Found user profile with ID: {profile_data.get('_id')}")
+                        
+                        # Ensure the profile has both user_id and userId fields
+                        try:
+                            # Add missing fields if needed
+                            if "user_id" in profile_data and "userId" not in profile_data:
+                                self.user_profiles.update_one(
+                                    {"_id": profile_data["_id"]},
+                                    {"$set": {"userId": profile_data["user_id"]}}
+                                )
+                                logger.info(f"MEMORY: Added missing userId field to profile")
+                            elif "userId" in profile_data and "user_id" not in profile_data:
+                                self.user_profiles.update_one(
+                                    {"_id": profile_data["_id"]},
+                                    {"$set": {"user_id": profile_data["userId"]}}
+                                )
+                                logger.info(f"MEMORY: Added missing user_id field to profile")
+                        except Exception as fix_error:
+                            logger.error(f"MEMORY: Error fixing user ID fields: {fix_error}")
+                        
                     if profile_data and "preferences_embeddings" in profile_data:
                         # Get facts from profile
                         facts = profile_data.get("facts", {})
@@ -625,14 +710,35 @@ class ChatMemoryManager:
             bool: True if successful, False otherwise
         """
         try:
+            logger.info(f"MEMORY: Updating user profile for user {user_id}")
+            logger.debug(f"MEMORY: Profile update info: {info}")
+            
+            # First check if the document already exists (check both field names)
+            existing = self.user_profiles.find_one({"$or": [{"user_id": user_id}, {"userId": user_id}]})
+            
             # Prepare updates for facts
             update_operations = {
-                "$set": {"updated_at": datetime.datetime.utcnow()}
+                "$set": {
+                    "updated_at": datetime.datetime.utcnow()
+                }
             }
+            
+            # Check for mismatched field names
+            if existing:
+                user_id_exists = "user_id" in existing
+                userId_exists = "userId" in existing
+                
+                if user_id_exists and not userId_exists:
+                    logger.info(f"MEMORY: Adding missing 'userId' field to existing profile")
+                    update_operations["$set"]["userId"] = user_id
+                elif userId_exists and not user_id_exists:
+                    logger.info(f"MEMORY: Adding missing 'user_id' field to existing profile")
+                    update_operations["$set"]["user_id"] = existing["userId"]
             
             # Update simple fields
             for field in ["name", "location", "profession"]:
                 if field in info and info[field]:
+                    logger.info(f"MEMORY: Updating fact '{field}' to '{info[field]}'")
                     update_operations["$set"][f"facts.{field}"] = info[field]
             
             # Update lists using $addToSet to avoid duplicates
@@ -641,14 +747,25 @@ class ChatMemoryManager:
                 
                 for field in ["interests", "opinions"]:
                     if field in info and info[field] and isinstance(info[field], list):
+                        logger.info(f"MEMORY: Adding {len(info[field])} items to '{field}'")
                         update_operations["$addToSet"][f"facts.{field}"] = {"$each": info[field]}
             
             # Process preferences and generate embeddings
             if "preferences" in info and info["preferences"] and isinstance(info["preferences"], list):
+                pref_count = len(info["preferences"])
+                logger.info(f"MEMORY: Processing {pref_count} preferences for embedding")
+                
+                successful_prefs = 0
                 for pref in info["preferences"]:
                     # Generate embedding for the preference
+                    logger.debug(f"MEMORY: Generating embedding for preference: '{pref[:30]}...'")
                     pref_embedding = self._get_embedding(pref)
+                    
                     if pref_embedding:
+                        # Log embedding details
+                        embed_dims = len(pref_embedding)
+                        logger.debug(f"MEMORY: Generated embedding with {embed_dims} dimensions")
+                        
                         # Create preference object
                         pref_obj = {
                             "text": pref,
@@ -665,25 +782,42 @@ class ChatMemoryManager:
                             update_operations["$push"]["preferences_embeddings"] = {"$each": []}
                         
                         update_operations["$push"]["preferences_embeddings"]["$each"].append(pref_obj)
+                        successful_prefs += 1
+                    else:
+                        logger.error(f"MEMORY: Failed to generate embedding for preference: '{pref[:30]}...'")
+                
+                logger.info(f"MEMORY: Successfully embedded {successful_prefs}/{pref_count} preferences")
             
-            # Set created_at on insert
+            # Set created_at on insert and ensure both user_id and userId exist
             update_operations["$setOnInsert"] = {
                 "user_id": user_id,
+                "userId": user_id,  # Add userId field to match Atlas vector search index path
                 "created_at": datetime.datetime.utcnow()
             }
             
-            # Update the user profile
+            # Define query - use both fields if existing, just user_id if new
+            if existing:
+                query = {"$or": [{"user_id": user_id}, {"userId": user_id}]}
+            else:
+                query = {"user_id": user_id}
+            
+            # Perform the update
             result = self.user_profiles.update_one(
-                {"user_id": user_id},
+                query,
                 update_operations,
                 upsert=True
             )
             
-            logger.info(f"Updated profile for user {user_id}")
+            if result.acknowledged:
+                logger.info(f"MEMORY: Successfully updated profile for user {user_id}")
+                logger.debug(f"MEMORY: MongoDB result - matched: {result.matched_count}, modified: {result.modified_count}, upserted_id: {result.upserted_id}")
+            else:
+                logger.warning("MEMORY: MongoDB operation not acknowledged")
+                
             return True
             
         except Exception as e:
-            logger.error(f"Error updating user profile: {e}")
+            logger.error(f"MEMORY: Error updating user profile: {e}")
             return False
     
     def rewrite_query(self, chat_history: List[Dict], follow_up_query: str) -> str:

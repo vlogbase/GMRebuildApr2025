@@ -463,15 +463,27 @@ class DocumentProcessor:
             # Check for documents with userId field (used by vector search)
             userId_count = self.chunks_collection.count_documents({"userId": user_id_str})
             
-            # Fetch sample documents if they exist
-            user_id_samples = list(self.chunks_collection.find(
-                {"user_id": user_id_str}, 
-                {"text_chunk": 1, "source_document_name": 1, "_id": 0}
-            ).limit(limit))
+            # Check for documents with both fields
+            both_fields_count = self.chunks_collection.count_documents({
+                "$and": [
+                    {"user_id": {"$exists": True}},
+                    {"userId": {"$exists": True}}
+                ]
+            })
             
-            userId_samples = list(self.chunks_collection.find(
-                {"userId": user_id_str}, 
-                {"text_chunk": 1, "source_document_name": 1, "_id": 0}
+            # Count inconsistent documents
+            inconsistent_count = user_id_count + userId_count - (2 * both_fields_count)
+            
+            # Fetch sample documents using combined query
+            combined_samples = list(self.chunks_collection.find(
+                {"$or": [{"user_id": user_id_str}, {"userId": user_id_str}]}, 
+                {
+                    "text_chunk": 1, 
+                    "source_document_name": 1, 
+                    "user_id": 1,
+                    "userId": 1,
+                    "_id": 0
+                }
             ).limit(limit))
             
             # Check if embeddings exist and their format
@@ -489,8 +501,9 @@ class DocumentProcessor:
             return {
                 "user_id_field_count": user_id_count,
                 "userId_field_count": userId_count,
-                "user_id_samples": user_id_samples,
-                "userId_samples": userId_samples,
+                "both_fields_count": both_fields_count,
+                "inconsistent_count": inconsistent_count,
+                "document_samples": combined_samples,
                 "embedding_sample": embedding_sample
             }
             
@@ -544,7 +557,10 @@ class DocumentProcessor:
                         'numCandidates': 150,  # Number of candidates to consider
                         'limit': limit,          # Max number of results to return
                         'filter': {
-                            'userId': str(user_id) # Filter by the correct user ID field as defined in the index
+                            '$or': [
+                                {'userId': str(user_id)},  # Field as defined in the index
+                                {'user_id': str(user_id)}  # Field for backward compatibility
+                            ]
                         }
                     }
                 },

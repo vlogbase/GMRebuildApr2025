@@ -16,6 +16,7 @@ import time
 import base64
 import secrets
 import threading
+import datetime
 from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context # Added stream_with_context back
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
@@ -1015,6 +1016,161 @@ def rag_diagnostics():
         return jsonify(diagnostics)
     except Exception as e:
         logger.exception(f"Error in RAG diagnostics: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/memory/diagnostics', methods=['GET'])
+def memory_diagnostics():
+    """
+    Diagnostic endpoint to check the state of the Chatbot Memory System.
+    This helps identify issues with the long-term memory component using vector embeddings.
+    """
+    if not ENABLE_MEMORY_SYSTEM:
+        return jsonify({"error": "Memory system is not enabled"}), 400
+        
+    try:
+        # Get user ID - use either authenticated user or session-based identifier
+        if current_user and current_user.is_authenticated:
+            user_id = str(current_user.id)
+        else:
+            user_id = get_user_identifier()
+        
+        # Import the memory manager here to avoid circular imports
+        from memory_integration import get_memory_manager
+        memory_manager = get_memory_manager()
+        
+        if not memory_manager:
+            return jsonify({"error": "Memory manager failed to initialize"}), 500
+            
+        # Prepare diagnostics object
+        diagnostics = {
+            "system_info": {
+                "memory_enabled": ENABLE_MEMORY_SYSTEM,
+                "rag_enabled": ENABLE_RAG,
+                "timestamp": datetime.datetime.utcnow().isoformat(),
+                "azure_creds_available": all([
+                    os.environ.get('AZURE_OPENAI_API_KEY'),
+                    os.environ.get('AZURE_OPENAI_ENDPOINT'),
+                    os.environ.get('AZURE_OPENAI_DEPLOYMENT')
+                ])
+            }
+        }
+        
+        # Test embedding generation
+        try:
+            test_text = "This is a test embedding for memory system diagnostics."
+            logger.info(f"MEMORY_DIAG: Generating test embedding")
+            start_time = time.time()
+            test_embedding = memory_manager._get_embedding(test_text)
+            embed_time = time.time() - start_time
+            
+            if test_embedding:
+                diagnostics["embedding_test"] = {
+                    "status": "success",
+                    "dimensions": len(test_embedding),
+                    "time_seconds": round(embed_time, 2),
+                    "sample_values": test_embedding[:3],  # Just show first few values
+                }
+            else:
+                diagnostics["embedding_test"] = {
+                    "status": "failed",
+                    "error": "Embedding generation returned None"
+                }
+        except Exception as embed_err:
+            logger.error(f"MEMORY_DIAG: Embedding test failed: {embed_err}")
+            diagnostics["embedding_test"] = {
+                "status": "error",
+                "error": str(embed_err)
+            }
+            
+        # Check for MongoDB collections
+        try:
+            # Get counts and sample documents for chat_sessions
+            chat_sessions_count = memory_manager.chat_sessions.count_documents({})
+            user_profile_count = memory_manager.user_profiles.count_documents({})
+            
+            # Count documents with both field names
+            user_id_count = memory_manager.user_profiles.count_documents({"user_id": {"$exists": True}})
+            userId_count = memory_manager.user_profiles.count_documents({"userId": {"$exists": True}})
+            both_fields_count = memory_manager.user_profiles.count_documents({
+                "$and": [
+                    {"user_id": {"$exists": True}},
+                    {"userId": {"$exists": True}}
+                ]
+            })
+            
+            # Get a sample of each
+            sample_chat_session = memory_manager.chat_sessions.find_one(
+                {}, 
+                {"_id": 0, "user_id": 1, "userId": 1, "session_id": 1, "created_at": 1, "message_history": {"$slice": 1}}
+            )
+            
+            sample_user_profile = memory_manager.user_profiles.find_one(
+                {}, 
+                {"_id": 0, "user_id": 1, "userId": 1, "created_at": 1, "facts": 1, 
+                 "preferences_embeddings": {"$slice": 1}}
+            )
+            
+            # Format dates for JSON serialization
+            if sample_chat_session and "created_at" in sample_chat_session:
+                sample_chat_session["created_at"] = sample_chat_session["created_at"].isoformat()
+                
+            if sample_user_profile and "created_at" in sample_user_profile:
+                sample_user_profile["created_at"] = sample_user_profile["created_at"].isoformat()
+                
+            # Add collection data to diagnostics
+            diagnostics["collections"] = {
+                "chat_sessions": {
+                    "count": chat_sessions_count,
+                    "sample": sample_chat_session
+                },
+                "user_profiles": {
+                    "count": user_profile_count,
+                    "user_id_field_count": user_id_count,
+                    "userId_field_count": userId_count,
+                    "both_fields_count": both_fields_count,
+                    "sample": sample_user_profile
+                }
+            }
+        except Exception as mongo_err:
+            logger.error(f"MEMORY_DIAG: MongoDB collection check failed: {mongo_err}")
+            diagnostics["collections"] = {
+                "status": "error",
+                "error": str(mongo_err)
+            }
+            
+        # Test long-term memory retrieval with the current user
+        try:
+            logger.info(f"MEMORY_DIAG: Testing long-term memory retrieval for user {user_id}")
+            start_time = time.time()
+            memory_result = memory_manager.retrieve_long_term_memory(
+                user_id=user_id,
+                query_text="Test query for diagnostics",
+                vector_search_limit=2
+            )
+            retrieve_time = time.time() - start_time
+            
+            # Format the results for display
+            facts_count = len(memory_result.get("matching_facts", {}))
+            prefs_count = len(memory_result.get("similar_preferences", []))
+            
+            diagnostics["memory_retrieval_test"] = {
+                "status": "success",
+                "time_seconds": round(retrieve_time, 2),
+                "facts_count": facts_count,
+                "preferences_count": prefs_count,
+                "sample_facts": list(memory_result.get("matching_facts", {}).keys())[:5],
+                "sample_preferences": [p.get("text", "") for p in memory_result.get("similar_preferences", [])][:2]
+            }
+        except Exception as retrieve_err:
+            logger.error(f"MEMORY_DIAG: Memory retrieval test failed: {retrieve_err}")
+            diagnostics["memory_retrieval_test"] = {
+                "status": "error",
+                "error": str(retrieve_err)
+            }
+        
+        return jsonify(diagnostics)
+    except Exception as e:
+        logger.exception(f"Error in memory diagnostics: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/upload', methods=['POST'])
