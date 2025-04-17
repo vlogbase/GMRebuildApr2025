@@ -30,6 +30,17 @@ with app.app_context():
          logger.info("migrations.py not found or migrate_database function missing, skipping.")
     except Exception as e:
         logger.exception("Error running migrations")
+        
+    # Run image URL migration for multimodal support
+    try:
+        from migrations_image_url import migrate_database as migrate_image_url
+        logger.info("Running image URL migration for multimodal support...")
+        migrate_image_url()
+        logger.info("Image URL migration completed.")
+    except ImportError:
+         logger.info("migrations_image_url.py not found, skipping.")
+    except Exception as e:
+        logger.exception("Error running image URL migration")
 
 # NOTE: No WsgiToAsgi wrapper here. Uvicorn running 'main:app' 
 # will load the standard Flask app object directly.

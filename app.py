@@ -378,7 +378,7 @@ def index():
     return render_template('index.html')
 
 @app.route('/test-upload')
-def test_upload():
+def test_upload_page():
     """
     A simple route to test the image upload functionality.
     This serves a static HTML page for testing without requiring the full UI.
@@ -391,13 +391,31 @@ def upload_image():
     Route to handle image uploads for multimodal messages.
     Processes, resizes if needed, and stores images in Replit Object Storage.
     
-    Example:
+    Examples:
+        # Success case - uploading a valid image
         curl -X POST -F "file=@/path/to/image.jpg" http://localhost:5000/upload_image
         
-    Response:
+        # Failure case - no file provided
+        curl -X POST http://localhost:5000/upload_image
+        
+        # Failure case - unsupported file type
+        curl -X POST -F "file=@/path/to/document.txt" http://localhost:5000/upload_image
+        
+    Success Response:
         {
             "success": true,
             "image_url": "https://object-storage.replit.com/image-uploads/a1b2c3d4e5f6.jpg"
+        }
+        
+    Error Response:
+        {
+            "error": "No file provided"
+        }
+        
+        or
+        
+        {
+            "error": "File type .txt is not supported. Please upload an image in jpg, png, gif, or webp format."
         }
     """
     try:
@@ -1549,7 +1567,5 @@ def upload_documents():
 # --- Main Execution ---
 if __name__ == '__main__':
     logger.info("Starting Flask development server")
-    # Use debug=False if running with Gunicorn/Uvicorn in production
-    # The threaded=True option might offer slightly better handling of concurrent requests
-    # for the dev server compared to the default, but Gunicorn handles concurrency differently.
-    app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    # ensure gevent monkey-patching already happened at import time
+    app.run(host='0.0.0.0', port=5000, debug=True)
