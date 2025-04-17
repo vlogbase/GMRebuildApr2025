@@ -72,12 +72,13 @@ class ChatMemoryManager:
         
         # Initialize OpenAI clients - one for Azure embeddings, one for OpenRouter chat
         try:
-            # Initialize Azure OpenAI client for embeddings
-            if os.environ.get("AZURE_OPENAI_API_KEY") and os.environ.get("AZURE_OPENAI_ENDPOINT") and os.environ.get("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME"):
+            # Prefer secrets over environment variables for secure access
+            self.azure_api_key = os.environ.get("AZURE_OPENAI_API_KEY")
+            self.azure_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
+            self.embedding_deployment = os.environ.get("AZURE_OPENAI_DEPLOYMENT")
+            
+            if self.azure_api_key and self.azure_endpoint and self.embedding_deployment:
                 self.use_azure_embeddings = True
-                self.azure_api_key = os.environ.get("AZURE_OPENAI_API_KEY")
-                self.azure_endpoint = os.environ.get("AZURE_OPENAI_ENDPOINT")
-                self.embedding_deployment = os.environ.get("AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME")
                 
                 # Initialize Azure OpenAI client for embeddings
                 self.azure_client = openai.AzureOpenAI(
@@ -85,10 +86,14 @@ class ChatMemoryManager:
                     api_version="2024-02-01",
                     azure_endpoint=self.azure_endpoint
                 )
-                logger.info("Azure OpenAI client initialized successfully for embeddings")
+                logger.info(f"Azure OpenAI client initialized successfully for embeddings (deployment: {self.embedding_deployment})")
             else:
                 self.use_azure_embeddings = False
-                logger.warning("Azure OpenAI not fully configured for embeddings")
+                missing_params = []
+                if not self.azure_api_key: missing_params.append("AZURE_OPENAI_API_KEY")
+                if not self.azure_endpoint: missing_params.append("AZURE_OPENAI_ENDPOINT")
+                if not self.embedding_deployment: missing_params.append("AZURE_OPENAI_DEPLOYMENT")
+                logger.error(f"Azure OpenAI not fully configured: missing {', '.join(missing_params)}")
             
             # Initialize OpenRouter client for chat completion
             if os.environ.get("OPENROUTER_API_KEY"):
@@ -144,74 +149,50 @@ class ChatMemoryManager:
         Returns:
             List[float]: A 3072-dimension embedding vector
             
-        Note: If embedding generation fails, this function returns a deterministic 
-        hash-based pseudo-embedding that maintains text uniqueness but lacks semantic 
-        search capabilities.
+        Raises:
+            RuntimeError: If Azure OpenAI is not configured or the API call fails
         """
         if not text or not text.strip():
             logger.warning("Empty text provided for embedding")
             return [0.0] * 3072  # Return zero vector for empty text
         
+        # Check if Azure OpenAI is properly configured
+        if not self.use_azure_embeddings:
+            error_msg = "Azure OpenAI is not properly configured for embedding generation."
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
+            
         try:
-            # Use Azure OpenAI for embeddings (primary method)
-            if self.use_azure_embeddings:
-                try:
-                    response = self.azure_client.embeddings.create(
-                        input=text,
-                        model=self.embedding_deployment
-                    )
-                    logger.info(f"Generated Azure embedding for text: {text[:30]}...")
-                    return response.data[0].embedding
-                except Exception as e:
-                    logger.error(f"Azure embedding API failed: {e}")
-                    # Will fall through to hash-based method
-                    raise
+            # Use Azure OpenAI for embeddings
+            logger.debug(f"Generating Azure embedding for text: '{text[:50]}...'")
             
-            # If we get here, we need to use the hash-based fallback
-            logger.warning("Using deterministic hash-based pseudo-embedding (no Azure embedding available)")
-            import hashlib
-            text_bytes = text.encode('utf-8')
-            hash_obj = hashlib.sha256(text_bytes)
-            hash_digest = hash_obj.digest()
+            response = self.azure_client.embeddings.create(
+                input=text,
+                model=self.embedding_deployment
+            )
             
-            # Convert bytes to floats between -1 and 1
-            hash_values = [((b / 255.0) * 2) - 1 for b in hash_digest]
+            # Validate the response
+            if not response or not hasattr(response, 'data') or not response.data:
+                error_msg = "Azure OpenAI returned empty response"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+                
+            # Extract the embedding from the response
+            embedding = response.data[0].embedding
             
-            # Expand to 3072 dimensions through repetition and minor variations
-            pseudo_embedding = []
-            while len(pseudo_embedding) < 3072:
-                # Add small variations to avoid exact repetition
-                variation = len(pseudo_embedding) / 10000.0
-                for val in hash_values:
-                    if len(pseudo_embedding) < 3072:
-                        pseudo_embedding.append(val + variation)
-            
-            logger.info(f"Generated hash-based pseudo-embedding for text: {text[:30]}...")
-            return pseudo_embedding
+            # Validate the embedding
+            if not embedding or not isinstance(embedding, list) or len(embedding) == 0:
+                error_msg = "Azure OpenAI returned invalid embedding"
+                logger.error(error_msg)
+                raise RuntimeError(error_msg)
+                
+            logger.info(f"Successfully generated Azure embedding with {len(embedding)} dimensions for text: '{text[:30]}...'")
+            return embedding
                 
         except Exception as e:
-            logger.error(f"Error generating embedding: {e}")
-            # Return a deterministic hash-based pseudo-embedding as final fallback
-            logger.warning("Falling back to deterministic hash-based pseudo-embedding")
-            import hashlib
-            text_bytes = text.encode('utf-8')
-            hash_obj = hashlib.sha256(text_bytes)
-            hash_digest = hash_obj.digest()
-            
-            # Convert bytes to floats between -1 and 1
-            hash_values = [((b / 255.0) * 2) - 1 for b in hash_digest]
-            
-            # Expand to 3072 dimensions
-            pseudo_embedding = []
-            while len(pseudo_embedding) < 3072:
-                # Add small variations to avoid exact repetition
-                variation = len(pseudo_embedding) / 10000.0
-                for val in hash_values:
-                    if len(pseudo_embedding) < 3072:
-                        pseudo_embedding.append(val + variation)
-            
-            logger.info(f"Generated fallback pseudo-embedding for text: {text[:30]}...")
-            return pseudo_embedding
+            error_msg = f"Azure OpenAI embedding generation failed: {str(e)}"
+            logger.error(error_msg)
+            raise RuntimeError(error_msg)
     
     def add_message(self, session_id: str, user_id: str, role: str, content: str) -> bool:
         """

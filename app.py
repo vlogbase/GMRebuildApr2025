@@ -476,13 +476,39 @@ def chat(): # Synchronous function
                 rag_user_id = str(current_user.id) if current_user and current_user.is_authenticated else get_user_identifier()
                 logger.info(f"RAG: Attempting retrieval for user_id: {rag_user_id}, Query: '{user_message[:50]}...'")
                 
-                # Retrieve relevant document chunks
-                relevant_chunks = document_processor.retrieve_relevant_chunks(
-                    query_text=user_message,
-                    user_id=rag_user_id,
-                    limit=5  # Retrieve top 5 most relevant chunks
-                )
-                logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks.")
+                # Retrieve relevant document chunks with better error handling
+                try:
+                    # Check for Azure credentials before attempting to retrieve chunks
+                    azure_key = os.environ.get('AZURE_OPENAI_API_KEY')
+                    azure_endpoint = os.environ.get('AZURE_OPENAI_ENDPOINT')
+                    azure_deployment = os.environ.get('AZURE_OPENAI_DEPLOYMENT')
+                    
+                    if not (azure_key and azure_endpoint and azure_deployment):
+                        logger.error("RAG: Azure OpenAI credentials are missing or incomplete.")
+                        logger.error("RAG: Ensure AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_DEPLOYMENT are set.")
+                        # Skip RAG retrieval when credentials are missing 
+                        relevant_chunks = []
+                    else:
+                        relevant_chunks = document_processor.retrieve_relevant_chunks(
+                            query_text=user_message,
+                            user_id=rag_user_id,
+                            limit=5  # Retrieve top 5 most relevant chunks
+                        )
+                        logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks using Azure embeddings.")
+                except Exception as retrieval_error:
+                    logger.error(f"RAG: Error retrieving document chunks: {retrieval_error}")
+                    
+                    # Check if this is a common MongoDB Atlas Vector Search issue
+                    error_str = str(retrieval_error).lower()
+                    if any(term in error_str for term in ["index not found", "vector search", "$vectorsearch"]):
+                        logger.error("RAG: MongoDB Atlas Vector Search index may not be properly configured. " +
+                                    "Create a vector search index named 'vector_index' on the 'memory.document_chunks' collection.")
+                    elif "azure" in error_str or "openai" in error_str:
+                        logger.error("RAG: Azure OpenAI embedding service error. Check API key, endpoint, and deployment name.")
+                    
+                    # Continue without RAG context
+                    relevant_chunks = []
+                    logger.info("RAG: Continuing without document context due to retrieval error.")
                 
                 if relevant_chunks and len(relevant_chunks) > 0:
                     # Format document chunks as context
@@ -514,16 +540,30 @@ def chat(): # Synchronous function
                     if len(messages) > 0:
                         # Check if the first message is already a system message
                         if messages[0].get('role') == 'system':
+                            # Save original system message for logging
+                            original_system = messages[0]['content']
+                            
                             # Append context to existing system message
-                            messages[0]['content'] = context_message['content'] + "\n\n" + messages[0]['content']
+                            messages[0]['content'] = context_message['content'] + "\n\n" + original_system
+                            
+                            logger.info(f"RAG: Added context to existing system message. New length: {len(messages[0]['content'])}")
                         else:
                             # Insert new system message at the beginning
                             messages.insert(0, context_message)
+                            logger.info(f"RAG: Inserted context as new system message at beginning. Messages count: {len(messages)}")
                     else:
-                        # Just add the context message
-                        messages.append(context_message)
+                        # Just add the context message - this case should be rare
+                        messages.insert(0, context_message)  # Use insert instead of append to ensure it's first
+                        logger.info("RAG: Added context message to empty message list")
                     
-                    logger.info(f"Added context from {len(relevant_chunks)} document chunks for RAG")
+                    # Log the structure of the messages array for debugging
+                    try:
+                        msg_roles = [f"{i}:{msg['role']}" for i, msg in enumerate(messages)]
+                        logger.info(f"RAG: Message structure after adding context: {msg_roles}")
+                    except Exception as e:
+                        logger.error(f"RAG: Error logging message structure: {e}")
+                    
+                    logger.info(f"RAG: Added context from {len(relevant_chunks)} document chunks")
                 else:
                     logger.info("No relevant document chunks found for the query")
                     
@@ -941,6 +981,41 @@ def view_shared_conversation(share_id):
         logger.exception(f"Error viewing shared conversation {share_id}")
         flash("An error occurred while trying to load the shared conversation.", "error")
         return redirect(url_for('index'))
+
+@app.route('/api/rag/diagnostics', methods=['GET'])
+def rag_diagnostics():
+    """
+    Diagnostic endpoint to check the state of RAG functionality.
+    This helps identify issues with document storage and retrieval.
+    """
+    if not ENABLE_RAG:
+        return jsonify({"error": "RAG functionality is not enabled"}), 400
+        
+    try:
+        # Get user ID - use either authenticated user or session-based identifier
+        if current_user and current_user.is_authenticated:
+            user_id = str(current_user.id)
+        else:
+            user_id = get_user_identifier()
+            
+        # Run diagnostic checks
+        diagnostics = document_processor.diagnostic_fetch_chunks(user_id)
+        
+        # Add some system information
+        diagnostics["system_info"] = {
+            "rag_enabled": ENABLE_RAG,
+            "memory_enabled": ENABLE_MEMORY_SYSTEM,
+            "azure_creds_available": all([
+                os.environ.get('AZURE_OPENAI_API_KEY'),
+                os.environ.get('AZURE_OPENAI_ENDPOINT'),
+                os.environ.get('AZURE_OPENAI_DEPLOYMENT')
+            ])
+        }
+        
+        return jsonify(diagnostics)
+    except Exception as e:
+        logger.exception(f"Error in RAG diagnostics: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/upload', methods=['POST'])
 def upload_documents():
