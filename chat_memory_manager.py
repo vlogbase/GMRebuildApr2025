@@ -58,6 +58,7 @@ class ChatMemoryManager:
             # Set up database and collections
             self.db = self.mongo_client.get_database("chatbot_memory_large")
             self.chat_sessions = self.db.get_collection("chat_sessions")
+            self.chat_messages = self.db.get_collection("chat_messages")  # New collection for individual messages
             self.user_profiles = self.db.get_collection("user_profiles")
             
             # Create indexes for efficient querying
@@ -121,9 +122,15 @@ class ChatMemoryManager:
         This includes standard indexes and vector search indexes.
         """
         try:
-            # Standard indexes for chat_sessions
+            # Standard indexes for chat_sessions (now used primarily for session metadata)
             self.chat_sessions.create_index([("session_id", pymongo.ASCENDING)], unique=True)
             self.chat_sessions.create_index([("user_id", pymongo.ASCENDING)])
+            self.chat_sessions.create_index([("userId", pymongo.ASCENDING)])
+            
+            # Standard indexes for chat_messages (new collection for individual messages)
+            self.chat_messages.create_index([("session_id", pymongo.ASCENDING), ("timestamp", pymongo.DESCENDING)])
+            self.chat_messages.create_index([("userId", pymongo.ASCENDING)])
+            self.chat_messages.create_index([("message_id", pymongo.ASCENDING)], unique=True)
             
             # Standard indexes for user_profiles
             self.user_profiles.create_index([("user_id", pymongo.ASCENDING)], unique=True)
@@ -139,7 +146,10 @@ class ChatMemoryManager:
             
             # Log detailed instructions for creating vector search indexes in MongoDB Atlas
             logger.info("""
-MEMORY: MongoDB Atlas Search Configuration for Long-Term Memory
+MEMORY: MongoDB Atlas Search Configuration
+----------------------------------------------------------------------
+
+1. LONG-TERM MEMORY INDEXES (user_profiles collection)
 ----------------------------------------------------------------------
 For the long-term memory functionality to work properly, you need to create TWO indexes in MongoDB Atlas:
 
@@ -179,31 +189,20 @@ For the long-term memory functionality to work properly, you need to create TWO 
   }
 }
 
-Step-by-step instructions:
-1. Go to MongoDB Atlas Console (https://cloud.mongodb.com)
-2. Select your cluster and navigate to the 'Search' tab
-3. Click 'Create Index' and choose 'JSON Editor'
-4. Paste the first index definition, set the index name to 'memory_vector_index'
-5. Set Database and Collection to 'chatbot_memory_large.user_profiles'
-6. Click 'Create Index'
-7. Repeat steps 3-6 for the second index definition with name 'memory_standard_filter_index'
-
-BOTH indexes are required for proper long-term memory functionality.
-Without these indexes, the long-term memory retrieval will fall back to using only facts.
-
-MEMORY: MongoDB Atlas Search Configuration for Short-Term Memory
+2. SHORT-TERM MEMORY INDEXES (chat_messages collection)
 ----------------------------------------------------------------------
-For the short-term memory functionality, you also need to create a vector search index:
+For the short-term memory functionality, you need to create TWO indexes on the chat_messages collection:
 
-- Index Name: 'short_term_memory_vector_index'
-- Database and Collection: 'chatbot_memory_large.chat_sessions'
-- JSON Definition:
+1. First index: Vector Search Index for semantic similarity (REQUIRED)
+   - Index Name: 'chat_messages_vector_index'
+   - Database and Collection: 'chatbot_memory_large.chat_messages'
+   - JSON Definition:
 
 {
   "fields": [
     {
       "type": "vector",
-      "path": "message_history.embedding",
+      "path": "embedding",
       "numDimensions": 3072,
       "similarity": "cosine"
     },
@@ -218,7 +217,32 @@ For the short-term memory functionality, you also need to create a vector search
   ]
 }
 
-Follow the same steps as above to create this index.
+2. Second index: Standard Search Index for filtering (REQUIRED)
+   - Index Name: 'chat_messages_standard_index'
+   - Database and Collection: 'chatbot_memory_large.chat_messages'
+   - JSON Definition:
+
+{
+  "mappings": {
+    "dynamic": false,
+    "fields": {
+      "session_id": { "type": "token" },
+      "userId": { "type": "token" }
+    }
+  }
+}
+
+Step-by-step instructions:
+1. Go to MongoDB Atlas Console (https://cloud.mongodb.com)
+2. Select your cluster and navigate to the 'Search' tab
+3. Click 'Create Index' and choose 'JSON Editor'
+4. Paste each index definition, set the appropriate index name
+5. Set Database and Collection to the appropriate values
+6. Click 'Create Index'
+7. Repeat for each index
+
+Note: The old 'short_term_memory_vector_index' on the chat_sessions collection is no longer needed
+and has been replaced by the new indexes on the chat_messages collection.
 ----------------------------------------------------------------------
 """)
             
@@ -312,54 +336,70 @@ Follow the same steps as above to create this index.
             logger.info(f"MEMORY: Generated embedding with {embed_dims} dimensions")
             logger.debug(f"MEMORY: Sample values from embedding: {embedding[:3]}...")
             
-            # Create the message document with message_id
+            # Create unique message_id
             message_id = f"{session_id}_{datetime.datetime.utcnow().timestamp()}"
-            message = {
+            timestamp = datetime.datetime.utcnow()
+            
+            # Create message document for the new chat_messages collection
+            message_doc = {
+                "message_id": message_id,
+                "session_id": session_id,
+                "userId": user_id_str,
+                "user_id": user_id_str,  # Keep for backward compatibility
                 "role": role,
                 "content": content,
-                "timestamp": datetime.datetime.utcnow(),
-                "embedding": embedding,
-                "metadata": {"message_id": message_id}
+                "timestamp": timestamp,
+                "embedding": embedding
             }
             
-            # First check if the document already exists (using standardized userId field)
-            query = {"session_id": session_id, "userId": user_id_str}
-            existing = self.chat_sessions.find_one(query)
+            # Insert the message into the chat_messages collection
+            result_message = self.chat_messages.insert_one(message_doc)
             
-            # Build the update operation based on what exists
-            update_op = {
-                "$push": {"message_history": message},
+            if not result_message.acknowledged:
+                logger.error(f"MEMORY: Failed to insert message {message_id} into chat_messages collection")
+                return False
+                
+            # Also ensure the chat_sessions collection has a record for this session
+            # (mainly for metadata and session management)
+            session_query = {"session_id": session_id, "userId": user_id_str}
+            existing_session = self.chat_sessions.find_one(session_query)
+            
+            # Build the update operation for the session metadata
+            session_update = {
                 "$set": {
-                    "updated_at": datetime.datetime.utcnow(),
-                    "userId": user_id_str  # Always ensure userId is set correctly
+                    "updated_at": timestamp,
+                    "userId": user_id_str,
+                    "last_message_timestamp": timestamp,
+                    "last_message_role": role,
+                    "last_message_preview": content[:100] + "..." if len(content) > 100 else content
                 }
             }
             
             # For existing documents, ensure user_id exists for backward compatibility
-            if existing:
-                if "user_id" not in existing:
-                    update_op["$set"]["user_id"] = user_id_str
-                    logger.info(f"MEMORY: Adding 'user_id' field for backward compatibility")
+            if existing_session:
+                if "user_id" not in existing_session:
+                    session_update["$set"]["user_id"] = user_id_str
+                    logger.info(f"MEMORY: Adding 'user_id' field to session for backward compatibility")
             else:
-                # For new documents, set both field names and creation time
-                logger.info(f"MEMORY: Creating new chat session")
-                update_op["$setOnInsert"] = {
+                # For new documents, set creation time
+                logger.info(f"MEMORY: Creating new chat session metadata record")
+                session_update["$setOnInsert"] = {
                     "user_id": user_id_str,  # Keep for backward compatibility
-                    "created_at": datetime.datetime.utcnow()
+                    "created_at": timestamp
                 }
             
-            # Use standardized userId field in query to avoid duplication
-            result = self.chat_sessions.update_one(
-                {"session_id": session_id, "userId": user_id_str},
-                update_op,
+            # Update the session metadata
+            result_session = self.chat_sessions.update_one(
+                session_query,
+                session_update,
                 upsert=True
             )
             
-            if result.acknowledged:
+            if result_session.acknowledged:
                 logger.info(f"MEMORY: Successfully added message {message_id} to session {session_id}")
-                logger.debug(f"MEMORY: MongoDB result - matched: {result.matched_count}, modified: {result.modified_count}, upserted_id: {result.upserted_id}")
+                logger.debug(f"MEMORY: MongoDB results - message inserted: {result_message.acknowledged}, session updated: {result_session.modified_count}")
             else:
-                logger.warning("MEMORY: MongoDB operation not acknowledged")
+                logger.warning("MEMORY: Session metadata update not acknowledged")
                 
             return True
             
@@ -393,23 +433,17 @@ Follow the same steps as above to create this index.
             user_id_str = str(user_id)
             logger.info(f"MEMORY: Retrieving short-term memory for session {session_id}, user {user_id_str}")
             
-            # Get the most recent messages chronologically (standardize on userId)
-            recent_messages_cursor = self.chat_sessions.aggregate([
-                {"$match": {
-                    "session_id": session_id, 
-                    "userId": user_id_str
-                }},
-                {"$unwind": "$message_history"},
-                {"$sort": {"message_history.timestamp": -1}},
-                {"$limit": last_n},
-                {"$project": {
-                    "_id": 0,
-                    "role": "$message_history.role",
-                    "content": "$message_history.content",
-                    "timestamp": "$message_history.timestamp",
-                    "message_id": "$message_history.metadata.message_id"
-                }}
-            ])
+            # Get the most recent messages chronologically directly from chat_messages collection
+            recent_messages_cursor = self.chat_messages.find(
+                {"session_id": session_id, "userId": user_id_str},
+                {
+                    "_id": 0, 
+                    "role": 1, 
+                    "content": 1, 
+                    "timestamp": 1, 
+                    "message_id": 1
+                }
+            ).sort("timestamp", -1).limit(last_n)
             
             recent_messages = list(recent_messages_cursor)
             logger.info(f"MEMORY: Retrieved {len(recent_messages)} recent messages chronologically")
@@ -424,19 +458,19 @@ Follow the same steps as above to create this index.
                 if query_embedding:
                     logger.info(f"MEMORY: Generated query embedding with {len(query_embedding)} dimensions")
                     
-                    # Use $vectorSearch directly on chat_sessions collection
+                    # Use $vectorSearch directly on chat_messages collection
                     try:
-                        logger.info(f"MEMORY: Executing $vectorSearch for session {session_id}")
+                        logger.info(f"MEMORY: Executing $vectorSearch on chat_messages for session {session_id}")
                         
-                        # Define the $vectorSearch pipeline
+                        # Define the $vectorSearch pipeline using the new collection and index
                         vector_pipeline = [
                             {
                                 '$vectorSearch': {
-                                    'index': 'short_term_memory_vector_index',  # Index name to be created manually in MongoDB Atlas
-                                    'path': 'message_history.embedding',  # Path to the embedding field
+                                    'index': 'chat_messages_vector_index',
+                                    'path': 'embedding',
                                     'queryVector': query_embedding,
-                                    'numCandidates': 100,  # Number of candidates to consider
-                                    'limit': vector_search_limit * 2,  # Get more than we need to account for possible filtering
+                                    'numCandidates': 100,
+                                    'limit': vector_search_limit,
                                     'filter': {
                                         'session_id': session_id,
                                         'userId': user_id_str
@@ -444,34 +478,21 @@ Follow the same steps as above to create this index.
                                 }
                             },
                             {
-                                '$unwind': '$message_history'  # Unwind the array to access individual messages
-                            },
-                            {
-                                '$match': {
-                                    '$expr': {
-                                        '$eq': ['$message_history.embedding', '$$SEARCH_META.embedding']
-                                    }
-                                }
-                            },
-                            {
                                 '$project': {
                                     '_id': 0,
-                                    'role': '$message_history.role',
-                                    'content': '$message_history.content',
-                                    'timestamp': '$message_history.timestamp',
-                                    'message_id': {'$ifNull': ['$message_history.metadata.message_id', '']},
+                                    'role': 1,
+                                    'content': 1,
+                                    'timestamp': 1,
+                                    'message_id': 1,
                                     'score': {
                                         '$meta': 'vectorSearchScore'
                                     }
                                 }
-                            },
-                            {
-                                '$limit': vector_search_limit  # Final limit
                             }
                         ]
                         
                         # Execute the $vectorSearch pipeline
-                        vector_results_cursor = self.chat_sessions.aggregate(vector_pipeline)
+                        vector_results_cursor = self.chat_messages.aggregate(vector_pipeline)
                         similar_messages = list(vector_results_cursor)
                         
                         logger.info(f"MEMORY: $vectorSearch returned {len(similar_messages)} semantically similar messages")
@@ -483,7 +504,7 @@ Follow the same steps as above to create this index.
                         
                     except Exception as ve:
                         logger.error(f"MEMORY: $vectorSearch failed: {ve}")
-                        logger.info("MEMORY: Note that you must create the 'short_term_memory_vector_index' index in MongoDB Atlas manually")
+                        logger.info("MEMORY: Note that you must create the 'chat_messages_vector_index' index in MongoDB Atlas manually")
                         logger.info("MEMORY: Falling back to chronological messages only")
                 else:
                     logger.error("MEMORY: Failed to generate embedding for query text")
@@ -500,8 +521,8 @@ Follow the same steps as above to create this index.
                 if msg_id and msg_id not in message_ids:
                     message_ids.add(msg_id)
                     unique_messages.append(message)
-            
-            # Sort by timestamp
+                    
+            # Sort by timestamp (ascending for conversation flow)
             unique_messages.sort(key=lambda x: x.get("timestamp", datetime.datetime.min))
             
             logger.info(f"MEMORY: Returning {len(unique_messages)} unique messages (combined chronological and vector search)")
