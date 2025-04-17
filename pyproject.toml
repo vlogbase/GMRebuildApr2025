@@ -27,4 +27,6 @@ dependencies = [
     "lxml>=5.3.2",
     "pypdf>=5.4.0",
     "pillow>=11.2.1",
+    "replit-object-storage>=1.0.2",
+    "pytest>=8.3.5",
 ]

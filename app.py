@@ -20,10 +20,11 @@ import datetime
 import mimetypes
 from pathlib import Path
 from PIL import Image  # For image processing
-from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context # Added stream_with_context back
+from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory # Added send_from_directory
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user, login_required
+from replit.object_storage import Client as ObjectStorageClient  # For Replit Object Storage
 
 # Check if we should enable advanced memory features
 ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
@@ -72,6 +73,21 @@ app.secret_key = os.environ.get("SESSION_SECRET", "developmentsecretkey")
 if not app.secret_key:
      logger.warning("SESSION_SECRET environment variable not set. Using default for development.")
      app.secret_key = "default-dev-secret-key-please-change"
+
+# Initialize Replit Object Storage for image uploads
+try:
+    # The client directly interfaces with a specific bucket
+    storage_client = ObjectStorageClient(bucket_id="image-uploads")
+    
+    # Validate by trying to list objects (will raise an error if bucket doesn't exist)
+    storage_client.list(max_results=1)
+    
+    logger.info("Replit Object Storage initialized successfully")
+    USE_OBJECT_STORAGE = True
+except Exception as e:
+    logger.warning(f"Failed to initialize Replit Object Storage: {e}")
+    logger.info("Falling back to local storage for image uploads")
+    USE_OBJECT_STORAGE = False
 
 
 # Configure database
@@ -325,16 +341,64 @@ def generate_share_id(length=12):
     share_id = share_id.replace('=', '')[:length]
     return share_id
 
+def get_object_storage_url(object_name, public=True, expires_in=3600):
+    """
+    Generate a URL for an object in Replit Object Storage.
+    
+    Args:
+        object_name (str): The name of the object
+        public (bool): Whether to generate a public URL or a signed URL
+        expires_in (int): The number of seconds the signed URL is valid for
+        
+    Returns:
+        str: The URL for the object
+    """
+    try:
+        if public:
+            # Generate public URL - the bucket is already specified in the client
+            bucket_name = "image-uploads"  # This should match the bucket_id in the client
+            return f"https://object-storage.replit.com/{bucket_name}/{object_name}"
+        else:
+            # With the current API, we can't easily generate signed URLs
+            # Use public URLs instead
+            if not USE_OBJECT_STORAGE or not storage_client:
+                logger.warning("Object Storage not initialized, cannot generate URL")
+                return None
+            
+            # For now, just use a public URL
+            bucket_name = "image-uploads"  # This should match the bucket_id in the client
+            return f"https://object-storage.replit.com/{bucket_name}/{object_name}"
+    except Exception as e:
+        logger.exception(f"Error generating Object Storage URL: {e}")
+        return None
+
 # --- Routes ---
 @app.route('/')
 def index():
     return render_template('index.html')
 
+@app.route('/test-upload')
+def test_upload():
+    """
+    A simple route to test the image upload functionality.
+    This serves a static HTML page for testing without requiring the full UI.
+    """
+    return send_from_directory('static', 'test_upload.html')
+
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
     """
     Route to handle image uploads for multimodal messages.
-    Processes, resizes if needed, and stores images for use with multimodal models.
+    Processes, resizes if needed, and stores images in Replit Object Storage.
+    
+    Example:
+        curl -X POST -F "file=@/path/to/image.jpg" http://localhost:5000/upload_image
+        
+    Response:
+        {
+            "success": true,
+            "image_url": "https://object-storage.replit.com/image-uploads/a1b2c3d4e5f6.jpg"
+        }
     """
     try:
         # Verify a file was uploaded
@@ -358,19 +422,13 @@ def upload_image():
         # Generate a unique filename to avoid collisions
         unique_filename = f"{uuid.uuid4().hex}{extension}"
         
-        # Create uploads directory if it doesn't exist
-        upload_dir = Path('static/uploads')
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Full path where the image will be saved
-        file_path = upload_dir / unique_filename
-        
         # Process image - resize if too large
         max_dimension = 1024  # Maximum width or height
         
         # Read the image into memory
         image_data = file.read()
         image_stream = io.BytesIO(image_data)
+        processed_image_stream = io.BytesIO()
         
         try:
             with Image.open(image_stream) as img:
@@ -387,21 +445,67 @@ def upload_image():
                     
                     # Resize the image
                     img = img.resize((new_width, new_height), Image.LANCZOS)
-                    
-                # Save the processed image
-                img.save(file_path)
-                logger.info(f"Saved resized image to {file_path}")
+                
+                # Get the MIME type for the content type
+                mime_type = mimetypes.guess_type(filename)[0] or 'image/jpeg'
+                
+                # Save the processed image to memory stream
+                img.save(processed_image_stream, format=img.format or 'JPEG')
+                processed_image_stream.seek(0)
+                logger.info(f"Processed image to dimensions: {img.width}x{img.height}")
         except Exception as e:
             logger.exception(f"Error processing image: {e}")
-            # If processing fails, save the original
-            with open(file_path, 'wb') as f:
-                image_stream.seek(0)
-                f.write(image_stream.read())
-            logger.info(f"Saved original image to {file_path}")
+            # If processing fails, use the original image data
+            processed_image_stream = io.BytesIO(image_data)
+            processed_image_stream.seek(0)
+            mime_type = mimetypes.guess_type(filename)[0] or 'image/jpeg'
+            logger.info(f"Using original image due to processing error")
+        
+        # Storage path for Object Storage
+        storage_path = unique_filename
+        
+        # Store the image in Replit Object Storage or fallback to local storage
+        if USE_OBJECT_STORAGE:
+            try:
+                # Upload the processed image to Object Storage directly using client
+                # The bucket is already specified when creating the client
+                processed_image_stream.seek(0)
+                
+                # Upload to Object Storage
+                storage_client.upload_from(
+                    storage_path,  # Object name
+                    processed_image_stream,
+                    content_type=mime_type
+                )
+                
+                # Generate a public URL for the uploaded image
+                image_url = get_object_storage_url(object_name=storage_path)
+                logger.info(f"Uploaded image to Object Storage: {image_url}")
+            except Exception as e:
+                logger.exception(f"Error uploading to Object Storage: {e}")
+                # Fallback to local storage if Object Storage fails
+                upload_dir = Path('static/uploads')
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                file_path = upload_dir / unique_filename
+                
+                with open(file_path, 'wb') as f:
+                    processed_image_stream.seek(0)
+                    f.write(processed_image_stream.read())
+                
+                image_url = url_for('static', filename=f'uploads/{unique_filename}', _external=True)
+                logger.info(f"Fallback: Saved image to local filesystem: {file_path}")
+        else:
+            # Object Storage not available, use local filesystem
+            upload_dir = Path('static/uploads')
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            file_path = upload_dir / unique_filename
             
-        # Generate the URL for the image
-        # In production, this would use the actual domain
-        image_url = url_for('static', filename=f'uploads/{unique_filename}', _external=True)
+            with open(file_path, 'wb') as f:
+                processed_image_stream.seek(0)
+                f.write(processed_image_stream.read())
+            
+            image_url = url_for('static', filename=f'uploads/{unique_filename}', _external=True)
+            logger.info(f"Saved image to local filesystem: {file_path}")
         
         return jsonify({
             "success": True,

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .upload-form {
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .preview {
+            margin-top: 20px;
+        }
+        .preview img {
+            max-width: 100%;
+            max-height: 400px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .response {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Image Upload Test</h1>
+    <div class="upload-form">
+        <h2>Upload an Image</h2>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="imageFile" name="file" accept="image/*">
+            <button type="submit">Upload</button>
+        </form>
+    </div>
+
+    <div class="preview" id="preview" style="display: none;">
+        <h2>Preview</h2>
+        <img id="previewImage" src="" alt="Preview">
+    </div>
+
+    <div class="response" id="response" style="display: none;">
+        <h2>API Response</h2>
+        <pre id="responseText"></pre>
+    </div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const fileInput = document.getElementById('imageFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                alert('Please select a file to upload');
+                return;
+            }
+
+            // Show preview
+            const preview = document.getElementById('preview');
+            const previewImage = document.getElementById('previewImage');
+            previewImage.src = URL.createObjectURL(file);
+            preview.style.display = 'block';
+
+            // Upload file
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/upload_image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                
+                // Display response
+                const responseElement = document.getElementById('response');
+                const responseText = document.getElementById('responseText');
+                responseText.textContent = JSON.stringify(data, null, 2);
+                responseElement.style.display = 'block';
+                
+                // If successful, show uploaded image URL
+                if (data.success && data.image_url) {
+                    previewImage.src = data.image_url;
+                }
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                const responseElement = document.getElementById('response');
+                const responseText = document.getElementById('responseText');
+                responseText.textContent = 'Error: ' + error.message;
+                responseElement.style.display = 'block';
+            }
+        });
+
+        // Preview image when selected
+        document.getElementById('imageFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const preview = document.getElementById('preview');
+                const previewImage = document.getElementById('previewImage');
+                previewImage.src = URL.createObjectURL(file);
+                preview.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
