@@ -779,36 +779,65 @@ def chat(): # Synchronous function
             # Different models require different formatting for multimodal messages
             if 'claude' in openrouter_model.lower():
                 # Claude format
+                # According to Claude API spec: https://docs.anthropic.com/claude/reference/messages-create
                 user_content = [
                     {"type": "text", "text": user_message},
-                    {"type": "image", "source": {"url": image_url}}
+                    {"type": "image", "source": {"type": "url", "url": image_url}}
                 ]
                 messages.append({'role': 'user', 'content': user_content})
                 logger.info(f"Added multimodal message with Claude-format image to {openrouter_model}")
+                logger.debug(f"Claude format used: {json.dumps(user_content)}")
             elif 'gpt-4' in openrouter_model.lower() or 'gpt4' in openrouter_model.lower():
-                # OpenAI GPT-4 format
+                # OpenAI GPT-4 format - make sure we use the correct format from OpenAI docs
+                # https://platform.openai.com/docs/guides/vision
                 user_content = [
                     {"type": "text", "text": user_message},
-                    {"type": "image_url", "image_url": {"url": image_url}}
+                    {
+                        "type": "image_url", 
+                        "image_url": {
+                            "url": image_url,
+                            "detail": "high"  # Request high detail analysis
+                        }
+                    }
                 ]
                 messages.append({'role': 'user', 'content': user_content})
                 logger.info(f"Added multimodal message with OpenAI-format image to {openrouter_model}")
+                logger.debug(f"GPT-4 format used: {json.dumps(user_content)}")
             elif 'gemini' in openrouter_model.lower():
-                # Google Gemini format
+                # Google Gemini format according to Google documentation
+                # https://ai.google.dev/api/rest/v1beta/GenerativeModel/generateContent
+                parts = [
+                    {"text": user_message},
+                    {
+                        "inline_data": {
+                            "mime_type": "image/jpeg",  # Default to JPEG, might need to be dynamically set
+                            "data": image_url
+                        }
+                    }
+                ]
+                # For OpenRouter, we still need to map to their expected format
                 user_content = [
                     {"type": "text", "text": user_message},
                     {"type": "image_url", "image_url": {"url": image_url}}
                 ]
                 messages.append({'role': 'user', 'content': user_content})
                 logger.info(f"Added multimodal message with Gemini-format image to {openrouter_model}")
+                logger.debug(f"Gemini format used: {json.dumps(user_content)}")
             else:
-                # Generic format as fallback
+                # Generic format as fallback - try the OpenAI format which is most widely supported
                 user_content = [
                     {"type": "text", "text": user_message},
-                    {"type": "image_url", "image_url": {"url": image_url}}
+                    {
+                        "type": "image_url", 
+                        "image_url": {
+                            "url": image_url,
+                            "detail": "high"  # Request high detail analysis
+                        }
+                    }
                 ]
                 messages.append({'role': 'user', 'content': user_content})
                 logger.info(f"Added multimodal message with generic-format image to {openrouter_model}")
+                logger.debug(f"Fallback format used: {json.dumps(user_content)}")
                 
             # Log the actual URL being sent
             logger.info(f"Image URL sent to model: {image_url}")
