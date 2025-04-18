@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const defaultModels = {
         '1': 'google/gemini-2.5-pro-preview-03-25',
         '2': 'anthropic/claude-3.7-sonnet',
-        '3': 'openai/o3-Mini-High',
+        '3': 'openai/o4-Mini-High',
         '4': 'openai/gpt-4.1-mini',
         '5': 'perplexity/sonar-pro',
         '6': 'google/gemini-2.0-flash-exp:free'
@@ -180,20 +180,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Store the image URL
             attachedImageUrl = data.image_url;
             
-            // Verify the URL is valid by directly fetching it
-            try {
-                console.log("🔎 Verifying image URL accessibility...");
-                const checkResponse = await fetch(attachedImageUrl, { method: 'HEAD' });
-                if (checkResponse.ok) {
-                    console.log("✅ Image URL is accessible:", checkResponse.status);
-                } else {
-                    console.warn("⚠️ Image URL may not be accessible:", checkResponse.status);
-                }
-            } catch (verifyError) {
-                console.error("❌ Failed to verify image URL:", verifyError);
-                // We'll still try to use the URL, but log the verification error
-            }
-            
             // Show preview
             showImagePreview(attachedImageUrl);
             
@@ -207,23 +193,34 @@ document.addEventListener('DOMContentLoaded', function() {
             imageUploadButton.classList.remove('loading');
         }
     }
-    
     function showImagePreview(imageUrl) {
-        imagePreview.src = imageUrl;
-        imagePreviewArea.style.display = 'flex';
-        console.log("🔍 imagePreview.src set to", imagePreview.src);
-        
-        // Add error handling for image loading
-        imagePreview.onerror = function() {
-            console.error("❌ Failed to load image preview:", imageUrl);
-            alert("Failed to load image preview. The image URL might be invalid or inaccessible.");
-            imagePreview.src = ''; // Clear the invalid source
-        };
-        
-        imagePreview.onload = function() {
-            console.log("✅ Image preview loaded successfully");
-        };
+      // clear any old handlers
+      imagePreview.onerror = imagePreview.onload = null;
+
+      // only log the very first failure
+      let errorLogged = false;
+
+      imagePreview.onload = () => {
+        console.log("✅ Image preview loaded successfully:", imageUrl);
+      };
+
+      imagePreview.onerror = () => {
+        if (!errorLogged) {
+          console.error("❌ Failed to load image preview (CORS? URL?):", imageUrl);
+          errorLogged = true;
+        }
+        imagePreviewArea.style.display = 'none';
+        imagePreview.src = '';
+        // remove handler so it doesn't fire again
+        imagePreview.onerror = null;
+      };
+
+      // now set the src (will trigger onload or onerror)
+      imagePreview.src = imageUrl;
+      imagePreviewArea.style.display = 'flex';
+      console.log("🔍 imagePreview.src set to", imagePreview.src);
     }
+
     
     function clearAttachedImage() {
         attachedImageBlob = null;
