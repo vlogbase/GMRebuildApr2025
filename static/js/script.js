@@ -147,6 +147,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Image handling functions
     async function handleImageFile(fileOrBlob) {
+        console.log("✅ handleImageFile()", fileOrBlob);
         if (!fileOrBlob) return;
         
         try {
@@ -156,6 +157,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Create FormData and append file
             const formData = new FormData();
             formData.append('file', fileOrBlob, fileOrBlob.name || 'photo.jpg');
+            
+            console.log("📤 Uploading image to server...");
             
             // Upload to server
             const response = await fetch('/upload_image', {
@@ -168,6 +171,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             const data = await response.json();
+            console.log("↩️ upload response:", data);
             
             if (data.error) {
                 throw new Error(data.error);
@@ -175,6 +179,20 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Store the image URL
             attachedImageUrl = data.image_url;
+            
+            // Verify the URL is valid by directly fetching it
+            try {
+                console.log("🔎 Verifying image URL accessibility...");
+                const checkResponse = await fetch(attachedImageUrl, { method: 'HEAD' });
+                if (checkResponse.ok) {
+                    console.log("✅ Image URL is accessible:", checkResponse.status);
+                } else {
+                    console.warn("⚠️ Image URL may not be accessible:", checkResponse.status);
+                }
+            } catch (verifyError) {
+                console.error("❌ Failed to verify image URL:", verifyError);
+                // We'll still try to use the URL, but log the verification error
+            }
             
             // Show preview
             showImagePreview(attachedImageUrl);
@@ -193,6 +211,18 @@ document.addEventListener('DOMContentLoaded', function() {
     function showImagePreview(imageUrl) {
         imagePreview.src = imageUrl;
         imagePreviewArea.style.display = 'flex';
+        console.log("🔍 imagePreview.src set to", imagePreview.src);
+        
+        // Add error handling for image loading
+        imagePreview.onerror = function() {
+            console.error("❌ Failed to load image preview:", imageUrl);
+            alert("Failed to load image preview. The image URL might be invalid or inaccessible.");
+            imagePreview.src = ''; // Clear the invalid source
+        };
+        
+        imagePreview.onload = function() {
+            console.log("✅ Image preview loaded successfully");
+        };
     }
     
     function clearAttachedImage() {
@@ -1110,11 +1140,22 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add image URL if available
         if (attachedImageUrl) {
             payload.image_url = attachedImageUrl;
-            console.log('Including image in message:', attachedImageUrl);
+            console.log('📨 sending to /chat with image_url:', attachedImageUrl);
+            
+            // Check if the model supports images
+            const model = allModels.find(m => m.id === modelId);
+            const isMultimodalModel = model && model.is_multimodal === true;
+            
+            if (!isMultimodalModel) {
+                console.warn(`⚠️ Warning: Model ${modelId} does not support images, but image is being sent`);
+            }
             
             // Clear the image after sending
             clearAttachedImage();
         }
+        
+        // Log the full payload for debugging
+        console.log('📤 Sending payload to backend:', JSON.stringify(payload, null, 2));
         
         // Create fetch request to /chat endpoint
         fetch('/chat', {

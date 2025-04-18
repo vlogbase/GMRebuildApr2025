@@ -564,9 +564,15 @@ def upload_image():
                     overwrite=True
                 )
                 
-                # Generate a public URL for the uploaded image
-                image_url = get_object_storage_url(object_name=storage_path)
-                logger.info(f"Uploaded image to Azure Blob Storage: {image_url}")
+                # Generate a URL with SAS token for the uploaded image
+                image_url = get_object_storage_url(object_name=storage_path, public=False, expires_in=24*3600)
+                # Log debugging information
+                logger.info(f"Uploaded image to Azure Blob Storage with URL: {image_url[:50]}...")
+                
+                # Verify the URL is generated
+                if not image_url:
+                    logger.error("Failed to generate URL for Azure Blob Storage")
+                    raise ValueError("Failed to generate URL for uploaded image")
             except Exception as e:
                 logger.exception(f"Error uploading to Azure Blob Storage: {e}")
                 # Fallback to local storage if Azure Blob Storage fails
@@ -758,20 +764,49 @@ def chat(): # Synchronous function
         # Format the current user message, possibly with image
         # Check if this is a multimodal message (has image) and model supports it
         if image_url and openrouter_model in MULTIMODAL_MODELS:
-            # Format as multimodal message with both text and image
-            user_content = [
-                {"type": "text", "text": user_message},
-                {"type": "image_url", "image_url": {"url": image_url}}
-            ]
-            messages.append({'role': 'user', 'content': user_content})
-            logger.info(f"Added multimodal message with image to {openrouter_model}")
+            # Different models require different formatting for multimodal messages
+            if 'claude' in openrouter_model.lower():
+                # Claude format
+                user_content = [
+                    {"type": "text", "text": user_message},
+                    {"type": "image", "source": {"url": image_url}}
+                ]
+                messages.append({'role': 'user', 'content': user_content})
+                logger.info(f"Added multimodal message with Claude-format image to {openrouter_model}")
+            elif 'gpt-4' in openrouter_model.lower() or 'gpt4' in openrouter_model.lower():
+                # OpenAI GPT-4 format
+                user_content = [
+                    {"type": "text", "text": user_message},
+                    {"type": "image_url", "image_url": {"url": image_url}}
+                ]
+                messages.append({'role': 'user', 'content': user_content})
+                logger.info(f"Added multimodal message with OpenAI-format image to {openrouter_model}")
+            elif 'gemini' in openrouter_model.lower():
+                # Google Gemini format
+                user_content = [
+                    {"type": "text", "text": user_message},
+                    {"type": "image_url", "image_url": {"url": image_url}}
+                ]
+                messages.append({'role': 'user', 'content': user_content})
+                logger.info(f"Added multimodal message with Gemini-format image to {openrouter_model}")
+            else:
+                # Generic format as fallback
+                user_content = [
+                    {"type": "text", "text": user_message},
+                    {"type": "image_url", "image_url": {"url": image_url}}
+                ]
+                messages.append({'role': 'user', 'content': user_content})
+                logger.info(f"Added multimodal message with generic-format image to {openrouter_model}")
+                
+            # Log the actual URL being sent
+            logger.info(f"Image URL sent to model: {image_url}")
         else:
             # Standard text-only message
             messages.append({'role': 'user', 'content': user_message})
             
             # Log if image was provided but model doesn't support it
             if image_url and openrouter_model not in MULTIMODAL_MODELS:
-                logger.warning(f"Image URL provided but model {openrouter_model} doesn't support multimodal input. Image ignored.") 
+                logger.warning(f"Image URL provided but model {openrouter_model} doesn't support multimodal input. Image ignored.")
 
         # --- Enrich with memory if needed ---
         if ENABLE_MEMORY_SYSTEM:
