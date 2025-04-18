@@ -447,22 +447,58 @@ def test_upload_page():
     """
     return render_template('test_upload.html')
 
-# --- Helper function for image uploads ---
-def upload_and_process_image(file):
+@app.route('/upload_image', methods=['POST'])
+def upload_image():
     """
-    Helper function to process and upload an image file.
-    Used by both the /upload_image endpoint and the /chat endpoint for multimodal messages.
+    Route to handle image uploads for multimodal messages.
+    Processes, resizes if needed, and stores images in Azure Blob Storage.
     
-    Args:
-        file: Flask file object from request.files
+    The returned image URL will be included in the multimodal message content
+    following OpenRouter's standardized format for all models:
+    
+    {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "User's message text"},
+            {"type": "image_url", "image_url": {"url": "URL_RETURNED_FROM_THIS_ENDPOINT"}}
+        ]
+    }
+    
+    Examples:
+        # Success case - uploading a valid image
+        curl -X POST -F "file=@/path/to/image.jpg" http://localhost:5000/upload_image
         
-    Returns:
-        dict: Dictionary with success/error status and image URL
+        # Failure case - no file provided
+        curl -X POST http://localhost:5000/upload_image
+        
+        # Failure case - unsupported file type
+        curl -X POST -F "file=@/path/to/document.txt" http://localhost:5000/upload_image
+        
+    Success Response:
+        {
+            "success": true,
+            "image_url": "https://gloriamundoblobs.blob.core.windows.net/gloriamundoblobs/a1b2c3d4e5f6.jpg"
+        }
+        
+    Error Response:
+        {
+            "error": "No file provided"
+        }
+        
+        or
+        
+        {
+            "error": "File type .txt is not supported. Please upload an image in jpg, png, gif, or webp format."
+        }
     """
     try:
-        # Validate file
+        # Verify a file was uploaded
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+            
+        file = request.files['file']
         if not file or file.filename == '':
-            return {"error": "No file selected", "success": False}
+            return jsonify({"error": "No file selected"}), 400
             
         # Validate file type
         filename = file.filename
@@ -470,10 +506,9 @@ def upload_and_process_image(file):
         allowed_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
         
         if extension not in allowed_extensions:
-            return {
-                "error": f"File type {extension} is not supported. Please upload an image in jpg, png, gif, or webp format.",
-                "success": False
-            }
+            return jsonify({
+                "error": f"File type {extension} is not supported. Please upload an image in jpg, png, gif, or webp format."
+            }), 400
             
         # Generate a unique filename to avoid collisions
         unique_filename = f"{uuid.uuid4().hex}{extension}"
@@ -548,95 +583,37 @@ def upload_and_process_image(file):
                 # Verify the URL is generated
                 if not image_url:
                     logger.error("Failed to generate URL for Azure Blob Storage")
-                    return {"error": "Failed to generate URL for uploaded image", "success": False}
-                
-                return {"success": True, "image_url": image_url}
+                    raise ValueError("Failed to generate URL for uploaded image")
             except Exception as e:
                 logger.exception(f"Error uploading to Azure Blob Storage: {e}")
                 # Fallback to local storage if Azure Blob Storage fails
-                logger.info("Falling back to local storage")
-        
-        # Local storage (either as primary or fallback if Azure fails)
-        try:
+                upload_dir = Path('static/uploads')
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                file_path = upload_dir / unique_filename
+                
+                with open(file_path, 'wb') as f:
+                    processed_image_stream.seek(0)
+                    f.write(processed_image_stream.read())
+                
+                image_url = url_for('static', filename=f'uploads/{unique_filename}', _external=True)
+                logger.info(f"Fallback: Saved image to local filesystem: {file_path}")
+        else:
+            # Azure Blob Storage not available, use local filesystem
             upload_dir = Path('static/uploads')
             upload_dir.mkdir(parents=True, exist_ok=True)
+            file_path = upload_dir / unique_filename
             
-            # Save the processed image to local storage
-            processed_image_stream.seek(0)
-            with open(upload_dir / storage_path, 'wb') as f:
+            with open(file_path, 'wb') as f:
+                processed_image_stream.seek(0)
                 f.write(processed_image_stream.read())
             
-            # Generate a URL for the uploaded image
-            image_url = url_for('static', filename=f'uploads/{storage_path}', _external=True)
-            logger.info(f"Uploaded image to local storage with URL: {image_url}")
-            
-            return {"success": True, "image_url": image_url}
-        except Exception as e:
-            logger.exception(f"Error saving to local storage: {e}")
-            return {"error": f"Failed to store image: {str(e)}", "success": False}
-            
-    except Exception as e:
-        logger.exception(f"Error processing image upload: {e}")
-        return {"error": f"Error processing image: {str(e)}", "success": False}
-
-@app.route('/upload_image', methods=['POST'])
-def upload_image():
-    """
-    Route to handle image uploads for multimodal messages.
-    Processes, resizes if needed, and stores images in Azure Blob Storage.
-    
-    The returned image URL will be included in the multimodal message content
-    following OpenRouter's standardized format for all models:
-    
-    {
-        "role": "user",
-        "content": [
-            {"type": "text", "text": "User's message text"},
-            {"type": "image_url", "image_url": {"url": "URL_RETURNED_FROM_THIS_ENDPOINT"}}
-        ]
-    }
-    
-    Examples:
-        # Success case - uploading a valid image
-        curl -X POST -F "file=@/path/to/image.jpg" http://localhost:5000/upload_image
+            image_url = url_for('static', filename=f'uploads/{unique_filename}', _external=True)
+            logger.info(f"Saved image to local filesystem: {file_path}")
         
-        # Failure case - no file provided
-        curl -X POST http://localhost:5000/upload_image
-        
-        # Failure case - unsupported file type
-        curl -X POST -F "file=@/path/to/document.txt" http://localhost:5000/upload_image
-        
-    Success Response:
-        {
-            "success": true,
-            "image_url": "https://gloriamundoblobs.blob.core.windows.net/gloriamundoblobs/a1b2c3d4e5f6.jpg"
-        }
-        
-    Error Response:
-        {
-            "error": "No file provided"
-        }
-        
-        or
-        
-        {
-            "error": "File type .txt is not supported. Please upload an image in jpg, png, gif, or webp format."
-        }
-    """
-    try:
-        # Verify a file was uploaded
-        if 'file' not in request.files:
-            return jsonify({"error": "No file provided"}), 400
-            
-        file = request.files['file']
-        
-        # Use the shared helper function to process and upload the image
-        result = upload_and_process_image(file)
-        
-        if result.get('success'):
-            return jsonify(result)
-        else:
-            return jsonify({"error": result.get('error')}), 400
+        return jsonify({
+            "success": True,
+            "image_url": image_url
+        })
         
     except Exception as e:
         logger.exception(f"Error handling image upload: {e}")
@@ -695,69 +672,21 @@ def get_conversations():
 def chat(): # Synchronous function
     """
     Endpoint to handle chat messages and stream responses from OpenRouter (SYNC Version)
-    
-    Accepts both JSON and multipart/form-data requests:
-    - For JSON: Standard JSON payload with message, model, history, etc.
-    - For multipart/form-data: Used for direct image uploads, contains message, model, 
-      conversation_id as form fields, and a 'file' field with the image
     """
     try:
-        # --- Initialize variables ---
-        user_message = ''
-        image_url = None
-        model_id = DEFAULT_PRESET_MODELS.get('1', 'google/gemini-flash-1.5')
-        message_history = []
-        conversation_id = None
-        uploaded_image_file = None
-        
-        # --- Check content type to determine how to parse request ---
-        content_type = request.content_type or ''
-        
-        if 'multipart/form-data' in content_type:
-            # --- Handle multipart form data (for direct image uploads) ---
-            logger.info("Processing multipart/form-data request for chat with image")
-            
-            # Get form fields
-            user_message = request.form.get('message', '')
-            model_id = request.form.get('model', DEFAULT_PRESET_MODELS.get('1', 'google/gemini-flash-1.5'))
-            conversation_id = request.form.get('conversation_id')
-            
-            # Check if we have a file
-            if 'file' in request.files:
-                uploaded_image_file = request.files['file']
-                logger.info(f"Received image upload: {uploaded_image_file.filename}")
-                
-                # Process and store the image to get a URL
-                try:
-                    # This is similar to what we do in upload_image() endpoint
-                    result = upload_and_process_image(uploaded_image_file)
-                    if result.get('success'):
-                        image_url = result.get('image_url')
-                        logger.info(f"Processed chat image upload, URL: {image_url[:50]}...")
-                    else:
-                        logger.error(f"Failed to process image: {result.get('error')}")
-                except Exception as e:
-                    logger.exception(f"Error processing uploaded image: {e}")
-            
-            # For form data, we need to parse the history from JSON if provided
-            history_json = request.form.get('history')
-            if history_json:
-                try:
-                    message_history = json.loads(history_json)
-                except Exception as e:
-                    logger.error(f"Could not parse message history from form: {e}")
-        else:
-            # --- Handle JSON request ---
-            data = request.get_json()
-            if not data:
-                logger.error("Request body is not JSON or is empty")
-                abort(400, description="Invalid request body. JSON or form-data expected.")
+        # --- Get request data ---
+        data = request.get_json()
+        if not data:
+            logger.error("Request body is not JSON or is empty")
+            abort(400, description="Invalid request body. JSON expected.")
 
-            user_message = data.get('message', '')
-            image_url = data.get('image_url', None)
-            model_id = data.get('model', DEFAULT_PRESET_MODELS.get('1', 'google/gemini-flash-1.5')) 
-            message_history = data.get('history', [])
-            conversation_id = data.get('conversation_id', None)
+        user_message = data.get('message', '')
+        # Get optional image URL for multimodal messages
+        image_url = data.get('image_url', None)
+        # Use .get for default model to avoid KeyError if '1' isn't present initially
+        model_id = data.get('model', DEFAULT_PRESET_MODELS.get('1', 'google/gemini-flash-1.5')) 
+        message_history = data.get('history', [])
+        conversation_id = data.get('conversation_id', None)
 
         from models import Conversation, Message # Ensure models are imported
 
