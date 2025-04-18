@@ -619,13 +619,39 @@ def upload_image():
                     # Resize the image
                     img = img.resize((new_width, new_height), Image.LANCZOS)
                 
-                # Get the MIME type for the content type
-                mime_type = mimetypes.guess_type(filename)[0] or 'image/jpeg'
+                # Get original format and MIME type
+                original_format = img.format
+                original_mime_type = mimetypes.guess_type(filename)[0] or 'image/jpeg'
+                
+                # Check if format is WebP and convert to JPEG for better compatibility
+                if original_format == 'WEBP' or extension.lower() == '.webp':
+                    logger.info("Converting WebP image to JPEG for better model compatibility")
+                    # If image has transparency (RGBA), convert to RGB
+                    if img.mode == 'RGBA':
+                        # Create a white background
+                        background = Image.new('RGB', img.size, (255, 255, 255))
+                        # Paste the image on the background, using alpha channel as mask
+                        background.paste(img, mask=img.split()[3])
+                        img = background
+                    elif img.mode != 'RGB':
+                        img = img.convert('RGB')
+                    
+                    # Use JPEG as the format
+                    format_to_save = 'JPEG'
+                    mime_type = 'image/jpeg'
+                    # Update filename extension for storage
+                    name_without_ext = os.path.splitext(unique_filename)[0]
+                    unique_filename = f"{name_without_ext}.jpg"
+                    logger.info(f"Converted WebP to JPEG: {unique_filename}")
+                else:
+                    # Use original format or fallback to JPEG
+                    format_to_save = original_format or 'JPEG'
+                    mime_type = original_mime_type
                 
                 # Save the processed image to memory stream
-                img.save(processed_image_stream, format=img.format or 'JPEG')
+                img.save(processed_image_stream, format=format_to_save, quality=90)
                 processed_image_stream.seek(0)
-                logger.info(f"Processed image to dimensions: {img.width}x{img.height}")
+                logger.info(f"Processed image to dimensions: {img.width}x{img.height}, format: {format_to_save}")
         except Exception as e:
             logger.exception(f"Error processing image: {e}")
             # If processing fails, use the original image data

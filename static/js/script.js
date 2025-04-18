@@ -1,4 +1,129 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Setup clipboard paste event listener for the entire document
+    document.addEventListener('paste', handlePaste);
+    
+    // Paste handler function
+    function handlePaste(e) {
+        // Only handle paste if the chat input area is focused
+        const activeElement = document.activeElement;
+        const chatInput = document.getElementById('user-input');
+        
+        if (activeElement !== chatInput && !activeElement.closest('.chat-input-container')) {
+            return; // Not focused on chat input, ignore paste event
+        }
+        
+        // Check if clipboard contains images
+        const items = e.clipboardData.items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                console.log('Image found in clipboard');
+                
+                // Get the image as a file
+                const file = items[i].getAsFile();
+                if (!file) continue;
+                
+                // Prevent the default paste behavior
+                e.preventDefault();
+                
+                // Set upload flag to true and disable send button
+                isUploadingImage = true;
+                updateSendButtonState();
+                
+                // Show upload indicator
+                const uploadIndicator = document.getElementById('upload-indicator') || createUploadIndicator();
+                uploadIndicator.style.display = 'block';
+                uploadIndicator.textContent = 'Uploading image from clipboard...';
+                
+                // Create FormData and upload the image
+                const formData = new FormData();
+                formData.append('file', file, 'clipboard-image.png');
+                
+                // Get the currently selected model
+                const activeModel = document.querySelector('.model-btn.active');
+                const modelId = activeModel ? activeModel.dataset.modelId : null;
+                
+                // Add model parameter if available
+                let uploadUrl = '/upload_image';
+                if (modelId) {
+                    uploadUrl += `?model=${encodeURIComponent(modelId)}`;
+                }
+                
+                fetch(uploadUrl, {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Set upload flag to false and re-enable send button
+                    isUploadingImage = false;
+                    updateSendButtonState();
+                    
+                    if (data.success && data.image_url) {
+                        // Set the current image URL for sending with the message
+                        currentImageUrl = data.image_url;
+                        attachedImageUrl = data.image_url;
+                        
+                        // Show the image preview
+                        showImagePreview(data.image_url);
+                        
+                        // Update upload indicator
+                        uploadIndicator.textContent = 'Image ready to send!';
+                        setTimeout(() => {
+                            uploadIndicator.style.display = 'none';
+                        }, 1500);
+                    } else {
+                        uploadIndicator.textContent = 'Error uploading image: ' + (data.error || 'Unknown error');
+                        uploadIndicator.style.color = 'red';
+                        setTimeout(() => {
+                            uploadIndicator.style.display = 'none';
+                            uploadIndicator.style.color = '';
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error uploading image:', error);
+                    
+                    // Set upload flag to false and re-enable send button
+                    isUploadingImage = false;
+                    updateSendButtonState();
+                    
+                    uploadIndicator.textContent = 'Error uploading image';
+                    uploadIndicator.style.color = 'red';
+                    setTimeout(() => {
+                        uploadIndicator.style.display = 'none';
+                        uploadIndicator.style.color = '';
+                    }, 3000);
+                });
+                
+                // Only process the first image
+                break;
+            }
+        }
+    }
+    
+    // Create upload indicator if it doesn't exist
+    function createUploadIndicator() {
+        // Check if it already exists
+        let indicator = document.getElementById('upload-indicator');
+        if (indicator) return indicator;
+        
+        // Create new indicator with the appropriate styling
+        indicator = document.createElement('div');
+        indicator.id = 'upload-indicator';
+        indicator.style.display = 'none';
+        
+        // Add it before the chat input
+        const chatInputContainer = document.querySelector('.chat-input-container');
+        if (chatInputContainer) {
+            chatInputContainer.insertBefore(indicator, chatInputContainer.firstChild);
+        } else {
+            // Fallback - add to body
+            document.body.appendChild(indicator);
+            console.warn('Chat input container not found, added upload indicator to body');
+        }
+        
+        return indicator;
+    }
     // DOM Elements
     const messageInput = document.getElementById('message-input');
     const sendButton = document.getElementById('send-btn');
@@ -47,6 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Image upload state
     let attachedImageBlob = null;
     let attachedImageUrl = null;
+    let isUploadingImage = false; // Track if an image is currently being uploaded
     let cameras = [];
     let currentCameraIndex = 0;
     
@@ -155,6 +281,12 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!fileOrBlob) return;
         
         try {
+            // Set upload flag to true - this will disable the send button
+            isUploadingImage = true;
+            
+            // Update send button state
+            updateSendButtonState();
+            
             // Show loading state
             imageUploadButton.classList.add('loading');
             
@@ -193,6 +325,12 @@ document.addEventListener('DOMContentLoaded', function() {
             alert(`Upload failed: ${error.message}`);
             clearAttachedImage();
         } finally {
+            // Set upload flag to false - this will enable the send button
+            isUploadingImage = false;
+            
+            // Update send button state
+            updateSendButtonState();
+            
             // Hide loading state
             imageUploadButton.classList.remove('loading');
         }
@@ -231,6 +369,54 @@ document.addEventListener('DOMContentLoaded', function() {
         attachedImageUrl = null;
         imagePreview.src = '';
         imagePreviewArea.style.display = 'none';
+    }
+    
+    // Function to update send button state based on image upload status
+    function updateSendButtonState() {
+        const uploadIndicator = document.getElementById('upload-indicator') || createUploadIndicator();
+        
+        if (isUploadingImage) {
+            // Disable send button while image is uploading
+            sendButton.disabled = true;
+            sendButton.classList.add('disabled');
+            sendButton.title = 'Please wait for image to finish uploading';
+            
+            // Show upload indicator with spinner icon
+            uploadIndicator.style.display = 'flex';
+            uploadIndicator.innerHTML = '<i class="fa-solid fa-spinner"></i> Uploading image...';
+            
+            // Also disable the image upload button during upload
+            if (imageUploadButton) {
+                imageUploadButton.disabled = true;
+                imageUploadButton.classList.add('disabled');
+            }
+            
+            // Disable camera button during upload
+            if (cameraButton) {
+                cameraButton.disabled = true;
+                cameraButton.classList.add('disabled');
+            }
+        } else {
+            // Enable send button when image upload is complete
+            sendButton.disabled = false;
+            sendButton.classList.remove('disabled');
+            sendButton.title = '';
+            
+            // Hide the upload indicator
+            uploadIndicator.style.display = 'none';
+            
+            // Re-enable image upload button
+            if (imageUploadButton) {
+                imageUploadButton.disabled = false;
+                imageUploadButton.classList.remove('disabled');
+            }
+            
+            // Re-enable camera button
+            if (cameraButton) {
+                cameraButton.disabled = false;
+                cameraButton.classList.remove('disabled');
+            }
+        }
     }
     
     function stopCameraStream() {
@@ -285,6 +471,36 @@ document.addEventListener('DOMContentLoaded', function() {
         // Auto-resize textarea
         this.style.height = 'auto';
         this.style.height = (this.scrollHeight) + 'px';
+    });
+    
+    // Add clipboard paste event listener to the message input
+    document.addEventListener('paste', function(event) {
+        // Only process if we're focused on the message input or inside the chat container
+        if (document.activeElement === messageInput || 
+            document.activeElement.closest('.chat-input-container')) {
+            
+            // Get clipboard data
+            const clipboardData = event.clipboardData || window.clipboardData;
+            const items = clipboardData.items;
+            
+            // Check for images in clipboard data
+            for (let i = 0; i < items.length; i++) {
+                if (items[i].type.indexOf('image') !== -1) {
+                    console.log('📎 Image found in clipboard');
+                    
+                    // Convert image data to a blob
+                    const blob = items[i].getAsFile();
+                    if (blob) {
+                        // Prevent default paste behavior for images
+                        event.preventDefault();
+                        
+                        // Process the image
+                        handleImageFile(blob);
+                        return;
+                    }
+                }
+            }
+        }
     });
     
     sendButton.addEventListener('click', sendMessage);
@@ -792,7 +1008,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to send message
     function sendMessage() {
         const message = messageInput.value.trim();
-        if (!message) return;
+        if (!message && !attachedImageUrl) return;
         
         // Clear input
         messageInput.value = '';
@@ -803,8 +1019,25 @@ document.addEventListener('DOMContentLoaded', function() {
             chatMessages.innerHTML = '';
         }
         
-        // Add user message to chat
-        addMessage(message, 'user');
+        // Check if we're sending a multimodal message with an image
+        if (attachedImageUrl) {
+            // Create a standardized content array for user messages with images
+            const userContent = [
+                { type: 'text', text: message || 'Image:' }
+            ];
+            
+            // Add the image URL to the content array
+            userContent.push({
+                type: 'image_url',
+                image_url: { url: attachedImageUrl }
+            });
+            
+            // Add user message with image to chat
+            addMessage(userContent, 'user');
+        } else {
+            // Add text-only user message to chat
+            addMessage(message, 'user');
+        }
         
         // Show typing indicator
         const typingIndicator = addTypingIndicator();
@@ -1939,4 +2172,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+    
+    // Add CSS for disabled button
+    const style = document.createElement('style');
+    style.textContent = `
+        .disabled {
+            opacity: 0.5;
+            cursor: not-allowed !important;
+            pointer-events: none;
+        }
+        #upload-indicator {
+            animation: fadein 0.3s;
+        }
+        @keyframes fadein {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
 });
