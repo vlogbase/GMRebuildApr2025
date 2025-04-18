@@ -59,7 +59,11 @@ document.addEventListener('DOMContentLoaded', function() {
         '1': (model) => !model.is_free, // All non-free models
         '2': (model) => !model.is_free, // All non-free models
         '3': (model) => model.is_reasoning === true && !model.is_free,
-        '4': (model) => model.is_multimodal === true && !model.is_free,
+        '4': (model) => {
+            // For preset 4, prioritize true vision models
+            // OpenAI GPT-4o is the primary choice for this preset
+            return model.is_multimodal === true && !model.is_free;
+        },
         '5': (model) => model.is_perplexity === true && !model.is_free,
         '6': (model) => model.is_free === true // Only free models
     };
@@ -69,7 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
         '1': 'google/gemini-2.5-pro-preview-03-25',
         '2': 'anthropic/claude-3.7-sonnet',
         '3': 'openai/o4-Mini-High',
-        '4': 'openai/gpt-4.1-mini',
+        '4': 'openai/gpt-4o', // Vision model for multimodal capabilities
         '5': 'perplexity/sonar-pro',
         '6': 'google/gemini-2.0-flash-exp:free'
     };
@@ -372,7 +376,12 @@ document.addEventListener('DOMContentLoaded', function() {
     function updateMultimodalControls(modelId) {
         // Find the model in allModels
         const model = allModels.find(m => m.id === modelId);
-        const isMultimodalModel = model && model.is_multimodal === true;
+        
+        // Check if model is multimodal - preset 4 (GPT-4o) is always treated as multimodal
+        const isPreset4 = modelId === defaultModels['4']; // GPT-4o is preset 4
+        const isMultimodalModel = (model && model.is_multimodal === true) || isPreset4;
+        
+        console.log(`🖼️ Multimodal UI check for ${modelId}: isMultimodalModel=${isMultimodalModel}, isPreset4=${isPreset4}`);
         
         // Show/hide upload and camera buttons
         imageUploadButton.style.display = isMultimodalModel ? 'inline-flex' : 'none';
@@ -386,7 +395,7 @@ document.addEventListener('DOMContentLoaded', function() {
             clearAttachedImage();
         }
         
-        console.log(`Model ${modelId} is ${isMultimodalModel ? '' : 'not '}multimodal`);
+        return isMultimodalModel; // Return for testing purposes
     }
     
     // Function to fetch user preferences for model presets
@@ -411,6 +420,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (presetId !== '6' && isFreeModel) {
                             console.warn(`Preset ${presetId} has a free model (${modelId}), reverting to default`);
                             validatedPreferences[presetId] = defaultModels[presetId];
+                            
+                            // Note: Preset 4 is our vision model (openai/gpt-4o) for multimodal capabilities
+                            if (presetId === '4') {
+                                console.log(`Ensuring preset 4 uses vision-capable model: ${defaultModels['4']}`);
+                            }
                         } else {
                             validatedPreferences[presetId] = modelId;
                         }
@@ -588,6 +602,27 @@ document.addEventListener('DOMContentLoaded', function() {
         const filteredModels = allModels
             .filter(filterFn)
             .sort((a, b) => {
+                // Special handling for preset 4 (vision models)
+                if (presetId === '4') {
+                    // Always put GPT-4o at the top
+                    if (a.id === 'openai/gpt-4o') return -1;
+                    if (b.id === 'openai/gpt-4o') return 1;
+                    
+                    // Put Claude vision models next
+                    const aIsClaudeVision = a.id.includes('claude') && a.is_multimodal;
+                    const bIsClaudeVision = b.id.includes('claude') && b.is_multimodal;
+                    
+                    if (aIsClaudeVision && !bIsClaudeVision) return -1;
+                    if (!aIsClaudeVision && bIsClaudeVision) return 1;
+                    
+                    // Put Gemini vision models next
+                    const aIsGeminiVision = a.id.includes('gemini') && a.is_multimodal;
+                    const bIsGeminiVision = b.id.includes('gemini') && b.is_multimodal;
+                    
+                    if (aIsGeminiVision && !bIsGeminiVision) return -1;
+                    if (!aIsGeminiVision && bIsGeminiVision) return 1;
+                }
+                
                 // Free models at the bottom
                 if (a.is_free && !b.is_free) return 1;
                 if (!a.is_free && b.is_free) return -1;
@@ -806,29 +841,63 @@ document.addEventListener('DOMContentLoaded', function() {
         if (isTyping) {
             messageContent.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
         } else {
-            // Process markdown and code blocks if needed
-            messageContent.innerHTML = formatMessage(content);
-            
-            // Check if this message has an image (from metadata)
-            if (metadata && metadata.image_url) {
-                console.log('📸 Message has image URL:', metadata.image_url);
+            // Handle both standardized content array format and plain text
+            if (typeof content === 'object' && Array.isArray(content)) {
+                console.log('📦 Message content is in array format:', content);
                 
-                // Create image container
-                const imageContainer = document.createElement('div');
-                imageContainer.className = 'message-image-container';
-                
-                // Create and add the image
-                const messageImage = document.createElement('img');
-                messageImage.className = 'message-image';
-                messageImage.src = metadata.image_url;
-                messageImage.alt = 'Attached image';
-                messageImage.addEventListener('click', () => {
-                    // Open image in full-screen or new tab on click
-                    window.open(metadata.image_url, '_blank');
+                // Process each content item by type
+                content.forEach(item => {
+                    if (item.type === 'text') {
+                        // Add text content with markdown formatting
+                        const textDiv = document.createElement('div');
+                        textDiv.innerHTML = formatMessage(item.text);
+                        messageContent.appendChild(textDiv);
+                    } else if (item.type === 'image_url' && item.image_url?.url) {
+                        console.log('📸 Message has image URL:', item.image_url.url);
+                        
+                        // Create image container
+                        const imageContainer = document.createElement('div');
+                        imageContainer.className = 'message-image-container';
+                        
+                        // Create and add the image
+                        const messageImage = document.createElement('img');
+                        messageImage.className = 'message-image';
+                        messageImage.src = item.image_url.url;
+                        messageImage.alt = 'Attached image';
+                        messageImage.addEventListener('click', () => {
+                            // Open image in full-screen or new tab on click
+                            window.open(item.image_url.url, '_blank');
+                        });
+                        
+                        imageContainer.appendChild(messageImage);
+                        messageContent.appendChild(imageContainer);
+                    }
                 });
+            } else {
+                // Legacy format - just text content
+                messageContent.innerHTML = formatMessage(content);
                 
-                imageContainer.appendChild(messageImage);
-                messageContent.appendChild(imageContainer);
+                // Check if this message has an image (from metadata)
+                if (metadata && metadata.image_url) {
+                    console.log('📸 Message has image URL from metadata:', metadata.image_url);
+                    
+                    // Create image container
+                    const imageContainer = document.createElement('div');
+                    imageContainer.className = 'message-image-container';
+                    
+                    // Create and add the image
+                    const messageImage = document.createElement('img');
+                    messageImage.className = 'message-image';
+                    messageImage.src = metadata.image_url;
+                    messageImage.alt = 'Attached image';
+                    messageImage.addEventListener('click', () => {
+                        // Open image in full-screen or new tab on click
+                        window.open(metadata.image_url, '_blank');
+                    });
+                    
+                    imageContainer.appendChild(messageImage);
+                    messageContent.appendChild(imageContainer);
+                }
             }
         }
         
@@ -1140,48 +1209,19 @@ document.addEventListener('DOMContentLoaded', function() {
         // Check if we need to make a multimodal message
         const isMultimodalMessage = attachedImageUrl !== null;
         
-        // Create the message content based on whether we have an image
-        let userMessageContent;
+        // Always create a content array (OpenRouter's unified format)
+        // Even for text-only messages, this ensures consistent payload structure
+        let userMessageContent = [
+            { type: 'text', text: message }
+        ];
+        
+        // Add image object to content array if available
         if (isMultimodalMessage) {
-            // For multimodal, content is an array with text and image objects
-            // This follows OpenRouter's unified format that works across all models:
-            // https://openrouter.ai/docs#multimodal
-            userMessageContent = [
-                { type: 'text', text: message },
-                { type: 'image_url', image_url: { url: attachedImageUrl } }
-            ];
+            userMessageContent.push({ 
+                type: 'image_url', 
+                image_url: { url: attachedImageUrl } 
+            });
             console.log('📸 Creating multimodal message with image:', attachedImageUrl);
-        } else {
-            // For text-only, content is just the text
-            userMessageContent = message;
-        }
-        
-        // Add user message to history with appropriate content format
-        // Note: For multimodal messages, content will be an array of objects
-        // For text-only messages, content will be a simple string
-        messageHistory.push({
-            role: 'user',
-            content: userMessageContent
-        });
-        
-        // If no model selected, use default
-        if (!modelId) {
-            modelId = defaultModels['1'];
-            console.warn('No model selected, using default:', modelId);
-        }
-        
-        // Create request payload
-        const payload = {
-            message: message, // Keep original text separately for storage
-            model: modelId,
-            history: messageHistory,
-            conversation_id: currentConversationId
-        };
-        
-        // Add image URL if available (for backward compatibility)
-        if (isMultimodalMessage) {
-            payload.image_url = attachedImageUrl;
-            console.log('📨 sending to /chat with multimodal message');
             
             // Check if the model supports images
             const model = allModels.find(m => m.id === modelId);
@@ -1194,6 +1234,31 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clear the image after sending
             clearAttachedImage();
         }
+        
+        // Add user message to history with standardized content array format
+        messageHistory.push({
+            role: 'user',
+            content: userMessageContent
+        });
+        
+        // If no model selected, use default
+        if (!modelId) {
+            modelId = defaultModels['1'];
+            console.warn('No model selected, using default:', modelId);
+        }
+        
+        // Create request payload using standardized JSON format
+        const payload = {
+            model: modelId,
+            stream: true,
+            messages: [
+                { 
+                    role: 'user', 
+                    content: userMessageContent
+                }
+            ],
+            conversation_id: currentConversationId
+        };
         
         // Log the full payload for debugging
         console.log('📤 Sending payload to backend:', JSON.stringify(payload, null, 2));
@@ -1518,9 +1583,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to copy message text to clipboard
     function copyMessageText(messageElement) {
         const messageContent = messageElement.querySelector('.message-content');
-        // Get the text content without HTML formatting
+        
+        // Handle multimodal messages properly by excluding image containers
         const tempElement = document.createElement('div');
         tempElement.innerHTML = messageContent.innerHTML;
+        
+        // Remove any image containers before copying
+        const imageContainers = tempElement.querySelectorAll('.message-image-container');
+        imageContainers.forEach(container => container.remove());
+        
+        // Get the text content without HTML formatting
         const textToCopy = tempElement.textContent || tempElement.innerText;
         
         navigator.clipboard.writeText(textToCopy)
