@@ -565,7 +565,8 @@ def upload_image():
                 )
                 
                 # Generate a URL with SAS token for the uploaded image
-                image_url = get_object_storage_url(object_name=storage_path, public=False, expires_in=24*3600)
+                # Use public=True to avoid CORS issues with SAS tokens in image preview
+                image_url = get_object_storage_url(object_name=storage_path, public=True, expires_in=24*3600)
                 # Log debugging information
                 logger.info(f"Uploaded image to Azure Blob Storage with URL: {image_url[:50]}...")
                 

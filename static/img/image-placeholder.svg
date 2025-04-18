@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="200px" height="150px" viewBox="0 0 200 150" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Image Placeholder</title>
+    <g id="Image-Placeholder" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <rect id="Background" fill="#F2F2F2" x="0" y="0" width="200" height="150" rx="4"></rect>
+        <g id="Image-Icon" transform="translate(75.000000, 45.000000)" fill="#CCCCCC" fill-rule="nonzero">
+            <path d="M50,0 C51.1045695,0 52,0.8954305 52,2 L52,58 C52,59.1045695 51.1045695,60 50,60 L2,60 C0.8954305,60 0,59.1045695 0,58 L0,2 C0,0.8954305 0.8954305,0 2,0 L50,0 Z M48,4 L4,4 L4,56 L48,56 L48,4 Z" id="Frame"></path>
+            <circle id="Sun" cx="14" cy="14" r="6"></circle>
+            <polygon id="Mountain" points="4 56 48 56 48 34 38 24 28 34 20 26 4 42"></polygon>
+        </g>
+        <text id="Image-not-available" font-family="Arial, sans-serif" font-size="12" font-weight="normal" fill="#888888">
+            <tspan x="47" y="125">Image not available</tspan>
+        </text>
+    </g>
+</svg>
