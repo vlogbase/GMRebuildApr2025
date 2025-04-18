@@ -29,4 +29,5 @@ dependencies = [
     "pillow>=11.2.1",
     "replit-object-storage>=1.0.2",
     "pytest>=8.3.5",
+    "azure-storage-blob>=12.25.1",
 ]

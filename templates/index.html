@@ -141,9 +141,45 @@
                 
                 <div class="input-group">
                     <textarea id="message-input" placeholder="Message GloriaMundo..."></textarea>
-                    <button id="send-btn" class="send-btn">
-                        <i class="fa-solid fa-paper-plane"></i>
+                    <div class="message-actions">
+                        <input type="file" id="image-upload-input" name="file" accept="image/*" style="display: none;">
+                        <button id="image-upload-button" class="btn btn-secondary" style="display: none;">
+                            <i class="fa-solid fa-image"></i>
+                        </button>
+                        <button id="camera-button" class="btn btn-secondary" style="display: none;">
+                            <i class="fa-solid fa-camera"></i>
+                        </button>
+                        <button id="send-btn" class="send-btn">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="image-preview-area" style="display: none;">
+                    <img id="image-preview" src="" alt="Preview">
+                    <button id="remove-image-button">
+                        <i class="fa-solid fa-times"></i> Remove
                     </button>
+                </div>
+
+                <div id="camera-modal" style="display: none;">
+                    <div class="camera-modal-content">
+                        <div class="camera-controls">
+                            <button id="close-camera-button">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                        <video id="camera-stream" autoplay playsinline></video>
+                        <canvas id="image-canvas" style="display: none;"></canvas>
+                        <div class="camera-buttons">
+                            <button id="capture-button" class="btn btn-primary">
+                                <i class="fa-solid fa-camera"></i> Take Photo
+                            </button>
+                            <button id="switch-camera-button" class="btn btn-secondary">
+                                <i class="fa-solid fa-sync"></i> Switch Camera
+                            </button>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="disclaimer">

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Upload Test</title>
+    <title>Test Image Upload</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,108 +14,124 @@
         h1 {
             color: #333;
         }
-        .upload-form {
-            border: 1px solid #ddd;
-            padding: 20px;
-            border-radius: 5px;
+        .container {
+            margin-top: 20px;
+        }
+        #upload-form {
             margin-bottom: 20px;
-        }
-        .preview {
-            margin-top: 20px;
-        }
-        .preview img {
-            max-width: 100%;
-            max-height: 400px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        .response {
+            padding: 20px;
             background-color: #f5f5f5;
-            padding: 15px;
-            border-radius: 5px;
+            border-radius: 8px;
+        }
+        #image-preview {
+            max-width: 300px;
+            max-height: 300px;
             margin-top: 20px;
-            white-space: pre-wrap;
+            border: 1px solid #ddd;
+            display: none;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e8f5e9;
+            border-radius: 8px;
+            display: none;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .button:hover {
+            background-color: #45a049;
         }
     </style>
 </head>
 <body>
-    <h1>Image Upload Test</h1>
-    <div class="upload-form">
-        <h2>Upload an Image</h2>
-        <form id="uploadForm" enctype="multipart/form-data">
-            <input type="file" id="imageFile" name="file" accept="image/*">
-            <button type="submit">Upload</button>
-        </form>
-    </div>
-
-    <div class="preview" id="preview" style="display: none;">
-        <h2>Preview</h2>
-        <img id="previewImage" src="" alt="Preview">
-    </div>
-
-    <div class="response" id="response" style="display: none;">
-        <h2>API Response</h2>
-        <pre id="responseText"></pre>
+    <h1>Test Image Upload</h1>
+    
+    <div class="container">
+        <div id="upload-form">
+            <h2>Upload an Image</h2>
+            <p>Select an image file to test the upload functionality.</p>
+            
+            <input type="file" id="file-input" accept="image/*">
+            <button id="upload-button" class="button">Upload Image</button>
+        </div>
+        
+        <img id="image-preview" src="" alt="Image Preview">
+        
+        <div id="result">
+            <h3>Upload Result</h3>
+            <p id="result-message"></p>
+            <p><strong>Image URL:</strong> <span id="image-url"></span></p>
+        </div>
     </div>
 
     <script>
-        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-            e.preventDefault();
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('file-input');
+            const uploadButton = document.getElementById('upload-button');
+            const imagePreview = document.getElementById('image-preview');
+            const result = document.getElementById('result');
+            const resultMessage = document.getElementById('result-message');
+            const imageUrl = document.getElementById('image-url');
             
-            const fileInput = document.getElementById('imageFile');
-            const file = fileInput.files[0];
-            
-            if (!file) {
-                alert('Please select a file to upload');
-                return;
-            }
-
-            // Show preview
-            const preview = document.getElementById('preview');
-            const previewImage = document.getElementById('previewImage');
-            previewImage.src = URL.createObjectURL(file);
-            preview.style.display = 'block';
-
-            // Upload file
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                const response = await fetch('/upload_image', {
-                    method: 'POST',
-                    body: formData
-                });
-
-                const data = await response.json();
-                
-                // Display response
-                const responseElement = document.getElementById('response');
-                const responseText = document.getElementById('responseText');
-                responseText.textContent = JSON.stringify(data, null, 2);
-                responseElement.style.display = 'block';
-                
-                // If successful, show uploaded image URL
-                if (data.success && data.image_url) {
-                    previewImage.src = data.image_url;
+            // Preview selected image
+            fileInput.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file && file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    
+                    reader.onload = function(e) {
+                        imagePreview.src = e.target.result;
+                        imagePreview.style.display = 'block';
+                    };
+                    
+                    reader.readAsDataURL(file);
                 }
-            } catch (error) {
-                console.error('Error uploading image:', error);
-                const responseElement = document.getElementById('response');
-                const responseText = document.getElementById('responseText');
-                responseText.textContent = 'Error: ' + error.message;
-                responseElement.style.display = 'block';
-            }
-        });
-
-        // Preview image when selected
-        document.getElementById('imageFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                const preview = document.getElementById('preview');
-                const previewImage = document.getElementById('previewImage');
-                previewImage.src = URL.createObjectURL(file);
-                preview.style.display = 'block';
-            }
+            });
+            
+            // Upload image when button is clicked
+            uploadButton.addEventListener('click', async function() {
+                const file = fileInput.files[0];
+                if (!file) {
+                    alert('Please select an image file first.');
+                    return;
+                }
+                
+                try {
+                    // Create form data and append file
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    // Upload image
+                    const response = await fetch('/upload_image', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    // Display result
+                    result.style.display = 'block';
+                    
+                    if (data.success) {
+                        resultMessage.textContent = 'Image uploaded successfully!';
+                        imageUrl.textContent = data.image_url;
+                    } else {
+                        resultMessage.textContent = `Error: ${data.error || 'Unknown error occurred'}`;
+                        imageUrl.textContent = 'N/A';
+                    }
+                } catch (error) {
+                    result.style.display = 'block';
+                    resultMessage.textContent = `Error: ${error.message}`;
+                    imageUrl.textContent = 'N/A';
+                }
+            });
         });
     </script>
 </body>

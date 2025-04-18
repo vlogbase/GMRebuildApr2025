@@ -24,7 +24,7 @@ from flask import Flask, render_template, request, Response, session, jsonify, a
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user, login_required
-from replit.object_storage import Client as ObjectStorageClient  # For Replit Object Storage
+from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure Blob Storage
 
 # Check if we should enable advanced memory features
 ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
@@ -74,20 +74,39 @@ if not app.secret_key:
      logger.warning("SESSION_SECRET environment variable not set. Using default for development.")
      app.secret_key = "default-dev-secret-key-please-change"
 
-# Initialize Replit Object Storage for image uploads
+# Initialize Azure Blob Storage for image uploads
 try:
-    # The client directly interfaces with a specific bucket
-    storage_client = ObjectStorageClient(bucket_id="image-uploads")
+    # Get connection string and container name from environment variables
+    azure_connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+    azure_container_name = os.environ.get("AZURE_STORAGE_CONTAINER_NAME")
     
-    # Validate by trying to list objects (will raise an error if bucket doesn't exist)
-    storage_client.list(max_results=1)
+    if not azure_connection_string or not azure_container_name:
+        raise ValueError("Missing Azure Storage credentials")
+        
+    # Create the BlobServiceClient
+    blob_service_client = BlobServiceClient.from_connection_string(azure_connection_string)
     
-    logger.info("Replit Object Storage initialized successfully")
-    USE_OBJECT_STORAGE = True
+    # Get a client to interact with the container
+    container_client = blob_service_client.get_container_client(azure_container_name)
+    
+    # Check if container exists, if not create it
+    try:
+        container_properties = container_client.get_container_properties()
+        logger.info(f"Container {azure_container_name} exists")
+    except Exception as container_error:
+        logger.info(f"Container {azure_container_name} does not exist, creating it...")
+        container_client = blob_service_client.create_container(azure_container_name)
+        logger.info(f"Container {azure_container_name} created successfully")
+    
+    # Validate by trying to list blobs
+    container_client.list_blobs(max_results=1)
+    
+    logger.info(f"Azure Blob Storage initialized successfully for container: {azure_container_name}")
+    USE_AZURE_STORAGE = True
 except Exception as e:
-    logger.warning(f"Failed to initialize Replit Object Storage: {e}")
+    logger.warning(f"Failed to initialize Azure Blob Storage: {e}")
     logger.info("Falling back to local storage for image uploads")
-    USE_OBJECT_STORAGE = False
+    USE_AZURE_STORAGE = False
 
 
 # Configure database
@@ -343,7 +362,7 @@ def generate_share_id(length=12):
 
 def get_object_storage_url(object_name, public=True, expires_in=3600):
     """
-    Generate a URL for an object in Replit Object Storage.
+    Generate a URL for an object in Azure Blob Storage.
     
     Args:
         object_name (str): The name of the object
@@ -354,22 +373,65 @@ def get_object_storage_url(object_name, public=True, expires_in=3600):
         str: The URL for the object
     """
     try:
+        # Check if Azure Blob Storage is properly initialized
+        if not ('USE_AZURE_STORAGE' in globals() and USE_AZURE_STORAGE and 
+                'container_client' in globals() and container_client):
+            logger.warning("Azure Blob Storage not initialized, cannot generate URL")
+            return None
+            
         if public:
-            # Generate public URL - the bucket is already specified in the client
-            bucket_name = "image-uploads"  # This should match the bucket_id in the client
-            return f"https://object-storage.replit.com/{bucket_name}/{object_name}"
+            # For public access, use the blob's URL directly
+            blob_client = container_client.get_blob_client(object_name)
+            return blob_client.url
         else:
-            # With the current API, we can't easily generate signed URLs
-            # Use public URLs instead
-            if not USE_OBJECT_STORAGE or not storage_client:
-                logger.warning("Object Storage not initialized, cannot generate URL")
+            # Generate a SAS token for time-limited access
+            blob_client = container_client.get_blob_client(object_name)
+            
+            # Generate SAS token that's valid for "expires_in" seconds
+            from datetime import datetime, timedelta
+            from azure.storage.blob import generate_blob_sas, BlobSasPermissions
+            
+            # Get account information from connection string
+            account_name = None
+            account_key = None
+            
+            # Get connection string from environment again to be safe
+            azure_connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+            azure_container_name = os.environ.get("AZURE_STORAGE_CONTAINER_NAME")
+            
+            if not azure_connection_string or not azure_container_name:
+                logger.error("Missing Azure Storage credentials")
                 return None
             
-            # For now, just use a public URL
-            bucket_name = "image-uploads"  # This should match the bucket_id in the client
-            return f"https://object-storage.replit.com/{bucket_name}/{object_name}"
+            # Parse connection string to extract account name and key
+            # Connection string format: DefaultEndpointsProtocol=https;AccountName=xxx;AccountKey=xxx;EndpointSuffix=core.windows.net
+            conn_str_parts = azure_connection_string.split(';')
+            for part in conn_str_parts:
+                if '=' in part:
+                    key, value = part.split('=', 1)
+                    if key.lower() == 'accountname':
+                        account_name = value
+                    elif key.lower() == 'accountkey':
+                        account_key = value
+            
+            if not account_name or not account_key:
+                logger.error("Unable to extract account information from connection string")
+                return None
+                
+            # Generate SAS token
+            sas_token = generate_blob_sas(
+                account_name=account_name,
+                container_name=azure_container_name,
+                blob_name=object_name,
+                account_key=account_key,
+                permission=BlobSasPermissions(read=True),
+                expiry=datetime.utcnow() + timedelta(seconds=expires_in)
+            )
+            
+            # Return the full URL with SAS token
+            return f"{blob_client.url}?{sas_token}"
     except Exception as e:
-        logger.exception(f"Error generating Object Storage URL: {e}")
+        logger.exception(f"Error generating Azure Blob Storage URL: {e}")
         return None
 
 # --- Routes ---
@@ -389,7 +451,7 @@ def test_upload_page():
 def upload_image():
     """
     Route to handle image uploads for multimodal messages.
-    Processes, resizes if needed, and stores images in Replit Object Storage.
+    Processes, resizes if needed, and stores images in Azure Blob Storage.
     
     Examples:
         # Success case - uploading a valid image
@@ -404,7 +466,7 @@ def upload_image():
     Success Response:
         {
             "success": true,
-            "image_url": "https://object-storage.replit.com/image-uploads/a1b2c3d4e5f6.jpg"
+            "image_url": "https://gloriamundoblobs.blob.core.windows.net/gloriamundoblobs/a1b2c3d4e5f6.jpg"
         }
         
     Error Response:
@@ -479,29 +541,35 @@ def upload_image():
             mime_type = mimetypes.guess_type(filename)[0] or 'image/jpeg'
             logger.info(f"Using original image due to processing error")
         
-        # Storage path for Object Storage
+        # Storage path for Azure Blob Storage
         storage_path = unique_filename
         
-        # Store the image in Replit Object Storage or fallback to local storage
-        if USE_OBJECT_STORAGE:
+        # Store the image in Azure Blob Storage or fallback to local storage
+        if 'USE_AZURE_STORAGE' in globals() and USE_AZURE_STORAGE and 'container_client' in globals() and container_client:
             try:
-                # Upload the processed image to Object Storage directly using client
-                # The bucket is already specified when creating the client
+                # Get image data from the processed stream
                 processed_image_stream.seek(0)
+                image_data = processed_image_stream.read()
                 
-                # Upload to Object Storage
-                storage_client.upload_from(
-                    storage_path,  # Object name
-                    processed_image_stream,
-                    content_type=mime_type
+                # Create a blob client for the specific blob
+                blob_client = container_client.get_blob_client(storage_path)
+                
+                # Set content settings (MIME type)
+                content_settings = ContentSettings(content_type=mime_type)
+                
+                # Upload the image data to Azure Blob Storage
+                blob_client.upload_blob(
+                    data=image_data,
+                    content_settings=content_settings,
+                    overwrite=True
                 )
                 
                 # Generate a public URL for the uploaded image
                 image_url = get_object_storage_url(object_name=storage_path)
-                logger.info(f"Uploaded image to Object Storage: {image_url}")
+                logger.info(f"Uploaded image to Azure Blob Storage: {image_url}")
             except Exception as e:
-                logger.exception(f"Error uploading to Object Storage: {e}")
-                # Fallback to local storage if Object Storage fails
+                logger.exception(f"Error uploading to Azure Blob Storage: {e}")
+                # Fallback to local storage if Azure Blob Storage fails
                 upload_dir = Path('static/uploads')
                 upload_dir.mkdir(parents=True, exist_ok=True)
                 file_path = upload_dir / unique_filename
@@ -513,7 +581,7 @@ def upload_image():
                 image_url = url_for('static', filename=f'uploads/{unique_filename}', _external=True)
                 logger.info(f"Fallback: Saved image to local filesystem: {file_path}")
         else:
-            # Object Storage not available, use local filesystem
+            # Azure Blob Storage not available, use local filesystem
             upload_dir = Path('static/uploads')
             upload_dir.mkdir(parents=True, exist_ok=True)
             file_path = upload_dir / unique_filename

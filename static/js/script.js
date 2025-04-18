@@ -23,12 +23,32 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadFilesBtn = document.getElementById('upload-files-btn');
     const uploadStatus = document.getElementById('upload-status');
     
+    // Image upload and camera elements
+    const imageUploadInput = document.getElementById('image-upload-input');
+    const imageUploadButton = document.getElementById('image-upload-button');
+    const cameraButton = document.getElementById('camera-button');
+    const cameraModal = document.getElementById('camera-modal');
+    const cameraStream = document.getElementById('camera-stream');
+    const imageCanvas = document.getElementById('image-canvas');
+    const captureButton = document.getElementById('capture-button');
+    const switchCameraButton = document.getElementById('switch-camera-button');
+    const closeCameraButton = document.getElementById('close-camera-button');
+    const imagePreviewArea = document.getElementById('image-preview-area');
+    const imagePreview = document.getElementById('image-preview');
+    const removeImageButton = document.getElementById('remove-image-button');
+    
     // App state
     let activePresetButton = null; // Currently selected preset button
     let currentModel = null; // Model ID of the currently selected preset
     let currentPresetId = '1'; // Default to first preset
     let currentConversationId = null;
     let messageHistory = [];
+    
+    // Image upload state
+    let attachedImageBlob = null;
+    let attachedImageUrl = null;
+    let cameras = [];
+    let currentCameraIndex = 0;
     
     // Model data
     let allModels = []; // All models from OpenRouter
@@ -68,6 +88,161 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Fetch conversations on load
     fetchConversations();
+    
+    // Image upload and camera event listeners
+    imageUploadButton.addEventListener('click', () => {
+        imageUploadInput.click();
+    });
+    
+    imageUploadInput.addEventListener('change', event => {
+        const file = event.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+            handleImageFile(file);
+        }
+        // Reset the input so the same file can be selected again
+        event.target.value = null;
+    });
+    
+    cameraButton.addEventListener('click', async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            cameraStream.srcObject = stream;
+            cameraModal.style.display = 'block';
+            loadCameraDevices();
+        } catch (err) {
+            console.error('Camera access error:', err);
+            alert('Camera access denied or not available');
+        }
+    });
+    
+    captureButton.addEventListener('click', () => {
+        // Set canvas dimensions to match video
+        const width = cameraStream.videoWidth;
+        const height = cameraStream.videoHeight;
+        imageCanvas.width = width;
+        imageCanvas.height = height;
+        
+        // Draw video frame to canvas
+        const ctx = imageCanvas.getContext('2d');
+        ctx.drawImage(cameraStream, 0, 0, width, height);
+        
+        // Convert canvas to blob
+        imageCanvas.toBlob(blob => {
+            handleImageFile(blob);
+            
+            // Stop camera stream and close modal
+            stopCameraStream();
+            cameraModal.style.display = 'none';
+        }, 'image/jpeg', 0.85);
+    });
+    
+    switchCameraButton.addEventListener('click', switchCamera);
+    
+    closeCameraButton.addEventListener('click', () => {
+        stopCameraStream();
+        cameraModal.style.display = 'none';
+    });
+    
+    removeImageButton.addEventListener('click', clearAttachedImage);
+    
+    // Image handling functions
+    async function handleImageFile(fileOrBlob) {
+        if (!fileOrBlob) return;
+        
+        try {
+            // Show loading state
+            imageUploadButton.classList.add('loading');
+            
+            // Create FormData and append file
+            const formData = new FormData();
+            formData.append('file', fileOrBlob, fileOrBlob.name || 'photo.jpg');
+            
+            // Upload to server
+            const response = await fetch('/upload_image', {
+                method: 'POST',
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Upload failed: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            // Store the image URL
+            attachedImageUrl = data.image_url;
+            
+            // Show preview
+            showImagePreview(attachedImageUrl);
+            
+            console.log('Image uploaded successfully:', attachedImageUrl);
+        } catch (error) {
+            console.error('Error uploading image:', error);
+            alert(`Upload failed: ${error.message}`);
+            clearAttachedImage();
+        } finally {
+            // Hide loading state
+            imageUploadButton.classList.remove('loading');
+        }
+    }
+    
+    function showImagePreview(imageUrl) {
+        imagePreview.src = imageUrl;
+        imagePreviewArea.style.display = 'flex';
+    }
+    
+    function clearAttachedImage() {
+        attachedImageBlob = null;
+        attachedImageUrl = null;
+        imagePreview.src = '';
+        imagePreviewArea.style.display = 'none';
+    }
+    
+    function stopCameraStream() {
+        if (cameraStream.srcObject) {
+            const tracks = cameraStream.srcObject.getTracks();
+            tracks.forEach(track => track.stop());
+            cameraStream.srcObject = null;
+        }
+    }
+    
+    async function switchCamera() {
+        if (cameras.length > 1) {
+            stopCameraStream();
+            currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { deviceId: { exact: cameras[currentCameraIndex].deviceId } }
+                });
+                cameraStream.srcObject = stream;
+            } catch (err) {
+                console.error('Error switching camera:', err);
+                alert('Failed to switch camera');
+            }
+        }
+    }
+    
+    async function loadCameraDevices() {
+        if (!navigator.mediaDevices?.enumerateDevices) {
+            console.warn('enumerateDevices() not supported');
+            return;
+        }
+        
+        try {
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            cameras = devices.filter(device => device.kind === 'videoinput');
+            
+            // Enable/disable switch camera button based on available cameras
+            switchCameraButton.style.display = cameras.length > 1 ? 'block' : 'none';
+        } catch (err) {
+            console.error('Error enumerating devices:', err);
+        }
+    }
     
     // Event Listeners
     messageInput.addEventListener('keydown', function(event) {
@@ -160,7 +335,31 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get the model ID for this preset
             currentModel = userPreferences[presetId] || defaultModels[presetId];
             console.log(`Selected preset ${presetId} with model: ${currentModel}`);
+            
+            // Update multimodal controls based on the selected model
+            updateMultimodalControls(currentModel);
         }
+    }
+    
+    // Function to update multimodal controls (image upload, camera) based on model capability
+    function updateMultimodalControls(modelId) {
+        // Find the model in allModels
+        const model = allModels.find(m => m.id === modelId);
+        const isMultimodalModel = model && model.is_multimodal === true;
+        
+        // Show/hide upload and camera buttons
+        imageUploadButton.style.display = isMultimodalModel ? 'inline-flex' : 'none';
+        
+        // Only show camera button if browser supports it
+        const hasCamera = !!navigator.mediaDevices?.getUserMedia;
+        cameraButton.style.display = isMultimodalModel && hasCamera ? 'inline-flex' : 'none';
+        
+        // If switching to a non-multimodal model, clear any attached image
+        if (!isMultimodalModel) {
+            clearAttachedImage();
+        }
+        
+        console.log(`Model ${modelId} is ${isMultimodalModel ? '' : 'not '}multimodal`);
     }
     
     // Function to fetch user preferences for model presets
@@ -282,6 +481,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.data && Array.isArray(data.data)) {
                     allModels = data.data;
                     console.log(`Loaded ${allModels.length} models from OpenRouter`);
+                    
+                    // Update multimodal controls for the current model
+                    if (currentModel) {
+                        updateMultimodalControls(currentModel);
+                    }
                 }
             })
             .catch(error => {
@@ -454,6 +658,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // If this is the active preset, update the current model
         if (presetId === currentPresetId) {
             currentModel = modelId;
+            
+            // Update multimodal controls based on the selected model
+            updateMultimodalControls(modelId);
         }
         
         // Save preference to server
@@ -892,18 +1099,30 @@ document.addEventListener('DOMContentLoaded', function() {
             console.warn('No model selected, using default:', modelId);
         }
         
+        // Create request payload
+        const payload = {
+            message: message,
+            model: modelId,
+            history: messageHistory,
+            conversation_id: currentConversationId
+        };
+        
+        // Add image URL if available
+        if (attachedImageUrl) {
+            payload.image_url = attachedImageUrl;
+            console.log('Including image in message:', attachedImageUrl);
+            
+            // Clear the image after sending
+            clearAttachedImage();
+        }
+        
         // Create fetch request to /chat endpoint
         fetch('/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                message: message,
-                model: modelId,
-                history: messageHistory,
-                conversation_id: currentConversationId
-            })
+            body: JSON.stringify(payload)
         }).then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
