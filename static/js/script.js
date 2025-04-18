@@ -171,8 +171,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Image upload state
     let attachedImageBlob = null;
-    let attachedImageUrl = null;
+    let attachedImageUrls = []; // Array to hold multiple image URLs
     let isUploadingImage = false; // Track if an image is currently being uploaded
+    let uploadingImageCount = 0; // Track number of images currently uploading
     let cameras = [];
     let currentCameraIndex = 0;
     
@@ -279,8 +280,11 @@ document.addEventListener('DOMContentLoaded', function() {
     async function handleImageFile(fileOrBlob) {
         console.log("✅ handleImageFile()", fileOrBlob);
         if (!fileOrBlob) return;
-        
+
         try {
+            // Increment upload counter
+            uploadingImageCount++;
+            
             // Set upload flag to true - this will disable the send button
             isUploadingImage = true;
             
@@ -313,62 +317,134 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(data.error);
             }
             
-            // Store the image URL
-            attachedImageUrl = data.image_url;
+            // Store the image URL in the array
+            attachedImageUrls.push(data.image_url);
             
-            // Show preview
-            showImagePreview(attachedImageUrl);
+            // Show previews
+            updateImagePreviews();
             
-            console.log('Image uploaded successfully:', attachedImageUrl);
+            console.log(`Image uploaded successfully (${attachedImageUrls.length} total):`, data.image_url);
         } catch (error) {
             console.error('Error uploading image:', error);
             alert(`Upload failed: ${error.message}`);
-            clearAttachedImage();
         } finally {
-            // Set upload flag to false - this will enable the send button
-            isUploadingImage = false;
+            // Decrement upload counter
+            uploadingImageCount--;
             
-            // Update send button state
-            updateSendButtonState();
-            
-            // Hide loading state
-            imageUploadButton.classList.remove('loading');
+            // Only disable uploading flag if all uploads are complete
+            if (uploadingImageCount === 0) {
+                isUploadingImage = false;
+                
+                // Update send button state
+                updateSendButtonState();
+                
+                // Hide loading state
+                imageUploadButton.classList.remove('loading');
+            }
         }
     }
-    function showImagePreview(imageUrl) {
-      // clear any old handlers
-      imagePreview.onerror = imagePreview.onload = null;
-
-      // only log the very first failure
-      let errorLogged = false;
-
-      imagePreview.onload = () => {
-        console.log("✅ Image preview loaded successfully:", imageUrl);
-      };
-
-      imagePreview.onerror = () => {
-        if (!errorLogged) {
-          console.error("❌ Failed to load image preview (CORS? URL?):", imageUrl);
-          errorLogged = true;
+    // Add a new function to update all image previews based on the attached URLs
+    function updateImagePreviews() {
+        // Clear existing previews
+        imagePreviewArea.innerHTML = '';
+        
+        // If no images, hide the preview area
+        if (attachedImageUrls.length === 0) {
+            imagePreviewArea.style.display = 'none';
+            return;
         }
-        imagePreviewArea.style.display = 'none';
-        imagePreview.src = '';
-        // remove handler so it doesn't fire again
-        imagePreview.onerror = null;
-      };
-
-      // now set the src (will trigger onload or onerror)
-      imagePreview.src = imageUrl;
-      imagePreviewArea.style.display = 'flex';
-      console.log("🔍 imagePreview.src set to", imagePreview.src);
+        
+        // Show the preview area
+        imagePreviewArea.style.display = 'flex';
+        imagePreviewArea.classList.add('multi-image');
+        
+        // Create a counter to show total images
+        const counter = document.createElement('div');
+        counter.className = 'image-counter';
+        counter.textContent = `${attachedImageUrls.length} image${attachedImageUrls.length > 1 ? 's' : ''}`;
+        imagePreviewArea.appendChild(counter);
+        
+        // Add previews for each image (limit display to first 4 images)
+        const displayLimit = Math.min(attachedImageUrls.length, 4);
+        
+        for (let i = 0; i < displayLimit; i++) {
+            const imageUrl = attachedImageUrls[i];
+            
+            // Create a container for each preview
+            const previewContainer = document.createElement('div');
+            previewContainer.className = 'image-preview-container';
+            
+            // Create the image element
+            const img = document.createElement('img');
+            img.className = 'image-preview-thumbnail';
+            img.src = imageUrl;
+            img.alt = `Image ${i+1}`;
+            
+            // Add a remove button for each image
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-image-btn';
+            removeBtn.innerHTML = '×';
+            removeBtn.setAttribute('data-index', i);
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Remove this specific image
+                removeImage(i);
+            });
+            
+            // Add elements to container
+            previewContainer.appendChild(img);
+            previewContainer.appendChild(removeBtn);
+            imagePreviewArea.appendChild(previewContainer);
+        }
+        
+        // If there are more images than we're showing, add a count indicator
+        if (attachedImageUrls.length > displayLimit) {
+            const moreIndicator = document.createElement('div');
+            moreIndicator.className = 'more-images-indicator';
+            moreIndicator.textContent = `+${attachedImageUrls.length - displayLimit} more`;
+            imagePreviewArea.appendChild(moreIndicator);
+        }
+        
+        // Add a "clear all" button
+        const clearAllBtn = document.createElement('button');
+        clearAllBtn.className = 'clear-all-images-btn';
+        clearAllBtn.textContent = 'Clear All';
+        clearAllBtn.addEventListener('click', clearAttachedImages);
+        imagePreviewArea.appendChild(clearAllBtn);
+        
+        console.log(`🖼️ Updated image previews: ${attachedImageUrls.length} images`);
     }
-
     
-    function clearAttachedImage() {
+    // Function to remove a specific image by index
+    function removeImage(index) {
+        // Remove the image from the array
+        if (index >= 0 && index < attachedImageUrls.length) {
+            attachedImageUrls.splice(index, 1);
+            updateImagePreviews();
+        }
+    }
+    
+    // Legacy function for single image - redirect to new function
+    function showImagePreview(imageUrl) {
+        // Add the URL to our array if it's not already there
+        if (imageUrl && !attachedImageUrls.includes(imageUrl)) {
+            attachedImageUrls.push(imageUrl);
+        }
+        
+        // Update all previews
+        updateImagePreviews();
+    }
+    
+    // Clear all attached images
+    function clearAttachedImages() {
         attachedImageBlob = null;
-        attachedImageUrl = null;
-        imagePreview.src = '';
-        imagePreviewArea.style.display = 'none';
+        attachedImageUrls = [];
+        updateImagePreviews();
+    }
+    
+    // Legacy function for backward compatibility
+    function clearAttachedImage() {
+        clearAttachedImages();
     }
     
     // Function to update send button state based on image upload status
@@ -1008,7 +1084,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to send message
     function sendMessage() {
         const message = messageInput.value.trim();
-        if (!message && !attachedImageUrl) return;
+        if (!message && attachedImageUrls.length === 0) return;
         
         // Clear input
         messageInput.value = '';
@@ -1019,20 +1095,22 @@ document.addEventListener('DOMContentLoaded', function() {
             chatMessages.innerHTML = '';
         }
         
-        // Check if we're sending a multimodal message with an image
-        if (attachedImageUrl) {
+        // Check if we're sending a multimodal message with images
+        if (attachedImageUrls.length > 0) {
             // Create a standardized content array for user messages with images
             const userContent = [
                 { type: 'text', text: message || 'Image:' }
             ];
             
-            // Add the image URL to the content array
-            userContent.push({
-                type: 'image_url',
-                image_url: { url: attachedImageUrl }
-            });
+            // Add all image URLs to the content array
+            for (const imageUrl of attachedImageUrls) {
+                userContent.push({
+                    type: 'image_url',
+                    image_url: { url: imageUrl }
+                });
+            }
             
-            // Add user message with image to chat
+            // Add user message with images to chat
             addMessage(userContent, 'user');
         } else {
             // Add text-only user message to chat
@@ -1078,34 +1156,71 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof content === 'object' && Array.isArray(content)) {
                 console.log('📦 Message content is in array format:', content);
                 
-                // Process each content item by type
+                // First collect all content items by type
+                let textItems = [];
+                let imageItems = [];
+                
                 content.forEach(item => {
                     if (item.type === 'text') {
-                        // Add text content with markdown formatting
-                        const textDiv = document.createElement('div');
-                        textDiv.innerHTML = formatMessage(item.text);
-                        messageContent.appendChild(textDiv);
+                        textItems.push(item);
                     } else if (item.type === 'image_url' && item.image_url?.url) {
-                        console.log('📸 Message has image URL:', item.image_url.url);
-                        
-                        // Create image container
-                        const imageContainer = document.createElement('div');
+                        imageItems.push(item);
+                    }
+                });
+                
+                // Add all text content first
+                textItems.forEach(item => {
+                    const textDiv = document.createElement('div');
+                    textDiv.innerHTML = formatMessage(item.text);
+                    messageContent.appendChild(textDiv);
+                });
+                
+                // Then add images
+                if (imageItems.length > 0) {
+                    console.log(`📸 Message has ${imageItems.length} images`);
+                    
+                    // Create a container for all images
+                    const imageContainer = document.createElement('div');
+                    
+                    // Use different layouts depending on number of images
+                    if (imageItems.length === 1) {
+                        // Single image - standard layout
                         imageContainer.className = 'message-image-container';
                         
-                        // Create and add the image
                         const messageImage = document.createElement('img');
                         messageImage.className = 'message-image';
-                        messageImage.src = item.image_url.url;
+                        messageImage.src = imageItems[0].image_url.url;
                         messageImage.alt = 'Attached image';
                         messageImage.addEventListener('click', () => {
-                            // Open image in full-screen or new tab on click
-                            window.open(item.image_url.url, '_blank');
+                            window.open(imageItems[0].image_url.url, '_blank');
                         });
                         
                         imageContainer.appendChild(messageImage);
-                        messageContent.appendChild(imageContainer);
+                    } else {
+                        // Multiple images - use grid layout
+                        imageContainer.className = 'message-multi-image';
+                        
+                        // Add each image as a thumbnail
+                        imageItems.forEach((item, index) => {
+                            const wrapper = document.createElement('div');
+                            wrapper.className = 'message-image-wrapper';
+                            
+                            const thumbnail = document.createElement('img');
+                            thumbnail.className = 'message-thumbnail';
+                            thumbnail.src = item.image_url.url;
+                            thumbnail.alt = `Image ${index + 1}`;
+                            thumbnail.addEventListener('click', () => {
+                                window.open(item.image_url.url, '_blank');
+                            });
+                            
+                            wrapper.appendChild(thumbnail);
+                            imageContainer.appendChild(wrapper);
+                        });
                     }
-                });
+                    
+                    messageContent.appendChild(imageContainer);
+                }
+                
             } else {
                 // Legacy format - just text content
                 messageContent.innerHTML = formatMessage(content);
@@ -1440,7 +1555,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to send message to backend and process streaming response
     function sendMessageToBackend(message, modelId, typingIndicator) {
         // Check if we need to make a multimodal message
-        const isMultimodalMessage = attachedImageUrl !== null;
+        const isMultimodalMessage = attachedImageUrls.length > 0;
         
         // Always create a content array (OpenRouter's unified format)
         // Even for text-only messages, this ensures consistent payload structure
@@ -1456,28 +1571,37 @@ document.addEventListener('DOMContentLoaded', function() {
             conversation_id: currentConversationId
         };
         
-        // Add image object to content array if available
+        // Add image objects to content array if available
         if (isMultimodalMessage) {
-            userMessageContent.push({ 
-                type: 'image_url', 
-                image_url: { url: attachedImageUrl } 
-            });
+            // Add each image URL to the content array
+            for (const imageUrl of attachedImageUrls) {
+                userMessageContent.push({ 
+                    type: 'image_url', 
+                    image_url: { url: imageUrl } 
+                });
+            }
             
-            // Also add image_url separately so backend can access it directly
-            payload.image_url = attachedImageUrl;
+            // Add first image URL separately for backward compatibility with backend
+            // This ensures older endpoints still work
+            if (attachedImageUrls.length > 0) {
+                payload.image_url = attachedImageUrls[0];
+            }
             
-            console.log('📸 Creating multimodal message with image:', attachedImageUrl);
+            // Add an array of all image URLs as well
+            payload.image_urls = attachedImageUrls;
+            
+            console.log(`📸 Creating multimodal message with ${attachedImageUrls.length} images`);
             
             // Check if the model supports images
             const model = allModels.find(m => m.id === modelId);
             const isMultimodalModel = model && model.is_multimodal === true;
             
             if (!isMultimodalModel) {
-                console.warn(`⚠️ Warning: Model ${modelId} does not support images, but image is being sent`);
+                console.warn(`⚠️ Warning: Model ${modelId} does not support images, but images are being sent`);
             }
             
-            // Clear the image after sending
-            clearAttachedImage();
+            // Clear all images after sending
+            clearAttachedImages();
         }
         
         // Add user message to history with standardized content array format

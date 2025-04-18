@@ -813,8 +813,24 @@ def chat(): # Synchronous function
             abort(400, description="Invalid request body. JSON expected.")
 
         user_message = data.get('message', '')
-        # Get optional image URL for multimodal messages
-        image_url = data.get('image_url', None)
+        
+        # Get optional image URLs for multimodal messages
+        # Support both single image_url and multiple image_urls array
+        image_url = data.get('image_url', None)  # Legacy/single image support
+        image_urls = data.get('image_urls', [])  # New format with multiple images
+        
+        # If we have image_urls array but no single image_url, use the first one
+        if not image_url and image_urls and len(image_urls) > 0:
+            image_url = image_urls[0]
+            logger.info(f"Using first image from image_urls array: {image_url[:50]}...")
+        # If we have a single image_url but no image_urls array, create one
+        elif image_url and not image_urls:
+            image_urls = [image_url]
+            logger.info(f"Created image_urls array from single image_url: {image_url[:50]}...")
+            
+        if image_urls:
+            logger.info(f"Request contains {len(image_urls)} images")
+        
         # Use .get for default model to avoid KeyError if '1' isn't present initially
         model_id = data.get('model', DEFAULT_PRESET_MODELS.get('1', 'google/gemini-flash-1.5')) 
         message_history = data.get('history', [])
@@ -943,59 +959,72 @@ def chat(): # Synchronous function
         # Load conversation history from database
         db_messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.created_at).all()
         for msg in db_messages:
-             if msg.id != user_db_message.id: 
-                 # Only include text content for history messages (not their images)
-                 messages.append({'role': msg.role, 'content': msg.content})
+             if msg.id != user_db_message.id:
+                 # Check if the message has an image URL
+                 if msg.image_url and openrouter_model in MULTIMODAL_MODELS:
+                     # Format previous messages with images in multimodal format
+                     multimodal_content = [
+                         {"type": "text", "text": msg.content},
+                         {"type": "image_url", "image_url": {"url": msg.image_url}}
+                     ]
+                     messages.append({'role': msg.role, 'content': multimodal_content})
+                     logger.info(f"Including previous message with image in history: {msg.id}")
+                 else:
+                     # Standard text-only message
+                     messages.append({'role': msg.role, 'content': msg.content})
 
         # Format the current user message - either standard text-only or multimodal
         # Following OpenRouter's unified multimodal format that works across all models:
         # https://openrouter.ai/docs#multimodal
-        if image_url and openrouter_model in MULTIMODAL_MODELS:
-            # Validate the image URL - ensure it's a publicly accessible URL
-            if not image_url.startswith(('http://', 'https://')):
-                logger.error(f"❌ INVALID IMAGE URL: {image_url[:100]}...")
-                logger.error("Image URL must start with http:// or https://. Falling back to text-only message.")
-                messages.append({'role': 'user', 'content': user_message})
-            else:
+        if (image_url or (image_urls and len(image_urls) > 0)) and openrouter_model in MULTIMODAL_MODELS:
+            # Create a multimodal content array with the text message
+            multimodal_content = [
+                {"type": "text", "text": user_message}
+            ]
+            
+            # Process all images in the image_urls array
+            urls_to_process = []
+            if image_url:
+                urls_to_process.append(image_url)
+            if image_urls:
+                urls_to_process.extend(image_urls)
+                
+            for url in urls_to_process:
+                # Validate the image URL - ensure it's a publicly accessible URL
+                if not url.startswith(('http://', 'https://')):
+                    logger.error(f"❌ INVALID IMAGE URL: {url[:100]}...")
+                    logger.error("Image URL must start with http:// or https://. Skipping this image.")
+                    continue
+                
                 # Check if this is an Azure Blob Storage URL that needs to be optimized for the model
-                is_azure_url = 'blob.core.windows.net' in image_url
+                is_azure_url = 'blob.core.windows.net' in url
+                processed_url = url
                 
                 # If using Azure Storage and this is a Gemini model, we might need to regenerate
-                # the URL without query parameters for better compatibility
+                # a "clean" URL without SAS tokens that Gemini can process better.
                 if is_azure_url and "gemini" in openrouter_model.lower():
-                    # Check if image URL contains SAS token or query parameters
-                    parsed_url = urlparse(image_url)
-                    if parsed_url.query:
-                        logger.info("🔄 Regenerating image URL for Gemini model compatibility...")
+                    try:
+                        # Extract the blob name from the URL
+                        blob_name = url.split('?')[0].split('/')[-1]
+                        logger.info(f"Extracted blob name: {blob_name}")
                         
-                        # Try to extract the object path from the URL
-                        path_parts = parsed_url.path.strip('/').split('/')
-                        if len(path_parts) >= 2:
-                            container_name = path_parts[0]
-                            object_name = '/'.join(path_parts[1:])
-                            
-                            # Regenerate URL without query parameters
-                            try:
-                                # Only regenerate if we can extract the object name
-                                if object_name:
-                                    clean_url = get_object_storage_url(
-                                        object_name=object_name,
-                                        public=True,  # Force public URL for Gemini
-                                        clean_url=True,
-                                        model_name=openrouter_model
-                                    )
-                                    
-                                    if clean_url:
-                                        logger.info(f"✅ Regenerated clean URL for Gemini: {clean_url[:100]}...")
-                                        image_url = clean_url
-                            except Exception as url_error:
-                                logger.error(f"Error regenerating clean URL: {url_error}")
-                                # Continue with original URL if regeneration fails
+                        # Regenerate a clean URL for Gemini
+                        processed_url = get_object_storage_url(
+                            blob_name, 
+                            public=False, 
+                            expires_in=3600, 
+                            clean_url=True,
+                            model_name="gemini"
+                        )
+                        logger.info(f"Regenerated clean URL for Gemini: {processed_url[:50]}...")
+                    except Exception as url_error:
+                        logger.error(f"Error regenerating clean URL: {url_error}")
+                        # Continue with original URL if regeneration fails
                 
                 # Log detailed image information
                 try:
                     # Parse URL components
-                    parsed_url = urlparse(image_url)
+                    parsed_url = urlparse(processed_url)
                     
                     # Check for query parameters that might indicate a SAS token
                     has_query_params = bool(parsed_url.query)
@@ -1003,7 +1032,7 @@ def chat(): # Synchronous function
                     path = parsed_url.path
                     extension = os.path.splitext(path)[1].lower()
                     
-                    logger.info("📷 MULTIMODAL IMAGE DETAILS:")
+                    logger.info(f"📷 MULTIMODAL IMAGE {len(multimodal_content)} DETAILS:")
                     logger.info(f"  Domain: {domain}")
                     logger.info(f"  Path: {path}")
                     logger.info(f"  File Extension: {extension or 'none'}")
@@ -1025,49 +1054,61 @@ def chat(): # Synchronous function
                         logger.warning("⚠️ Consider setting your Azure Blob Storage container to allow public access")
                     
                     # Check if URL has unusual characters
-                    if any(c in image_url for c in ['&', '+', '%', ' ']):
+                    if any(c in processed_url for c in ['&', '+', '%', ' ']):
                         logger.warning("⚠️ URL contains special characters - may cause issues with some models")
                 except Exception as url_parse_error:
                     logger.error(f"Error analyzing image URL: {url_parse_error}")
                 
-                # Multimodal message with both text and image
-                # This format works consistently across all models (Claude, GPT-4, Gemini, etc.)
-                multimodal_content = [
-                    {"type": "text", "text": user_message},
-                    {"type": "image_url", "image_url": {"url": image_url}}
-                ]
-                
-                # Add the multimodal content to messages
+                # Add this image to the multimodal content
+                multimodal_content.append({
+                    "type": "image_url", 
+                    "image_url": {"url": processed_url}
+                })
+            
+            # Add the multimodal content to messages if we have at least one valid image
+            if len(multimodal_content) > 1:  # First item is text, so we need more than 1 item
                 messages.append({'role': 'user', 'content': multimodal_content})
-                logger.info(f"✅ Added multimodal message with image to {openrouter_model}")
+                logger.info(f"✅ Added multimodal message with {len(multimodal_content) - 1} images to {openrouter_model}")
                 
-                # Model-specific logging
+                # Model-specific guidance for multiple images
                 if "gemini" in openrouter_model.lower():
-                    logger.info("ℹ️ Using Gemini model - ensure image URL is simple and publicly accessible")
+                    logger.info("ℹ️ Using Gemini model - ensure image URLs are simple and publicly accessible")
                     logger.info("ℹ️ Gemini often rejects complex URLs with tokens or special parameters")
+                    logger.info("ℹ️ Gemini models can process up to 16 images, but work best with 1-4 images")
                     
                     # Additional check for WebP format with Gemini
-                    if extension == '.webp':
-                        logger.warning("⚠️ WebP format with Gemini model - high probability of failure")
+                    if any(os.path.splitext(urlparse(url).path)[1].lower() == '.webp' for url in urls_to_process if url.startswith(('http://', 'https://'))):
+                        logger.warning("⚠️ WebP format(s) with Gemini model - high probability of failure")
                         logger.warning("⚠️ Consider converting WebP images to JPEG or PNG for Gemini compatibility")
-                        
+                
                 elif "claude" in openrouter_model.lower():
                     logger.info("ℹ️ Using Claude model - handles most image formats but prefers standard URLs")
+                    # Claude 3 Opus/Sonnet supports up to 5 images, but check the limits for your specific model
+                    if len(multimodal_content) > 6:  # 1 text + 5 images
+                        logger.warning("⚠️ Claude model - more than 5 images may not be fully processed")
+                
                 elif "gpt-4" in openrouter_model.lower():
                     logger.info("ℹ️ Using GPT-4 model - generally most flexible with image URLs")
+                    # GPT-4 Vision (gpt-4-vision-preview) can handle up to 20 images
+                    if len(multimodal_content) > 21:  # 1 text + 20 images
+                        logger.warning("⚠️ GPT-4 Vision - more than 20 images may not be fully processed")
                 
                 # Log full payload for debugging multimodal messages
                 try:
                     logger.debug(f"Multimodal message payload: {json.dumps(multimodal_content, indent=2)}")
                 except Exception as e:
                     logger.debug(f"Could not serialize multimodal content for logging: {e}")
+            else:
+                # No valid images were found, fall back to text-only
+                logger.warning("⚠️ No valid image URLs found. Falling back to text-only message.")
+                messages.append({'role': 'user', 'content': user_message})
         else:
             # Standard text-only message
             messages.append({'role': 'user', 'content': user_message})
-            
-            # Log if image was provided but model doesn't support it
-            if image_url and openrouter_model not in MULTIMODAL_MODELS:
-                logger.warning(f"⚠️ Image URL provided but model {openrouter_model} doesn't support multimodal input. Image ignored.")
+        
+        # Log if image was provided but model doesn't support it
+        if (image_url or (image_urls and len(image_urls) > 0)) and openrouter_model not in MULTIMODAL_MODELS:
+            logger.warning(f"⚠️ Image URL(s) provided but model {openrouter_model} doesn't support multimodal input. Images ignored.")
 
         # --- Enrich with memory if needed ---
         if ENABLE_MEMORY_SYSTEM:
