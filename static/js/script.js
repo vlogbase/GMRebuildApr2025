@@ -808,6 +808,28 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             // Process markdown and code blocks if needed
             messageContent.innerHTML = formatMessage(content);
+            
+            // Check if this message has an image (from metadata)
+            if (metadata && metadata.image_url) {
+                console.log('📸 Message has image URL:', metadata.image_url);
+                
+                // Create image container
+                const imageContainer = document.createElement('div');
+                imageContainer.className = 'message-image-container';
+                
+                // Create and add the image
+                const messageImage = document.createElement('img');
+                messageImage.className = 'message-image';
+                messageImage.src = metadata.image_url;
+                messageImage.alt = 'Attached image';
+                messageImage.addEventListener('click', () => {
+                    // Open image in full-screen or new tab on click
+                    window.open(metadata.image_url, '_blank');
+                });
+                
+                imageContainer.appendChild(messageImage);
+                messageContent.appendChild(imageContainer);
+            }
         }
         
         // Add message content to wrapper
@@ -1090,7 +1112,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             id: message.id,
                             model: message.model,
                             rating: message.rating,
-                            created_at: message.created_at
+                            created_at: message.created_at,
+                            image_url: message.image_url // Include image URL if available
                         };
                         addMessage(message.content, message.role, false, metadata);
                     }
@@ -1114,10 +1137,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to send message to backend and process streaming response
     function sendMessageToBackend(message, modelId, typingIndicator) {
-        // Add user message to history
+        // Check if we need to make a multimodal message
+        const isMultimodalMessage = attachedImageUrl !== null;
+        
+        // Create the message content based on whether we have an image
+        let userMessageContent;
+        if (isMultimodalMessage) {
+            // For multimodal, content is an array with text and image objects
+            // This follows OpenRouter's unified format that works across all models:
+            // https://openrouter.ai/docs#multimodal
+            userMessageContent = [
+                { type: 'text', text: message },
+                { type: 'image_url', image_url: { url: attachedImageUrl } }
+            ];
+            console.log('📸 Creating multimodal message with image:', attachedImageUrl);
+        } else {
+            // For text-only, content is just the text
+            userMessageContent = message;
+        }
+        
+        // Add user message to history with appropriate content format
+        // Note: For multimodal messages, content will be an array of objects
+        // For text-only messages, content will be a simple string
         messageHistory.push({
             role: 'user',
-            content: message
+            content: userMessageContent
         });
         
         // If no model selected, use default
@@ -1128,16 +1172,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Create request payload
         const payload = {
-            message: message,
+            message: message, // Keep original text separately for storage
             model: modelId,
             history: messageHistory,
             conversation_id: currentConversationId
         };
         
-        // Add image URL if available
-        if (attachedImageUrl) {
+        // Add image URL if available (for backward compatibility)
+        if (isMultimodalMessage) {
             payload.image_url = attachedImageUrl;
-            console.log('📨 sending to /chat with image_url:', attachedImageUrl);
+            console.log('📨 sending to /chat with multimodal message');
             
             // Check if the model supports images
             const model = allModels.find(m => m.id === modelId);

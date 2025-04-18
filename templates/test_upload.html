@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Upload Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .upload-form {
+            margin-bottom: 20px;
+        }
+        .preview-container {
+            margin: 20px 0;
+        }
+        #image-preview {
+            max-width: 100%;
+            max-height: 400px;
+            display: none;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .button:hover {
+            background-color: #45a049;
+        }
+        .response {
+            background-color: #f8f9fa;
+            border-left: 4px solid #007bff;
+            padding: 10px;
+            margin-top: 20px;
+            border-radius: 4px;
+        }
+        #response-url {
+            word-break: break-all;
+            font-family: monospace;
+        }
+        .error {
+            color: #dc3545;
+            border-left-color: #dc3545;
+        }
+        .camera-container {
+            margin-top: 20px;
+        }
+        #camera-feed {
+            width: 100%;
+            max-width: 640px;
+            display: none;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .button-secondary {
+            background-color: #6c757d;
+        }
+        .button-danger {
+            background-color: #dc3545;
+        }
+        .button-primary {
+            background-color: #007bff;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Image Upload Test</h1>
+        
+        <div class="upload-form">
+            <h2>Upload an Image</h2>
+            <form id="upload-form" enctype="multipart/form-data">
+                <input type="file" id="file-input" accept="image/*">
+                <button type="submit" class="button">Upload</button>
+            </form>
+        </div>
+        
+        <div class="camera-container">
+            <h2>Take a Photo</h2>
+            <video id="camera-feed" autoplay></video>
+            <div class="button-group">
+                <button id="start-camera" class="button button-primary">Start Camera</button>
+                <button id="capture-photo" class="button" disabled>Capture Photo</button>
+                <button id="switch-camera" class="button button-secondary" disabled>Switch Camera</button>
+                <button id="stop-camera" class="button button-danger" disabled>Stop Camera</button>
+            </div>
+        </div>
+        
+        <div class="preview-container">
+            <h2>Preview</h2>
+            <img id="image-preview" src="" alt="Preview">
+            <canvas id="capture-canvas" style="display:none;"></canvas>
+        </div>
+        
+        <div id="response-container" class="response" style="display: none;">
+            <h2>Upload Response</h2>
+            <p>Status: <span id="response-status"></span></p>
+            <p>Image URL: <a id="response-url" href="#" target="_blank"></a></p>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const uploadForm = document.getElementById('upload-form');
+        const fileInput = document.getElementById('file-input');
+        const imagePreview = document.getElementById('image-preview');
+        const responseContainer = document.getElementById('response-container');
+        const responseStatus = document.getElementById('response-status');
+        const responseUrl = document.getElementById('response-url');
+        const cameraFeed = document.getElementById('camera-feed');
+        const startCameraBtn = document.getElementById('start-camera');
+        const capturePhotoBtn = document.getElementById('capture-photo');
+        const switchCameraBtn = document.getElementById('switch-camera');
+        const stopCameraBtn = document.getElementById('stop-camera');
+        const captureCanvas = document.getElementById('capture-canvas');
+        
+        // Available camera devices
+        let cameras = [];
+        let currentCameraIndex = 0;
+        let mediaStream = null;
+        
+        // Handle file selection
+        fileInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                }
+                
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+        
+        // Handle form submission
+        uploadForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            if (!fileInput.files || !fileInput.files[0]) {
+                alert('Please select an image file first');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            
+            try {
+                const response = await fetch('/upload_image', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                responseContainer.style.display = 'block';
+                
+                if (data.success) {
+                    responseContainer.classList.remove('error');
+                    responseStatus.textContent = 'Success';
+                    responseUrl.textContent = data.image_url;
+                    responseUrl.href = data.image_url;
+                } else {
+                    responseContainer.classList.add('error');
+                    responseStatus.textContent = 'Error';
+                    responseUrl.textContent = data.error || 'Unknown error occurred';
+                    responseUrl.href = '#';
+                }
+            } catch (error) {
+                responseContainer.style.display = 'block';
+                responseContainer.classList.add('error');
+                responseStatus.textContent = 'Error';
+                responseUrl.textContent = 'Failed to upload: ' + error.message;
+                responseUrl.href = '#';
+            }
+        });
+        
+        // Camera functionality
+        async function getAvailableCameras() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                return devices.filter(device => device.kind === 'videoinput');
+            } catch (error) {
+                console.error('Error getting camera devices:', error);
+                return [];
+            }
+        }
+        
+        async function startCamera() {
+            try {
+                cameras = await getAvailableCameras();
+                
+                if (cameras.length === 0) {
+                    alert('No camera devices found');
+                    return;
+                }
+                
+                let constraints = {
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+                
+                // If we have specific camera devices, use the current one
+                if (cameras.length > 0) {
+                    constraints.video.deviceId = { exact: cameras[currentCameraIndex].deviceId };
+                }
+                
+                mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+                cameraFeed.srcObject = mediaStream;
+                cameraFeed.style.display = 'block';
+                
+                // Enable buttons
+                capturePhotoBtn.disabled = false;
+                stopCameraBtn.disabled = false;
+                switchCameraBtn.disabled = cameras.length < 2;
+            } catch (error) {
+                console.error('Error starting camera:', error);
+                alert('Failed to start camera: ' + error.message);
+            }
+        }
+        
+        function stopCamera() {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(track => track.stop());
+                cameraFeed.srcObject = null;
+                cameraFeed.style.display = 'none';
+                
+                // Disable buttons
+                capturePhotoBtn.disabled = true;
+                stopCameraBtn.disabled = true;
+                switchCameraBtn.disabled = true;
+            }
+        }
+        
+        function capturePhoto() {
+            if (!mediaStream) return;
+            
+            // Set canvas dimensions to match video
+            captureCanvas.width = cameraFeed.videoWidth;
+            captureCanvas.height = cameraFeed.videoHeight;
+            
+            // Draw the current video frame to canvas
+            const ctx = captureCanvas.getContext('2d');
+            ctx.drawImage(cameraFeed, 0, 0, captureCanvas.width, captureCanvas.height);
+            
+            // Convert canvas to image for preview
+            imagePreview.src = captureCanvas.toDataURL('image/jpeg');
+            imagePreview.style.display = 'block';
+            
+            // Convert canvas to blob for upload
+            captureCanvas.toBlob(async function(blob) {
+                const formData = new FormData();
+                formData.append('file', blob, 'camera_capture.jpg');
+                
+                try {
+                    const response = await fetch('/upload_image', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const data = await response.json();
+                    
+                    responseContainer.style.display = 'block';
+                    
+                    if (data.success) {
+                        responseContainer.classList.remove('error');
+                        responseStatus.textContent = 'Success';
+                        responseUrl.textContent = data.image_url;
+                        responseUrl.href = data.image_url;
+                    } else {
+                        responseContainer.classList.add('error');
+                        responseStatus.textContent = 'Error';
+                        responseUrl.textContent = data.error || 'Unknown error occurred';
+                        responseUrl.href = '#';
+                    }
+                } catch (error) {
+                    responseContainer.style.display = 'block';
+                    responseContainer.classList.add('error');
+                    responseStatus.textContent = 'Error';
+                    responseUrl.textContent = 'Failed to upload: ' + error.message;
+                    responseUrl.href = '#';
+                }
+            }, 'image/jpeg', 0.9);
+        }
+        
+        async function switchCamera() {
+            if (cameras.length < 2) return;
+            
+            // Stop current stream
+            stopCamera();
+            
+            // Switch to next camera
+            currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
+            
+            // Restart with new camera
+            await startCamera();
+        }
+        
+        // Event listeners for camera controls
+        startCameraBtn.addEventListener('click', startCamera);
+        stopCameraBtn.addEventListener('click', stopCamera);
+        capturePhotoBtn.addEventListener('click', capturePhoto);
+        switchCameraBtn.addEventListener('click', switchCamera);
+    </script>
+</body>
+</html>

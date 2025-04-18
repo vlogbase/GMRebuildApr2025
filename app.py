@@ -445,13 +445,24 @@ def test_upload_page():
     A simple route to test the image upload functionality.
     This serves a static HTML page for testing without requiring the full UI.
     """
-    return send_from_directory('static', 'test_upload.html')
+    return render_template('test_upload.html')
 
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
     """
     Route to handle image uploads for multimodal messages.
     Processes, resizes if needed, and stores images in Azure Blob Storage.
+    
+    The returned image URL will be included in the multimodal message content
+    following OpenRouter's standardized format for all models:
+    
+    {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "User's message text"},
+            {"type": "image_url", "image_url": {"url": "URL_RETURNED_FROM_THIS_ENDPOINT"}}
+        ]
+    }
     
     Examples:
         # Success case - uploading a valid image
@@ -725,11 +736,25 @@ def chat(): # Synchronous function
              logger.error("Failed to get or create a valid conversation object.")
              abort(500, description="Failed to establish conversation context.")
 
+        # Extract text content from multimodal message if needed
+        message_text = user_message
+        
+        # If message_history contains structured multimodal content, extract just the text
+        if message_history and len(message_history) > 0:
+            last_message = message_history[-1]
+            if isinstance(last_message.get('content'), list):
+                # Find the text component in the multimodal content
+                for content_item in last_message.get('content', []):
+                    if content_item.get('type') == 'text':
+                        message_text = content_item.get('text', user_message)
+                        logger.info(f"Extracted text content from multimodal message: {message_text[:50]}...")
+                        break
+        
         user_db_message = Message(
             conversation_id=conversation.id, 
             role='user', 
-            content=user_message,
-            image_url=image_url  # Save image URL if provided
+            content=message_text,  # Store the text component
+            image_url=image_url    # Still store the image URL separately
         )
         db.session.add(user_db_message)
         try:
@@ -761,45 +786,19 @@ def chat(): # Synchronous function
                  # Only include text content for history messages (not their images)
                  messages.append({'role': msg.role, 'content': msg.content})
 
-        # Format the current user message, possibly with image
-        # Check if this is a multimodal message (has image) and model supports it
+        # Format the current user message - either standard text-only or multimodal
+        # Following OpenRouter's unified multimodal format that works across all models:
+        # https://openrouter.ai/docs#multimodal
         if image_url and openrouter_model in MULTIMODAL_MODELS:
-            # Different models require different formatting for multimodal messages
-            if 'claude' in openrouter_model.lower():
-                # Claude format
-                user_content = [
-                    {"type": "text", "text": user_message},
-                    {"type": "image", "source": {"url": image_url}}
-                ]
-                messages.append({'role': 'user', 'content': user_content})
-                logger.info(f"Added multimodal message with Claude-format image to {openrouter_model}")
-            elif 'gpt-4' in openrouter_model.lower() or 'gpt4' in openrouter_model.lower():
-                # OpenAI GPT-4 format
-                user_content = [
-                    {"type": "text", "text": user_message},
-                    {"type": "image_url", "image_url": {"url": image_url}}
-                ]
-                messages.append({'role': 'user', 'content': user_content})
-                logger.info(f"Added multimodal message with OpenAI-format image to {openrouter_model}")
-            elif 'gemini' in openrouter_model.lower():
-                # Google Gemini format
-                user_content = [
-                    {"type": "text", "text": user_message},
-                    {"type": "image_url", "image_url": {"url": image_url}}
-                ]
-                messages.append({'role': 'user', 'content': user_content})
-                logger.info(f"Added multimodal message with Gemini-format image to {openrouter_model}")
-            else:
-                # Generic format as fallback
-                user_content = [
-                    {"type": "text", "text": user_message},
-                    {"type": "image_url", "image_url": {"url": image_url}}
-                ]
-                messages.append({'role': 'user', 'content': user_content})
-                logger.info(f"Added multimodal message with generic-format image to {openrouter_model}")
-                
-            # Log the actual URL being sent
-            logger.info(f"Image URL sent to model: {image_url}")
+            # Multimodal message with both text and image
+            # This format works consistently across all models (Claude, GPT-4, Gemini, etc.)
+            multimodal_content = [
+                {"type": "text", "text": user_message},
+                {"type": "image_url", "image_url": {"url": image_url}}
+            ]
+            messages.append({'role': 'user', 'content': multimodal_content})
+            logger.info(f"Added multimodal message with image to {openrouter_model}")
+            logger.info(f"Image URL: {image_url}")
         else:
             # Standard text-only message
             messages.append({'role': 'user', 'content': user_message})
@@ -931,13 +930,18 @@ def chat(): # Synchronous function
             'reasoning': {}  # Enable reasoning tokens for all models that support it
         }
         
-        # --- ADD LOGGING FOR FINAL PROMPT ---
+        # Note: We don't need to add image_url separately as it's now included in the messages content
+        # for multimodal models when an image is provided
+        
+        # --- ADD LOGGING FOR FINAL PAYLOAD ---
         try:
-            # Use json.dumps for clean logging of the potentially large messages list
-            final_messages_json = json.dumps(messages, indent=2)
-            logger.debug(f"RAG DEBUG: Final messages list being sent to LLM:\n{final_messages_json}")
+            # Create a safe copy of the payload for logging (to avoid credentials leaks)
+            log_payload = payload.copy()
+            # Use json.dumps for clean logging of the entire payload
+            final_payload_json = json.dumps(log_payload, indent=2)
+            logger.debug(f"PAYLOAD DEBUG: Final payload being sent to OpenRouter:\n{final_payload_json}")
         except Exception as json_err:
-            logger.error(f"RAG DEBUG: Error serializing messages for logging: {json_err}")
+            logger.error(f"PAYLOAD DEBUG: Error serializing payload for logging: {json_err}")
         # --- END OF ADDED LOGGING ---
         
         logger.debug(f"Sending request to OpenRouter with model: {openrouter_model}. History length: {len(messages)}, reasoning enabled")
@@ -1295,7 +1299,8 @@ def get_conversation_messages(conversation_id):
                 "content": msg.content,
                 "created_at": msg.created_at.isoformat(),
                 "rating": msg.rating,
-                "model": msg.model
+                "model": msg.model,
+                "image_url": msg.image_url  # Include image URL for multimodal messages
             }
             formatted_messages.append(formatted_message)
             
