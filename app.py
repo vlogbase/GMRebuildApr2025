@@ -21,6 +21,7 @@ import mimetypes
 from pathlib import Path
 from PIL import Image  # For image processing
 from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory # Added send_from_directory
+from urllib.parse import urlparse # For URL analysis in image handling
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user, login_required
@@ -369,7 +370,7 @@ def generate_share_id(length=12):
     share_id = share_id.replace('=', '')[:length]
     return share_id
 
-def get_object_storage_url(object_name, public=True, expires_in=3600):
+def get_object_storage_url(object_name, public=True, expires_in=3600, clean_url=False, model_name=None):
     """
     Generate a URL for an object in Azure Blob Storage.
     This function creates URLs that are compatible with OpenRouter's multimodal API requirements.
@@ -378,6 +379,8 @@ def get_object_storage_url(object_name, public=True, expires_in=3600):
         object_name (str): The name of the object
         public (bool): Whether to generate a public URL or a signed URL
         expires_in (int): The number of seconds the signed URL is valid for
+        clean_url (bool): If True, generate a URL without query parameters (better for Gemini)
+        model_name (str): Optional model name to generate model-specific URLs
         
     Returns:
         str: The URL for the object that can be used in multimodal AI messages
@@ -388,11 +391,28 @@ def get_object_storage_url(object_name, public=True, expires_in=3600):
                 'container_client' in globals() and container_client):
             logger.warning("Azure Blob Storage not initialized, cannot generate URL")
             return None
+        
+        # Check if using a model that needs special handling (like Gemini)
+        is_gemini = model_name and "gemini" in model_name.lower()
+        
+        # If Gemini model is specified, force clean_url to True as Gemini often has issues with SAS tokens
+        if is_gemini:
+            clean_url = True
+            logger.info(f"Gemini model detected ({model_name}). Using clean URL without query parameters.")
             
-        if public:
-            # For public access, use the blob's URL directly
+        # For public access or clean URLs (for Gemini compatibility), use the blob's URL directly
+        if public or clean_url:
+            # Get a direct URL without any SAS token or query parameters
             blob_client = container_client.get_blob_client(object_name)
-            return blob_client.url
+            clean_blob_url = blob_client.url
+            logger.info(f"Generated clean URL without query parameters: {clean_blob_url[:100]}...")
+            
+            # For Gemini models, check if the container allows public access
+            if is_gemini and not public:
+                logger.warning("⚠️ Using Gemini with a clean URL requires the container to allow public access")
+                logger.warning("⚠️ If the image doesn't display, your Azure container may need public read access")
+                
+            return clean_blob_url
         else:
             # Generate a SAS token for time-limited access
             blob_client = container_client.get_blob_client(object_name)
@@ -637,14 +657,38 @@ def upload_image():
                     overwrite=True
                 )
                 
-                # Generate a URL with SAS token for the uploaded image
-                image_url = get_object_storage_url(object_name=storage_path, public=False, expires_in=24*3600)
+                # Check if a specific model is being used (from query params)
+                target_model = request.args.get('model', None)
+                
+                # Generate a URL for the uploaded image
+                # For Gemini models, use a clean URL without SAS token
+                image_url = get_object_storage_url(
+                    object_name=storage_path, 
+                    public=False, 
+                    expires_in=24*3600,
+                    clean_url=False,  # Will be automatically set to True for Gemini models
+                    model_name=target_model
+                )
+                
                 # Log debugging information
                 logger.info(f"Uploaded image to Azure Blob Storage with URL: {image_url[:50]}...")
+                logger.info(f"Image MIME type: {mime_type}")
+                logger.info(f"Target model (if specified): {target_model or 'None'}")
                 
+                # Add detailed compatibility warnings
+                if '.webp' in storage_path.lower():
+                    logger.warning("⚠️ WebP format detected - Gemini models may have issues with this format")
+                    logger.warning("Consider using JPEG or PNG for better cross-model compatibility")
+                
+                parsed_url = urlparse(image_url) if image_url else None
+                if parsed_url and parsed_url.query and target_model and "gemini" in target_model.lower():
+                    logger.warning("⚠️ Gemini model detected with URL containing query parameters")
+                    logger.warning("Gemini models typically reject URLs with SAS tokens or query parameters")
+                    logger.warning("Try setting the container to allow public access for Gemini compatibility")
+                    
                 # Verify the URL is generated
                 if not image_url:
-                    logger.error("Failed to generate URL for Azure Blob Storage")
+                    logger.error("❌ Failed to generate URL for Azure Blob Storage")
                     raise ValueError("Failed to generate URL for uploaded image")
             except Exception as e:
                 logger.exception(f"Error uploading to Azure Blob Storage: {e}")
@@ -883,10 +927,83 @@ def chat(): # Synchronous function
         if image_url and openrouter_model in MULTIMODAL_MODELS:
             # Validate the image URL - ensure it's a publicly accessible URL
             if not image_url.startswith(('http://', 'https://')):
-                logger.error(f"Invalid image URL format: {image_url[:50]}...")
-                logger.warning("Image URL must start with http:// or https://. Falling back to text-only message.")
+                logger.error(f"❌ INVALID IMAGE URL: {image_url[:100]}...")
+                logger.error("Image URL must start with http:// or https://. Falling back to text-only message.")
                 messages.append({'role': 'user', 'content': user_message})
             else:
+                # Check if this is an Azure Blob Storage URL that needs to be optimized for the model
+                is_azure_url = 'blob.core.windows.net' in image_url
+                
+                # If using Azure Storage and this is a Gemini model, we might need to regenerate
+                # the URL without query parameters for better compatibility
+                if is_azure_url and "gemini" in openrouter_model.lower():
+                    # Check if image URL contains SAS token or query parameters
+                    parsed_url = urlparse(image_url)
+                    if parsed_url.query:
+                        logger.info("🔄 Regenerating image URL for Gemini model compatibility...")
+                        
+                        # Try to extract the object path from the URL
+                        path_parts = parsed_url.path.strip('/').split('/')
+                        if len(path_parts) >= 2:
+                            container_name = path_parts[0]
+                            object_name = '/'.join(path_parts[1:])
+                            
+                            # Regenerate URL without query parameters
+                            try:
+                                # Only regenerate if we can extract the object name
+                                if object_name:
+                                    clean_url = get_object_storage_url(
+                                        object_name=object_name,
+                                        public=True,  # Force public URL for Gemini
+                                        clean_url=True,
+                                        model_name=openrouter_model
+                                    )
+                                    
+                                    if clean_url:
+                                        logger.info(f"✅ Regenerated clean URL for Gemini: {clean_url[:100]}...")
+                                        image_url = clean_url
+                            except Exception as url_error:
+                                logger.error(f"Error regenerating clean URL: {url_error}")
+                                # Continue with original URL if regeneration fails
+                
+                # Log detailed image information
+                try:
+                    # Parse URL components
+                    parsed_url = urlparse(image_url)
+                    
+                    # Check for query parameters that might indicate a SAS token
+                    has_query_params = bool(parsed_url.query)
+                    domain = parsed_url.netloc
+                    path = parsed_url.path
+                    extension = os.path.splitext(path)[1].lower()
+                    
+                    logger.info("📷 MULTIMODAL IMAGE DETAILS:")
+                    logger.info(f"  Domain: {domain}")
+                    logger.info(f"  Path: {path}")
+                    logger.info(f"  File Extension: {extension or 'none'}")
+                    logger.info(f"  Has Query Parameters: {has_query_params}")
+                    logger.info(f"  Model: {openrouter_model}")
+                    
+                    # Check for potential issues
+                    if not extension:
+                        logger.warning("⚠️ Image URL has no file extension - may cause issues with some models")
+                    
+                    if extension not in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+                        logger.warning(f"⚠️ Unusual file extension: {extension} - may not be supported by all models")
+                    
+                    if has_query_params:
+                        logger.warning("⚠️ URL contains query parameters (possibly SAS token) - may cause issues with some models")
+                    
+                    if 'blob.core.windows.net' in domain and has_query_params and "gemini" in openrouter_model.lower():
+                        logger.warning("⚠️ Gemini model with Azure Blob Storage URL + SAS token - high probability of failure")
+                        logger.warning("⚠️ Consider setting your Azure Blob Storage container to allow public access")
+                    
+                    # Check if URL has unusual characters
+                    if any(c in image_url for c in ['&', '+', '%', ' ']):
+                        logger.warning("⚠️ URL contains special characters - may cause issues with some models")
+                except Exception as url_parse_error:
+                    logger.error(f"Error analyzing image URL: {url_parse_error}")
+                
                 # Multimodal message with both text and image
                 # This format works consistently across all models (Claude, GPT-4, Gemini, etc.)
                 multimodal_content = [
@@ -897,7 +1014,21 @@ def chat(): # Synchronous function
                 # Add the multimodal content to messages
                 messages.append({'role': 'user', 'content': multimodal_content})
                 logger.info(f"✅ Added multimodal message with image to {openrouter_model}")
-                logger.info(f"Image URL: {image_url[:100]}...")
+                
+                # Model-specific logging
+                if "gemini" in openrouter_model.lower():
+                    logger.info("ℹ️ Using Gemini model - ensure image URL is simple and publicly accessible")
+                    logger.info("ℹ️ Gemini often rejects complex URLs with tokens or special parameters")
+                    
+                    # Additional check for WebP format with Gemini
+                    if extension == '.webp':
+                        logger.warning("⚠️ WebP format with Gemini model - high probability of failure")
+                        logger.warning("⚠️ Consider converting WebP images to JPEG or PNG for Gemini compatibility")
+                        
+                elif "claude" in openrouter_model.lower():
+                    logger.info("ℹ️ Using Claude model - handles most image formats but prefers standard URLs")
+                elif "gpt-4" in openrouter_model.lower():
+                    logger.info("ℹ️ Using GPT-4 model - generally most flexible with image URLs")
                 
                 # Log full payload for debugging multimodal messages
                 try:
@@ -910,7 +1041,7 @@ def chat(): # Synchronous function
             
             # Log if image was provided but model doesn't support it
             if image_url and openrouter_model not in MULTIMODAL_MODELS:
-                logger.warning(f"Image URL provided but model {openrouter_model} doesn't support multimodal input. Image ignored.")
+                logger.warning(f"⚠️ Image URL provided but model {openrouter_model} doesn't support multimodal input. Image ignored.")
 
         # --- Enrich with memory if needed ---
         if ENABLE_MEMORY_SYSTEM:
