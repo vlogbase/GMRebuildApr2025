@@ -166,6 +166,7 @@ FREE_MODEL_FALLBACKS = [
 
 # Multimodal models that support image inputs
 MULTIMODAL_MODELS = [
+    # Specific model IDs
     "google/gemini-2.5-pro-preview-03-25",
     "google/gemini-2.5-flash-preview-03-25",
     "anthropic/claude-3.7-sonnet", 
@@ -175,7 +176,15 @@ MULTIMODAL_MODELS = [
     "anthropic/claude-3-opus",
     "openai/gpt-4o", 
     "openai/gpt-4-turbo", 
-    "openai/gpt-4-vision"
+    "openai/gpt-4-vision",
+    
+    # Generic model patterns - these partial matches help catch model variations
+    "claude-3",
+    "gemini",
+    "gpt-4-vision",
+    "gpt-4o",
+    "vision",
+    "multimodal"
 ]
 
 # Cache for OpenRouter models
@@ -363,6 +372,7 @@ def generate_share_id(length=12):
 def get_object_storage_url(object_name, public=True, expires_in=3600):
     """
     Generate a URL for an object in Azure Blob Storage.
+    This function creates URLs that are compatible with OpenRouter's multimodal API requirements.
     
     Args:
         object_name (str): The name of the object
@@ -370,7 +380,7 @@ def get_object_storage_url(object_name, public=True, expires_in=3600):
         expires_in (int): The number of seconds the signed URL is valid for
         
     Returns:
-        str: The URL for the object
+        str: The URL for the object that can be used in multimodal AI messages
     """
     try:
         # Check if Azure Blob Storage is properly initialized
@@ -446,6 +456,58 @@ def test_upload_page():
     This serves a static HTML page for testing without requiring the full UI.
     """
     return render_template('test_upload.html')
+
+@app.route('/test-multimodal')
+def test_multimodal():
+    """
+    Debug route to test multimodal image handling.
+    Tests the URL format compatibility with OpenRouter's multimodal API requirements.
+    """
+    try:
+        # Create a test message with an image
+        test_image_url = None
+        
+        # Try to get a test image URL from Azure Blob Storage
+        if 'USE_AZURE_STORAGE' in globals() and USE_AZURE_STORAGE and 'container_client' in globals() and container_client:
+            # List blobs to find an image
+            for blob in container_client.list_blobs(max_results=5):
+                if blob.name.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')):
+                    test_image_url = get_object_storage_url(blob.name, public=False, expires_in=3600)
+                    break
+        
+        # If no Azure image, use a sample image URL
+        if not test_image_url:
+            # Use a test image from the static folder
+            test_image_url = url_for('static', filename='sample_image.jpg', _external=True)
+        
+        # Create a multimodal message in OpenRouter format
+        multimodal_content = [
+            {"type": "text", "text": "This is a test multimodal message with an image."},
+            {"type": "image_url", "image_url": {"url": test_image_url}}
+        ]
+        
+        result = {
+            "success": True,
+            "message": "Multimodal test message created",
+            "image_url": test_image_url,
+            "multimodal_content": multimodal_content,
+            "is_valid_url": test_image_url.startswith(('http://', 'https://'))
+        }
+        
+        # Return both JSON and rendered HTML
+        if request.headers.get('Accept') == 'application/json':
+            return jsonify(result)
+        else:
+            return render_template('test_multimodal.html', result=result)
+    
+    except Exception as e:
+        error_msg = f"Error testing multimodal: {str(e)}"
+        logger.exception(error_msg)
+        
+        if request.headers.get('Accept') == 'application/json':
+            return jsonify({"error": error_msg}), 500
+        else:
+            return f"<h1>Error</h1><p>{error_msg}</p>", 500
 
 @app.route('/upload_image', methods=['POST'])
 def upload_image():
@@ -749,6 +811,35 @@ def chat(): # Synchronous function
                         message_text = content_item.get('text', user_message)
                         logger.info(f"Extracted text content from multimodal message: {message_text[:50]}...")
                         break
+                        
+                # Also check for image_url in the multimodal content if not already provided
+                if not image_url:
+                    for content_item in last_message.get('content', []):
+                        if content_item.get('type') == 'image_url' and content_item.get('image_url', {}).get('url'):
+                            extracted_image_url = content_item.get('image_url', {}).get('url')
+                            logger.info(f"Extracted image URL from multimodal message: {extracted_image_url[:50]}...")
+                            image_url = extracted_image_url
+                            break
+        
+        # Double check - if we still don't have an image_url, try to find it in the request JSON
+        if not image_url and request.is_json:
+            # Try to extract image_url directly from the JSON payload
+            direct_image_url = request.json.get('image_url')
+            if direct_image_url:
+                image_url = direct_image_url
+                logger.info(f"Found image_url directly in request JSON: {image_url[:50]}...")
+        
+        # Validate image URL if provided
+        if image_url:
+            if not image_url.startswith(('http://', 'https://')):
+                logger.warning(f"Invalid image URL format: {image_url[:50]}... - must start with http:// or https://")
+                # Don't use invalid URLs
+                image_url = None
+            else:
+                logger.info(f"✅ Valid image URL format: {image_url[:50]}...")
+        
+        # Log what we're saving to the database
+        logger.info(f"Saving user message to DB. Text: '{message_text[:50]}...' Image URL: {image_url[:50] if image_url else 'None'}")
         
         user_db_message = Message(
             conversation_id=conversation.id, 
@@ -790,15 +881,29 @@ def chat(): # Synchronous function
         # Following OpenRouter's unified multimodal format that works across all models:
         # https://openrouter.ai/docs#multimodal
         if image_url and openrouter_model in MULTIMODAL_MODELS:
-            # Multimodal message with both text and image
-            # This format works consistently across all models (Claude, GPT-4, Gemini, etc.)
-            multimodal_content = [
-                {"type": "text", "text": user_message},
-                {"type": "image_url", "image_url": {"url": image_url}}
-            ]
-            messages.append({'role': 'user', 'content': multimodal_content})
-            logger.info(f"Added multimodal message with image to {openrouter_model}")
-            logger.info(f"Image URL: {image_url}")
+            # Validate the image URL - ensure it's a publicly accessible URL
+            if not image_url.startswith(('http://', 'https://')):
+                logger.error(f"Invalid image URL format: {image_url[:50]}...")
+                logger.warning("Image URL must start with http:// or https://. Falling back to text-only message.")
+                messages.append({'role': 'user', 'content': user_message})
+            else:
+                # Multimodal message with both text and image
+                # This format works consistently across all models (Claude, GPT-4, Gemini, etc.)
+                multimodal_content = [
+                    {"type": "text", "text": user_message},
+                    {"type": "image_url", "image_url": {"url": image_url}}
+                ]
+                
+                # Add the multimodal content to messages
+                messages.append({'role': 'user', 'content': multimodal_content})
+                logger.info(f"✅ Added multimodal message with image to {openrouter_model}")
+                logger.info(f"Image URL: {image_url[:100]}...")
+                
+                # Log full payload for debugging multimodal messages
+                try:
+                    logger.debug(f"Multimodal message payload: {json.dumps(multimodal_content, indent=2)}")
+                except Exception as e:
+                    logger.debug(f"Could not serialize multimodal content for logging: {e}")
         else:
             # Standard text-only message
             messages.append({'role': 'user', 'content': user_message})
@@ -933,8 +1038,51 @@ def chat(): # Synchronous function
         # Note: We don't need to add image_url separately as it's now included in the messages content
         # for multimodal models when an image is provided
         
-        # --- ADD LOGGING FOR FINAL PAYLOAD ---
+        # --- ADD DETAILED LOGGING FOR TROUBLESHOOTING MULTIMODAL IMAGES ---
         try:
+            # Check if there's a multimodal message in the history
+            has_multimodal_message = False
+            for msg in messages:
+                if isinstance(msg.get('content'), list):
+                    has_multimodal_message = True
+                    # Log the structure of the multimodal message
+                    logger.info("Found multimodal message in payload:")
+                    for i, content_item in enumerate(msg.get('content', [])):
+                        item_type = content_item.get('type', 'unknown')
+                        if item_type == 'text':
+                            logger.info(f"  Content item {i}: type=text, text={content_item.get('text', '')[:50]}...")
+                        elif item_type == 'image_url':
+                            image_url_obj = content_item.get('image_url', {})
+                            url = image_url_obj.get('url', 'none')
+                            
+                            # Double-check URL format - must be a valid public URL for OpenRouter
+                            is_valid_url = url.startswith(('http://', 'https://'))
+                            if not is_valid_url:
+                                logger.error(f"❌ INVALID URL FORMAT DETECTED in payload: {url[:50]}...")
+                                logger.error("This will cause the image to be ignored by the model.")
+                            else:
+                                logger.info(f"  Content item {i}: type=image_url, url={url[:50]}...")
+            
+            if image_url and not has_multimodal_message:
+                logger.warning("WARNING: image_url is provided but no multimodal message was found in the payload!")
+            
+            # Check if we're sending an image to a non-multimodal model
+            if image_url and has_multimodal_message:
+                model_supports_images = False
+                selected_model = payload.get('model', '')
+                
+                # Check if the model name contains any multimodal indicator
+                for multimodal_indicator in MULTIMODAL_MODELS:
+                    if multimodal_indicator.lower() in selected_model.lower():
+                        model_supports_images = True
+                        break
+                
+                if not model_supports_images:
+                    logger.warning(f"⚠️ Sending image to model '{selected_model}' that may not support multimodal input!")
+                    logger.warning(f"This model isn't in the MULTIMODAL_MODELS list. The image might be ignored.")
+                else:
+                    logger.info(f"✅ Model '{selected_model}' supports multimodal content.")
+            
             # Create a safe copy of the payload for logging (to avoid credentials leaks)
             log_payload = payload.copy()
             # Use json.dumps for clean logging of the entire payload

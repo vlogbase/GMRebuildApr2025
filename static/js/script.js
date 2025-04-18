@@ -1215,12 +1215,24 @@ document.addEventListener('DOMContentLoaded', function() {
             { type: 'text', text: message }
         ];
         
+        // Create payload object with model and conversation info
+        const payload = {
+            model: modelId,
+            stream: true,
+            message: message,
+            conversation_id: currentConversationId
+        };
+        
         // Add image object to content array if available
         if (isMultimodalMessage) {
             userMessageContent.push({ 
                 type: 'image_url', 
                 image_url: { url: attachedImageUrl } 
             });
+            
+            // Also add image_url separately so backend can access it directly
+            payload.image_url = attachedImageUrl;
+            
             console.log('📸 Creating multimodal message with image:', attachedImageUrl);
             
             // Check if the model supports images
@@ -1247,18 +1259,13 @@ document.addEventListener('DOMContentLoaded', function() {
             console.warn('No model selected, using default:', modelId);
         }
         
-        // Create request payload using standardized JSON format
-        const payload = {
-            model: modelId,
-            stream: true,
-            messages: [
-                { 
-                    role: 'user', 
-                    content: userMessageContent
-                }
-            ],
-            conversation_id: currentConversationId
-        };
+        // Add structured message format to payload
+        payload.messages = [
+            { 
+                role: 'user', 
+                content: userMessageContent
+            }
+        ];
         
         // Log the full payload for debugging
         console.log('📤 Sending payload to backend:', JSON.stringify(payload, null, 2));

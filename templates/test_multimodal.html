@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Multimodal Testing</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .section {
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        
+        .section h2 {
+            margin-top: 0;
+            color: #3498db;
+        }
+        
+        pre {
+            background-color: #f1f1f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .image-preview {
+            max-width: 500px;
+            max-height: 500px;
+            border: 1px solid #ddd;
+            padding: 5px;
+            margin-top: 20px;
+        }
+        
+        .status {
+            font-weight: bold;
+            padding: 8px 15px;
+            border-radius: 4px;
+            display: inline-block;
+            margin: 10px 0;
+        }
+        
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        
+        .warning {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+        }
+        
+        .button {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+        
+        .button:hover {
+            background-color: #2980b9;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
+        
+        th {
+            background-color: #f2f2f2;
+        }
+        
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+<body>
+    <h1>Multimodal Message Testing</h1>
+    
+    <div class="section">
+        <h2>Test Results</h2>
+        
+        {% if result %}
+            <div class="status {% if result.success %}success{% else %}error{% endif %}">
+                {{ "Success" if result.success else "Error" }}
+            </div>
+            
+            {% if result.message %}
+                <p><strong>Message:</strong> {{ result.message }}</p>
+            {% endif %}
+            
+            <table>
+                <tr>
+                    <th>Property</th>
+                    <th>Value</th>
+                </tr>
+                <tr>
+                    <td>URL Format Valid</td>
+                    <td>{{ "✅ Yes" if result.is_valid_url else "❌ No" }}</td>
+                </tr>
+            </table>
+            
+            <h3>Image URL</h3>
+            <pre>{{ result.image_url }}</pre>
+            
+            <h3>Multimodal Content Structure</h3>
+            <pre>{{ result.multimodal_content|tojson(indent=2) }}</pre>
+            
+            <h3>Image Preview</h3>
+            {% if result.image_url %}
+                <img src="{{ result.image_url }}" alt="Test Image" class="image-preview">
+            {% else %}
+                <p>No image URL available</p>
+            {% endif %}
+        {% else %}
+            <div class="status error">No test result available</div>
+        {% endif %}
+    </div>
+    
+    <div class="section">
+        <h2>OpenRouter API Format Reference</h2>
+        <p>This is the format that OpenRouter requires for multimodal messages:</p>
+        <pre>{
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "What's in this image?"
+        },
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "https://example.com/image.jpg"
+          }
+        }
+      ]
+    }
+  ],
+  "model": "anthropic/claude-3-opus-20240229"
+}</pre>
+    </div>
+    
+    <a href="/" class="button">Back to Chat</a>
+</body>
+</html>
