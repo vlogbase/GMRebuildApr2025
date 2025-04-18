@@ -294,7 +294,8 @@ def generate_summary(conversation_id):
             'model': model_id,
             'messages': summary_prompt,
             'max_tokens': 20,  # Limit token count since we only need a short title
-            'temperature': 0.7  # Slightly creative but not too random
+            'temperature': 0.7,  # Slightly creative but not too random
+            'include_reasoning': True  # Enable reasoning tokens for better title generation
         }
         
         # Make the API request
@@ -809,22 +810,64 @@ def chat(): # Synchronous function
             logger.error("Request body is not JSON or is empty")
             abort(400, description="Invalid request body. JSON expected.")
 
-        user_message = data.get('message', '')
+        # --- Get user input from structured 'messages' array (OpenAI-compatible format) ---
+        frontend_messages = data.get('messages', [])
+        user_message = ""
+        image_url = None   # For backward compatibility
+        image_urls = []    # Array of all image URLs
         
-        # Get optional image URLs for multimodal messages
-        # Support both single image_url and multiple image_urls array
-        image_url = data.get('image_url', None)  # Legacy/single image support
-        image_urls = data.get('image_urls', [])  # New format with multiple images
+        if frontend_messages:
+            # Process the latest user message to extract text and images
+            latest_user_message = None
+            for msg in reversed(frontend_messages):
+                if msg.get('role') == 'user':
+                    latest_user_message = msg
+                    break
+                    
+            if latest_user_message:
+                content = latest_user_message.get('content', [])
+                
+                # Handle both string content and array content formats
+                if isinstance(content, str):
+                    user_message = content
+                    logger.info(f"Extracted text-only message from messages array: {user_message[:50]}...")
+                elif isinstance(content, list):
+                    # Extract text and images from the content array
+                    for item in content:
+                        if item.get('type') == 'text':
+                            user_message = item.get('text', '')
+                            logger.info(f"Extracted text from messages array: {user_message[:50]}...")
+                        elif item.get('type') == 'image_url':
+                            image_url_obj = item.get('image_url', {})
+                            url = image_url_obj.get('url')
+                            if url:
+                                image_urls.append(url)
+                                # Set image_url to the first image for backward compatibility
+                                if not image_url:
+                                    image_url = url
+                                logger.info(f"Extracted image URL from messages array: {url[:50]}...")
         
-        # If we have image_urls array but no single image_url, use the first one
-        if not image_url and image_urls and len(image_urls) > 0:
-            image_url = image_urls[0]
-            logger.info(f"Using first image from image_urls array: {image_url[:50]}...")
-        # If we have a single image_url but no image_urls array, create one
-        elif image_url and not image_urls:
-            image_urls = [image_url]
-            logger.info(f"Created image_urls array from single image_url: {image_url[:50]}...")
+        # Fallback to top-level fields if messages array wasn't processed successfully
+        if not user_message:
+            logger.warning("Using legacy top-level 'message' field as fallback")
+            user_message = data.get('message', '')
             
+        if not image_urls:
+            # Get optional image URLs for multimodal messages (legacy format)
+            legacy_image_url = data.get('image_url')
+            legacy_image_urls = data.get('image_urls', [])
+            
+            if legacy_image_url:
+                image_url = legacy_image_url
+                image_urls.append(legacy_image_url)
+                logger.warning(f"Using legacy top-level 'image_url' field as fallback: {image_url[:50]}...")
+                
+            if legacy_image_urls:
+                for url in legacy_image_urls:
+                    if url not in image_urls:  # Avoid duplicates
+                        image_urls.append(url)
+                logger.warning(f"Using legacy top-level 'image_urls' field as fallback")
+        
         if image_urls:
             logger.info(f"Request contains {len(image_urls)} images")
         
@@ -1236,7 +1279,7 @@ def chat(): # Synchronous function
             'model': openrouter_model,
             'messages': messages,
             'stream': True,
-            'reasoning': {}  # Enable reasoning tokens for all models that support it
+            'include_reasoning': True  # Enable reasoning tokens for all models that support it
         }
         
         # Note: We don't need to add image_url separately as it's now included in the messages content
@@ -1296,7 +1339,7 @@ def chat(): # Synchronous function
             logger.error(f"PAYLOAD DEBUG: Error serializing payload for logging: {json_err}")
         # --- END OF ADDED LOGGING ---
         
-        logger.debug(f"Sending request to OpenRouter with model: {openrouter_model}. History length: {len(messages)}, reasoning enabled")
+        logger.debug(f"Sending request to OpenRouter with model: {openrouter_model}. History length: {len(messages)}, include_reasoning: True")
 
         # --- Define the SYNC Generator using requests ---
         def generate():
