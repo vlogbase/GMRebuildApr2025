@@ -154,13 +154,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // Show loading state
             imageUploadButton.classList.add('loading');
             
+            // Store the original blob for direct attachment to chat messages
+            attachedImageBlob = fileOrBlob;
+            
             // Create FormData and append file
             const formData = new FormData();
             formData.append('file', fileOrBlob, fileOrBlob.name || 'photo.jpg');
             
             console.log("📤 Uploading image to server...");
             
-            // Upload to server
+            // Upload to server for preview
             const response = await fetch('/upload_image', {
                 method: 'POST',
                 body: formData
@@ -177,7 +180,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(data.error);
             }
             
-            // Store the image URL
+            // Store the image URL (for preview and fallback)
             attachedImageUrl = data.image_url;
             
             // Show preview
@@ -1138,9 +1141,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to send message to backend and process streaming response
     function sendMessageToBackend(message, modelId, typingIndicator) {
         // Check if we need to make a multimodal message
-        const isMultimodalMessage = attachedImageUrl !== null;
+        const hasImageBlob = attachedImageBlob !== null;
+        const hasImageUrl = attachedImageUrl !== null;
+        const isMultimodalMessage = hasImageBlob || hasImageUrl;
         
-        // Create the message content based on whether we have an image
+        // Create the message content for message history
         let userMessageContent;
         if (isMultimodalMessage) {
             // For multimodal, content is an array with text and image objects
@@ -1170,42 +1175,74 @@ document.addEventListener('DOMContentLoaded', function() {
             console.warn('No model selected, using default:', modelId);
         }
         
-        // Create request payload
-        const payload = {
-            message: message, // Keep original text separately for storage
-            model: modelId,
-            history: messageHistory,
-            conversation_id: currentConversationId
-        };
-        
-        // Add image URL if available (for backward compatibility)
+        // Check if the model supports images
         if (isMultimodalMessage) {
-            payload.image_url = attachedImageUrl;
-            console.log('📨 sending to /chat with multimodal message');
-            
-            // Check if the model supports images
             const model = allModels.find(m => m.id === modelId);
             const isMultimodalModel = model && model.is_multimodal === true;
             
             if (!isMultimodalModel) {
                 console.warn(`⚠️ Warning: Model ${modelId} does not support images, but image is being sent`);
             }
+        }
+        
+        // Determine if we should use FormData (when we have an image blob)
+        // or JSON (when we don't have an image or only have a URL)
+        let fetchOptions;
+        
+        if (hasImageBlob) {
+            // Use FormData when we have a blob
+            console.log('📤 Sending message with FormData (contains image blob)');
             
-            // Clear the image after sending
+            const form = new FormData();
+            form.append('message', message);
+            form.append('model', modelId);
+            
+            if (currentConversationId) {
+                form.append('conversation_id', currentConversationId);
+            }
+            
+            // Append the image file
+            form.append('file', attachedImageBlob, attachedImageBlob.name || 'image.jpg');
+            
+            // Don't set Content-Type header - browser will set it automatically
+            // with the correct boundary for multipart/form-data
+            fetchOptions = {
+                method: 'POST',
+                body: form
+            };
+        } else {
+            // Use JSON for text-only messages
+            const payload = {
+                message: message,
+                model: modelId,
+                history: messageHistory,
+                conversation_id: currentConversationId
+            };
+            
+            // Add image URL if available (for backward compatibility)
+            if (hasImageUrl) {
+                payload.image_url = attachedImageUrl;
+                console.log('📨 Sending to /chat with image URL:', attachedImageUrl);
+            }
+            
+            console.log('📤 Sending payload as JSON:', JSON.stringify(payload, null, 2));
+            
+            fetchOptions = {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            };
+        }
+        
+        // Clear attached image after sending (whether blob or URL)
+        if (isMultimodalMessage) {
             clearAttachedImage();
         }
         
-        // Log the full payload for debugging
-        console.log('📤 Sending payload to backend:', JSON.stringify(payload, null, 2));
-        
-        // Create fetch request to /chat endpoint
-        fetch('/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        }).then(response => {
+        // Send the request to the server
+        fetch('/chat', fetchOptions).then(response => {
             if (!response.ok) {
                 throw new Error(`HTTP error! Status: ${response.status}`);
             }
