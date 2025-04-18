@@ -216,8 +216,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add error handling for image loading
         imagePreview.onerror = function() {
             console.error("❌ Failed to load image preview:", imageUrl);
-            alert("Failed to load image preview. The image URL might be invalid or inaccessible.");
-            imagePreview.src = ''; // Clear the invalid source
+            // Don't show an alert - just log the error and keep going
+            console.warn("Image preview error - continuing without showing alert");
+            // Don't clear the source - we'll still try to use it with the LLM
+            // imagePreview.src = '';
         };
         
         imagePreview.onload = function() {

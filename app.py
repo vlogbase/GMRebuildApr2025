@@ -418,14 +418,20 @@ def get_object_storage_url(object_name, public=True, expires_in=3600):
                 logger.error("Unable to extract account information from connection string")
                 return None
                 
-            # Generate SAS token
+            # Generate SAS token with broad permissions for browser access
             sas_token = generate_blob_sas(
                 account_name=account_name,
                 container_name=azure_container_name,
                 blob_name=object_name,
                 account_key=account_key,
-                permission=BlobSasPermissions(read=True),
-                expiry=datetime.utcnow() + timedelta(seconds=expires_in)
+                # Add list permission to help with CORS issues
+                permission=BlobSasPermissions(read=True, list=True),
+                # Long expiry to prevent issues with time syncing
+                expiry=datetime.utcnow() + timedelta(seconds=expires_in),
+                # Add start time slightly in the past to account for clock skew
+                start=datetime.utcnow() - timedelta(minutes=5),
+                # Add cache control to the SAS token
+                cache_control="public, max-age=3600"
             )
             
             # Return the full URL with SAS token
@@ -554,8 +560,14 @@ def upload_image():
                 # Create a blob client for the specific blob
                 blob_client = container_client.get_blob_client(storage_path)
                 
-                # Set content settings (MIME type)
-                content_settings = ContentSettings(content_type=mime_type)
+                # Set content settings (MIME type) with additional browser-friendly headers
+                content_settings = ContentSettings(
+                    content_type=mime_type,
+                    # Set Cache-Control to allow caching but require validation
+                    cache_control="public, max-age=3600",
+                    # Set Content-Disposition to inline to encourage browsers to display it
+                    content_disposition="inline"
+                )
                 
                 # Upload the image data to Azure Blob Storage
                 blob_client.upload_blob(
@@ -564,8 +576,8 @@ def upload_image():
                     overwrite=True
                 )
                 
-                # Generate a URL with SAS token for the uploaded image
-                image_url = get_object_storage_url(object_name=storage_path, public=False, expires_in=24*3600)
+                # Generate a URL with SAS token for the uploaded image (7 days expiry)
+                image_url = get_object_storage_url(object_name=storage_path, public=False, expires_in=7*24*3600)
                 # Log debugging information
                 logger.info(f"Uploaded image to Azure Blob Storage with URL: {image_url[:50]}...")
                 
