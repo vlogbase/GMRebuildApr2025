@@ -418,20 +418,14 @@ def get_object_storage_url(object_name, public=True, expires_in=3600):
                 logger.error("Unable to extract account information from connection string")
                 return None
                 
-            # Generate SAS token with broad permissions for browser access
+            # Generate SAS token
             sas_token = generate_blob_sas(
                 account_name=account_name,
                 container_name=azure_container_name,
                 blob_name=object_name,
                 account_key=account_key,
-                # Add list permission to help with CORS issues
-                permission=BlobSasPermissions(read=True, list=True),
-                # Long expiry to prevent issues with time syncing
-                expiry=datetime.utcnow() + timedelta(seconds=expires_in),
-                # Add start time slightly in the past to account for clock skew
-                start=datetime.utcnow() - timedelta(minutes=5),
-                # Add cache control to the SAS token
-                cache_control="public, max-age=3600"
+                permission=BlobSasPermissions(read=True),
+                expiry=datetime.utcnow() + timedelta(seconds=expires_in)
             )
             
             # Return the full URL with SAS token
@@ -560,14 +554,8 @@ def upload_image():
                 # Create a blob client for the specific blob
                 blob_client = container_client.get_blob_client(storage_path)
                 
-                # Set content settings (MIME type) with additional browser-friendly headers
-                content_settings = ContentSettings(
-                    content_type=mime_type,
-                    # Set Cache-Control to allow caching but require validation
-                    cache_control="public, max-age=3600",
-                    # Set Content-Disposition to inline to encourage browsers to display it
-                    content_disposition="inline"
-                )
+                # Set content settings (MIME type)
+                content_settings = ContentSettings(content_type=mime_type)
                 
                 # Upload the image data to Azure Blob Storage
                 blob_client.upload_blob(
@@ -576,8 +564,8 @@ def upload_image():
                     overwrite=True
                 )
                 
-                # Generate a URL with SAS token for the uploaded image (7 days expiry)
-                image_url = get_object_storage_url(object_name=storage_path, public=False, expires_in=7*24*3600)
+                # Generate a URL with SAS token for the uploaded image
+                image_url = get_object_storage_url(object_name=storage_path, public=False, expires_in=24*3600)
                 # Log debugging information
                 logger.info(f"Uploaded image to Azure Blob Storage with URL: {image_url[:50]}...")
                 
@@ -779,65 +767,36 @@ def chat(): # Synchronous function
             # Different models require different formatting for multimodal messages
             if 'claude' in openrouter_model.lower():
                 # Claude format
-                # According to Claude API spec: https://docs.anthropic.com/claude/reference/messages-create
                 user_content = [
                     {"type": "text", "text": user_message},
-                    {"type": "image", "source": {"type": "url", "url": image_url}}
+                    {"type": "image", "source": {"url": image_url}}
                 ]
                 messages.append({'role': 'user', 'content': user_content})
                 logger.info(f"Added multimodal message with Claude-format image to {openrouter_model}")
-                logger.debug(f"Claude format used: {json.dumps(user_content)}")
             elif 'gpt-4' in openrouter_model.lower() or 'gpt4' in openrouter_model.lower():
-                # OpenAI GPT-4 format - make sure we use the correct format from OpenAI docs
-                # https://platform.openai.com/docs/guides/vision
+                # OpenAI GPT-4 format
                 user_content = [
                     {"type": "text", "text": user_message},
-                    {
-                        "type": "image_url", 
-                        "image_url": {
-                            "url": image_url,
-                            "detail": "high"  # Request high detail analysis
-                        }
-                    }
+                    {"type": "image_url", "image_url": {"url": image_url}}
                 ]
                 messages.append({'role': 'user', 'content': user_content})
                 logger.info(f"Added multimodal message with OpenAI-format image to {openrouter_model}")
-                logger.debug(f"GPT-4 format used: {json.dumps(user_content)}")
             elif 'gemini' in openrouter_model.lower():
-                # Google Gemini format according to Google documentation
-                # https://ai.google.dev/api/rest/v1beta/GenerativeModel/generateContent
-                parts = [
-                    {"text": user_message},
-                    {
-                        "inline_data": {
-                            "mime_type": "image/jpeg",  # Default to JPEG, might need to be dynamically set
-                            "data": image_url
-                        }
-                    }
-                ]
-                # For OpenRouter, we still need to map to their expected format
+                # Google Gemini format
                 user_content = [
                     {"type": "text", "text": user_message},
                     {"type": "image_url", "image_url": {"url": image_url}}
                 ]
                 messages.append({'role': 'user', 'content': user_content})
                 logger.info(f"Added multimodal message with Gemini-format image to {openrouter_model}")
-                logger.debug(f"Gemini format used: {json.dumps(user_content)}")
             else:
-                # Generic format as fallback - try the OpenAI format which is most widely supported
+                # Generic format as fallback
                 user_content = [
                     {"type": "text", "text": user_message},
-                    {
-                        "type": "image_url", 
-                        "image_url": {
-                            "url": image_url,
-                            "detail": "high"  # Request high detail analysis
-                        }
-                    }
+                    {"type": "image_url", "image_url": {"url": image_url}}
                 ]
                 messages.append({'role': 'user', 'content': user_content})
                 logger.info(f"Added multimodal message with generic-format image to {openrouter_model}")
-                logger.debug(f"Fallback format used: {json.dumps(user_content)}")
                 
             # Log the actual URL being sent
             logger.info(f"Image URL sent to model: {image_url}")
