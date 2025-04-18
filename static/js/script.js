@@ -216,24 +216,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add error handling for image loading
         imagePreview.onerror = function() {
             console.error("❌ Failed to load image preview:", imageUrl);
-            
-            // Don't show alert, just log error and continue silently
-            console.warn("Image preview failed to load, but we'll continue using the URL for LLM");
-            
-            // Set a placeholder image instead of clearing
-            imagePreview.src = '/static/img/image-placeholder.svg';
-            
-            // If placeholder doesn't exist, create a simple data URL
-            imagePreview.onerror = function() {
-                console.warn("Placeholder not found, using data URL");
-                const failedImageSvg = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
-                        <rect width="100" height="100" fill="#f0f0f0"/>
-                        <text x="50" y="50" font-family="Arial" font-size="12" text-anchor="middle">Image Preview Unavailable</text>
-                    </svg>
-                `;
-                imagePreview.src = 'data:image/svg+xml;base64,' + btoa(failedImageSvg);
-            };
+            alert("Failed to load image preview. The image URL might be invalid or inaccessible.");
+            imagePreview.src = ''; // Clear the invalid source
         };
         
         imagePreview.onload = function() {
