@@ -168,13 +168,10 @@ FREE_MODEL_FALLBACKS = [
 # Multimodal models that support image inputs
 MULTIMODAL_MODELS = [
     # Specific model IDs
-    "google/gemini-2.5-pro-preview-03-25",
-    "google/gemini-2.5-flash-preview-03-25",
-    "anthropic/claude-3.7-sonnet", 
-    "anthropic/claude-3.7-haiku",
-    "anthropic/claude-3.5-sonnet",
-    "anthropic/claude-3-sonnet", 
-    "anthropic/claude-3-opus",
+    "google/gemini",  # This will match all Gemini models
+    "anthropic/claude-3", # This will match all Claude 3 models
+    "anthropic/claude-3.5", # Claude 3.5 models
+    "anthropic/claude-3.7", # Claude 3.7 models
     "openai/gpt-4o", 
     "openai/gpt-4-turbo", 
     "openai/gpt-4-vision",
@@ -956,12 +953,20 @@ def chat(): # Synchronous function
          )
         messages = [{'role': 'system', 'content': system_message}]
 
+        # Check if the model supports multimodal content by matching against model patterns
+        model_supports_multimodal = False
+        for pattern in MULTIMODAL_MODELS:
+            if pattern.lower() in openrouter_model.lower():
+                model_supports_multimodal = True
+                logger.info(f"✅ Detected multimodal support for model {openrouter_model} matching pattern {pattern}")
+                break
+
         # Load conversation history from database
         db_messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.created_at).all()
         for msg in db_messages:
              if msg.id != user_db_message.id:
-                 # Check if the message has an image URL
-                 if msg.image_url and openrouter_model in MULTIMODAL_MODELS:
+                 # Check if the message has an image URL and model supports multimodal
+                 if msg.image_url and model_supports_multimodal:
                      # Format previous messages with images in multimodal format
                      multimodal_content = [
                          {"type": "text", "text": msg.content},
@@ -976,7 +981,8 @@ def chat(): # Synchronous function
         # Format the current user message - either standard text-only or multimodal
         # Following OpenRouter's unified multimodal format that works across all models:
         # https://openrouter.ai/docs#multimodal
-        if (image_url or (image_urls and len(image_urls) > 0)) and openrouter_model in MULTIMODAL_MODELS:
+                
+        if (image_url or (image_urls and len(image_urls) > 0)) and model_supports_multimodal:
             # Create a multimodal content array with the text message
             multimodal_content = [
                 {"type": "text", "text": user_message}
@@ -1107,7 +1113,7 @@ def chat(): # Synchronous function
             messages.append({'role': 'user', 'content': user_message})
         
         # Log if image was provided but model doesn't support it
-        if (image_url or (image_urls and len(image_urls) > 0)) and openrouter_model not in MULTIMODAL_MODELS:
+        if (image_url or (image_urls and len(image_urls) > 0)) and not model_supports_multimodal:
             logger.warning(f"⚠️ Image URL(s) provided but model {openrouter_model} doesn't support multimodal input. Images ignored.")
 
         # --- Enrich with memory if needed ---
