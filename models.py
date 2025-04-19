@@ -23,8 +23,8 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
     
-    # Billing fields (1 credit = 0.001 cents)
-    credits = db.Column(db.Integer, nullable=False, default=0)  # User's credit balance in credits (1/1000 of a cent)
+    # Billing fields
+    credits = db.Column(db.Integer, nullable=False, default=0)  # User's credit balance in credits (1 credit = $0.001)
     
     # Relationships
     conversations = db.relationship('Conversation', backref='user', lazy='dynamic', cascade='all, delete-orphan')
@@ -53,7 +53,7 @@ class User(UserMixin, db.Model):
     
     def get_balance_usd(self):
         """Get user's balance in USD format"""
-        return self.credits / 100000  # Convert credits to dollars
+        return self.credits / 1000000  # Convert credits to dollars (1,000,000 credits = $1,000)
     
     def __repr__(self):
         return f'<User {self.username}>'
@@ -117,7 +117,7 @@ class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     amount_usd = db.Column(db.Float, nullable=False)  # Amount in USD
-    credits = db.Column(db.Integer, nullable=False)  # Amount in credits (1/1000 of a cent)
+    credits = db.Column(db.Integer, nullable=False)  # Amount in credits (1 credit = $0.001)
     payment_method = db.Column(db.String(64), nullable=False, default="paypal")  # Payment method used
     payment_id = db.Column(db.String(128), nullable=True)  # PayPal payment ID
     status = db.Column(db.String(20), nullable=False, default=PaymentStatus.PENDING.value)  # Payment status

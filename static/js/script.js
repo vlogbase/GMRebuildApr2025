@@ -2,6 +2,39 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
     console.log('User authentication status:', isAuthenticated ? 'Logged in' : 'Not logged in');
+    
+    // Get user's credit balance if logged in
+    let userCreditBalance = 0;
+    if (isAuthenticated) {
+        // Try to extract the credit amount from the account link in the sidebar
+        const accountLink = document.querySelector('.account-link');
+        if (accountLink) {
+            const balanceText = accountLink.textContent.trim();
+            const matches = balanceText.match(/Credits: \$([0-9.]+)/);
+            if (matches && matches[1]) {
+                userCreditBalance = parseFloat(matches[1]);
+                console.log('User credit balance:', userCreditBalance);
+            }
+        }
+    }
+    
+    // Helper function to check premium access and redirect if needed
+    function checkPremiumAccess(featureName) {
+        if (!isAuthenticated) {
+            console.log(`Access denied: Not logged in, redirecting to login for ${featureName}`);
+            window.location.href = '/login?redirect=chat&feature=' + featureName;
+            return false;
+        }
+        
+        if (userCreditBalance <= 0) {
+            console.log(`Access denied: Insufficient credits, redirecting to account page for ${featureName}`);
+            window.location.href = '/billing/account?source=chat&feature=' + featureName;
+            return false;
+        }
+        
+        return true;
+    }
+    
     // Setup clipboard paste event listener for the entire document
     document.addEventListener('paste', handlePaste);
     
@@ -20,6 +53,13 @@ document.addEventListener('DOMContentLoaded', function() {
         for (let i = 0; i < items.length; i++) {
             if (items[i].type.indexOf('image') !== -1) {
                 console.log('Image found in clipboard');
+                
+                // Check premium access before handling the pasted image
+                if (!checkPremiumAccess('image_upload')) {
+                    // Prevent default paste behavior
+                    e.preventDefault();
+                    return;
+                }
                 
                 // Get the image as a file
                 const file = items[i].getAsFile();
@@ -228,7 +268,7 @@ document.addEventListener('DOMContentLoaded', function() {
         lockPremiumFeatures();
     }
     
-    // Function to lock premium features for non-authenticated users
+    // Function to lock premium features for non-authenticated users or those with zero balance
     function lockPremiumFeatures() {
         // Lock premium model presets (1-5)
         document.querySelectorAll('.model-preset-btn').forEach(btn => {
@@ -289,14 +329,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Image upload and camera event listeners
+    // Image upload and camera event listeners with premium access checks
     imageUploadButton.addEventListener('click', () => {
+        // Check premium access before allowing image upload
+        if (!checkPremiumAccess('image_upload')) {
+            return; // Stop if access check failed
+        }
         imageUploadInput.click();
     });
     
     imageUploadInput.addEventListener('change', event => {
         const file = event.target.files[0];
         if (file && file.type.startsWith('image/')) {
+            // Check premium access before processing the image
+            if (!checkPremiumAccess('image_upload')) {
+                return; // Stop if access check failed
+            }
             handleImageFile(file);
         }
         // Reset the input so the same file can be selected again
@@ -304,6 +352,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     cameraButton.addEventListener('click', async () => {
+        // Check premium access before allowing camera use
+        if (!checkPremiumAccess('camera')) {
+            return; // Stop if access check failed
+        }
+        
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             cameraStream.srcObject = stream;
@@ -714,6 +767,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to select a preset button and update the current model
     function selectPresetButton(presetId) {
+        // Check if this is a premium preset (all except preset 6)
+        if (presetId !== '6') {
+            // Check premium access before allowing selection of premium model
+            if (!checkPremiumAccess('premium_model')) {
+                // If access check failed, select the free model instead
+                console.log('Premium access denied, selecting free model instead');
+                selectPresetButton('6');
+                return;
+            }
+        }
+        
         // Remove active class from all buttons
         modelPresetButtons.forEach(btn => btn.classList.remove('active'));
         
@@ -2181,9 +2245,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Store selected files
     let selectedFiles = [];
     
-    // Toggle upload modal
+    // Toggle upload modal with premium access check
     if (uploadDocumentsBtn) {
         uploadDocumentsBtn.addEventListener('click', function() {
+            // Check premium access before allowing document upload
+            if (!checkPremiumAccess('document_upload')) {
+                return; // Stop if access check failed
+            }
             documentUploadModal.style.display = 'flex';
         });
     }

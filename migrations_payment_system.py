@@ -58,14 +58,14 @@ def create_payment_tables(db_engine):
         # Add credits column to User table if it doesn't exist
         try:
             db_engine.execute(text(
-                "ALTER TABLE user ADD COLUMN IF NOT EXISTS credits INT DEFAULT 1000"
+                "ALTER TABLE \"user\" ADD COLUMN IF NOT EXISTS credits INT DEFAULT 1000"
             ))
             logger.info("Added credits column to User table or it already exists")
         except (OperationalError, ProgrammingError) as e:
             logger.warning(f"Error adding credits column to User table: {e}")
             logger.info("Attempting alternate method to add credits column...")
             try:
-                # Check if the column exists
+                # Check if the column exists (note: table_name is lowercase in information_schema but we use quotes in our SQL)
                 result = db_engine.execute(text(
                     "SELECT COUNT(*) FROM information_schema.columns WHERE table_name = 'user' AND column_name = 'credits'"
                 )).scalar()

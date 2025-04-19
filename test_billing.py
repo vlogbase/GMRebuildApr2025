@@ -47,11 +47,11 @@ def test_credits_calculation():
         # Cost per token = model_cost_per_million / 1,000,000
         # Total cost = (prompt_tokens * cost per token) + (completion_tokens * cost per token)
         # Total cost with markup = total cost * 2
-        # Credits = total cost with markup * 100 * 1000
+        # Credits = total cost with markup * 1,000,000 (1 credit = $0.001)
         expected_cost_per_token = model_cost_per_million / 1000000
         expected_total_cost = (prompt_tokens * expected_cost_per_token) + (completion_tokens * expected_cost_per_token)
         expected_cost_with_markup = expected_total_cost * 2
-        expected_credits = int(expected_cost_with_markup * 100 * 1000)
+        expected_credits = int(expected_cost_with_markup * 1000000)
         
         logger.info(f"Model: {model}, Tokens: {prompt_tokens}p/{completion_tokens}c, Cost: ${expected_total_cost:.6f} (${expected_cost_with_markup:.6f} with markup), Credits: {credits}")
         
@@ -71,10 +71,10 @@ def test_credits_calculation():
         # Calculate expected credits:
         # Cost per token = 1.0 / 1,000,000
         # Total cost = tokens * cost per token
-        # Credits = total cost * 100 * 1000
+        # Credits = total cost * 1,000,000 (1 credit = $0.001)
         expected_cost_per_token = 1.0 / 1000000
         expected_total_cost = tokens * expected_cost_per_token
-        expected_credits = int(expected_total_cost * 100 * 1000)
+        expected_credits = int(expected_total_cost * 1000000)
         
         logger.info(f"Embedding Tokens: {tokens}, Cost: ${expected_total_cost:.6f}, Credits: {credits}")
         
