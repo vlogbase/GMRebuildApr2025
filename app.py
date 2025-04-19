@@ -475,9 +475,7 @@ def get_object_storage_url(object_name, public=True, expires_in=3600, clean_url=
 # --- Routes ---
 @app.route('/')
 def index():
-    # If the user is not logged in, redirect to login page
-    if not current_user.is_authenticated:
-        return redirect(url_for('login'))
+    # Allow non-authenticated users to use the app with limited functionality
     return render_template('index.html', user=current_user)
 
 @app.route('/login')
@@ -839,7 +837,6 @@ def get_conversations():
 
 # --- SYNCHRONOUS CHAT ENDPOINT (Using Requests) ---
 @app.route('/chat', methods=['POST'])
-@login_required
 def chat(): # Synchronous function
     """
     Endpoint to handle chat messages and stream responses from OpenRouter (SYNC Version)
@@ -916,6 +913,15 @@ def chat(): # Synchronous function
         model_id = data.get('model', DEFAULT_PRESET_MODELS.get('1', 'google/gemini-flash-1.5')) 
         message_history = data.get('history', [])
         conversation_id = data.get('conversation_id', None)
+        
+        # For non-authenticated users, force the free model
+        if not current_user.is_authenticated:
+            # Check if the requested model is marked as free
+            requested_model_info = next((model for model in OPENROUTER_MODELS_INFO if model.get('id') == model_id), None)
+            if not requested_model_info or not requested_model_info.get('is_free', False):
+                # If not a free model, override with a default free model
+                model_id = DEFAULT_PRESET_MODELS.get('6', 'google/gemini-2.0-flash-exp:free')
+                logger.info(f"Non-authenticated user restricted to free model: {model_id}")
 
         from models import Conversation, Message # Ensure models are imported
 

@@ -589,6 +589,81 @@ body {
     background-color: var(--accent-color);
 }
 
+/* Locked premium features */
+.premium-locked {
+    position: relative;
+    opacity: 0.6;
+    cursor: pointer;
+}
+
+.premium-locked::after {
+    content: '\f023';
+    font-family: 'Font Awesome 5 Free';
+    font-weight: 900;
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 12px;
+}
+
+.upload-documents-btn.premium-locked::after {
+    top: 30%;
+    right: 30%;
+    font-size: 14px;
+    transform: translate(50%, 50%);
+}
+
+.premium-locked:hover {
+    opacity: 0.8;
+}
+
+/* Tooltip for locked features */
+.premium-locked .locked-tooltip {
+    display: none;
+    position: absolute;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    z-index: 100;
+}
+
+.premium-locked:hover .locked-tooltip {
+    display: block;
+}
+
+/* Login prompt in sidebar */
+.login-prompt {
+    padding: 16px;
+    text-align: center;
+    color: var(--secondary-text);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.login-prompt p {
+    font-size: 14px;
+    line-height: 1.4;
+    margin: 0;
+}
+
+.login-prompt .auth-btn {
+    width: 90%;
+    margin-top: 12px;
+    padding: 10px;
+    font-size: 14px;
+}
+
 /* Document Upload Button */
 .upload-documents-btn {
     display: flex;

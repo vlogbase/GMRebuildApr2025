@@ -23,5 +23,9 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 
 echo ""
+echo "Running database migrations..."
+python migrations_google_auth.py
+
+echo ""
 echo "Starting Flask application..."
 python run_app.py

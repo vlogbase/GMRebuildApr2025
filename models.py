@@ -9,6 +9,9 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), unique=True, nullable=False, index=True)
     email = db.Column(db.String(120), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256))
+    google_id = db.Column(db.String(128), unique=True, nullable=True, index=True)  # Unique ID from Google
+    profile_picture = db.Column(db.String(512), nullable=True)  # Profile picture URL
+    last_login_at = db.Column(db.DateTime, nullable=True)  # Track last login time
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
     

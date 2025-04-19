@@ -1,4 +1,7 @@
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if user is authenticated (look for the logout button which only shows for logged in users)
+    const isAuthenticated = !!document.getElementById('logout-btn');
+    console.log('User authentication status:', isAuthenticated ? 'Logged in' : 'Not logged in');
     // Setup clipboard paste event listener for the entire document
     document.addEventListener('paste', handlePaste);
     
@@ -217,8 +220,74 @@ document.addEventListener('DOMContentLoaded', function() {
     // Open selector variable - tracks which preset is being configured
     let currentlyEditingPresetId = null;
     
-    // Fetch conversations on load
-    fetchConversations();
+    // Fetch conversations on load - only if authenticated
+    if (isAuthenticated) {
+        fetchConversations();
+    } else {
+        // For non-authenticated users, lock premium features
+        lockPremiumFeatures();
+    }
+    
+    // Function to lock premium features for non-authenticated users
+    function lockPremiumFeatures() {
+        // Lock premium model presets (1-5)
+        document.querySelectorAll('.model-preset-btn').forEach(btn => {
+            const presetId = btn.getAttribute('data-preset-id');
+            if (presetId !== '6') { // All except the free model
+                btn.classList.add('premium-locked');
+                // Add tooltip
+                const tooltip = document.createElement('span');
+                tooltip.className = 'locked-tooltip';
+                tooltip.textContent = 'Premium feature - Sign in to unlock';
+                btn.appendChild(tooltip);
+                
+                // Change button behavior to redirect to login
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.location.href = '/google_login';
+                });
+            }
+        });
+        
+        // Lock document upload button
+        if (uploadDocumentsBtn) {
+            uploadDocumentsBtn.classList.add('premium-locked');
+            // Change button behavior to redirect to login
+            uploadDocumentsBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                window.location.href = '/google_login';
+            });
+            
+            const tooltip = document.createElement('span');
+            tooltip.className = 'locked-tooltip';
+            tooltip.textContent = 'Premium feature - Sign in to unlock';
+            uploadDocumentsBtn.appendChild(tooltip);
+        }
+        
+        // Lock image upload and camera buttons
+        if (imageUploadButton) {
+            imageUploadButton.classList.add('premium-locked');
+            imageUploadButton.style.display = 'none'; // Initially hidden, so hide it
+        }
+        
+        if (cameraButton) {
+            cameraButton.classList.add('premium-locked');
+            cameraButton.style.display = 'none'; // Initially hidden, so hide it
+        }
+        
+        // Update conversations list with login message
+        const conversationsList = document.getElementById('conversations-list');
+        if (conversationsList) {
+            conversationsList.innerHTML = `
+                <div class="login-prompt">
+                    <p>Sign in to save your chat history and access premium features</p>
+                    <button class="auth-btn google-auth-btn" onclick="window.location.href='/google_login'">
+                        <i class="fa-brands fa-google"></i> Sign in with Google
+                    </button>
+                </div>
+            `;
+        }
+    }
     
     // Image upload and camera event listeners
     imageUploadButton.addEventListener('click', () => {
