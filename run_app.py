@@ -1,8 +1,11 @@
 """
-Run script for the Flask application with the GloriaMundo chatbot.
-This is used to start the application on port 5000, accessible from anywhere.
+Simple script to run the Flask application.
 """
+import os
 from app import app
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Get the port from environment variables, default to 5000
+    port = int(os.environ.get("PORT", 5000))
+    # Run the app
+    app.run(host="0.0.0.0", port=port, debug=True)

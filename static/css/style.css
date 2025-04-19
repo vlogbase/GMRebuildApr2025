@@ -138,6 +138,57 @@ body {
     border-top: 1px solid var(--border-color);
 }
 
+.user-info {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.user-avatar {
+    width: 32px;
+    height: 32px;
+    background-color: var(--accent-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    color: white;
+    font-size: 16px;
+}
+
+.user-details {
+    flex: 1;
+    overflow: hidden;
+}
+
+.user-name {
+    font-weight: 500;
+    color: var(--text-color);
+    font-size: 14px;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-email {
+    color: var(--secondary-text);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.footer-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 .clear-conversations-btn {
     width: 100%;
     padding: 10px;
@@ -155,6 +206,50 @@ body {
 
 .clear-conversations-btn:hover {
     color: var(--text-color);
+}
+
+.auth-btn {
+    width: 100%;
+    padding: 10px;
+    background-color: transparent;
+    color: var(--accent-color);
+    border: 1px solid var(--accent-color);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s, color 0.2s;
+    margin-top: 10px;
+}
+
+/* Google Auth styling */
+.google-auth-btn {
+    background-color: #4285F4;
+    color: white;
+    border: none;
+    font-weight: 500;
+}
+
+.google-auth-btn:hover {
+    background-color: #3367D6;
+    color: white;
+}
+
+.auth-btn:hover {
+    background-color: rgba(36, 185, 189, 0.1);
+}
+
+#logout-btn {
+    border-color: #e53935;
+    color: #e53935;
+}
+
+#logout-btn:hover {
+    background-color: rgba(229, 57, 53, 0.1);
 }
 
 /* Chat Container Styles */

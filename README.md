@@ -29,7 +29,22 @@ A Flask-based chatbot interface that mimics the GloriaMundo design with OpenRout
    # Edit the .env file with your credentials
    ```
 
-3. Run the application:
+3. Set up Google OAuth (required for authentication):
+   - Go to the [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+   - Create a new project (or select an existing one)
+   - Navigate to "Credentials" and click "Create Credentials" > "OAuth client ID"
+   - Select "Web application" as the application type
+   - Add your application's domain to the "Authorized JavaScript origins" (e.g., https://your-app.replit.app)
+   - Add your application's callback URL to the "Authorized redirect URIs" (e.g., https://your-app.replit.app/google_login/callback)
+   - Copy the generated Client ID and Client Secret
+   - Add them to your `.env` file as `GOOGLE_OAUTH_CLIENT_ID` and `GOOGLE_OAUTH_CLIENT_SECRET`
+
+4. Run the application:
+   ```bash
+   ./run_flask_app.sh
+   ```
+   
+   Alternatively:
    ```bash
    gunicorn --bind 0.0.0.0:5000 --reuse-port --reload main:app
    ```
@@ -144,6 +159,8 @@ The application supports the following environment variables:
 - `DATABASE_URL`: PostgreSQL connection string
 - `OPENROUTER_API_KEY`: API key for OpenRouter
 - `SESSION_SECRET`: Secret key for Flask sessions
+- `GOOGLE_OAUTH_CLIENT_ID`: Client ID from Google Cloud Console (required for authentication)
+- `GOOGLE_OAUTH_CLIENT_SECRET`: Client Secret from Google Cloud Console (required for authentication)
 - `ENABLE_MEMORY_SYSTEM`: Set to "true" to enable the memory system
 - `MONGODB_ATLAS_URI`: MongoDB Atlas connection string
 - `AZURE_OPENAI_API_KEY`: Azure OpenAI API key

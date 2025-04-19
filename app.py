@@ -24,7 +24,7 @@ from flask import Flask, render_template, request, Response, session, jsonify, a
 from urllib.parse import urlparse # For URL analysis in image handling
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
-from flask_login import LoginManager, current_user, login_required
+from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure Blob Storage
 
 # Check if we should enable advanced memory features
@@ -128,7 +128,15 @@ db.init_app(app)
 # Initialize LoginManager
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login' # Replace 'login' with your actual login route if different
+login_manager.login_view = 'login'
+
+# Register blueprints
+try:
+    from google_auth import google_auth
+    app.register_blueprint(google_auth)
+    logger.info("Google Auth blueprint registered successfully")
+except Exception as e:
+    logger.error(f"Error registering Google Auth blueprint: {e}")
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -195,8 +203,10 @@ OPENROUTER_MODELS_CACHE = {
 # --- Helper Functions ---
 def get_user_identifier():
     if current_user and current_user.is_authenticated:
+        # Return authenticated user's ID
         return f"user_{current_user.id}"
 
+    # For non-authenticated users, use a temporary session ID
     if 'user_identifier' not in session:
         session['user_identifier'] = f"temp_{uuid.uuid4().hex}"
         logger.debug(f"Generated new temporary user ID: {session['user_identifier']}")
@@ -465,9 +475,29 @@ def get_object_storage_url(object_name, public=True, expires_in=3600, clean_url=
 # --- Routes ---
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # If the user is not logged in, redirect to login page
+    if not current_user.is_authenticated:
+        return redirect(url_for('login'))
+    return render_template('index.html', user=current_user)
+
+@app.route('/login')
+def login():
+    # If user is already logged in, redirect to index
+    if current_user.is_authenticated:
+        return redirect(url_for('index'))
+    
+    # Pass any flash messages to the template
+    flash_messages = []
+    if session.get('flash_messages'):
+        flash_messages = session.pop('flash_messages')
+    
+    # Google OAuth is our exclusive login method
+    return render_template('login.html', 
+                          flash_messages=flash_messages,
+                          oauth_enabled=True)
 
 @app.route('/test-upload')
+@login_required
 def test_upload_page():
     """
     A simple route to test the image upload functionality.
@@ -476,6 +506,7 @@ def test_upload_page():
     return render_template('test_upload.html')
 
 @app.route('/test-multimodal')
+@login_required
 def test_multimodal():
     """
     Debug route to test multimodal image handling.
@@ -528,6 +559,7 @@ def test_multimodal():
             return f"<h1>Error</h1><p>{error_msg}</p>", 500
 
 @app.route('/upload_image', methods=['POST'])
+@login_required
 def upload_image():
     """
     Route to handle image uploads for multimodal messages.
@@ -752,6 +784,7 @@ def upload_image():
         }), 500
 
 @app.route('/conversations', methods=['GET'])
+@login_required
 def get_conversations():
     """Get all conversations for the current user"""
     try:
@@ -761,24 +794,31 @@ def get_conversations():
         if request.args.get('_'):
             logger.info(f"Received cache-busting request for conversations at timestamp: {request.args.get('_')}")
         
-        # Get all conversations, ordered by most recently updated first
+        # Get all conversations for the current user, ordered by most recently updated first
         # Force a fresh query from the database (don't use cached results)
         db.session.expire_all()
-        all_conversations = Conversation.query.filter_by(is_active=True).order_by(Conversation.updated_at.desc()).all()
+        all_conversations = Conversation.query.filter_by(
+            is_active=True, 
+            user_id=current_user.id
+        ).order_by(Conversation.updated_at.desc()).all()
         
         if not all_conversations:
-            # Create a demo conversation if none exist
+            # Create a new conversation for this user if none exist
             title = "New Conversation"
             share_id = generate_share_id()
-            conversation = Conversation(title=title, share_id=share_id)
+            conversation = Conversation(
+                title=title, 
+                share_id=share_id,
+                user_id=current_user.id  # Associate conversation with user
+            )
             db.session.add(conversation)
             try:
                 db.session.commit()
-                logger.info("Created initial Demo Conversation")
+                logger.info(f"Created initial conversation for user {current_user.id}")
                 # Include created_at timestamp for proper date formatting in the UI
                 conversations = [{"id": conversation.id, "title": conversation.title, "created_at": conversation.created_at.isoformat()}]
             except Exception as e:
-                logger.exception("Error committing demo conversation")
+                logger.exception(f"Error committing new conversation for user {current_user.id}: {e}")
                 db.session.rollback()
                 conversations = []
         else:
@@ -799,6 +839,7 @@ def get_conversations():
 
 # --- SYNCHRONOUS CHAT ENDPOINT (Using Requests) ---
 @app.route('/chat', methods=['POST'])
+@login_required
 def chat(): # Synchronous function
     """
     Endpoint to handle chat messages and stream responses from OpenRouter (SYNC Version)
@@ -908,8 +949,10 @@ def chat(): # Synchronous function
             title = "New Conversation"
             share_id = generate_share_id() 
             conversation = Conversation(title=title, share_id=share_id)
-            # if current_user and current_user.is_authenticated: # Add user linking if needed
-            #    conversation.user_id = current_user.id
+            # Associate conversation with the authenticated user
+            if current_user and current_user.is_authenticated:
+                conversation.user_id = current_user.id
+                logger.info(f"Associating new conversation with user ID: {current_user.id}")
             db.session.add(conversation)
             try:
                 db.session.commit()
@@ -1672,6 +1715,7 @@ def get_preferences():
 
 
 @app.route('/conversation/<int:conversation_id>/messages', methods=['GET'])
+@login_required
 def get_conversation_messages(conversation_id):
     """ Get all messages for a specific conversation """
     try:
@@ -1681,6 +1725,10 @@ def get_conversation_messages(conversation_id):
         conversation = db.session.get(Conversation, conversation_id)
         if not conversation:
             abort(404, description="Conversation not found")
+            
+        # Verify the conversation belongs to the current user
+        if conversation.user_id != current_user.id:
+            abort(403, description="You don't have permission to access this conversation")
             
         # Get all messages for this conversation, ordered by creation time
         messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
@@ -1713,6 +1761,7 @@ def get_conversation_messages(conversation_id):
         return jsonify({"error": str(e)}), 500
 
 @app.route('/message/<int:message_id>/rate', methods=['POST']) 
+@login_required
 def rate_message(message_id):
     """ Rate a message """
     try:
@@ -1721,9 +1770,14 @@ def rate_message(message_id):
         rating = data.get('rating')
         if rating is None or rating not in [1, -1, 0]: abort(400, description="Rating must be 1, -1, or 0")
 
-        from models import Message 
+        from models import Message, Conversation
         message = db.session.get(Message, message_id) 
         if not message: abort(404, description="Message not found")
+        
+        # Check if the message belongs to a conversation owned by the current user
+        conversation = db.session.get(Conversation, message.conversation_id)
+        if not conversation or conversation.user_id != current_user.id:
+            abort(403, description="You don't have permission to rate this message")
 
         message.rating = rating if rating in [1, -1] else None 
         db.session.commit()
@@ -1736,12 +1790,17 @@ def rate_message(message_id):
 
 
 @app.route('/conversation/<int:conversation_id>/share', methods=['POST']) 
+@login_required
 def share_conversation(conversation_id):
     """ Generate or retrieve share link """
     try:
         from models import Conversation 
         conversation = db.session.get(Conversation, conversation_id) 
         if not conversation: abort(404, description="Conversation not found")
+        
+        # Verify the conversation belongs to the current user
+        if conversation.user_id != current_user.id:
+            abort(403, description="You don't have permission to share this conversation")
 
         if not conversation.share_id:
             conversation.share_id = generate_share_id()

@@ -28,9 +28,31 @@
             </div>
             
             <div class="sidebar-footer">
-                <button id="clear-conversations-btn" class="clear-conversations-btn">
-                    <i class="fa-regular fa-trash-can"></i> Clear conversations
-                </button>
+                {% if current_user.is_authenticated %}
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="user-details">
+                        <div class="user-name">{{ current_user.username }}</div>
+                        <div class="user-email">{{ current_user.email }}</div>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="footer-buttons">
+                    <button id="clear-conversations-btn" class="clear-conversations-btn">
+                        <i class="fa-regular fa-trash-can"></i> Clear conversations
+                    </button>
+                    {% if current_user.is_authenticated %}
+                    <button id="logout-btn" class="auth-btn" onclick="window.location.href='{{ url_for('google_auth.logout') }}'">
+                        <i class="fa-solid fa-sign-out-alt"></i> Sign out
+                    </button>
+                    {% else %}
+                    <button id="login-btn" class="auth-btn google-auth-btn" onclick="window.location.href='{{ url_for('google_auth.login') }}'">
+                        <i class="fa-brands fa-google"></i> Sign in with Google
+                    </button>
+                    {% endif %}
+                </div>
             </div>
         </div>
         

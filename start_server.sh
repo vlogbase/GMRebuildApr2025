@@ -1,8 +1,14 @@
 #!/bin/bash
-# This script starts the Flask server using Gunicorn with Gevent workers
 
-# Apply any database migrations
-python migrations_image_url.py
+# Print startup message
+echo "Starting Flask server with Google OAuth support..."
+echo "Make sure your GOOGLE_OAUTH_CLIENT_ID and GOOGLE_OAUTH_CLIENT_SECRET are set."
 
-# Start the server
-exec gunicorn main:app -k gevent -w 4 --timeout 300 --bind 0.0.0.0:5000 --reload
+# Check for essential environment variables
+if [ -z "$GOOGLE_OAUTH_CLIENT_ID" ] || [ -z "$GOOGLE_OAUTH_CLIENT_SECRET" ]; then
+  echo "Warning: Google OAuth credentials not found in environment."
+  echo "Please make sure they are set before logging in."
+fi
+
+# Run the Flask application
+python run_app.py
