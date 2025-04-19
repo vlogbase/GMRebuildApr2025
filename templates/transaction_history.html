@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Transaction History{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Transaction History</h1>
+        <a href="{{ url_for('billing.account_management') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left"></i> Back to Account
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            {% if transactions %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Transaction ID</th>
+                                <th>Package</th>
+                                <th>Amount</th>
+                                <th>Credits</th>
+                                <th>Payment Method</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in transactions %}
+                            <tr>
+                                <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td><small class="text-muted">{{ transaction.payment_id }}</small></td>
+                                <td>
+                                    {% if transaction.package_id %}
+                                        {{ transaction.package.name }}
+                                    {% else %}
+                                        Custom Purchase
+                                    {% endif %}
+                                </td>
+                                <td>${{ "%.2f"|format(transaction.amount_usd) }}</td>
+                                <td>{{ transaction.credits }}</td>
+                                <td>{{ transaction.payment_method|capitalize }}</td>
+                                <td>
+                                    {% if transaction.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif transaction.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% elif transaction.status == 'failed' %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% elif transaction.status == 'refunded' %}
+                                        <span class="badge bg-info">Refunded</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ transaction.status|capitalize }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted">You don't have any transactions yet.</p>
+                    <a href="{{ url_for('billing.account_management') }}" class="btn btn-success mt-3">
+                        Purchase Credits
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">About Transactions</h5>
+        </div>
+        <div class="card-body">
+            <p>This page shows all your credit purchase transactions.</p>
+            <ul>
+                <li><strong>Completed</strong> - Transaction was successful and credits were added to your account</li>
+                <li><strong>Pending</strong> - Transaction is being processed by the payment provider</li>
+                <li><strong>Failed</strong> - Transaction was not successful, no credits were added</li>
+                <li><strong>Refunded</strong> - Transaction was refunded, credits were removed from your account</li>
+            </ul>
+            <p>If you have any questions about your transactions, please contact support.</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

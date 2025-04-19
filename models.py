@@ -2,6 +2,14 @@ from datetime import datetime
 from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
+import enum
+
+class PaymentStatus(enum.Enum):
+    """Payment status for transactions"""
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    REFUNDED = "refunded"
 
 class User(UserMixin, db.Model):
     """User model for authentication and storing user information"""
@@ -15,9 +23,14 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
     
+    # Billing fields (1 credit = 0.001 cents)
+    credits = db.Column(db.Integer, nullable=False, default=0)  # User's credit balance in credits (1/1000 of a cent)
+    
     # Relationships
     conversations = db.relationship('Conversation', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     preferences = db.relationship('UserPreference', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    transactions = db.relationship('Transaction', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    usages = db.relationship('Usage', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     
     def set_password(self, password):
         """Set the password hash"""
@@ -26,6 +39,21 @@ class User(UserMixin, db.Model):
     def check_password(self, password):
         """Check if password matches the hash"""
         return check_password_hash(self.password_hash, password)
+    
+    def add_credits(self, amount):
+        """Add credits to user's account"""
+        self.credits += amount
+        
+    def deduct_credits(self, amount):
+        """Deduct credits from user's account"""
+        if self.credits >= amount:
+            self.credits -= amount
+            return True
+        return False
+    
+    def get_balance_usd(self):
+        """Get user's balance in USD format"""
+        return self.credits / 100000  # Convert credits to dollars
     
     def __repr__(self):
         return f'<User {self.username}>'
@@ -82,3 +110,50 @@ class UserPreference(db.Model):
     
     def __repr__(self):
         return f'<UserPreference {self.user_identifier}: Preset {self.preset_id} -> {self.model_id}>'
+
+
+class Transaction(db.Model):
+    """Transaction model for tracking payments and credit purchases"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    amount_usd = db.Column(db.Float, nullable=False)  # Amount in USD
+    credits = db.Column(db.Integer, nullable=False)  # Amount in credits (1/1000 of a cent)
+    payment_method = db.Column(db.String(64), nullable=False, default="paypal")  # Payment method used
+    payment_id = db.Column(db.String(128), nullable=True)  # PayPal payment ID
+    status = db.Column(db.String(20), nullable=False, default=PaymentStatus.PENDING.value)  # Payment status
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Transaction {self.id}: ${self.amount_usd} ({self.credits} credits)>'
+
+
+class Usage(db.Model):
+    """Usage model for tracking credit usage"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    message_id = db.Column(db.Integer, db.ForeignKey('message.id'), nullable=True)  # Link to message if applicable
+    credits_used = db.Column(db.Integer, nullable=False)  # Credits used
+    model_id = db.Column(db.String(64), nullable=True)  # Model used
+    usage_type = db.Column(db.String(20), nullable=False)  # Type of usage (e.g., "chat", "embedding")
+    prompt_tokens = db.Column(db.Integer, nullable=True)  # Number of prompt tokens
+    completion_tokens = db.Column(db.Integer, nullable=True)  # Number of completion tokens
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Usage {self.id}: {self.credits_used} credits for {self.usage_type}>'
+
+
+class Package(db.Model):
+    """Package model for predefined credit packages"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(64), nullable=False)  # Package name (e.g., "$5 Package")
+    description = db.Column(db.String(256), nullable=True)  # Package description
+    amount_usd = db.Column(db.Float, nullable=False)  # Amount in USD
+    credits = db.Column(db.Integer, nullable=False)  # Credits provided
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<Package {self.id}: {self.name} (${self.amount_usd})>'

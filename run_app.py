@@ -1,11 +1,7 @@
 """
-Simple script to run the Flask application.
+Run script for the Flask application with PayPal payment integration.
 """
-import os
-from app import app
+from flask_workflow import main
 
 if __name__ == "__main__":
-    # Get the port from environment variables, default to 5000
-    port = int(os.environ.get("PORT", 5000))
-    # Run the app
-    app.run(host="0.0.0.0", port=port, debug=True)
+    main()

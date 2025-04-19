@@ -138,6 +138,14 @@ try:
 except Exception as e:
     logger.error(f"Error registering Google Auth blueprint: {e}")
 
+# Register billing blueprint
+try:
+    from billing import billing_bp
+    app.register_blueprint(billing_bp)
+    logger.info("Billing blueprint registered successfully")
+except Exception as e:
+    logger.error(f"Error registering Billing blueprint: {e}")
+
 @login_manager.user_loader
 def load_user(user_id):
     from models import User 
@@ -1399,7 +1407,61 @@ def chat(): # Synchronous function
             assistant_message_id = None 
             current_conv_id = conversation.id 
             requested_model_id = model_id 
-
+            
+            # --- Verify user has sufficient credits if authenticated ---
+            if current_user and current_user.is_authenticated:
+                try:
+                    from billing import check_sufficient_credits, calculate_openrouter_credits
+                    
+                    # Estimate token usage based on input size
+                    # Rough estimation: 1 token = ~4 characters for English text
+                    estimated_prompt_tokens = sum(len(msg.get('content', '')) // 4 + 10 for msg in messages)
+                    # Assume completion will be around half the prompt length
+                    estimated_completion_tokens = max(100, estimated_prompt_tokens // 2)
+                    
+                    # Determine model cost per million
+                    model_cost_per_million = None
+                    model_name = model_id.lower()
+                    
+                    # Default model cost if we can't find it
+                    if not model_cost_per_million:
+                        if "gpt-4" in model_name:
+                            model_cost_per_million = 60.0  # Approximate cost for GPT-4
+                        elif "claude-3" in model_name and "opus" in model_name:
+                            model_cost_per_million = 45.0  # Approximate cost for Claude-3 Opus
+                        elif "claude-3" in model_name and "sonnet" in model_name:
+                            model_cost_per_million = 15.0  # Approximate cost for Claude-3 Sonnet
+                        elif "claude-3" in model_name and "haiku" in model_name:
+                            model_cost_per_million = 3.0   # Approximate cost for Claude-3 Haiku
+                        elif "gemini-1.5" in model_name and "pro" in model_name:
+                            model_cost_per_million = 10.0  # Approximate cost for Gemini 1.5 Pro
+                        elif "gpt-3.5" in model_name:
+                            model_cost_per_million = 1.0   # Approximate cost for GPT-3.5
+                        else:
+                            model_cost_per_million = 10.0  # Default fallback
+                    
+                    # Calculate estimated credits
+                    estimated_credits = calculate_openrouter_credits(
+                        prompt_tokens=estimated_prompt_tokens,
+                        completion_tokens=estimated_completion_tokens,
+                        model_cost_per_million=model_cost_per_million
+                    )
+                    
+                    # Check if user has sufficient credits
+                    has_credits = check_sufficient_credits(current_user.id, estimated_credits)
+                    
+                    # If not, return an error
+                    if not has_credits:
+                        logger.warning(f"User {current_user.id} has insufficient credits for request")
+                        yield f"data: {json.dumps({'type': 'error', 'error': 'Insufficient credits. Please purchase more credits to continue using premium models.'})}\n\n"
+                        return
+                        
+                    logger.info(f"User {current_user.id} has sufficient credits for request (est. {estimated_credits} credits)")
+                    
+                except Exception as credit_error:
+                    logger.error(f"Error checking credits: {credit_error}")
+                    # Continue even if credit check fails (don't block the request)
+            
             try:
                 # Use standard requests.post with stream=True
                 response = requests.post(
@@ -1528,6 +1590,55 @@ def chat(): # Synchronous function
                         db.session.commit()
                         assistant_message_id = assistant_db_message.id 
                         logger.info(f"Saved assistant message {assistant_message_id} with metadata.")
+                        
+                        # --- Record usage for billing ---
+                        if current_user and current_user.is_authenticated and final_prompt_tokens and final_completion_tokens:
+                            try:
+                                from billing import record_usage, calculate_openrouter_credits
+                                
+                                # Check if we can get model cost per million from OpenRouter info
+                                model_cost_per_million = None
+                                model_name = final_model_id_used or requested_model_id
+                                
+                                # Default model cost if we can't find it (for safety)
+                                if not model_cost_per_million:
+                                    if "gpt-4" in model_name.lower():
+                                        model_cost_per_million = 60.0  # Approximate cost for GPT-4
+                                    elif "claude-3" in model_name.lower() and "opus" in model_name.lower():
+                                        model_cost_per_million = 45.0  # Approximate cost for Claude-3 Opus
+                                    elif "claude-3" in model_name.lower() and "sonnet" in model_name.lower():
+                                        model_cost_per_million = 15.0  # Approximate cost for Claude-3 Sonnet
+                                    elif "claude-3" in model_name.lower() and "haiku" in model_name.lower():
+                                        model_cost_per_million = 3.0   # Approximate cost for Claude-3 Haiku
+                                    elif "gemini-1.5" in model_name.lower() and "pro" in model_name.lower():
+                                        model_cost_per_million = 10.0  # Approximate cost for Gemini 1.5 Pro
+                                    elif "gpt-3.5" in model_name.lower():
+                                        model_cost_per_million = 1.0   # Approximate cost for GPT-3.5
+                                    else:
+                                        model_cost_per_million = 10.0  # Default fallback
+                                
+                                # Calculate credits used
+                                credits_used = calculate_openrouter_credits(
+                                    prompt_tokens=final_prompt_tokens,
+                                    completion_tokens=final_completion_tokens,
+                                    model_cost_per_million=model_cost_per_million
+                                )
+                                
+                                # Record usage
+                                record_usage(
+                                    user_id=current_user.id,
+                                    credits_used=credits_used,
+                                    usage_type="chat",
+                                    model_id=model_name,
+                                    message_id=assistant_message_id,
+                                    prompt_tokens=final_prompt_tokens,
+                                    completion_tokens=final_completion_tokens
+                                )
+                                
+                                logger.info(f"Recorded usage: {credits_used} credits for message {assistant_message_id}")
+                            except Exception as billing_error:
+                                logger.error(f"Error recording billing usage: {billing_error}")
+                                # Don't fail the whole request if billing recording fails
 
                         # Save to memory system if enabled
                         if ENABLE_MEMORY_SYSTEM:

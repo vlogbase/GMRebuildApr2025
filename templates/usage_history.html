@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Usage History{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Usage History</h1>
+        <a href="{{ url_for('billing.account_management') }}" class="btn btn-outline-primary">
+            <i class="fas fa-arrow-left"></i> Back to Account
+        </a>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            {% if usage_list %}
+                <div class="table-responsive">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Model</th>
+                                <th>Prompt Tokens</th>
+                                <th>Completion Tokens</th>
+                                <th>Total Tokens</th>
+                                <th>Credits Used</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usage in usage_list %}
+                            <tr>
+                                <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ usage.usage_type|capitalize }}</td>
+                                <td>{{ usage.model_id|truncate(20) if usage.model_id else 'N/A' }}</td>
+                                <td>{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
+                                <td>{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
+                                <td>
+                                    {% if usage.prompt_tokens and usage.completion_tokens %}
+                                        {{ usage.prompt_tokens + usage.completion_tokens }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>{{ usage.credits_used }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Usage Statistics -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="card-title mb-0">Usage Summary</h5>
+                            </div>
+                            <div class="card-body">
+                                {% set total_credits = namespace(value=0) %}
+                                {% set total_tokens = namespace(value=0) %}
+                                {% set token_count = namespace(value=0) %}
+                                
+                                {% for usage in usage_list %}
+                                    {% set total_credits.value = total_credits.value + usage.credits_used %}
+                                    {% if usage.prompt_tokens and usage.completion_tokens %}
+                                        {% set total_tokens.value = total_tokens.value + usage.prompt_tokens + usage.completion_tokens %}
+                                        {% set token_count.value = token_count.value + 1 %}
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                <div class="d-flex justify-content-between">
+                                    <span>Total Credits Used:</span>
+                                    <strong>{{ total_credits.value }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Approximate Cost:</span>
+                                    <strong>${{ "%.2f"|format(total_credits.value / 100000) }}</strong>
+                                </div>
+                                {% if token_count.value > 0 %}
+                                <div class="d-flex justify-content-between">
+                                    <span>Total Tokens Processed:</span>
+                                    <strong>{{ total_tokens.value }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Average Tokens Per Request:</span>
+                                    <strong>{{ (total_tokens.value / token_count.value)|int }}</strong>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">Usage By Type</h5>
+                            </div>
+                            <div class="card-body">
+                                {% set chat_credits = namespace(value=0) %}
+                                {% set embedding_credits = namespace(value=0) %}
+                                {% set other_credits = namespace(value=0) %}
+                                
+                                {% for usage in usage_list %}
+                                    {% if usage.usage_type == 'chat' %}
+                                        {% set chat_credits.value = chat_credits.value + usage.credits_used %}
+                                    {% elif usage.usage_type == 'embedding' %}
+                                        {% set embedding_credits.value = embedding_credits.value + usage.credits_used %}
+                                    {% else %}
+                                        {% set other_credits.value = other_credits.value + usage.credits_used %}
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                <div class="d-flex justify-content-between">
+                                    <span>Chat Credits:</span>
+                                    <strong>{{ chat_credits.value }}</strong>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Embedding Credits:</span>
+                                    <strong>{{ embedding_credits.value }}</strong>
+                                </div>
+                                {% if other_credits.value > 0 %}
+                                <div class="d-flex justify-content-between">
+                                    <span>Other Credits:</span>
+                                    <strong>{{ other_credits.value }}</strong>
+                                </div>
+                                {% endif %}
+                                
+                                <div class="progress mt-3">
+                                    {% set chat_percent = (chat_credits.value / total_credits.value * 100)|int if total_credits.value > 0 else 0 %}
+                                    {% set embedding_percent = (embedding_credits.value / total_credits.value * 100)|int if total_credits.value > 0 else 0 %}
+                                    {% set other_percent = (other_credits.value / total_credits.value * 100)|int if total_credits.value > 0 else 0 %}
+                                    
+                                    <div class="progress-bar bg-success" style="width: {{ chat_percent }}%" title="Chat: {{ chat_percent }}%">
+                                        {% if chat_percent > 10 %}Chat: {{ chat_percent }}%{% endif %}
+                                    </div>
+                                    <div class="progress-bar bg-info" style="width: {{ embedding_percent }}%" title="Embedding: {{ embedding_percent }}%">
+                                        {% if embedding_percent > 10 %}Embedding: {{ embedding_percent }}%{% endif %}
+                                    </div>
+                                    {% if other_percent > 0 %}
+                                    <div class="progress-bar bg-warning" style="width: {{ other_percent }}%" title="Other: {{ other_percent }}%">
+                                        {% if other_percent > 10 %}Other: {{ other_percent }}%{% endif %}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <p class="text-muted">You don't have any usage history yet.</p>
+                    <p>Start using the application to see your usage statistics here.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">Understanding Your Usage</h5>
+        </div>
+        <div class="card-body">
+            <p>Your credit usage varies depending on the AI models you use:</p>
+            <ul>
+                <li><strong>Chat</strong> - Credits used for chatting with AI models</li>
+                <li><strong>Embedding</strong> - Credits used for vector embeddings and semantic search</li>
+            </ul>
+            
+            <h6 class="mt-4">Token Pricing</h6>
+            <p>AI models process text in "tokens" - roughly 1 token ≈ 4 characters for English text.</p>
+            <p>Models have different pricing based on their capabilities:</p>
+            <ul>
+                <li>GPT-3.5 Turbo: ~0.3 credits per 1K tokens</li>
+                <li>Claude-3 Haiku: ~3 credits per 1K tokens</li>
+                <li>Gemini 1.5 Pro: ~10 credits per 1K tokens</li>
+                <li>Claude-3 Sonnet: ~15 credits per 1K tokens</li>
+                <li>Claude-3 Opus: ~45 credits per 1K tokens</li>
+                <li>GPT-4: ~60 credits per 1K tokens</li>
+            </ul>
+            <p><em>1,000 credits = $0.01 USD</em></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

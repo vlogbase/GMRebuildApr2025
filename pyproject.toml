@@ -32,4 +32,6 @@ dependencies = [
     "azure-storage-blob>=12.25.1",
     "anthropic>=0.49.0",
     "oauthlib>=3.2.2",
+    "paypalrestsdk>=1.13.3",
+    "flask-wtf>=1.2.2",
 ]

@@ -183,6 +183,30 @@ body {
     text-overflow: ellipsis;
 }
 
+.user-actions {
+    margin-top: 8px;
+}
+
+.account-link {
+    display: inline-flex;
+    align-items: center;
+    color: var(--accent-color);
+    font-size: 12px;
+    text-decoration: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background-color: rgba(36, 185, 189, 0.1);
+    transition: background-color 0.2s;
+}
+
+.account-link:hover {
+    background-color: rgba(36, 185, 189, 0.2);
+}
+
+.account-link i {
+    margin-right: 4px;
+}
+
 .footer-buttons {
     display: flex;
     flex-direction: column;

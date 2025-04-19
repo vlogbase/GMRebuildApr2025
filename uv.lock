@@ -356,6 +356,20 @@ wheels = [
 ]
 
 [[package]]
+name = "flask-wtf"
+version = "1.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "flask" },
+    { name = "itsdangerous" },
+    { name = "wtforms" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/80/9b/f1cd6e41bbf874f3436368f2c7ee3216c1e82d666ff90d1d800e20eb1317/flask_wtf-1.2.2.tar.gz", hash = "sha256:79d2ee1e436cf570bccb7d916533fa18757a2f18c290accffab1b9a0b684666b", size = 42641 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/dc/19/354449145fbebb65e7c621235b6ad69bebcfaec2142481f044d0ddc5b5c5/flask_wtf-1.2.2-py3-none-any.whl", hash = "sha256:e93160c5c5b6b571cf99300b6e01b72f9a101027cab1579901f8b10c5daf0b70", size = 12779 },
+]
+
+[[package]]
 name = "gevent"
 version = "24.11.1"
 source = { registry = "https://pypi.org/simple" }
@@ -864,6 +878,20 @@ wheels = [
 ]
 
 [[package]]
+name = "paypalrestsdk"
+version = "1.13.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyopenssl" },
+    { name = "requests" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/af/f9/5e585f31a1c6caeec1af093edc3c6046a46af330ab9d9f91bbf86b019b59/paypalrestsdk-1.13.3.tar.gz", hash = "sha256:dac236492a9ac1260a760014a2e56ab38b09d8143295b5e896545359b61fedd6", size = 23865 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/10/e0/ce62183f4ca1d9cab773a086a5d49e934f3a782960558ff971adc9fc9d05/paypalrestsdk-1.13.3-py3-none-any.whl", hash = "sha256:a3f51616ee8f6d975a5a5a8c2049db63653c843479c8fdd71c9d588a31e14560", size = 23681 },
+]
+
+[[package]]
 name = "pillow"
 version = "11.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1158,6 +1186,19 @@ wheels = [
 ]
 
 [[package]]
+name = "pyopenssl"
+version = "25.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "cryptography" },
+    { name = "typing-extensions", marker = "python_full_version < '3.13'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/9f/26/e25b4a374b4639e0c235527bbe31c0524f26eda701d79456a7e1877f4cc5/pyopenssl-25.0.0.tar.gz", hash = "sha256:cd2cef799efa3936bb08e8ccb9433a575722b9dd986023f1cabc4ae64e9dac16", size = 179573 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/d7/eb76863d2060dcbe7c7e6cccfd95ac02ea0b9acc37745a0d99ff6457aefb/pyOpenSSL-25.0.0-py3-none-any.whl", hash = "sha256:424c247065e46e76a37411b9ab1782541c23bb658bf003772c3405fbaa128e90", size = 56453 },
+]
+
+[[package]]
 name = "pypdf"
 version = "5.4.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1303,12 +1344,14 @@ dependencies = [
     { name = "flask", extra = ["async"] },
     { name = "flask-login" },
     { name = "flask-sqlalchemy" },
+    { name = "flask-wtf" },
     { name = "gevent" },
     { name = "gunicorn" },
     { name = "httpx" },
     { name = "lxml" },
     { name = "oauthlib" },
     { name = "openai" },
+    { name = "paypalrestsdk" },
     { name = "pillow" },
     { name = "psycopg2-binary" },
     { name = "pymongo" },
@@ -1335,12 +1378,14 @@ requires-dist = [
     { name = "flask", extras = ["async"], specifier = ">=3.1.0" },
     { name = "flask-login", specifier = ">=0.6.3" },
     { name = "flask-sqlalchemy", specifier = ">=3.1.1" },
+    { name = "flask-wtf", specifier = ">=1.2.2" },
     { name = "gevent", specifier = ">=24.11.1" },
     { name = "gunicorn", extras = ["uvicorn"], specifier = ">=23.0.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "lxml", specifier = ">=5.3.2" },
     { name = "oauthlib", specifier = ">=3.2.2" },
     { name = "openai", specifier = ">=1.74.0" },
+    { name = "paypalrestsdk", specifier = ">=1.13.3" },
     { name = "pillow", specifier = ">=11.2.1" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
     { name = "pymongo", specifier = ">=4.12.0" },
@@ -1703,6 +1748,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/9f/69/83029f1f6300c5fb2471d621ab06f6ec6b3324685a2ce0f9777fd4a8b71e/werkzeug-3.1.3.tar.gz", hash = "sha256:60723ce945c19328679790e3282cc758aa4a6040e4bb330f53d30fa546d44746", size = 806925 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/52/24/ab44c871b0f07f491e5d2ad12c9bd7358e527510618cb1b803a88e986db1/werkzeug-3.1.3-py3-none-any.whl", hash = "sha256:54b78bf3716d19a65be4fceccc0d1d7b89e608834989dfae50ea87564639213e", size = 224498 },
+]
+
+[[package]]
+name = "wtforms"
+version = "3.2.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markupsafe" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/01/e4/633d080897e769ed5712dcfad626e55dbd6cf45db0ff4d9884315c6a82da/wtforms-3.2.1.tar.gz", hash = "sha256:df3e6b70f3192e92623128123ec8dca3067df9cfadd43d59681e210cfb8d4682", size = 137801 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/c9/2088fb5645cd289c99ebe0d4cdcc723922a1d8e1beaefb0f6f76dff9b21c/wtforms-3.2.1-py3-none-any.whl", hash = "sha256:583bad77ba1dd7286463f21e11aa3043ca4869d03575921d1a1698d0715e0fd4", size = 152454 },
 ]
 
 [[package]]
