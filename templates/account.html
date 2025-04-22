@@ -4,153 +4,272 @@
 
 {% block content %}
 <div class="container mt-4">
-    <h1 class="mb-4">Account Management</h1>
-    
-    <div class="row">
-        <!-- Balance Card -->
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="card-title mb-0">Your Balance</h5>
-                </div>
-                <div class="card-body">
-                    <h2 class="text-primary">${{ "%.2f"|format(user.get_balance_usd()) }}</h2>
-                    <p class="mt-3">Use your balance to access premium AI models and features.</p>
-                </div>
-            </div>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-1">Account Management</h1>
+            <p class="text-muted">Manage your account, add funds, and view your usage history</p>
         </div>
-        
-        <!-- Purchase Credits Card -->
+        <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Chat</a>
+    </div>
+
+    <div class="row mb-4">
         <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header bg-success text-white">
-                    <h5 class="card-title mb-0">Add Funds</h5>
-                </div>
+            <div class="card bg-dark text-white">
                 <div class="card-body">
-                    <form action="{{ url_for('billing.purchase_custom') }}" method="post" class="mb-3">
-                        <div class="input-group mb-3">
-                            <span class="input-group-text">$</span>
-                            <input type="number" name="amount" class="form-control" min="1" max="100" step="0.01" placeholder="Amount (1.00-100.00)">
-                            <button type="submit" class="btn btn-success">Add Funds</button>
-                        </div>
-                        <small class="text-muted">Enter amount between $1.00 and $100.00</small>
-                    </form>
+                    <h5>Available Balance</h5>
+                    <h2 class="text-success display-4">${{ "%.2f"|format(user.get_balance_usd()) }}</h2>
                     
-                    <hr>
-                    
-                    <h6 class="mb-3">Or choose a package:</h6>
-                    <div class="row">
-                        {% for package in packages %}
-                        <div class="col-sm-6 mb-3">
-                            <div class="card h-100 package-card">
-                                <div class="card-body text-center">
-                                    <h5 class="card-title">{{ package.name }}</h5>
-                                    <p class="card-text">{{ package.description }}</p>
-                                    <div class="text-center">
-                                        <h4 class="text-success">${{ "%.2f"|format(package.amount_usd) }}</h4>
-                                    </div>
-                                    <form action="{{ url_for('billing.purchase_package', package_id=package.id) }}" method="post" class="mt-3">
-                                        <button type="submit" class="btn btn-outline-success btn-sm w-100">Add to Balance</button>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
+                    <div class="mt-3">
+                        <small class="text-light opacity-75">
+                            <i class="fas fa-info-circle"></i> Funds are used for AI model access. Different models have different pricing based on their capabilities and token usage.
+                        </small>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+
+    <ul class="nav nav-tabs mb-4" id="accountTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="funds-tab" data-bs-toggle="tab" data-bs-target="#funds" type="button" role="tab" aria-controls="funds" aria-selected="true">Add Funds</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">Purchase History</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="usage-tab" data-bs-toggle="tab" data-bs-target="#usage" type="button" role="tab" aria-controls="usage" aria-selected="false">Usage Analytics</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false">Account Settings</button>
+        </li>
+    </ul>
     
-    <!-- Usage and Transactions -->
-    <div class="row">
-        <!-- Recent Transactions -->
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Recent Transactions</h5>
-                    <a href="{{ url_for('billing.transaction_history') }}" class="btn btn-sm btn-outline-primary">View All</a>
-                </div>
-                <div class="card-body">
-                    {% if recent_transactions %}
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Amount</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for transaction in recent_transactions %}
-                                    <tr>
-                                        <td>{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
-                                        <td>${{ "%.2f"|format(transaction.amount_usd) }}</td>
-                                        <td>
-                                            {% if transaction.status == 'completed' %}
-                                                <span class="badge bg-success">Completed</span>
-                                            {% elif transaction.status == 'pending' %}
-                                                <span class="badge bg-warning text-dark">Pending</span>
-                                            {% else %}
-                                                <span class="badge bg-danger">Failed</span>
-                                            {% endif %}
-                                        </td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+    <div class="tab-content" id="accountTabsContent">
+        <!-- Add Funds Tab -->
+        <div class="tab-pane fade show active" id="funds" role="tabpanel" aria-labelledby="funds-tab">
+            <div class="row">
+                {% for package in packages %}
+                <div class="col-md-4 mb-4">
+                    <div class="card h-100 package-card">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">${{ "%.2f"|format(package.amount_usd) }} Package</h5>
+                            <p class="card-text text-muted">Access to ${{ "%.2f"|format(package.amount_usd) }} worth of AI usage</p>
+                            <ul class="list-unstyled text-muted">
+                                <li><i class="fas fa-check text-success"></i> Best value</li>
+                                <li><i class="fas fa-check text-success"></i> No additional fees</li>
+                                <li><i class="fas fa-check text-success"></i> Instant delivery</li>
+                            </ul>
+                            <form action="{{ url_for('billing.purchase_package', package_id=package.id) }}" method="post" class="mt-3">
+                                <button type="submit" class="btn btn-success w-100">Select</button>
+                            </form>
                         </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h4 class="mb-3">Custom Amount</h4>
+                    <p class="text-muted">Enter a custom USD amount to add to your account.</p>
+                    
+                    <form action="{{ url_for('billing.purchase_custom') }}" method="post">
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount (USD)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" id="amount" name="amount" class="form-control" min="1" max="100" step="0.01" placeholder="Enter amount from $1.00">
+                            </div>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                            <label class="form-check-label" for="agreeTerms">
+                                PayPal transaction fee applies to all purchases.
+                            </label>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mb-3">
+                            <div>
+                                <p class="mb-1">Amount:</p>
+                                <p class="mb-1">Fee:</p>
+                                <p class="mb-0 fw-bold">Total:</p>
+                            </div>
+                            <div class="text-end">
+                                <p class="mb-1" id="amount-display">$0.00</p>
+                                <p class="mb-1" id="fee-display">$0.00</p>
+                                <p class="mb-0 fw-bold" id="total-display">$0.00</p>
+                            </div>
+                        </div>
+                        
+                        <div class="text-center">
+                            <button type="submit" class="btn btn-primary" id="purchaseBtn">Pay via PayPal Account</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Purchase History Tab -->
+        <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="mb-3">Purchase History</h4>
+                    
+                    {% if recent_transactions %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Payment Method</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transaction in recent_transactions %}
+                                <tr>
+                                    <td>{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>${{ "%.2f"|format(transaction.amount_usd) }}</td>
+                                    <td>{{ transaction.payment_method|capitalize }}</td>
+                                    <td>
+                                        {% if transaction.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif transaction.status == 'pending' %}
+                                            <span class="badge bg-warning text-dark">Pending</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% else %}
-                        <p class="text-muted">No transactions yet.</p>
+                    <div class="text-center py-5">
+                        <div class="mb-3">
+                            <i class="fas fa-receipt fa-3x text-muted"></i>
+                        </div>
+                        <h5>No Purchase History</h5>
+                        <p class="text-muted">You haven't made any purchases yet.</p>
+                    </div>
                     {% endif %}
                 </div>
             </div>
         </div>
         
-        <!-- Recent Usage -->
-        <div class="col-md-6">
-            <div class="card mb-4">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Recent Usage</h5>
-                    <a href="{{ url_for('billing.usage_history') }}" class="btn btn-sm btn-outline-primary">View All</a>
-                </div>
+        <!-- Usage Analytics Tab -->
+        <div class="tab-pane fade" id="usage" role="tabpanel" aria-labelledby="usage-tab">
+            <div class="card">
                 <div class="card-body">
-                    {% if recent_usage %}
-                        <div class="table-responsive">
-                            <table class="table table-striped">
-                                <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Type</th>
-                                        <th>Model</th>
-                                        <th>Cost</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for usage in recent_usage %}
-                                    <tr>
-                                        <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
-                                        <td>{{ usage.usage_type }}</td>
-                                        <td>{{ usage.model_id|truncate(15) }}</td>
-                                        <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
-                                    </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h4 class="mb-0">Usage Analytics</h4>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-primary active">Summary</button>
+                            <button class="btn btn-sm btn-outline-primary">Detailed</button>
+                            <button class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-download"></i> Export CSV
+                            </button>
                         </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h6>Date Range</h6>
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-outline-secondary">Last 30 Days</button>
+                            <button class="btn btn-sm btn-outline-secondary">Last 7 Days</button>
+                            <button class="btn btn-sm btn-outline-secondary active">This Month</button>
+                        </div>
+                    </div>
+                    
+                    {% if recent_usage %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Model</th>
+                                    <th>Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for usage in recent_usage %}
+                                <tr>
+                                    <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ usage.usage_type }}</td>
+                                    <td>{{ usage.model_id|truncate(15) }}</td>
+                                    <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     {% else %}
-                        <p class="text-muted">No usage records yet.</p>
+                    <div class="text-center py-5">
+                        <div class="mb-3">
+                            <i class="fas fa-chart-line fa-3x text-muted"></i>
+                        </div>
+                        <h5>No Usage Data</h5>
+                        <p class="text-muted">No usage data available for the selected time period.</p>
+                        <p class="text-muted">Try a different date range or start using the AI models to generate usage data.</p>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">Try Using Models</a>
+                    </div>
                     {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Account Settings Tab -->
+        <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
+            <div class="card">
+                <div class="card-body">
+                    <h4 class="mb-4">Account Settings</h4>
+                    
+                    <form>
+                        <div class="mb-3">
+                            <label for="username" class="form-label">Username</label>
+                            <input type="text" class="form-control" id="username" value="{{ user.username }}" readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" id="email" value="{{ user.email }}" readonly>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <h5>Notification Preferences</h5>
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="emailNotifications" checked>
+                            <label class="form-check-label" for="emailNotifications">Receive email notifications</label>
+                        </div>
+                        
+                        <div class="mb-3 form-check">
+                            <input type="checkbox" class="form-check-input" id="lowBalanceAlerts" checked>
+                            <label class="form-check-label" for="lowBalanceAlerts">Low balance alerts</label>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <h5>Danger Zone</h5>
+                        <p class="text-muted">These actions cannot be undone. Please proceed with caution.</p>
+                        
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-danger">Delete Account</button>
+                            <button type="button" class="btn btn-outline-warning">Export My Data</button>
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- Credits Information -->
-    <div class="row">
+    <div class="row mt-4">
         <div class="col-12">
-            <div class="card mb-4">
+            <div class="card">
                 <div class="card-header">
                     <h5 class="card-title mb-0">Model Pricing Information</h5>
                 </div>
@@ -225,4 +344,26 @@
     border-color: #28a745;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const amountInput = document.getElementById('amount');
+    const amountDisplay = document.getElementById('amount-display');
+    const feeDisplay = document.getElementById('fee-display');
+    const totalDisplay = document.getElementById('total-display');
+    
+    function updateAmounts() {
+        const amount = parseFloat(amountInput.value) || 0;
+        const fee = amount > 0 ? Math.max(0.30, amount * 0.029) : 0;
+        const total = amount + fee;
+        
+        amountDisplay.textContent = '$' + amount.toFixed(2);
+        feeDisplay.textContent = '$' + fee.toFixed(2);
+        totalDisplay.textContent = '$' + total.toFixed(2);
+    }
+    
+    amountInput.addEventListener('input', updateAmounts);
+    updateAmounts();
+});
+</script>
 {% endblock %}

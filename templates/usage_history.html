@@ -1,90 +1,152 @@
 {% extends "base.html" %}
 
-{% block title %}Usage History{% endblock %}
+{% block title %}Usage Analytics{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Usage History</h1>
-        <a href="{{ url_for('billing.account_management') }}" class="btn btn-outline-primary">
-            <i class="fas fa-arrow-left"></i> Back to Account
+        <div>
+            <h1 class="mb-1">Usage Analytics</h1>
+            <p class="text-muted">Track your AI model usage and spending patterns</p>
+        </div>
+        <a href="{{ url_for('billing.account_management') }}" class="btn btn-primary">
+            <i class="fas fa-arrow-left me-1"></i> Back to Account
         </a>
     </div>
     
-    <div class="card">
+    <div class="card mb-4">
         <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h4 class="mb-0">Usage Analytics</h4>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-primary active">Summary</button>
+                    <button class="btn btn-sm btn-outline-primary">Detailed</button>
+                    <button class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-download me-1"></i> Export CSV
+                    </button>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <h6>Date Range</h6>
+                <div class="btn-group">
+                    <button class="btn btn-sm btn-outline-secondary">Last 30 Days</button>
+                    <button class="btn btn-sm btn-outline-secondary">Last 7 Days</button>
+                    <button class="btn btn-sm btn-outline-secondary active">This Month</button>
+                </div>
+            </div>
+            
             {% if usage_list %}
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Type</th>
-                                <th>Model</th>
-                                <th>Prompt Tokens</th>
-                                <th>Completion Tokens</th>
-                                <th>Total Tokens</th>
-                                <th>Credits Used</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for usage in usage_list %}
-                            <tr>
-                                <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td>{{ usage.usage_type|capitalize }}</td>
-                                <td>{{ usage.model_id|truncate(20) if usage.model_id else 'N/A' }}</td>
-                                <td>{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
-                                <td>{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
-                                <td>
-                                    {% if usage.prompt_tokens and usage.completion_tokens %}
-                                        {{ usage.prompt_tokens + usage.completion_tokens }}
-                                    {% else %}
-                                        N/A
-                                    {% endif %}
-                                </td>
-                                <td>{{ usage.credits_used }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
+                <!-- Usage Overview Cards -->
+                <div class="row mb-4">
+                    {% set total_credits = namespace(value=0) %}
+                    {% set total_tokens = namespace(value=0) %}
+                    {% set chat_credits = namespace(value=0) %}
+                    {% set embedding_credits = namespace(value=0) %}
+                    {% set other_credits = namespace(value=0) %}
+                    {% set token_count = namespace(value=0) %}
+                    
+                    {% for usage in usage_list %}
+                        {% set total_credits.value = total_credits.value + usage.credits_used %}
+                        {% if usage.prompt_tokens and usage.completion_tokens %}
+                            {% set total_tokens.value = total_tokens.value + usage.prompt_tokens + usage.completion_tokens %}
+                            {% set token_count.value = token_count.value + 1 %}
+                        {% endif %}
+                        
+                        {% if usage.usage_type == 'chat' %}
+                            {% set chat_credits.value = chat_credits.value + usage.credits_used %}
+                        {% elif usage.usage_type == 'embedding' %}
+                            {% set embedding_credits.value = embedding_credits.value + usage.credits_used %}
+                        {% else %}
+                            {% set other_credits.value = other_credits.value + usage.credits_used %}
+                        {% endif %}
+                    {% endfor %}
+                    
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted mb-2">Total Cost</h6>
+                                <h3 class="mb-0">${{ "%.2f"|format(total_credits.value / 1000) }}</h3>
+                                <small class="text-muted">This period</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted mb-2">Total Tokens</h6>
+                                <h3 class="mb-0">{{ total_tokens.value|default(0)|number_format }}</h3>
+                                <small class="text-muted">Processed</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted mb-2">API Calls</h6>
+                                <h3 class="mb-0">{{ usage_list|length }}</h3>
+                                <small class="text-muted">Total requests</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted mb-2">Avg. Cost/Call</h6>
+                                <h3 class="mb-0">${{ "%.4f"|format(total_credits.value / (usage_list|length) / 1000) if usage_list|length > 0 else "0.00" }}</h3>
+                                <small class="text-muted">Per request</small>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
-                <!-- Usage Statistics -->
-                <div class="row mt-4">
+                <!-- Usage Charts Row -->
+                <div class="row mb-4">
                     <div class="col-md-6">
-                        <div class="card border-info">
-                            <div class="card-header bg-info text-white">
-                                <h5 class="card-title mb-0">Usage Summary</h5>
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Usage by Type</h5>
                             </div>
                             <div class="card-body">
-                                {% set total_credits = namespace(value=0) %}
-                                {% set total_tokens = namespace(value=0) %}
-                                {% set token_count = namespace(value=0) %}
+                                {% set chat_percent = (chat_credits.value / total_credits.value * 100)|int if total_credits.value > 0 else 0 %}
+                                {% set embedding_percent = (embedding_credits.value / total_credits.value * 100)|int if total_credits.value > 0 else 0 %}
+                                {% set other_percent = (other_credits.value / total_credits.value * 100)|int if total_credits.value > 0 else 0 %}
                                 
-                                {% for usage in usage_list %}
-                                    {% set total_credits.value = total_credits.value + usage.credits_used %}
-                                    {% if usage.prompt_tokens and usage.completion_tokens %}
-                                        {% set total_tokens.value = total_tokens.value + usage.prompt_tokens + usage.completion_tokens %}
-                                        {% set token_count.value = token_count.value + 1 %}
-                                    {% endif %}
-                                {% endfor %}
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Chat</span>
+                                    <div>
+                                        <span class="me-2">${{ "%.2f"|format(chat_credits.value / 1000) }}</span>
+                                        <span class="badge bg-primary">{{ chat_percent }}%</span>
+                                    </div>
+                                </div>
+                                <div class="progress mb-3" style="height: 10px;">
+                                    <div class="progress-bar bg-primary" style="width: {{ chat_percent }}%" role="progressbar" aria-valuenow="{{ chat_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
                                 
-                                <div class="d-flex justify-content-between">
-                                    <span>Total Credits Used:</span>
-                                    <strong>{{ total_credits.value }}</strong>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Embedding</span>
+                                    <div>
+                                        <span class="me-2">${{ "%.2f"|format(embedding_credits.value / 1000) }}</span>
+                                        <span class="badge bg-info">{{ embedding_percent }}%</span>
+                                    </div>
                                 </div>
-                                <div class="d-flex justify-content-between">
-                                    <span>Approximate Cost:</span>
-                                    <strong>${{ "%.2f"|format(total_credits.value / 100000) }}</strong>
+                                <div class="progress mb-3" style="height: 10px;">
+                                    <div class="progress-bar bg-info" style="width: {{ embedding_percent }}%" role="progressbar" aria-valuenow="{{ embedding_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
-                                {% if token_count.value > 0 %}
-                                <div class="d-flex justify-content-between">
-                                    <span>Total Tokens Processed:</span>
-                                    <strong>{{ total_tokens.value }}</strong>
+                                
+                                {% if other_credits.value > 0 %}
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Other</span>
+                                    <div>
+                                        <span class="me-2">${{ "%.2f"|format(other_credits.value / 1000) }}</span>
+                                        <span class="badge bg-secondary">{{ other_percent }}%</span>
+                                    </div>
                                 </div>
-                                <div class="d-flex justify-content-between">
-                                    <span>Average Tokens Per Request:</span>
-                                    <strong>{{ (total_tokens.value / token_count.value)|int }}</strong>
+                                <div class="progress mb-3" style="height: 10px;">
+                                    <div class="progress-bar bg-secondary" style="width: {{ other_percent }}%" role="progressbar" aria-valuenow="{{ other_percent }}" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
                                 {% endif %}
                             </div>
@@ -92,93 +154,181 @@
                     </div>
                     
                     <div class="col-md-6">
-                        <div class="card border-primary">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="card-title mb-0">Usage By Type</h5>
+                        <div class="card h-100">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Usage Statistics</h5>
                             </div>
                             <div class="card-body">
-                                {% set chat_credits = namespace(value=0) %}
-                                {% set embedding_credits = namespace(value=0) %}
-                                {% set other_credits = namespace(value=0) %}
-                                
-                                {% for usage in usage_list %}
-                                    {% if usage.usage_type == 'chat' %}
-                                        {% set chat_credits.value = chat_credits.value + usage.credits_used %}
-                                    {% elif usage.usage_type == 'embedding' %}
-                                        {% set embedding_credits.value = embedding_credits.value + usage.credits_used %}
-                                    {% else %}
-                                        {% set other_credits.value = other_credits.value + usage.credits_used %}
-                                    {% endif %}
-                                {% endfor %}
-                                
-                                <div class="d-flex justify-content-between">
-                                    <span>Chat Credits:</span>
-                                    <strong>{{ chat_credits.value }}</strong>
-                                </div>
-                                <div class="d-flex justify-content-between">
-                                    <span>Embedding Credits:</span>
-                                    <strong>{{ embedding_credits.value }}</strong>
-                                </div>
-                                {% if other_credits.value > 0 %}
-                                <div class="d-flex justify-content-between">
-                                    <span>Other Credits:</span>
-                                    <strong>{{ other_credits.value }}</strong>
-                                </div>
-                                {% endif %}
-                                
-                                <div class="progress mt-3">
-                                    {% set chat_percent = (chat_credits.value / total_credits.value * 100)|int if total_credits.value > 0 else 0 %}
-                                    {% set embedding_percent = (embedding_credits.value / total_credits.value * 100)|int if total_credits.value > 0 else 0 %}
-                                    {% set other_percent = (other_credits.value / total_credits.value * 100)|int if total_credits.value > 0 else 0 %}
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="fas fa-coins text-warning me-2"></i>
+                                            Total Usage Cost
+                                        </div>
+                                        <span>${{ "%.4f"|format(total_credits.value / 1000) }}</span>
+                                    </li>
                                     
-                                    <div class="progress-bar bg-success" style="width: {{ chat_percent }}%" title="Chat: {{ chat_percent }}%">
-                                        {% if chat_percent > 10 %}Chat: {{ chat_percent }}%{% endif %}
-                                    </div>
-                                    <div class="progress-bar bg-info" style="width: {{ embedding_percent }}%" title="Embedding: {{ embedding_percent }}%">
-                                        {% if embedding_percent > 10 %}Embedding: {{ embedding_percent }}%{% endif %}
-                                    </div>
-                                    {% if other_percent > 0 %}
-                                    <div class="progress-bar bg-warning" style="width: {{ other_percent }}%" title="Other: {{ other_percent }}%">
-                                        {% if other_percent > 10 %}Other: {{ other_percent }}%{% endif %}
-                                    </div>
-                                    {% endif %}
-                                </div>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="fas fa-file-alt text-primary me-2"></i>
+                                            Total Tokens Processed
+                                        </div>
+                                        <span>{{ total_tokens.value|default(0)|number_format }}</span>
+                                    </li>
+                                    
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="fas fa-calculator text-success me-2"></i>
+                                            Average Tokens per Request
+                                        </div>
+                                        <span>{{ (total_tokens.value / token_count.value)|int if token_count.value > 0 else 0 }}</span>
+                                    </li>
+                                    
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="fas fa-exchange-alt text-info me-2"></i>
+                                            Total API Calls
+                                        </div>
+                                        <span>{{ usage_list|length }}</span>
+                                    </li>
+                                </ul>
                             </div>
                         </div>
                     </div>
                 </div>
+                
+                <!-- Detailed Usage Table -->
+                <h5 class="mb-3">Detailed Usage</h5>
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date/Time</th>
+                                <th>Type</th>
+                                <th>Model</th>
+                                <th>Tokens</th>
+                                <th>Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usage in usage_list %}
+                            <tr>
+                                <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if usage.usage_type == 'chat' %}
+                                        <span class="badge bg-primary">Chat</span>
+                                    {% elif usage.usage_type == 'embedding' %}
+                                        <span class="badge bg-info">Embedding</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ usage.usage_type|capitalize }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ usage.model_id|truncate(20) if usage.model_id else 'N/A' }}</td>
+                                <td>
+                                    {% if usage.prompt_tokens and usage.completion_tokens %}
+                                        {{ usage.prompt_tokens + usage.completion_tokens }}
+                                        <small class="text-muted">({{ usage.prompt_tokens }} in / {{ usage.completion_tokens }} out)</small>
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <div>
+                        <small class="text-muted">Showing {{ usage_list|length }} records</small>
+                    </div>
+                    <nav aria-label="Usage pagination">
+                        <ul class="pagination pagination-sm mb-0">
+                            <li class="page-item disabled">
+                                <a class="page-link" href="#">Previous</a>
+                            </li>
+                            <li class="page-item active">
+                                <a class="page-link" href="#">1</a>
+                            </li>
+                            <li class="page-item disabled">
+                                <a class="page-link" href="#">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
             {% else %}
                 <div class="text-center py-5">
-                    <p class="text-muted">You don't have any usage history yet.</p>
-                    <p>Start using the application to see your usage statistics here.</p>
+                    <div class="mb-3">
+                        <i class="fas fa-chart-line fa-3x text-muted"></i>
+                    </div>
+                    <h5>No Usage Data</h5>
+                    <p class="text-muted">No usage data available for the selected time period.</p>
+                    <p class="text-muted">Try a different date range or start using the AI models to generate usage data.</p>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">Try Using Models</a>
                 </div>
             {% endif %}
         </div>
     </div>
     
-    <div class="card mt-4">
+    <div class="card mb-4">
         <div class="card-header">
-            <h5 class="card-title mb-0">Understanding Your Usage</h5>
+            <h5 class="card-title mb-0">Understanding AI Model Pricing</h5>
         </div>
         <div class="card-body">
-            <p>Your credit usage varies depending on the AI models you use:</p>
-            <ul>
-                <li><strong>Chat</strong> - Credits used for chatting with AI models</li>
-                <li><strong>Embedding</strong> - Credits used for vector embeddings and semantic search</li>
-            </ul>
-            
-            <h6 class="mt-4">Token Pricing</h6>
-            <p>AI models process text in "tokens" - roughly 1 token ≈ 4 characters for English text.</p>
-            <p>Models have different pricing based on their capabilities:</p>
-            <ul>
-                <li>GPT-3.5 Turbo: ~0.3 credits per 1K tokens</li>
-                <li>Claude-3 Haiku: ~3 credits per 1K tokens</li>
-                <li>Gemini 1.5 Pro: ~10 credits per 1K tokens</li>
-                <li>Claude-3 Sonnet: ~15 credits per 1K tokens</li>
-                <li>Claude-3 Opus: ~45 credits per 1K tokens</li>
-                <li>GPT-4: ~60 credits per 1K tokens</li>
-            </ul>
-            <p><em>1,000 credits = $0.01 USD</em></p>
+            <div class="row">
+                <div class="col-md-6">
+                    <h6>About AI Model Pricing</h6>
+                    <p>Our pricing is based on the token usage of different AI models:</p>
+                    <ul>
+                        <li>AI models process text in "tokens" (roughly 4 characters per token for English)</li>
+                        <li>Different models have different capabilities and costs</li>
+                        <li>You're only charged for the models and features you use</li>
+                        <li>All costs are shown in USD</li>
+                    </ul>
+                </div>
+                <div class="col-md-6">
+                    <h6>Model Cost Comparison</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Model</th>
+                                    <th>Cost per 1K tokens</th>
+                                    <th>Approx. messages per $1</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>GPT-3.5</td>
+                                    <td>$0.0003</td>
+                                    <td>~3,000</td>
+                                </tr>
+                                <tr>
+                                    <td>Claude-3 Haiku</td>
+                                    <td>$0.003</td>
+                                    <td>~300</td>
+                                </tr>
+                                <tr>
+                                    <td>Gemini 1.5 Pro</td>
+                                    <td>$0.01</td>
+                                    <td>~100</td>
+                                </tr>
+                                <tr>
+                                    <td>Claude-3 Sonnet</td>
+                                    <td>$0.015</td>
+                                    <td>~70</td>
+                                </tr>
+                                <tr>
+                                    <td>GPT-4</td>
+                                    <td>$0.06</td>
+                                    <td>~18</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
