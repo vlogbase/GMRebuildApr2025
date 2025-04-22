@@ -224,6 +224,11 @@ document.addEventListener('DOMContentLoaded', function() {
     let allModels = []; // All models from OpenRouter
     let userPreferences = {}; // User preferences for preset buttons
     
+    // Model cost filter settings
+    let maxInputCost = 150.0;  // Default maximum value (effectively no filter)
+    let maxOutputCost = 600.0; // Default maximum value (effectively no filter)
+    let modelsHiddenByFilter = 0; // Track how many models are hidden by cost filters
+    
     // Filter configurations for each preset
     const presetFilters = {
         '1': (model) => !model.is_free, // All non-free models
@@ -2449,6 +2454,182 @@ document.addEventListener('DOMContentLoaded', function() {
             from { opacity: 0; }
             to   { opacity: 1; }
         }
+        .models-hidden-notice {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #191c20;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+        .filter-settings-link {
+            color: #14b8a6;
+            text-decoration: underline;
+            cursor: pointer;
+        }
     `;
     document.head.appendChild(style);
+    
+    // Function to load model filter settings
+    function loadModelFilterSettings() {
+        if (!isAuthenticated) return; // Only load for authenticated users
+        
+        fetch('/api/get_model_filters')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update global variables with filter settings
+                    maxInputCost = data.max_input_cost;
+                    maxOutputCost = data.max_output_cost;
+                    console.log(`Loaded model filters: Input $${maxInputCost}, Output $${maxOutputCost}`);
+                } else {
+                    console.error('Error loading model filter settings:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching model filter settings:', error);
+            });
+    }
+    
+    // Call to load the settings on page load
+    loadModelFilterSettings();
+    
+    // Override populateModelList to apply cost filters
+    const originalPopulateModelList = populateModelList;
+    populateModelList = function(presetId) {
+        // Clear existing items
+        modelList.innerHTML = '';
+        
+        if (!allModels || allModels.length === 0) {
+            const placeholder = document.createElement('li');
+            placeholder.textContent = 'Loading models...';
+            modelList.appendChild(placeholder);
+            return;
+        }
+        
+        // Get filter function for this preset
+        const filterFn = presetFilters[presetId] || (() => true);
+        
+        // Modified filter to include cost filtering
+        const combinedFilterFn = (model) => {
+            // Skip cost filter for free models (preset 6)
+            if (presetId === '6') return filterFn(model);
+            
+            // Apply the original preset filter first
+            if (!filterFn(model)) return false;
+            
+            // Get model costs
+            const inputCost = model.pricing?.prompt || 0;
+            const outputCost = model.pricing?.completion || 0;
+            
+            // Apply cost filters
+            return inputCost <= maxInputCost && outputCost <= maxOutputCost;
+        };
+        
+        // Get all models that would pass the preset filter without cost filter
+        const presetFilteredModels = allModels.filter(filterFn);
+        
+        // Apply combined filter
+        const filteredModels = allModels
+            .filter(combinedFilterFn)
+            .sort((a, b) => {
+                // Special handling for preset 4 (vision models)
+                if (presetId === '4') {
+                    // Always put GPT-4o at the top
+                    if (a.id === 'openai/gpt-4o') return -1;
+                    if (b.id === 'openai/gpt-4o') return 1;
+                    
+                    // Put Claude vision models next
+                    const aIsClaudeVision = a.id.includes('claude') && a.is_multimodal;
+                    const bIsClaudeVision = b.id.includes('claude') && b.is_multimodal;
+                    
+                    if (aIsClaudeVision && !bIsClaudeVision) return -1;
+                    if (!aIsClaudeVision && bIsClaudeVision) return 1;
+                    
+                    // Put Gemini vision models next
+                    const aIsGeminiVision = a.id.includes('gemini') && a.is_multimodal;
+                    const bIsGeminiVision = b.id.includes('gemini') && b.is_multimodal;
+                    
+                    if (aIsGeminiVision && !bIsGeminiVision) return -1;
+                    if (!aIsGeminiVision && bIsGeminiVision) return 1;
+                }
+                
+                // Free models at the bottom
+                if (a.is_free && !b.is_free) return 1;
+                if (!a.is_free && b.is_free) return -1;
+                
+                // Sort by pricing (cheapest first)
+                const aPrice = a.pricing?.prompt || 0;
+                const bPrice = b.pricing?.prompt || 0;
+                return aPrice - bPrice;
+            });
+        
+        // Calculate how many models were hidden by cost filter
+        modelsHiddenByFilter = presetFilteredModels.length - filteredModels.length;
+        
+        // Add each model to the list
+        filteredModels.forEach(model => {
+            const li = document.createElement('li');
+            li.dataset.modelId = model.id;
+            
+            // Create model name element
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'model-name';
+            nameSpan.textContent = model.name;
+            
+            // Create provider badge
+            const providerSpan = document.createElement('span');
+            providerSpan.className = 'model-provider';
+            providerSpan.textContent = model.id.split('/')[0];
+            
+            // Add badge for free models
+            if (model.is_free) {
+                const freeTag = document.createElement('span');
+                freeTag.className = 'free-tag';
+                freeTag.textContent = 'FREE';
+                li.appendChild(freeTag);
+            }
+            
+            li.appendChild(nameSpan);
+            li.appendChild(providerSpan);
+            
+            // Add click handler to select this model
+            li.addEventListener('click', function() {
+                selectModelForPreset(currentlyEditingPresetId, model.id);
+            });
+            
+            modelList.appendChild(li);
+        });
+        
+        // If models are hidden by the cost filter, show a notice
+        if (modelsHiddenByFilter > 0 && presetId !== '6') {
+            const hiddenNotice = document.createElement('div');
+            hiddenNotice.className = 'models-hidden-notice';
+            hiddenNotice.innerHTML = `
+                <p>${modelsHiddenByFilter} model${modelsHiddenByFilter > 1 ? 's' : ''} hidden by your cost filters. 
+                <a class="filter-settings-link">Change filters</a></p>
+            `;
+            modelList.appendChild(hiddenNotice);
+            
+            // Add click handler to the "Change filters" link
+            hiddenNotice.querySelector('.filter-settings-link').addEventListener('click', function() {
+                // Close the model selector
+                closeModelSelector();
+                
+                // Navigate to the account page settings tab
+                window.location.href = '/billing/account#settings';
+            });
+        }
+        
+        // If no models match the filter
+        if (filteredModels.length === 0) {
+            const noResults = document.createElement('li');
+            if (modelsHiddenByFilter > 0) {
+                noResults.textContent = 'All models filtered out by cost settings';
+            } else {
+                noResults.textContent = 'No models found';
+            }
+            modelList.appendChild(noResults);
+        }
+    };
 });

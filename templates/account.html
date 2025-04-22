@@ -374,23 +374,23 @@
                 
                 <div id="usage-summary-tab" class="usage-sub-tab active">
                 {% if recent_usage %}
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover">
-                        <thead>
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-dark table-hover table-striped" id="usageSummaryTable">
+                        <thead class="table-dark sticky-top">
                             <tr>
-                                <th style="min-width: 110px;">Date</th>
-                                <th style="min-width: 80px;">Type</th>
-                                <th style="min-width: 180px;">Model</th>
-                                <th style="min-width: 80px;">Cost</th>
+                                <th style="min-width: 110px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">Date</th>
+                                <th style="min-width: 80px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">Type</th>
+                                <th style="min-width: 220px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">Model</th>
+                                <th style="min-width: 80px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Cost</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for usage in recent_usage %}
                             <tr>
-                                <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
-                                <td>{{ usage.usage_type }}</td>
-                                <td>{{ usage.model_id }}</td>
-                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                <td class="py-3">{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td class="py-3">{{ usage.usage_type }}</td>
+                                <td class="py-3">{{ usage.model_id }}</td>
+                                <td class="text-end py-3">${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -411,26 +411,26 @@
 
                 <div id="usage-detailed-tab" class="usage-sub-tab" style="display: none;">
                 {% if recent_usage %}
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover">
-                        <thead>
+                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                    <table class="table table-dark table-hover table-striped" id="usageDetailedTable">
+                        <thead class="table-dark sticky-top">
                             <tr>
-                                <th style="min-width: 110px;">Date</th>
-                                <th style="min-width: 180px;">Model</th>
-                                <th style="min-width: 100px;">Input Tokens</th>
-                                <th style="min-width: 100px;">Input Cost</th>
-                                <th style="min-width: 100px;">Output Tokens</th>
-                                <th style="min-width: 100px;">Output Cost</th>
-                                <th style="min-width: 100px;">Total Cost</th>
+                                <th style="min-width: 110px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">Date</th>
+                                <th style="min-width: 220px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">Model</th>
+                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Input Tokens</th>
+                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Input Cost</th>
+                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Output Tokens</th>
+                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Output Cost</th>
+                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Total Cost</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for usage in recent_usage %}
                             <tr>
-                                <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td>{{ usage.model_id }}</td>
-                                <td>{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
-                                <td>
+                                <td class="py-3">{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td class="py-3">{{ usage.model_id }}</td>
+                                <td class="text-end py-3">{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
+                                <td class="text-end py-3">
                                     {% if usage.prompt_tokens and usage.model_id %}
                                         {% set input_cost = ((usage.credits_used / 1000) * 0.7)|float %}
                                         ${{ "%.4f"|format(input_cost) }}
@@ -438,8 +438,8 @@
                                         N/A
                                     {% endif %}
                                 </td>
-                                <td>{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
-                                <td>
+                                <td class="text-end py-3">{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
+                                <td class="text-end py-3">
                                     {% if usage.completion_tokens and usage.model_id %}
                                         {% set output_cost = ((usage.credits_used / 1000) * 0.3)|float %}
                                         ${{ "%.4f"|format(output_cost) }}
@@ -447,7 +447,7 @@
                                         N/A
                                     {% endif %}
                                 </td>
-                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                <td class="text-end py-3">${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -535,7 +535,21 @@
                 </div>
                 
                 <style>
-                /* Additional styles for the pricing table */
+                /* Shared table styles for all tables in the account page */
+                .table-dark tbody tr {
+                    transition: background-color 0.15s ease-in-out;
+                }
+                
+                .table-dark tbody tr:hover {
+                    background-color: rgba(255, 255, 255, 0.1) !important;
+                }
+                
+                .table-dark td {
+                    padding: 0.75rem 1rem;
+                    vertical-align: middle;
+                }
+                
+                /* Specific pricing table styles */
                 #pricingTable tbody tr {
                     transition: background-color 0.15s ease-in-out;
                 }
@@ -545,6 +559,23 @@
                 }
                 
                 #pricingTable td {
+                    padding: 0.75rem 1rem;
+                    vertical-align: middle;
+                }
+                
+                /* Usage analytics table styles */
+                #usageSummaryTable tbody tr,
+                #usageDetailedTable tbody tr {
+                    transition: background-color 0.15s ease-in-out;
+                }
+                
+                #usageSummaryTable tbody tr:hover,
+                #usageDetailedTable tbody tr:hover {
+                    background-color: rgba(255, 255, 255, 0.1) !important;
+                }
+                
+                #usageSummaryTable td,
+                #usageDetailedTable td {
                     padding: 0.75rem 1rem;
                     vertical-align: middle;
                 }
@@ -615,6 +646,39 @@
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="lowBalanceAlerts" checked>
                         <label class="form-check-label" for="lowBalanceAlerts">Low balance alerts</label>
+                    </div>
+                    
+                    <hr class="my-4" style="border-color: #3f4246;">
+                    
+                    <h5>Model Filter Settings</h5>
+                    <p class="caption mb-3">Set maximum cost limits to filter which AI models are displayed in the chat interface.</p>
+                    
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label for="maxInputCost" class="form-label mb-0" id="maxInputCostLabel">Max Input Token Cost: $0.03</label>
+                            <span class="caption text-muted">per million tokens</span>
+                        </div>
+                        <input type="range" class="form-range custom-range" id="maxInputCost" min="0" max="100" value="50">
+                        <div class="d-flex justify-content-between mt-1">
+                            <span class="caption">$0.00001</span>
+                            <span class="caption">$150</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label for="maxOutputCost" class="form-label mb-0" id="maxOutputCostLabel">Max Output Token Cost: $0.06</label>
+                            <span class="caption text-muted">per million tokens</span>
+                        </div>
+                        <input type="range" class="form-range custom-range" id="maxOutputCost" min="0" max="100" value="60">
+                        <div class="d-flex justify-content-between mt-1">
+                            <span class="caption">$0.00001</span>
+                            <span class="caption">$600</span>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-end mb-3">
+                        <button type="button" class="select-button" id="saveFilterSettings">Save Filter Settings</button>
                     </div>
                     
                     <hr class="my-4" style="border-color: #3f4246;">
@@ -1251,6 +1315,128 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the usage analytics functionality
     handleUsageSubTabs();
     handleCsvExport();
+    
+    // Model Filter Sliders Functionality
+    const handleModelFilterSliders = function() {
+        const maxInputCostSlider = document.getElementById('maxInputCost');
+        const maxOutputCostSlider = document.getElementById('maxOutputCost');
+        const maxInputCostLabel = document.getElementById('maxInputCostLabel');
+        const maxOutputCostLabel = document.getElementById('maxOutputCostLabel');
+        const saveFilterSettingsBtn = document.getElementById('saveFilterSettings');
+        
+        // Logarithmic scale conversion functions
+        const sliderToInputCost = function(sliderValue) {
+            // Convert slider value (0-100) to logarithmic scale between 0.00001 and 150
+            const minLog = Math.log10(0.00001);
+            const maxLog = Math.log10(150);
+            const scale = (maxLog - minLog) / 100;
+            return Math.pow(10, minLog + scale * sliderValue);
+        };
+        
+        const sliderToOutputCost = function(sliderValue) {
+            // Convert slider value (0-100) to logarithmic scale between 0.00001 and 600
+            const minLog = Math.log10(0.00001);
+            const maxLog = Math.log10(600);
+            const scale = (maxLog - minLog) / 100;
+            return Math.pow(10, minLog + scale * sliderValue);
+        };
+        
+        const inputCostToSlider = function(costValue) {
+            // Convert cost value to slider position (0-100)
+            const minLog = Math.log10(0.00001);
+            const maxLog = Math.log10(150);
+            const scale = (maxLog - minLog) / 100;
+            return (Math.log10(costValue) - minLog) / scale;
+        };
+        
+        const outputCostToSlider = function(costValue) {
+            // Convert cost value to slider position (0-100)
+            const minLog = Math.log10(0.00001);
+            const maxLog = Math.log10(600);
+            const scale = (maxLog - minLog) / 100;
+            return (Math.log10(costValue) - minLog) / scale;
+        };
+        
+        // Update labels when sliders change
+        if (maxInputCostSlider) {
+            maxInputCostSlider.addEventListener('input', function() {
+                const value = sliderToInputCost(this.value);
+                maxInputCostLabel.textContent = `Max Input Token Cost: $${value.toFixed(5)}`;
+            });
+        }
+        
+        if (maxOutputCostSlider) {
+            maxOutputCostSlider.addEventListener('input', function() {
+                const value = sliderToOutputCost(this.value);
+                maxOutputCostLabel.textContent = `Max Output Token Cost: $${value.toFixed(5)}`;
+            });
+        }
+        
+        // Save filter settings
+        if (saveFilterSettingsBtn) {
+            saveFilterSettingsBtn.addEventListener('click', function() {
+                const inputCost = sliderToInputCost(maxInputCostSlider.value);
+                const outputCost = sliderToOutputCost(maxOutputCostSlider.value);
+                
+                fetch('/api/save_model_filters', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        max_input_cost: inputCost,
+                        max_output_cost: outputCost
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Show success message
+                        const successMsg = document.createElement('div');
+                        successMsg.className = 'alert alert-success mt-2';
+                        successMsg.textContent = 'Filter settings saved successfully';
+                        saveFilterSettingsBtn.parentNode.appendChild(successMsg);
+                        
+                        // Remove message after 3 seconds
+                        setTimeout(() => {
+                            successMsg.remove();
+                        }, 3000);
+                    } else {
+                        console.error('Error saving filter settings:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving filter settings:', error);
+                });
+            });
+        }
+        
+        // Load initial values from server
+        fetch('/api/get_model_filters')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Set slider values
+                    if (maxInputCostSlider) {
+                        maxInputCostSlider.value = inputCostToSlider(data.max_input_cost);
+                        maxInputCostLabel.textContent = `Max Input Token Cost: $${data.max_input_cost.toFixed(5)}`;
+                    }
+                    
+                    if (maxOutputCostSlider) {
+                        maxOutputCostSlider.value = outputCostToSlider(data.max_output_cost);
+                        maxOutputCostLabel.textContent = `Max Output Token Cost: $${data.max_output_cost.toFixed(5)}`;
+                    }
+                } else {
+                    console.error('Error loading filter settings:', data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error loading filter settings:', error);
+            });
+    };
+    
+    // Initialize model filter sliders
+    handleModelFilterSliders();
 });
 </script>
 {% endblock %}

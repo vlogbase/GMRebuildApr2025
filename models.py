@@ -111,6 +111,23 @@ class UserPreference(db.Model):
     def __repr__(self):
         return f'<UserPreference {self.user_identifier}: Preset {self.preset_id} -> {self.model_id}>'
 
+class UserModelFilter(db.Model):
+    """User model filter preferences for model cost limits"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_identifier = db.Column(db.String(64), nullable=False, index=True)  # Temporary identifier or User ID
+    max_input_cost = db.Column(db.Float, nullable=False, default=150.0)  # Default to maximum value
+    max_output_cost = db.Column(db.Float, nullable=False, default=600.0)  # Default to maximum value
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Link to user when logged in
+    
+    # Create a unique constraint for user_identifier
+    __table_args__ = (
+        db.UniqueConstraint('user_identifier', name='user_filter_unique'),
+    )
+    
+    def __repr__(self):
+        return f'<UserModelFilter {self.user_identifier}: Input ${self.max_input_cost}, Output ${self.max_output_cost}>'
+
 
 class Transaction(db.Model):
     """Transaction model for tracking payments and credit purchases"""

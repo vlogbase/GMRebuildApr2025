@@ -2409,6 +2409,86 @@ def upload_documents():
             "error": str(e)
         }), 500
 
+# --- Model Filter Routes ---
+@app.route('/api/save_model_filters', methods=['POST'])
+def save_model_filters():
+    """ Save user model filter settings """
+    try:
+        data = request.get_json()
+        if not data: 
+            abort(400, description="Invalid request body. JSON expected.")
+            
+        max_input_cost = data.get('max_input_cost')
+        max_output_cost = data.get('max_output_cost')
+        
+        if max_input_cost is None or max_output_cost is None:
+            abort(400, description="Missing max_input_cost or max_output_cost")
+        
+        try:
+            max_input_cost = float(max_input_cost)
+            max_output_cost = float(max_output_cost)
+            
+            # Validate ranges
+            if not (0.00001 <= max_input_cost <= 150.0):
+                abort(400, description="max_input_cost must be between 0.00001 and 150.0")
+            if not (0.00001 <= max_output_cost <= 600.0):
+                abort(400, description="max_output_cost must be between 0.00001 and 600.0")
+                
+        except ValueError:
+            abort(400, description="Cost values must be numeric")
+
+        user_identifier = get_user_identifier()
+        from models import UserModelFilter
+
+        # Find existing filter or create new one
+        model_filter = UserModelFilter.query.filter_by(user_identifier=user_identifier).first()
+
+        if model_filter:
+            model_filter.max_input_cost = max_input_cost
+            model_filter.max_output_cost = max_output_cost
+        else:
+            model_filter = UserModelFilter(
+                user_identifier=user_identifier,
+                max_input_cost=max_input_cost,
+                max_output_cost=max_output_cost,
+                user_id=current_user.id if current_user.is_authenticated else None
+            )
+            db.session.add(model_filter)
+
+        db.session.commit()
+        return jsonify({"success": True, "message": "Model filter settings saved successfully"})
+    except Exception as e:
+        logger.exception("Error saving model filter settings")
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/get_model_filters', methods=['GET'])
+def get_model_filters():
+    """ Get user model filter settings """
+    try:
+        user_identifier = get_user_identifier()
+        from models import UserModelFilter
+
+        model_filter = UserModelFilter.query.filter_by(user_identifier=user_identifier).first()
+
+        if model_filter:
+            # Return existing preferences
+            return jsonify({
+                "success": True,
+                "max_input_cost": model_filter.max_input_cost,
+                "max_output_cost": model_filter.max_output_cost
+            })
+        else:
+            # Return default values
+            return jsonify({
+                "success": True,
+                "max_input_cost": 150.0,
+                "max_output_cost": 600.0
+            })
+    except Exception as e:
+        logger.exception("Error fetching model filter settings")
+        return jsonify({"success": False, "error": str(e)}), 500
+        
 # --- Main Execution ---
 if __name__ == '__main__':
     logger.info("Starting Flask development server")
