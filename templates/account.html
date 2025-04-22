@@ -653,32 +653,68 @@
                     <h5>Model Filter Settings</h5>
                     <p class="caption mb-3">Set maximum cost limits to filter which AI models are displayed in the chat interface.</p>
                     
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label for="maxInputCost" class="form-label mb-0" id="maxInputCostLabel">Max Input Token Cost: $0.03</label>
-                            <span class="caption text-muted">per million tokens</span>
+                    <div class="card p-4 mb-4" style="background-color: #1e2124; border-color: #2c2f33;">
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label for="maxInputCost" class="form-label h6 mb-0">Max Input Token Cost</label>
+                                <span class="caption text-muted">per million tokens</span>
+                            </div>
+                            
+                            <div class="d-flex align-items-center gap-3">
+                                <div style="flex-grow: 1;">
+                                    <input type="range" class="form-range custom-range" id="maxInputCost" min="0" max="100" value="50" style="height: 10px;">
+                                </div>
+                                <div class="input-group" style="width: 150px;">
+                                    <span class="input-group-text bg-dark text-light border-secondary">$</span>
+                                    <input type="number" id="maxInputCostValue" class="form-control custom-amount-input" value="0.03" min="0.01" max="600" step="0.01">
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-1">
+                                <span class="caption">$0.01</span>
+                                <span class="caption">$600</span>
+                            </div>
+                            <div class="mt-2">
+                                <p class="caption" id="inputCostExplainer">
+                                    Models with input costs above $0.03 per million tokens will be hidden from model selection.
+                                </p>
+                            </div>
                         </div>
-                        <input type="range" class="form-range custom-range" id="maxInputCost" min="0" max="100" value="50">
-                        <div class="d-flex justify-content-between mt-1">
-                            <span class="caption">$0.00001</span>
-                            <span class="caption">$150</span>
+                        
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <label for="maxOutputCost" class="form-label h6 mb-0">Max Output Token Cost</label>
+                                <span class="caption text-muted">per million tokens</span>
+                            </div>
+                            
+                            <div class="d-flex align-items-center gap-3">
+                                <div style="flex-grow: 1;">
+                                    <input type="range" class="form-range custom-range" id="maxOutputCost" min="0" max="100" value="60" style="height: 10px;">
+                                </div>
+                                <div class="input-group" style="width: 150px;">
+                                    <span class="input-group-text bg-dark text-light border-secondary">$</span>
+                                    <input type="number" id="maxOutputCostValue" class="form-control custom-amount-input" value="0.06" min="0.01" max="600" step="0.01">
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between mt-1">
+                                <span class="caption">$0.01</span>
+                                <span class="caption">$600</span>
+                            </div>
+                            <div class="mt-2">
+                                <p class="caption" id="outputCostExplainer">
+                                    Models with output costs above $0.06 per million tokens will be hidden from model selection.
+                                </p>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <label for="maxOutputCost" class="form-label mb-0" id="maxOutputCostLabel">Max Output Token Cost: $0.06</label>
-                            <span class="caption text-muted">per million tokens</span>
+                        
+                        <div id="filterFeedbackContainer"></div>
+                        
+                        <div class="d-flex justify-content-end mt-3">
+                            <button type="button" class="select-button" id="saveFilterSettings">
+                                <i class="fas fa-save me-2"></i>Save Filter Settings
+                            </button>
                         </div>
-                        <input type="range" class="form-range custom-range" id="maxOutputCost" min="0" max="100" value="60">
-                        <div class="d-flex justify-content-between mt-1">
-                            <span class="caption">$0.00001</span>
-                            <span class="caption">$600</span>
-                        </div>
-                    </div>
-                    
-                    <div class="d-flex justify-content-end mb-3">
-                        <button type="button" class="select-button" id="saveFilterSettings">Save Filter Settings</button>
                     </div>
                     
                     <hr class="my-4" style="border-color: #3f4246;">
@@ -1320,63 +1356,174 @@ document.addEventListener('DOMContentLoaded', function() {
     const handleModelFilterSliders = function() {
         const maxInputCostSlider = document.getElementById('maxInputCost');
         const maxOutputCostSlider = document.getElementById('maxOutputCost');
-        const maxInputCostLabel = document.getElementById('maxInputCostLabel');
-        const maxOutputCostLabel = document.getElementById('maxOutputCostLabel');
+        const maxInputCostValue = document.getElementById('maxInputCostValue');
+        const maxOutputCostValue = document.getElementById('maxOutputCostValue');
+        const inputCostExplainer = document.getElementById('inputCostExplainer');
+        const outputCostExplainer = document.getElementById('outputCostExplainer');
         const saveFilterSettingsBtn = document.getElementById('saveFilterSettings');
+        const filterFeedbackContainer = document.getElementById('filterFeedbackContainer');
+        
+        // Constants for slider range
+        const MIN_COST = 0.01;  // $0.01 per million tokens
+        const MAX_INPUT_COST = 600.0;  // $600 per million tokens
+        const MAX_OUTPUT_COST = 600.0; // $600 per million tokens
         
         // Logarithmic scale conversion functions
         const sliderToInputCost = function(sliderValue) {
-            // Convert slider value (0-100) to logarithmic scale between 0.00001 and 150
-            const minLog = Math.log10(0.00001);
-            const maxLog = Math.log10(150);
+            // Convert slider value (0-100) to logarithmic scale between MIN_COST and MAX_INPUT_COST
+            const minLog = Math.log10(MIN_COST);
+            const maxLog = Math.log10(MAX_INPUT_COST);
             const scale = (maxLog - minLog) / 100;
             return Math.pow(10, minLog + scale * sliderValue);
         };
         
         const sliderToOutputCost = function(sliderValue) {
-            // Convert slider value (0-100) to logarithmic scale between 0.00001 and 600
-            const minLog = Math.log10(0.00001);
-            const maxLog = Math.log10(600);
+            // Convert slider value (0-100) to logarithmic scale between MIN_COST and MAX_OUTPUT_COST
+            const minLog = Math.log10(MIN_COST);
+            const maxLog = Math.log10(MAX_OUTPUT_COST);
             const scale = (maxLog - minLog) / 100;
             return Math.pow(10, minLog + scale * sliderValue);
         };
         
         const inputCostToSlider = function(costValue) {
+            // Make sure the cost value is within bounds
+            costValue = Math.max(MIN_COST, Math.min(MAX_INPUT_COST, costValue));
+            
             // Convert cost value to slider position (0-100)
-            const minLog = Math.log10(0.00001);
-            const maxLog = Math.log10(150);
+            const minLog = Math.log10(MIN_COST);
+            const maxLog = Math.log10(MAX_INPUT_COST);
             const scale = (maxLog - minLog) / 100;
             return (Math.log10(costValue) - minLog) / scale;
         };
         
         const outputCostToSlider = function(costValue) {
+            // Make sure the cost value is within bounds
+            costValue = Math.max(MIN_COST, Math.min(MAX_OUTPUT_COST, costValue));
+            
             // Convert cost value to slider position (0-100)
-            const minLog = Math.log10(0.00001);
-            const maxLog = Math.log10(600);
+            const minLog = Math.log10(MIN_COST);
+            const maxLog = Math.log10(MAX_OUTPUT_COST);
             const scale = (maxLog - minLog) / 100;
             return (Math.log10(costValue) - minLog) / scale;
         };
         
-        // Update labels when sliders change
+        // Update values and explanations
+        const updateInputCostUI = function(value) {
+            if (typeof value === 'string') {
+                value = parseFloat(value);
+            }
+            // Clamp value to valid range
+            value = Math.max(MIN_COST, Math.min(MAX_INPUT_COST, value));
+            
+            // Update numeric input field (to 2 decimal places for display)
+            maxInputCostValue.value = value.toFixed(2);
+            
+            // Update explainer text
+            inputCostExplainer.textContent = `Models with input costs above $${value.toFixed(2)} per million tokens will be hidden from model selection.`;
+        };
+        
+        const updateOutputCostUI = function(value) {
+            if (typeof value === 'string') {
+                value = parseFloat(value);
+            }
+            // Clamp value to valid range
+            value = Math.max(MIN_COST, Math.min(MAX_OUTPUT_COST, value));
+            
+            // Update numeric input field (to 2 decimal places for display)
+            maxOutputCostValue.value = value.toFixed(2);
+            
+            // Update explainer text
+            outputCostExplainer.textContent = `Models with output costs above $${value.toFixed(2)} per million tokens will be hidden from model selection.`;
+        };
+        
+        // Function to show feedback
+        const showFeedback = function(message, isSuccess = true) {
+            // Clear any existing feedback
+            filterFeedbackContainer.innerHTML = '';
+            
+            const feedbackDiv = document.createElement('div');
+            feedbackDiv.className = isSuccess ? 'alert alert-success mt-3' : 'alert alert-danger mt-3';
+            feedbackDiv.style.animation = 'fadeIn 0.3s';
+            
+            const icon = document.createElement('i');
+            icon.className = isSuccess ? 'fas fa-check-circle me-2' : 'fas fa-exclamation-circle me-2';
+            feedbackDiv.appendChild(icon);
+            
+            const messageSpan = document.createElement('span');
+            messageSpan.textContent = message;
+            feedbackDiv.appendChild(messageSpan);
+            
+            filterFeedbackContainer.appendChild(feedbackDiv);
+            
+            // Add simple fade in animation
+            const style = document.createElement('style');
+            style.textContent = `
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(-10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // Scroll to make sure feedback is visible
+            feedbackDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            
+            // Auto dismiss after 5 seconds
+            if (isSuccess) {
+                setTimeout(() => {
+                    feedbackDiv.style.animation = 'fadeOut 0.5s forwards';
+                    setTimeout(() => {
+                        feedbackDiv.remove();
+                    }, 500);
+                }, 5000);
+            }
+        };
+        
+        // Update UI when sliders change
         if (maxInputCostSlider) {
             maxInputCostSlider.addEventListener('input', function() {
                 const value = sliderToInputCost(this.value);
-                maxInputCostLabel.textContent = `Max Input Token Cost: $${value.toFixed(5)}`;
+                updateInputCostUI(value);
             });
         }
         
         if (maxOutputCostSlider) {
             maxOutputCostSlider.addEventListener('input', function() {
                 const value = sliderToOutputCost(this.value);
-                maxOutputCostLabel.textContent = `Max Output Token Cost: $${value.toFixed(5)}`;
+                updateOutputCostUI(value);
+            });
+        }
+        
+        // Update sliders when input fields change
+        if (maxInputCostValue) {
+            maxInputCostValue.addEventListener('input', function() {
+                const value = parseFloat(this.value);
+                if (!isNaN(value) && value >= MIN_COST) {
+                    maxInputCostSlider.value = inputCostToSlider(value);
+                    updateInputCostUI(value);
+                }
+            });
+        }
+        
+        if (maxOutputCostValue) {
+            maxOutputCostValue.addEventListener('input', function() {
+                const value = parseFloat(this.value);
+                if (!isNaN(value) && value >= MIN_COST) {
+                    maxOutputCostSlider.value = outputCostToSlider(value);
+                    updateOutputCostUI(value);
+                }
             });
         }
         
         // Save filter settings
         if (saveFilterSettingsBtn) {
             saveFilterSettingsBtn.addEventListener('click', function() {
-                const inputCost = sliderToInputCost(maxInputCostSlider.value);
-                const outputCost = sliderToOutputCost(maxOutputCostSlider.value);
+                // Show saving state
+                saveFilterSettingsBtn.disabled = true;
+                saveFilterSettingsBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
+                
+                const inputCost = parseFloat(maxInputCostValue.value);
+                const outputCost = parseFloat(maxOutputCostValue.value);
                 
                 fetch('/api/save_model_filters', {
                     method: 'POST',
@@ -1390,22 +1537,22 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .then(response => response.json())
                 .then(data => {
+                    // Reset button state
+                    saveFilterSettingsBtn.disabled = false;
+                    saveFilterSettingsBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Filter Settings';
+                    
                     if (data.success) {
-                        // Show success message
-                        const successMsg = document.createElement('div');
-                        successMsg.className = 'alert alert-success mt-2';
-                        successMsg.textContent = 'Filter settings saved successfully';
-                        saveFilterSettingsBtn.parentNode.appendChild(successMsg);
-                        
-                        // Remove message after 3 seconds
-                        setTimeout(() => {
-                            successMsg.remove();
-                        }, 3000);
+                        showFeedback('Filter settings saved successfully. Models in the chat interface will now be filtered based on these cost limits.', true);
                     } else {
-                        console.error('Error saving filter settings:', data.error);
+                        showFeedback('Error saving filter settings: ' + (data.error || 'Unknown error'), false);
                     }
                 })
                 .catch(error => {
+                    // Reset button state
+                    saveFilterSettingsBtn.disabled = false;
+                    saveFilterSettingsBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Filter Settings';
+                    
+                    showFeedback('Error saving filter settings: ' + error.message, false);
                     console.error('Error saving filter settings:', error);
                 });
             });
@@ -1416,15 +1563,17 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Set slider values
-                    if (maxInputCostSlider) {
-                        maxInputCostSlider.value = inputCostToSlider(data.max_input_cost);
-                        maxInputCostLabel.textContent = `Max Input Token Cost: $${data.max_input_cost.toFixed(5)}`;
+                    // Set slider and input field values
+                    if (maxInputCostSlider && maxInputCostValue) {
+                        const inputCost = data.max_input_cost;
+                        maxInputCostSlider.value = inputCostToSlider(inputCost);
+                        updateInputCostUI(inputCost);
                     }
                     
-                    if (maxOutputCostSlider) {
-                        maxOutputCostSlider.value = outputCostToSlider(data.max_output_cost);
-                        maxOutputCostLabel.textContent = `Max Output Token Cost: $${data.max_output_cost.toFixed(5)}`;
+                    if (maxOutputCostSlider && maxOutputCostValue) {
+                        const outputCost = data.max_output_cost;
+                        maxOutputCostSlider.value = outputCostToSlider(outputCost);
+                        updateOutputCostUI(outputCost);
                     }
                 } else {
                     console.error('Error loading filter settings:', data.error);

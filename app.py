@@ -2429,10 +2429,10 @@ def save_model_filters():
             max_output_cost = float(max_output_cost)
             
             # Validate ranges
-            if not (0.00001 <= max_input_cost <= 150.0):
-                abort(400, description="max_input_cost must be between 0.00001 and 150.0")
-            if not (0.00001 <= max_output_cost <= 600.0):
-                abort(400, description="max_output_cost must be between 0.00001 and 600.0")
+            if not (0.01 <= max_input_cost <= 600.0):
+                abort(400, description="max_input_cost must be between 0.01 and 600.0")
+            if not (0.01 <= max_output_cost <= 600.0):
+                abort(400, description="max_output_cost must be between 0.01 and 600.0")
                 
         except ValueError:
             abort(400, description="Cost values must be numeric")
