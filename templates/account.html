@@ -521,14 +521,7 @@
                 }
                 </style>
                 
-                <div id="pricingError" class="text-center py-5 d-none">
-                    <div class="mb-3">
-                        <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
-                    </div>
-                    <h5>Unable to Load Current Pricing Data</h5>
-                    <p class="caption">There was a problem connecting to OpenRouter. The system will automatically retry later.</p>
-                    <p class="caption text-muted mt-2">Using cached data when available.</p>
-                </div>
+                <!-- Error message removed as requested -->
                 
                 <div class="mt-3">
                     <p class="caption text-muted"><i class="fas fa-info-circle"></i> The pricing information is fetched directly from OpenRouter and our internal pricing configuration. Prices may vary based on model updates and availability.</p>
@@ -700,7 +693,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to load pricing data from API
     function loadPricingData() {
         const pricingTableBody = document.getElementById('pricingTableBody');
-        const pricingError = document.getElementById('pricingError');
         const lastUpdated = document.getElementById('lastUpdated');
         
         // Show loading state
@@ -716,7 +708,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 </td>
             </tr>
         `;
-        pricingError.classList.add('d-none');
         
         // Check for cached data first (localStorage)
         const cachedData = localStorage.getItem('modelPricingData');
@@ -748,24 +739,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Check for API error response
                 if (data.error) {
                     console.warn('API returned an error:', data.error);
-                    
-                    // Insert warning alert at the top of the tab
-                    const warningHtml = `
-                        <div class="alert alert-warning mb-3" role="alert">
-                            <div class="d-flex align-items-center">
-                                <i class="fas fa-exclamation-triangle me-2"></i>
-                                <strong>OpenRouter API Connection Issue</strong>
-                            </div>
-                            <p class="mt-2 mb-0">${data.message || 'Unable to fetch current pricing data from OpenRouter.'}</p>
-                        </div>
-                    `;
-                    
-                    // Remove any existing alert first
-                    const existingAlert = document.querySelector('#pricing .alert');
-                    if (existingAlert) existingAlert.remove();
-                    
-                    // Add new alert
-                    document.querySelector('#pricing .balance-card').insertAdjacentHTML('afterbegin', warningHtml);
+                    // Log error but don't show any alert to the user
                     
                     // Try to use fallback data if provided in the response
                     if (data.data && data.data.length > 0) {
@@ -780,11 +754,24 @@ document.addEventListener('DOMContentLoaded', function() {
                             console.log('Using cached data as fallback');
                         } catch (e) {
                             console.error('Failed to parse cached data:', e);
-                            pricingError.classList.remove('d-none');
+                            // Show empty state instead of error
+                            pricingTableBody.innerHTML = `
+                                <tr>
+                                    <td colspan="5" class="text-center py-5">
+                                        <p class="caption">No pricing data available. Please try again later.</p>
+                                    </td>
+                                </tr>
+                            `;
                         }
                     } else {
-                        // No data available at all
-                        pricingError.classList.remove('d-none');
+                        // No data available at all - show empty state
+                        pricingTableBody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="text-center py-5">
+                                    <p class="caption">No pricing data available. Please try again later.</p>
+                                </td>
+                            </tr>
+                        `;
                     }
                     return;
                 }
@@ -818,30 +805,27 @@ document.addEventListener('DOMContentLoaded', function() {
                         pricingData = JSON.parse(cachedData);
                         renderPricingTable();
                         
-                        // Show cached data notice
-                        const cacheNotice = `
-                            <div class="alert alert-info mb-3" role="alert">
-                                <div class="d-flex align-items-center">
-                                    <i class="fas fa-info-circle me-2"></i>
-                                    <strong>Using cached data</strong>
-                                </div>
-                                <p class="mt-2 mb-0">Could not connect to OpenRouter API. Showing data from ${new Date(parseInt(cachedTimestamp)).toLocaleString()}.</p>
-                            </div>
-                        `;
-                        // Remove any existing alert first
+                        // Update the last updated timestamp to show it's cached data
+                        const lastUpdated = document.getElementById('lastUpdated');
+                        lastUpdated.textContent = `Last updated: ${new Date(parseInt(cachedTimestamp)).toLocaleString()} (cached)`;
+                        
+                        // Remove any existing alert
                         const existingAlert = document.querySelector('#pricing .alert');
                         if (existingAlert) existingAlert.remove();
-                        
-                        document.querySelector('#pricing .balance-card').insertAdjacentHTML('afterbegin', cacheNotice);
                         return;
                     } catch (e) {
                         console.error('Failed to use cached data:', e);
                     }
                 }
                 
-                // No cached data or failed to parse it
-                pricingTableBody.innerHTML = '';
-                pricingError.classList.remove('d-none');
+                // No cached data or failed to parse it - show empty state
+                pricingTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <p class="caption">No pricing data available. Please try again later.</p>
+                        </td>
+                    </tr>
+                `;
             });
     }
     
