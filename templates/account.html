@@ -417,10 +417,7 @@
                 
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div>
-                        <button class="tab-button active btn-sm" id="refreshPricing">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
-                        <span id="lastUpdated" class="caption ms-2"></span>
+                        <span id="lastUpdated" class="caption"></span>
                     </div>
                     <div class="d-flex align-items-center">
                         <i class="fas fa-search text-muted me-2"></i>
@@ -528,9 +525,9 @@
                     <div class="mb-3">
                         <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
                     </div>
-                    <h5>Unable to Load Pricing Data</h5>
-                    <p class="caption">There was a problem loading the pricing information. Please try again later.</p>
-                    <button class="select-button mt-3" id="retryPricing">Retry</button>
+                    <h5>Unable to Load Current Pricing Data</h5>
+                    <p class="caption">There was a problem connecting to OpenRouter. The system will automatically retry later.</p>
+                    <p class="caption text-muted mt-2">Using cached data when available.</p>
                 </div>
                 
                 <div class="mt-3">
@@ -1081,15 +1078,17 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('modelSearch').addEventListener('input', renderPricingTable);
     }
     
-    // Refresh pricing data
-    if (document.getElementById('refreshPricing')) {
-        document.getElementById('refreshPricing').addEventListener('click', loadPricingData);
-    }
-    
-    // Retry button for error state
-    if (document.getElementById('retryPricing')) {
-        document.getElementById('retryPricing').addEventListener('click', loadPricingData);
-    }
+    // Set up automatic periodic refresh (every 4 hours)
+    const REFRESH_INTERVAL = 4 * 60 * 60 * 1000; // 4 hours in milliseconds
+    setInterval(function() {
+        console.log('Auto-refreshing pricing data...');
+        // Only refresh if the pricing tab is active or if there's no cached data
+        const activeTab = document.querySelectorAll('.tab-pane.active')[0]?.id;
+        const cachedTimestamp = localStorage.getItem('modelPricingTimestamp');
+        if (activeTab === 'pricing' || !cachedTimestamp) {
+            loadPricingData();
+        }
+    }, REFRESH_INTERVAL);
     
     // Function to sort the pricing table
     window.sortPricingTable = function(column) {

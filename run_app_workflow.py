@@ -1,5 +1,9 @@
-from app import app
+#!/usr/bin/env python3
 import os
+import gevent.monkey
+gevent.monkey.patch_all()
+
+from app import app
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

@@ -205,7 +205,7 @@ MULTIMODAL_MODELS = [
 OPENROUTER_MODELS_CACHE = {
     "data": None,
     "timestamp": 0,
-    "expiry": 3600  # Cache expiry in seconds (1 hour)
+    "expiry": 86400  # Cache expiry in seconds (24 hours)
 }
 
 # --- Helper Functions ---
@@ -1770,24 +1770,41 @@ def _fetch_openrouter_models():
 def get_model_pricing():
     """ Fetch model pricing information """
     try:
-        # Use the existing model cache or fetch new data
+        # Check for existing cached data regardless of expiry
+        has_cached_data = OPENROUTER_MODELS_CACHE["data"] is not None
+        
+        # Check if we should use cached data (not expired)
         current_time = time.time()
-        if (OPENROUTER_MODELS_CACHE["data"] is not None and 
-            (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]):
+        cache_fresh = has_cached_data and (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]
+        
+        if cache_fresh:
+            # Use fresh cached data
             models_data = OPENROUTER_MODELS_CACHE["data"]
-            logger.info("Using cached model pricing data from OpenRouter")
+            logger.info("Using cached model pricing data from OpenRouter (still fresh)")
         else:
-            # Fetch models from OpenRouter if cache is empty or expired
+            # Fetch fresh data from OpenRouter
             logger.info("Fetching fresh model pricing data from OpenRouter")
             models_data = _fetch_openrouter_models()
             
-        if not models_data:
-            logger.error("Failed to fetch model data from OpenRouter API")
-            return jsonify({
-                "error": "Unable to connect to OpenRouter API",
-                "message": "Please try again later or contact support if the problem persists.",
-                "data": []  # Return empty data array for proper frontend handling
-            }), 200  # Return 200 so the error can be handled gracefully in the UI
+            # If the API call failed but we have cached data, use it as fallback
+            if not models_data and has_cached_data:
+                models_data = OPENROUTER_MODELS_CACHE["data"]
+                logger.info("API request failed, using older cached model pricing data as fallback")
+                # Return the data but add an error message for the UI to show warning
+                return jsonify({
+                    "error": "Unable to connect to OpenRouter API",
+                    "message": "Using cached data from previous successful connection.",
+                    "data": models_data.get('data', [])
+                }), 200
+            
+            # If no data at all (no cache, API failed)
+            if not models_data:
+                logger.error("Failed to fetch model data from OpenRouter API and no cache available")
+                return jsonify({
+                    "error": "Unable to connect to OpenRouter API",
+                    "message": "Please try again later or contact support if the problem persists.",
+                    "data": []  # Return empty data array for proper frontend handling
+                }), 200  # Return 200 so the error can be handled gracefully in the UI
             
         # Process models to create pricing data
         pricing_data = []
@@ -1888,22 +1905,40 @@ def get_model_pricing():
 def get_models():
     """ Fetch available models """
     try:
+        # Check for existing cached data regardless of expiry
+        has_cached_data = OPENROUTER_MODELS_CACHE["data"] is not None
+        
+        # Check if we should use cached data (not expired)
         current_time = time.time()
-        if (OPENROUTER_MODELS_CACHE["data"] is not None and 
-            (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]):
-            logger.debug("Returning cached models")
+        cache_fresh = has_cached_data and (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]
+        
+        if cache_fresh:
+            # Use fresh cached data
+            logger.debug("Returning cached models (still fresh)")
             return jsonify(OPENROUTER_MODELS_CACHE["data"])
-
-        # Use the helper function to fetch models
+        
+        # Fetch fresh data from OpenRouter
+        logger.info("Fetching fresh models data from OpenRouter")
         result_data = _fetch_openrouter_models()
         
+        # If the API call failed but we have cached data, use it as fallback
+        if not result_data and has_cached_data:
+            logger.info("API request failed, using older cached models data as fallback")
+            return jsonify(OPENROUTER_MODELS_CACHE["data"])
+        
+        # If no data at all (no cache, API failed)
         if not result_data:
+            logger.error("Failed to fetch models from OpenRouter API and no cache available")
             abort(500, description="Failed to fetch models from OpenRouter")
             
         return jsonify(result_data)
 
     except Exception as e:
         logger.exception("Error in get_models")
+        # Try to return cached data if available during exception
+        if OPENROUTER_MODELS_CACHE["data"] is not None:
+            logger.info("Using cached data during exception handling for models endpoint")
+            return jsonify(OPENROUTER_MODELS_CACHE["data"])
         abort(500, description=f"Server error processing models: {e}")
 
 
