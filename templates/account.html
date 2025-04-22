@@ -355,9 +355,9 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="mb-0">Usage Analytics</h4>
                     <div>
-                        <button class="tab-button active btn-sm">Summary</button>
-                        <button class="tab-button btn-sm">Detailed</button>
-                        <button class="tab-button btn-sm">
+                        <button class="tab-button usage-tab-button active btn-sm" data-tab="summary">Summary</button>
+                        <button class="tab-button usage-tab-button btn-sm" data-tab="detailed">Detailed</button>
+                        <button class="tab-button btn-sm" id="exportCsvBtn">
                             <i class="fas fa-download"></i> Export CSV
                         </button>
                     </div>
@@ -366,21 +366,22 @@
                 <div class="mb-4">
                     <h6>Date Range</h6>
                     <div>
-                        <button class="tab-button btn-sm">Last 30 Days</button>
-                        <button class="tab-button btn-sm">Last 7 Days</button>
-                        <button class="tab-button active btn-sm">This Month</button>
+                        <button class="tab-button date-range-btn btn-sm" data-range="30">Last 30 Days</button>
+                        <button class="tab-button date-range-btn btn-sm" data-range="7">Last 7 Days</button>
+                        <button class="tab-button date-range-btn active btn-sm" data-range="month">This Month</button>
                     </div>
                 </div>
                 
+                <div id="usage-summary-tab" class="usage-sub-tab active">
                 {% if recent_usage %}
                 <div class="table-responsive">
                     <table class="table table-dark table-hover">
                         <thead>
                             <tr>
-                                <th>Date</th>
-                                <th>Type</th>
-                                <th>Model</th>
-                                <th>Cost</th>
+                                <th style="min-width: 110px;">Date</th>
+                                <th style="min-width: 80px;">Type</th>
+                                <th style="min-width: 180px;">Model</th>
+                                <th style="min-width: 80px;">Cost</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -388,7 +389,7 @@
                             <tr>
                                 <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
                                 <td>{{ usage.usage_type }}</td>
-                                <td>{{ usage.model_id|truncate(15) }}</td>
+                                <td>{{ usage.model_id }}</td>
                                 <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
                             </tr>
                             {% endfor %}
@@ -406,6 +407,64 @@
                     <a href="{{ url_for('index') }}" class="select-button mt-2 w-auto d-inline-block px-4">Try Using Models</a>
                 </div>
                 {% endif %}
+                </div>
+
+                <div id="usage-detailed-tab" class="usage-sub-tab" style="display: none;">
+                {% if recent_usage %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th style="min-width: 110px;">Date</th>
+                                <th style="min-width: 180px;">Model</th>
+                                <th style="min-width: 100px;">Input Tokens</th>
+                                <th style="min-width: 100px;">Input Cost</th>
+                                <th style="min-width: 100px;">Output Tokens</th>
+                                <th style="min-width: 100px;">Output Cost</th>
+                                <th style="min-width: 100px;">Total Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usage in recent_usage %}
+                            <tr>
+                                <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ usage.model_id }}</td>
+                                <td>{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
+                                <td>
+                                    {% if usage.prompt_tokens and usage.model_id %}
+                                        {% set input_cost = ((usage.credits_used / 1000) * 0.7)|float %}
+                                        ${{ "%.4f"|format(input_cost) }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
+                                <td>
+                                    {% if usage.completion_tokens and usage.model_id %}
+                                        {% set output_cost = ((usage.credits_used / 1000) * 0.3)|float %}
+                                        ${{ "%.4f"|format(output_cost) }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-chart-line fa-3x text-muted"></i>
+                    </div>
+                    <h5>No Usage Data</h5>
+                    <p class="caption">No usage data available for the selected time period.</p>
+                    <p class="caption">Try a different date range or start using the AI models to generate usage data.</p>
+                    <a href="{{ url_for('index') }}" class="select-button mt-2 w-auto d-inline-block px-4">Try Using Models</a>
+                </div>
+                {% endif %}
+                </div>
             </div>
         </div>
         
@@ -668,7 +727,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Deactivate all tab buttons
-        const tabButtons = document.querySelectorAll('.tab-button');
+        const tabButtons = document.querySelectorAll('.tab-navigation .tab-button');
         tabButtons.forEach(button => {
             button.classList.remove('active');
         });
@@ -1101,6 +1160,97 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.location.hash === '#pricing') {
         openTab('pricing');
     }
+    
+    // Initialize the usage analytics sub-tab functionality
+    const handleUsageSubTabs = function() {
+        const usageTabButtons = document.querySelectorAll('.usage-tab-button');
+        const usageSubTabs = document.querySelectorAll('.usage-sub-tab');
+        
+        usageTabButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Deactivate all tab buttons
+                usageTabButtons.forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                // Hide all sub-tabs
+                usageSubTabs.forEach(tab => {
+                    tab.style.display = 'none';
+                });
+                
+                // Activate the clicked button
+                button.classList.add('active');
+                
+                // Show the selected sub-tab
+                const tabToShow = button.getAttribute('data-tab');
+                document.getElementById(`usage-${tabToShow}-tab`).style.display = 'block';
+            });
+        });
+    };
+    
+    // CSV Export functionality
+    const handleCsvExport = function() {
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
+        if (exportCsvBtn) {
+            exportCsvBtn.addEventListener('click', function() {
+                // Force switch to detailed tab before export
+                const detailedButton = document.querySelector('.usage-tab-button[data-tab="detailed"]');
+                if (detailedButton) {
+                    detailedButton.click();
+                }
+                
+                // Get the detailed table data
+                const detailedTab = document.getElementById('usage-detailed-tab');
+                if (!detailedTab) return;
+                
+                // Get the table rows from the detailed tab
+                const table = detailedTab.querySelector('table');
+                if (!table) {
+                    alert('No data available to export');
+                    return;
+                }
+                
+                // Get all table headers
+                const headers = [];
+                const headerCells = table.querySelectorAll('thead th');
+                headerCells.forEach(cell => {
+                    headers.push(cell.textContent.trim());
+                });
+                
+                // Get all table rows
+                const rows = [];
+                const tableRows = table.querySelectorAll('tbody tr');
+                tableRows.forEach(row => {
+                    const rowData = [];
+                    row.querySelectorAll('td').forEach(cell => {
+                        rowData.push(cell.textContent.trim().replace('$', ''));
+                    });
+                    rows.push(rowData);
+                });
+                
+                // Create CSV content
+                let csvContent = headers.join(',') + '\n';
+                rows.forEach(row => {
+                    csvContent += row.join(',') + '\n';
+                });
+                
+                // Create a Blob and download link
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'usage_analytics_detailed.csv');
+                link.style.display = 'none';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        }
+    };
+    
+    // Initialize the usage analytics functionality
+    handleUsageSubTabs();
+    handleCsvExport();
 });
 </script>
 {% endblock %}
