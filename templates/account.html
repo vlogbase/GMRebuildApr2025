@@ -14,9 +14,8 @@
                     <h5 class="card-title mb-0">Your Balance</h5>
                 </div>
                 <div class="card-body">
-                    <h2>${{ "%.2f"|format(user.get_balance_usd()) }}</h2>
-                    <p class="text-muted">{{ user.credits }} credits</p>
-                    <p class="mt-3">Use your credits to access premium AI models and features.</p>
+                    <h2 class="text-primary">${{ "%.2f"|format(user.get_balance_usd()) }}</h2>
+                    <p class="mt-3">Use your balance to access premium AI models and features.</p>
                 </div>
             </div>
         </div>
@@ -25,14 +24,14 @@
         <div class="col-md-6">
             <div class="card mb-4">
                 <div class="card-header bg-success text-white">
-                    <h5 class="card-title mb-0">Purchase Credits</h5>
+                    <h5 class="card-title mb-0">Add Funds</h5>
                 </div>
                 <div class="card-body">
                     <form action="{{ url_for('billing.purchase_custom') }}" method="post" class="mb-3">
                         <div class="input-group mb-3">
                             <span class="input-group-text">$</span>
                             <input type="number" name="amount" class="form-control" min="1" max="100" step="0.01" placeholder="Amount (1.00-100.00)">
-                            <button type="submit" class="btn btn-success">Buy Credits</button>
+                            <button type="submit" class="btn btn-success">Add Funds</button>
                         </div>
                         <small class="text-muted">Enter amount between $1.00 and $100.00</small>
                     </form>
@@ -47,12 +46,11 @@
                                 <div class="card-body text-center">
                                     <h5 class="card-title">{{ package.name }}</h5>
                                     <p class="card-text">{{ package.description }}</p>
-                                    <div class="d-flex justify-content-between align-items-center">
-                                        <span class="text-success">${{ "%.2f"|format(package.amount_usd) }}</span>
-                                        <span class="text-muted">{{ package.credits }} credits</span>
+                                    <div class="text-center">
+                                        <h4 class="text-success">${{ "%.2f"|format(package.amount_usd) }}</h4>
                                     </div>
                                     <form action="{{ url_for('billing.purchase_package', package_id=package.id) }}" method="post" class="mt-3">
-                                        <button type="submit" class="btn btn-outline-success btn-sm w-100">Purchase</button>
+                                        <button type="submit" class="btn btn-outline-success btn-sm w-100">Add to Balance</button>
                                     </form>
                                 </div>
                             </div>
@@ -81,7 +79,6 @@
                                     <tr>
                                         <th>Date</th>
                                         <th>Amount</th>
-                                        <th>Credits</th>
                                         <th>Status</th>
                                     </tr>
                                 </thead>
@@ -90,7 +87,6 @@
                                     <tr>
                                         <td>{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
                                         <td>${{ "%.2f"|format(transaction.amount_usd) }}</td>
-                                        <td>{{ transaction.credits }}</td>
                                         <td>
                                             {% if transaction.status == 'completed' %}
                                                 <span class="badge bg-success">Completed</span>
@@ -128,7 +124,7 @@
                                         <th>Date</th>
                                         <th>Type</th>
                                         <th>Model</th>
-                                        <th>Credits</th>
+                                        <th>Cost</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -137,7 +133,7 @@
                                         <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
                                         <td>{{ usage.usage_type }}</td>
                                         <td>{{ usage.model_id|truncate(15) }}</td>
-                                        <td>{{ usage.credits_used }}</td>
+                                        <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -156,15 +152,15 @@
         <div class="col-12">
             <div class="card mb-4">
                 <div class="card-header">
-                    <h5 class="card-title mb-0">About Credits</h5>
+                    <h5 class="card-title mb-0">Model Pricing Information</h5>
                 </div>
                 <div class="card-body">
-                    <h6>How credits work:</h6>
+                    <h6>How pricing works:</h6>
                     <ul>
-                        <li>Credits are used to access premium AI models and features</li>
-                        <li>Different models cost different amounts of credits based on their capabilities</li>
-                        <li>Free models can be used without consuming credits</li>
-                        <li>New users receive 1,000 free credits to get started</li>
+                        <li>Your account balance is used to access premium AI models and features</li>
+                        <li>Different models have different pricing based on their capabilities</li>
+                        <li>Free models can be used without consuming your balance</li>
+                        <li>New users receive $1.00 in free credit to get started</li>
                     </ul>
                     
                     <h6>Model pricing examples:</h6>
@@ -173,45 +169,45 @@
                             <thead>
                                 <tr>
                                     <th>Model</th>
-                                    <th>Credits per 1K tokens</th>
+                                    <th>Cost per 1K tokens</th>
                                     <th>Approximate usage</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td>GPT-3.5</td>
-                                    <td>0.3</td>
+                                    <td>$0.0003</td>
                                     <td>~3,000 messages with $1</td>
                                 </tr>
                                 <tr>
                                     <td>Claude-3 Haiku</td>
-                                    <td>3</td>
+                                    <td>$0.003</td>
                                     <td>~300 messages with $1</td>
                                 </tr>
                                 <tr>
                                     <td>Gemini 1.5 Pro</td>
-                                    <td>10</td>
+                                    <td>$0.01</td>
                                     <td>~100 messages with $1</td>
                                 </tr>
                                 <tr>
                                     <td>Claude-3 Sonnet</td>
-                                    <td>15</td>
+                                    <td>$0.015</td>
                                     <td>~70 messages with $1</td>
                                 </tr>
                                 <tr>
                                     <td>Claude-3 Opus</td>
-                                    <td>45</td>
+                                    <td>$0.045</td>
                                     <td>~25 messages with $1</td>
                                 </tr>
                                 <tr>
                                     <td>GPT-4</td>
-                                    <td>60</td>
+                                    <td>$0.06</td>
                                     <td>~18 messages with $1</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-                    <small class="text-muted">* Actual credit usage depends on message length and complexity.</small>
+                    <small class="text-muted">* Actual cost depends on message length and complexity.</small>
                 </div>
             </div>
         </div>

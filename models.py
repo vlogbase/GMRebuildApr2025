@@ -53,7 +53,7 @@ class User(UserMixin, db.Model):
     
     def get_balance_usd(self):
         """Get user's balance in USD format"""
-        return self.credits / 1000000  # Convert credits to dollars (1,000,000 credits = $1,000)
+        return self.credits / 1000  # Convert credits to dollars (1 credit = $0.001)
     
     def __repr__(self):
         return f'<User {self.username}>'

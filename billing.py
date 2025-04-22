@@ -135,7 +135,7 @@ def purchase_custom():
         
         # Calculate credits to give (base credits + bonus)
         # More generous bonus for higher amounts
-        base_credits = int(amount_usd * 1000000)  # 1 credit = $0.001 (1,000,000 credits = $1,000)
+        base_credits = int(amount_usd * 1000)  # 1 credit = $0.001 ($1 = 1000 credits)
         
         if amount_usd >= 50:
             bonus_percentage = 30  # 30% bonus for $50+
@@ -422,8 +422,8 @@ def calculate_openrouter_credits(prompt_tokens, completion_tokens, model_cost_pe
     total_cost_with_markup = total_cost * 2
     
     # Convert to credits (1 credit = $0.001)
-    # $1 = 1,000,000 credits
-    credits = int(total_cost_with_markup * 1000000)
+    # $1 = 1,000 credits
+    credits = int(total_cost_with_markup * 1000)
     
     return credits
 
@@ -444,8 +444,8 @@ def calculate_embedding_credits(token_count):
     total_cost = token_count * token_cost
     
     # Convert to credits (1 credit = $0.001)
-    # $1 = 1,000,000 credits
-    credits = int(total_cost * 1000000)
+    # $1 = 1,000 credits
+    credits = int(total_cost * 1000)
     
     return credits
 
