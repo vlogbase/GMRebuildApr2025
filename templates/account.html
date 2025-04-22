@@ -2,355 +2,497 @@
 
 {% block title %}Account Management{% endblock %}
 
+{% block styles %}
+{{ super() }}
+<style>
+    body {
+        background-color: #131416;
+        color: #e4e6eb;
+    }
+    
+    .container {
+        max-width: 1000px;
+    }
+    
+    .account-header {
+        margin-bottom: 1.5rem;
+    }
+    
+    .balance-card {
+        background-color: #1e2124;
+        border: none;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .balance-amount {
+        font-size: 2.5rem;
+        color: #4cd964;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    .caption {
+        font-size: 0.9rem;
+        opacity: 0.7;
+    }
+    
+    .tab-button {
+        background-color: #1e2124;
+        color: #e4e6eb;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        margin-right: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .tab-button:hover {
+        background-color: #2a2d31;
+    }
+    
+    .tab-button.active {
+        background-color: #17a2b8;
+        color: white;
+    }
+    
+    .package-card {
+        background-color: #1e2124;
+        border: 1px solid #2c2f33;
+        border-radius: 8px;
+        padding: 1.5rem;
+        height: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .package-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        border-color: #17a2b8;
+    }
+    
+    .package-title {
+        font-size: 0.9rem;
+        opacity: 0.8;
+        margin-bottom: 0.5rem;
+    }
+    
+    .package-price {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .package-feature {
+        font-size: 0.9rem;
+        opacity: 0.7;
+        margin-bottom: 0.5rem;
+    }
+    
+    .select-button {
+        background-color: #17a2b8;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 0;
+        width: 100%;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin-top: 1rem;
+    }
+    
+    .select-button:hover {
+        background-color: #138496;
+    }
+    
+    .custom-amount-card {
+        background-color: #1e2124;
+        border: 1px solid #2c2f33;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-top: 2rem;
+    }
+    
+    .custom-amount-title {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .custom-amount-input {
+        background-color: #2c2f33;
+        border: 1px solid #3f4246;
+        color: white;
+        border-radius: 6px;
+    }
+    
+    .custom-amount-input::placeholder {
+        color: #a0a0a0;
+    }
+    
+    .total-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-top: 1px solid #2c2f33;
+    }
+    
+    .back-to-chat {
+        background-color: #17a2b8;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .back-to-chat:hover {
+        background-color: #138496;
+        color: white;
+    }
+    
+    .tab-content {
+        margin-top: 1.5rem;
+    }
+    
+    .tab-pane {
+        display: none;
+    }
+    
+    .tab-pane.active {
+        display: block;
+    }
+    
+    .purchase-button {
+        background-color: #17a2b8;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 10px 0;
+        width: 100%;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: block;
+        margin-top: 1rem;
+    }
+    
+    .purchase-button:hover {
+        background-color: #138496;
+    }
+    
+    .purchase-button:disabled {
+        background-color: #3f4246;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="account-header d-flex justify-content-between align-items-center">
         <div>
-            <h1 class="mb-1">Account Management</h1>
-            <p class="text-muted">Manage your account, add funds, and view your usage history</p>
+            <h1>Account Management</h1>
+            <p class="caption">Manage your account, add funds, and view your usage history</p>
         </div>
-        <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Chat</a>
+        <a href="{{ url_for('index') }}" class="back-to-chat">Back to Chat</a>
     </div>
 
-    <div class="row mb-4">
-        <div class="col-md-6">
-            <div class="card bg-dark text-white">
-                <div class="card-body">
-                    <h5>Available Balance</h5>
-                    <h2 class="text-success display-4">${{ "%.2f"|format(user.get_balance_usd()) }}</h2>
-                    
-                    <div class="mt-3">
-                        <small class="text-light opacity-75">
-                            <i class="fas fa-info-circle"></i> Funds are used for AI model access. Different models have different pricing based on their capabilities and token usage.
-                        </small>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <!-- Balance Display -->
+    <div class="balance-card p-4">
+        <h5>Available Balance</h5>
+        <div class="balance-amount">${{ "%.2f"|format(user.get_balance_usd()) }}</div>
+        <p class="caption"><i class="fas fa-info-circle"></i> Funds are used for AI model access. Different models have different pricing based on their capabilities and token usage.</p>
     </div>
 
-    <ul class="nav nav-tabs mb-4" id="accountTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="funds-tab" data-bs-toggle="tab" data-bs-target="#funds" type="button" role="tab" aria-controls="funds" aria-selected="true">Add Funds</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">Purchase History</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="usage-tab" data-bs-toggle="tab" data-bs-target="#usage" type="button" role="tab" aria-controls="usage" aria-selected="false">Usage Analytics</button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false">Account Settings</button>
-        </li>
-    </ul>
-    
-    <div class="tab-content" id="accountTabsContent">
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+        <button class="tab-button active" onclick="openTab('funds')">Add Funds</button>
+        <button class="tab-button" onclick="openTab('history')">Purchase History</button>
+        <button class="tab-button" onclick="openTab('usage')">Usage Analytics</button>
+        <button class="tab-button" onclick="openTab('settings')">Account Settings</button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
         <!-- Add Funds Tab -->
-        <div class="tab-pane fade show active" id="funds" role="tabpanel" aria-labelledby="funds-tab">
+        <div id="funds" class="tab-pane active">
+            <!-- Packages -->
             <div class="row">
                 {% for package in packages %}
                 <div class="col-md-4 mb-4">
-                    <div class="card h-100 package-card">
-                        <div class="card-body text-center">
-                            <h5 class="card-title">${{ "%.2f"|format(package.amount_usd) }} Package</h5>
-                            <p class="card-text text-muted">Access to ${{ "%.2f"|format(package.amount_usd) }} worth of AI usage</p>
-                            <ul class="list-unstyled text-muted">
-                                <li><i class="fas fa-check text-success"></i> Best value</li>
-                                <li><i class="fas fa-check text-success"></i> No additional fees</li>
-                                <li><i class="fas fa-check text-success"></i> Instant delivery</li>
-                            </ul>
-                            <form action="{{ url_for('billing.purchase_package', package_id=package.id) }}" method="post" class="mt-3">
-                                <button type="submit" class="btn btn-success w-100">Select</button>
-                            </form>
-                        </div>
+                    <div class="package-card">
+                        <div class="package-title">{{ "$%.2f"|format(package.amount_usd) }} Package</div>
+                        <div class="package-price">${{ "%.2f"|format(package.amount_usd) }}</div>
+                        <p class="package-feature">Access to ${{ "%.2f"|format(package.amount_usd) }} worth of AI usage</p>
+                        <ul class="list-unstyled">
+                            <li class="package-feature">✓ Best value</li>
+                            <li class="package-feature">✓ No additional fees</li>
+                            <li class="package-feature">✓ Instant delivery</li>
+                        </ul>
+                        <form action="{{ url_for('billing.purchase_package', package_id=package.id) }}" method="post">
+                            <button type="submit" class="select-button">Select</button>
+                        </form>
                     </div>
                 </div>
                 {% endfor %}
             </div>
 
-            <div class="card mt-4">
-                <div class="card-body">
-                    <h4 class="mb-3">Custom Amount</h4>
-                    <p class="text-muted">Enter a custom USD amount to add to your account.</p>
+            <!-- Custom Amount -->
+            <div class="custom-amount-card">
+                <div class="custom-amount-title">Custom Amount</div>
+                <p class="caption">Enter a custom USD amount to add to your account.</p>
+                
+                <form action="{{ url_for('billing.purchase_custom') }}" method="post">
+                    <div class="mb-3">
+                        <label for="amount" class="form-label">Amount (USD)</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-dark text-light border-secondary">$</span>
+                            <input type="number" id="amount" name="amount" class="form-control custom-amount-input" min="1" max="100" step="0.01" placeholder="Enter amount from $1.00">
+                        </div>
+                    </div>
                     
-                    <form action="{{ url_for('billing.purchase_custom') }}" method="post">
-                        <div class="mb-3">
-                            <label for="amount" class="form-label">Amount (USD)</label>
-                            <div class="input-group">
-                                <span class="input-group-text">$</span>
-                                <input type="number" id="amount" name="amount" class="form-control" min="1" max="100" step="0.01" placeholder="Enter amount from $1.00">
-                            </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="agreeTerms" required>
+                        <label class="form-check-label caption" for="agreeTerms">
+                            PayPal transaction fee applies to all purchases.
+                        </label>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="total-row">
+                            <div>Amount:</div>
+                            <div id="amount-display">$0.00</div>
                         </div>
-                        
-                        <div class="form-check mb-3">
-                            <input class="form-check-input" type="checkbox" id="agreeTerms" required>
-                            <label class="form-check-label" for="agreeTerms">
-                                PayPal transaction fee applies to all purchases.
-                            </label>
+                        <div class="total-row">
+                            <div>Fee:</div>
+                            <div id="fee-display">$0.00</div>
                         </div>
-                        
-                        <div class="d-flex justify-content-between mb-3">
-                            <div>
-                                <p class="mb-1">Amount:</p>
-                                <p class="mb-1">Fee:</p>
-                                <p class="mb-0 fw-bold">Total:</p>
-                            </div>
-                            <div class="text-end">
-                                <p class="mb-1" id="amount-display">$0.00</p>
-                                <p class="mb-1" id="fee-display">$0.00</p>
-                                <p class="mb-0 fw-bold" id="total-display">$0.00</p>
-                            </div>
+                        <div class="total-row">
+                            <div><strong>Total:</strong></div>
+                            <div><strong id="total-display">$0.00</strong></div>
                         </div>
-                        
-                        <div class="text-center">
-                            <button type="submit" class="btn btn-primary" id="purchaseBtn">Pay via PayPal Account</button>
-                        </div>
-                    </form>
-                </div>
+                    </div>
+                    
+                    <button type="submit" class="purchase-button" id="purchaseBtn" disabled>Pay via PayPal Account</button>
+                </form>
             </div>
         </div>
         
         <!-- Purchase History Tab -->
-        <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
-            <div class="card">
-                <div class="card-body">
-                    <h4 class="mb-3">Purchase History</h4>
-                    
-                    {% if recent_transactions %}
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Amount</th>
-                                    <th>Payment Method</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for transaction in recent_transactions %}
-                                <tr>
-                                    <td>{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
-                                    <td>${{ "%.2f"|format(transaction.amount_usd) }}</td>
-                                    <td>{{ transaction.payment_method|capitalize }}</td>
-                                    <td>
-                                        {% if transaction.status == 'completed' %}
-                                            <span class="badge bg-success">Completed</span>
-                                        {% elif transaction.status == 'pending' %}
-                                            <span class="badge bg-warning text-dark">Pending</span>
-                                        {% else %}
-                                            <span class="badge bg-danger">Failed</span>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <div class="mb-3">
-                            <i class="fas fa-receipt fa-3x text-muted"></i>
-                        </div>
-                        <h5>No Purchase History</h5>
-                        <p class="text-muted">You haven't made any purchases yet.</p>
-                    </div>
-                    {% endif %}
+        <div id="history" class="tab-pane">
+            <div class="balance-card p-4">
+                <h4 class="mb-3">Purchase History</h4>
+                
+                {% if recent_transactions %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Amount</th>
+                                <th>Payment Method</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for transaction in recent_transactions %}
+                            <tr>
+                                <td>{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>${{ "%.2f"|format(transaction.amount_usd) }}</td>
+                                <td>{{ transaction.payment_method|capitalize }}</td>
+                                <td>
+                                    {% if transaction.status == 'completed' %}
+                                        <span class="badge bg-success">Completed</span>
+                                    {% elif transaction.status == 'pending' %}
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Failed</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-receipt fa-3x text-muted"></i>
+                    </div>
+                    <h5>No Purchase History</h5>
+                    <p class="caption">You haven't made any purchases yet.</p>
+                </div>
+                {% endif %}
             </div>
         </div>
         
         <!-- Usage Analytics Tab -->
-        <div class="tab-pane fade" id="usage" role="tabpanel" aria-labelledby="usage-tab">
-            <div class="card">
-                <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center mb-4">
-                        <h4 class="mb-0">Usage Analytics</h4>
-                        <div class="btn-group">
-                            <button class="btn btn-sm btn-outline-primary active">Summary</button>
-                            <button class="btn btn-sm btn-outline-primary">Detailed</button>
-                            <button class="btn btn-sm btn-outline-primary">
-                                <i class="fas fa-download"></i> Export CSV
-                            </button>
-                        </div>
+        <div id="usage" class="tab-pane">
+            <div class="balance-card p-4">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h4 class="mb-0">Usage Analytics</h4>
+                    <div>
+                        <button class="tab-button active btn-sm">Summary</button>
+                        <button class="tab-button btn-sm">Detailed</button>
+                        <button class="tab-button btn-sm">
+                            <i class="fas fa-download"></i> Export CSV
+                        </button>
                     </div>
-                    
-                    <div class="mb-4">
-                        <h6>Date Range</h6>
-                        <div class="btn-group">
-                            <button class="btn btn-sm btn-outline-secondary">Last 30 Days</button>
-                            <button class="btn btn-sm btn-outline-secondary">Last 7 Days</button>
-                            <button class="btn btn-sm btn-outline-secondary active">This Month</button>
-                        </div>
-                    </div>
-                    
-                    {% if recent_usage %}
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Type</th>
-                                    <th>Model</th>
-                                    <th>Cost</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for usage in recent_usage %}
-                                <tr>
-                                    <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
-                                    <td>{{ usage.usage_type }}</td>
-                                    <td>{{ usage.model_id|truncate(15) }}</td>
-                                    <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    {% else %}
-                    <div class="text-center py-5">
-                        <div class="mb-3">
-                            <i class="fas fa-chart-line fa-3x text-muted"></i>
-                        </div>
-                        <h5>No Usage Data</h5>
-                        <p class="text-muted">No usage data available for the selected time period.</p>
-                        <p class="text-muted">Try a different date range or start using the AI models to generate usage data.</p>
-                        <a href="{{ url_for('index') }}" class="btn btn-primary mt-2">Try Using Models</a>
-                    </div>
-                    {% endif %}
                 </div>
+                
+                <div class="mb-4">
+                    <h6>Date Range</h6>
+                    <div>
+                        <button class="tab-button btn-sm">Last 30 Days</button>
+                        <button class="tab-button btn-sm">Last 7 Days</button>
+                        <button class="tab-button active btn-sm">This Month</button>
+                    </div>
+                </div>
+                
+                {% if recent_usage %}
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Model</th>
+                                <th>Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usage in recent_usage %}
+                            <tr>
+                                <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ usage.usage_type }}</td>
+                                <td>{{ usage.model_id|truncate(15) }}</td>
+                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-chart-line fa-3x text-muted"></i>
+                    </div>
+                    <h5>No Usage Data</h5>
+                    <p class="caption">No usage data available for the selected time period.</p>
+                    <p class="caption">Try a different date range or start using the AI models to generate usage data.</p>
+                    <a href="{{ url_for('index') }}" class="select-button mt-2 w-auto d-inline-block px-4">Try Using Models</a>
+                </div>
+                {% endif %}
             </div>
         </div>
         
         <!-- Account Settings Tab -->
-        <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
-            <div class="card">
-                <div class="card-body">
-                    <h4 class="mb-4">Account Settings</h4>
+        <div id="settings" class="tab-pane">
+            <div class="balance-card p-4">
+                <h4 class="mb-4">Account Settings</h4>
+                
+                <form>
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Username</label>
+                        <input type="text" class="form-control custom-amount-input" id="username" value="{{ user.username }}" readonly>
+                    </div>
                     
-                    <form>
-                        <div class="mb-3">
-                            <label for="username" class="form-label">Username</label>
-                            <input type="text" class="form-control" id="username" value="{{ user.username }}" readonly>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email Address</label>
-                            <input type="email" class="form-control" id="email" value="{{ user.email }}" readonly>
-                        </div>
-                        
-                        <hr class="my-4">
-                        
-                        <h5>Notification Preferences</h5>
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="emailNotifications" checked>
-                            <label class="form-check-label" for="emailNotifications">Receive email notifications</label>
-                        </div>
-                        
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="lowBalanceAlerts" checked>
-                            <label class="form-check-label" for="lowBalanceAlerts">Low balance alerts</label>
-                        </div>
-                        
-                        <hr class="my-4">
-                        
-                        <h5>Danger Zone</h5>
-                        <p class="text-muted">These actions cannot be undone. Please proceed with caution.</p>
-                        
-                        <div class="d-flex gap-2">
-                            <button type="button" class="btn btn-outline-danger">Delete Account</button>
-                            <button type="button" class="btn btn-outline-warning">Export My Data</button>
-                        </div>
-                    </form>
-                </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email Address</label>
+                        <input type="email" class="form-control custom-amount-input" id="email" value="{{ user.email }}" readonly>
+                    </div>
+                    
+                    <hr class="my-4" style="border-color: #3f4246;">
+                    
+                    <h5>Notification Preferences</h5>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="emailNotifications" checked>
+                        <label class="form-check-label" for="emailNotifications">Receive email notifications</label>
+                    </div>
+                    
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="lowBalanceAlerts" checked>
+                        <label class="form-check-label" for="lowBalanceAlerts">Low balance alerts</label>
+                    </div>
+                    
+                    <hr class="my-4" style="border-color: #3f4246;">
+                    
+                    <h5>Danger Zone</h5>
+                    <p class="caption">These actions cannot be undone. Please proceed with caution.</p>
+                    
+                    <div class="d-flex gap-2">
+                        <button type="button" class="select-button bg-danger">Delete Account</button>
+                        <button type="button" class="select-button" style="background-color: #fd7e14;">Export My Data</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
     
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">Model Pricing Information</h5>
-                </div>
-                <div class="card-body">
-                    <h6>How pricing works:</h6>
-                    <ul>
-                        <li>Your account balance is used to access premium AI models and features</li>
-                        <li>Different models have different pricing based on their capabilities</li>
-                        <li>Free models can be used without consuming your balance</li>
-                        <li>New users receive $1.00 in free credit to get started</li>
-                    </ul>
-                    
-                    <h6>Model pricing examples:</h6>
-                    <div class="table-responsive">
-                        <table class="table table-sm">
-                            <thead>
-                                <tr>
-                                    <th>Model</th>
-                                    <th>Cost per 1K tokens</th>
-                                    <th>Approximate usage</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>GPT-3.5</td>
-                                    <td>$0.0003</td>
-                                    <td>~3,000 messages with $1</td>
-                                </tr>
-                                <tr>
-                                    <td>Claude-3 Haiku</td>
-                                    <td>$0.003</td>
-                                    <td>~300 messages with $1</td>
-                                </tr>
-                                <tr>
-                                    <td>Gemini 1.5 Pro</td>
-                                    <td>$0.01</td>
-                                    <td>~100 messages with $1</td>
-                                </tr>
-                                <tr>
-                                    <td>Claude-3 Sonnet</td>
-                                    <td>$0.015</td>
-                                    <td>~70 messages with $1</td>
-                                </tr>
-                                <tr>
-                                    <td>Claude-3 Opus</td>
-                                    <td>$0.045</td>
-                                    <td>~25 messages with $1</td>
-                                </tr>
-                                <tr>
-                                    <td>GPT-4</td>
-                                    <td>$0.06</td>
-                                    <td>~18 messages with $1</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    <small class="text-muted">* Actual cost depends on message length and complexity.</small>
-                </div>
-            </div>
+    <!-- Model Pricing Information -->
+    <div class="balance-card p-4 mt-4">
+        <h5 class="mb-3">Model Pricing Information</h5>
+        <p class="caption">Your account balance is used to access premium AI models. Different models have different pricing based on their capabilities.</p>
+        
+        <div class="table-responsive mt-3">
+            <table class="table table-dark table-sm">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Cost per 1K tokens</th>
+                        <th>Approximate usage</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>GPT-3.5</td>
+                        <td>$0.0003</td>
+                        <td>~3,000 messages with $1</td>
+                    </tr>
+                    <tr>
+                        <td>Claude-3 Haiku</td>
+                        <td>$0.003</td>
+                        <td>~300 messages with $1</td>
+                    </tr>
+                    <tr>
+                        <td>Gemini 1.5 Pro</td>
+                        <td>$0.01</td>
+                        <td>~100 messages with $1</td>
+                    </tr>
+                    <tr>
+                        <td>Claude-3 Sonnet</td>
+                        <td>$0.015</td>
+                        <td>~70 messages with $1</td>
+                    </tr>
+                    <tr>
+                        <td>Claude-3 Opus</td>
+                        <td>$0.045</td>
+                        <td>~25 messages with $1</td>
+                    </tr>
+                    <tr>
+                        <td>GPT-4</td>
+                        <td>$0.06</td>
+                        <td>~18 messages with $1</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
+        <small class="caption">* Actual cost depends on message length and complexity.</small>
     </div>
 </div>
 
-<style>
-.package-card {
-    border: 1px solid #ddd;
-    transition: all 0.3s ease;
-}
-.package-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-    border-color: #28a745;
-}
-</style>
-
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Custom amount calculator
     const amountInput = document.getElementById('amount');
     const amountDisplay = document.getElementById('amount-display');
     const feeDisplay = document.getElementById('fee-display');
     const totalDisplay = document.getElementById('total-display');
+    const purchaseBtn = document.getElementById('purchaseBtn');
+    const agreeTerms = document.getElementById('agreeTerms');
     
     function updateAmounts() {
         const amount = parseFloat(amountInput.value) || 0;
@@ -360,10 +502,35 @@ document.addEventListener('DOMContentLoaded', function() {
         amountDisplay.textContent = '$' + amount.toFixed(2);
         feeDisplay.textContent = '$' + fee.toFixed(2);
         totalDisplay.textContent = '$' + total.toFixed(2);
+        
+        // Disable or enable purchase button based on valid amount
+        purchaseBtn.disabled = amount < 1 || !agreeTerms.checked;
     }
     
     amountInput.addEventListener('input', updateAmounts);
+    agreeTerms.addEventListener('change', updateAmounts);
     updateAmounts();
+    
+    // Initialize tabs
+    window.openTab = function(tabName) {
+        // Hide all tab panes
+        const tabPanes = document.querySelectorAll('.tab-pane');
+        tabPanes.forEach(pane => {
+            pane.classList.remove('active');
+        });
+        
+        // Deactivate all tab buttons
+        const tabButtons = document.querySelectorAll('.tab-button');
+        tabButtons.forEach(button => {
+            button.classList.remove('active');
+        });
+        
+        // Activate the selected tab pane
+        document.getElementById(tabName).classList.add('active');
+        
+        // Activate the clicked button
+        event.currentTarget.classList.add('active');
+    }
 });
 </script>
 {% endblock %}

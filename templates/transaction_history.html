@@ -2,164 +2,311 @@
 
 {% block title %}Transaction History{% endblock %}
 
+{% block styles %}
+{{ super() }}
+<style>
+    body {
+        background-color: #131416;
+        color: #e4e6eb;
+    }
+    
+    .container {
+        max-width: 1000px;
+    }
+    
+    .account-header {
+        margin-bottom: 1.5rem;
+    }
+    
+    .caption {
+        font-size: 0.9rem;
+        opacity: 0.7;
+    }
+    
+    .card-dark {
+        background-color: #1e2124;
+        border: none;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+    }
+    
+    .back-button {
+        background-color: #17a2b8;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .back-button:hover {
+        background-color: #138496;
+        color: white;
+    }
+    
+    .filter-button {
+        background-color: #2c2f33;
+        color: #e4e6eb;
+        border: none;
+        border-radius: 6px;
+        padding: 6px 12px;
+        margin-right: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-size: 0.9rem;
+    }
+    
+    .filter-button:hover {
+        background-color: #3f4246;
+    }
+    
+    .table-dark {
+        color: #e4e6eb;
+        background-color: #1e2124;
+        border-color: #2c2f33;
+    }
+    
+    .table-dark th {
+        border-bottom: 1px solid #2c2f33;
+        background-color: #2c2f33;
+        color: #e4e6eb;
+    }
+    
+    .table-dark td {
+        border-bottom: 1px solid #2c2f33;
+    }
+    
+    .badge-dark-success {
+        background-color: #0d7d3d;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+    
+    .badge-dark-warning {
+        background-color: #b27603;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+    
+    .badge-dark-danger {
+        background-color: #a12d29;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+    
+    .badge-dark-info {
+        background-color: #0e6d98;
+        color: white;
+        padding: 5px 10px;
+        border-radius: 4px;
+        font-size: 0.8rem;
+    }
+    
+    .pagination-dark .page-link {
+        background-color: #2c2f33;
+        border-color: #3f4246;
+        color: #e4e6eb;
+    }
+    
+    .pagination-dark .page-item.active .page-link {
+        background-color: #17a2b8;
+        border-color: #17a2b8;
+    }
+    
+    .action-button {
+        background-color: #17a2b8;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        padding: 8px 16px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .action-button:hover {
+        background-color: #138496;
+        color: white;
+    }
+    
+    .dropdown-dark {
+        background-color: #2c2f33;
+        border: 1px solid #3f4246;
+    }
+    
+    .dropdown-dark .dropdown-item {
+        color: #e4e6eb;
+    }
+    
+    .dropdown-dark .dropdown-item:hover {
+        background-color: #3f4246;
+        color: white;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="account-header d-flex justify-content-between align-items-center">
         <div>
-            <h1 class="mb-1">Transaction History</h1>
-            <p class="text-muted">View your complete payment history and transaction details</p>
+            <h1>Transaction History</h1>
+            <p class="caption">View your complete payment history and transaction details</p>
         </div>
-        <a href="{{ url_for('billing.account_management') }}" class="btn btn-primary">
+        <a href="{{ url_for('billing.account_management') }}" class="back-button">
             <i class="fas fa-arrow-left me-1"></i> Back to Account
         </a>
     </div>
     
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h4 class="mb-0">All Transactions</h4>
-                </div>
-                <div>
-                    <div class="btn-group">
-                        <button class="btn btn-sm btn-outline-primary">
-                            <i class="fas fa-download me-1"></i> Export CSV
-                        </button>
-                        <button class="btn btn-sm btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
-                            Filter
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#">All Transactions</a></li>
-                            <li><a class="dropdown-item" href="#">Completed Only</a></li>
-                            <li><a class="dropdown-item" href="#">Pending Only</a></li>
-                            <li><a class="dropdown-item" href="#">Failed Only</a></li>
-                        </ul>
-                    </div>
-                </div>
+    <div class="card-dark p-4 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="mb-0">All Transactions</h4>
             </div>
-            
-            {% if transactions %}
-                <div class="table-responsive">
-                    <table class="table">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Date</th>
-                                <th>Transaction ID</th>
-                                <th>Description</th>
-                                <th>Amount</th>
-                                <th>Payment Method</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for transaction in transactions %}
-                            <tr>
-                                <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td><small class="text-muted">{{ transaction.payment_id|default('N/A') }}</small></td>
-                                <td>
-                                    {% if transaction.package_id %}
-                                        {{ transaction.package.name }}
-                                    {% else %}
-                                        Custom Purchase
-                                    {% endif %}
-                                </td>
-                                <td class="fw-bold">${{ "%.2f"|format(transaction.amount_usd) }}</td>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        {% if transaction.payment_method == "paypal" %}
-                                            <i class="fab fa-paypal me-2 text-primary"></i>
-                                        {% else %}
-                                            <i class="fas fa-credit-card me-2"></i>
-                                        {% endif %}
-                                        {{ transaction.payment_method|capitalize }}
-                                    </div>
-                                </td>
-                                <td>
-                                    {% if transaction.status == 'completed' %}
-                                        <span class="badge bg-success">Completed</span>
-                                    {% elif transaction.status == 'pending' %}
-                                        <span class="badge bg-warning text-dark">Pending</span>
-                                    {% elif transaction.status == 'failed' %}
-                                        <span class="badge bg-danger">Failed</span>
-                                    {% elif transaction.status == 'refunded' %}
-                                        <span class="badge bg-info">Refunded</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary">{{ transaction.status|capitalize }}</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                
-                <div class="d-flex justify-content-between align-items-center mt-4">
-                    <div>
-                        <small class="text-muted">Showing {{ transactions|length }} transaction(s)</small>
-                    </div>
-                    <nav aria-label="Transaction pagination">
-                        <ul class="pagination pagination-sm mb-0">
-                            <li class="page-item disabled">
-                                <a class="page-link" href="#">Previous</a>
-                            </li>
-                            <li class="page-item active">
-                                <a class="page-link" href="#">1</a>
-                            </li>
-                            <li class="page-item disabled">
-                                <a class="page-link" href="#">Next</a>
-                            </li>
-                        </ul>
-                    </nav>
-                </div>
-            {% else %}
-                <div class="text-center py-5">
-                    <div class="mb-3">
-                        <i class="fas fa-receipt fa-3x text-muted"></i>
-                    </div>
-                    <h5>No Transactions Yet</h5>
-                    <p class="text-muted">You haven't made any purchases yet.</p>
-                    <a href="{{ url_for('billing.account_management') }}" class="btn btn-primary mt-3">
-                        Add Funds to Your Account
-                    </a>
-                </div>
-            {% endif %}
-        </div>
-    </div>
-    
-    <div class="card">
-        <div class="card-header">
-            <h5 class="card-title mb-0">Transaction Information</h5>
-        </div>
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-6">
-                    <h6>Transaction Status Meanings</h6>
-                    <ul class="list-unstyled">
-                        <li class="mb-2">
-                            <span class="badge bg-success me-2">Completed</span>
-                            Transaction was successful and funds were added to your account
-                        </li>
-                        <li class="mb-2">
-                            <span class="badge bg-warning text-dark me-2">Pending</span>
-                            Transaction is being processed by the payment provider
-                        </li>
-                        <li class="mb-2">
-                            <span class="badge bg-danger me-2">Failed</span>
-                            Transaction was not successful, no funds were added
-                        </li>
-                        <li class="mb-2">
-                            <span class="badge bg-info me-2">Refunded</span>
-                            Transaction was refunded, funds were removed from your account
-                        </li>
+            <div>
+                <button class="filter-button">
+                    <i class="fas fa-download me-1"></i> Export CSV
+                </button>
+                <div class="dropdown d-inline-block">
+                    <button class="filter-button dropdown-toggle" type="button" id="filterDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        Filter
+                    </button>
+                    <ul class="dropdown-menu dropdown-dark" aria-labelledby="filterDropdown">
+                        <li><a class="dropdown-item" href="#">All Transactions</a></li>
+                        <li><a class="dropdown-item" href="#">Completed Only</a></li>
+                        <li><a class="dropdown-item" href="#">Pending Only</a></li>
+                        <li><a class="dropdown-item" href="#">Failed Only</a></li>
                     </ul>
                 </div>
-                <div class="col-md-6">
-                    <h6>Need Help?</h6>
-                    <p>If you have any questions about your transactions or if you believe there's been an error, please contact our support team.</p>
-                    <a href="#" class="btn btn-outline-primary">
-                        <i class="fas fa-headset me-1"></i> Contact Support
-                    </a>
+            </div>
+        </div>
+        
+        {% if transactions %}
+            <div class="table-responsive">
+                <table class="table table-dark">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Transaction ID</th>
+                            <th>Description</th>
+                            <th>Amount</th>
+                            <th>Payment Method</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr>
+                            <td>{{ transaction.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td><small class="caption">{{ transaction.payment_id|default('N/A') }}</small></td>
+                            <td>
+                                {% if transaction.package_id %}
+                                    {{ transaction.package.name }}
+                                {% else %}
+                                    Custom Purchase
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold">${{ "%.2f"|format(transaction.amount_usd) }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    {% if transaction.payment_method == "paypal" %}
+                                        <i class="fab fa-paypal me-2" style="color: #17a2b8;"></i>
+                                    {% else %}
+                                        <i class="fas fa-credit-card me-2"></i>
+                                    {% endif %}
+                                    {{ transaction.payment_method|capitalize }}
+                                </div>
+                            </td>
+                            <td>
+                                {% if transaction.status == 'completed' %}
+                                    <span class="badge-dark-success">Completed</span>
+                                {% elif transaction.status == 'pending' %}
+                                    <span class="badge-dark-warning">Pending</span>
+                                {% elif transaction.status == 'failed' %}
+                                    <span class="badge-dark-danger">Failed</span>
+                                {% elif transaction.status == 'refunded' %}
+                                    <span class="badge-dark-info">Refunded</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ transaction.status|capitalize }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center mt-4">
+                <div>
+                    <small class="caption">Showing {{ transactions|length }} transaction(s)</small>
                 </div>
+                <nav aria-label="Transaction pagination">
+                    <ul class="pagination pagination-sm pagination-dark mb-0">
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#">Previous</a>
+                        </li>
+                        <li class="page-item active">
+                            <a class="page-link" href="#">1</a>
+                        </li>
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="fas fa-receipt fa-3x text-muted"></i>
+                </div>
+                <h5>No Transactions Yet</h5>
+                <p class="caption">You haven't made any purchases yet.</p>
+                <a href="{{ url_for('billing.account_management') }}" class="action-button mt-3">
+                    Add Funds to Your Account
+                </a>
+            </div>
+        {% endif %}
+    </div>
+    
+    <div class="card-dark p-4">
+        <h5 class="mb-4">Transaction Information</h5>
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Transaction Status Meanings</h6>
+                <ul class="list-unstyled">
+                    <li class="mb-3">
+                        <span class="badge-dark-success me-2">Completed</span>
+                        <span class="caption">Transaction was successful and funds were added to your account</span>
+                    </li>
+                    <li class="mb-3">
+                        <span class="badge-dark-warning me-2">Pending</span>
+                        <span class="caption">Transaction is being processed by the payment provider</span>
+                    </li>
+                    <li class="mb-3">
+                        <span class="badge-dark-danger me-2">Failed</span>
+                        <span class="caption">Transaction was not successful, no funds were added</span>
+                    </li>
+                    <li class="mb-3">
+                        <span class="badge-dark-info me-2">Refunded</span>
+                        <span class="caption">Transaction was refunded, funds were removed from your account</span>
+                    </li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Need Help?</h6>
+                <p class="caption">If you have any questions about your transactions or if you believe there's been an error, please contact our support team.</p>
+                <a href="#" class="action-button">
+                    <i class="fas fa-headset me-1"></i> Contact Support
+                </a>
             </div>
         </div>
     </div>
