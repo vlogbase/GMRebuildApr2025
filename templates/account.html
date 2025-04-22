@@ -230,6 +230,7 @@
         <button class="tab-button active" onclick="openTab('funds')">Add Funds</button>
         <button class="tab-button" onclick="openTab('history')">Purchase History</button>
         <button class="tab-button" onclick="openTab('usage')">Usage Analytics</button>
+        <button class="tab-button" onclick="openTab('pricing')">Pricing</button>
         <button class="tab-button" onclick="openTab('settings')">Account Settings</button>
     </div>
 
@@ -408,6 +409,140 @@
             </div>
         </div>
         
+        <!-- Pricing Tab -->
+        <div id="pricing" class="tab-pane">
+            <div class="balance-card p-4">
+                <h4 class="mb-3">Model Pricing</h4>
+                <p class="caption mb-4">Pricing information for all available AI models. Click on any column header to sort by that attribute.</p>
+                
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <button class="tab-button active btn-sm" id="refreshPricing">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                        <span id="lastUpdated" class="caption ms-2"></span>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <i class="fas fa-search text-muted me-2"></i>
+                        <input type="text" class="form-control custom-amount-input" id="modelSearch" placeholder="Search models...">
+                    </div>
+                </div>
+                
+                <div class="mt-3 mb-2">
+                    <span class="badge bg-info me-1"><i class="fas fa-image"></i> Image</span>
+                    <span class="badge bg-secondary me-1"><i class="fas fa-dollar-sign"></i> Value</span>
+                    <span class="badge bg-success me-1"><i class="fas fa-tag"></i> Free</span>
+                    <span class="badge bg-warning text-dark me-1"><i class="fas fa-random"></i> Auto</span>
+                    <span class="caption ms-2">• Prices are per million tokens • All prices include our platform fee</span>
+                </div>
+                
+                <div class="table-responsive mt-2" style="max-height: 600px; overflow-y: auto;">
+                    <table class="table table-dark table-hover table-striped" id="pricingTable">
+                        <thead class="table-dark sticky-top">
+                            <tr>
+                                <th onclick="sortPricingTable(0)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        Model <i id="sort-icon-0" class="fas fa-sort-up"></i>
+                                    </div>
+                                </th>
+                                <th onclick="sortPricingTable(1)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">
+                                    <div class="d-flex justify-content-end align-items-center">
+                                        Input Cost <i id="sort-icon-1" class="fas fa-sort"></i>
+                                    </div>
+                                </th>
+                                <th onclick="sortPricingTable(2)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">
+                                    <div class="d-flex justify-content-end align-items-center">
+                                        Output Cost <i id="sort-icon-2" class="fas fa-sort"></i>
+                                    </div>
+                                </th>
+                                <th onclick="sortPricingTable(3)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">
+                                    <div class="d-flex justify-content-end align-items-center">
+                                        Context <i id="sort-icon-3" class="fas fa-sort"></i>
+                                    </div>
+                                </th>
+                                <th onclick="sortPricingTable(4)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-center py-3">
+                                    <div class="d-flex justify-content-center align-items-center">
+                                        Multimodal <i id="sort-icon-4" class="fas fa-sort"></i>
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="pricingTableBody">
+                            <tr>
+                                <td colspan="5" class="text-center py-5">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <div class="spinner-border text-info mb-3" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                        <p class="caption">Loading pricing data from OpenRouter...</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <style>
+                /* Additional styles for the pricing table */
+                #pricingTable tbody tr {
+                    transition: background-color 0.15s ease-in-out;
+                }
+                
+                #pricingTable tbody tr:hover {
+                    background-color: rgba(255, 255, 255, 0.1) !important;
+                }
+                
+                #pricingTable td {
+                    padding: 0.75rem 1rem;
+                    vertical-align: middle;
+                }
+                
+                /* Tooltip styles */
+                .tooltip-container {
+                    position: relative;
+                    display: inline-block;
+                }
+                
+                .tooltip-container .tooltip-text {
+                    visibility: hidden;
+                    background-color: #333;
+                    color: #fff;
+                    text-align: center;
+                    border-radius: 6px;
+                    padding: 8px 12px;
+                    position: absolute;
+                    z-index: 1;
+                    bottom: 125%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    width: 220px;
+                    opacity: 0;
+                    transition: opacity 0.3s;
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+                    font-size: 0.8rem;
+                }
+                
+                .tooltip-container:hover .tooltip-text {
+                    visibility: visible;
+                    opacity: 1;
+                }
+                </style>
+                
+                <div id="pricingError" class="text-center py-5 d-none">
+                    <div class="mb-3">
+                        <i class="fas fa-exclamation-triangle fa-3x text-warning"></i>
+                    </div>
+                    <h5>Unable to Load Pricing Data</h5>
+                    <p class="caption">There was a problem loading the pricing information. Please try again later.</p>
+                    <button class="select-button mt-3" id="retryPricing">Retry</button>
+                </div>
+                
+                <div class="mt-3">
+                    <p class="caption text-muted"><i class="fas fa-info-circle"></i> The pricing information is fetched directly from OpenRouter and our internal pricing configuration. Prices may vary based on model updates and availability.</p>
+                </div>
+            </div>
+        </div>
+        
         <!-- Account Settings Tab -->
         <div id="settings" class="tab-pane">
             <div class="balance-card p-4">
@@ -453,8 +588,13 @@
     
     <!-- Model Pricing Information -->
     <div class="balance-card p-4 mt-4">
-        <h5 class="mb-3">Model Pricing Information</h5>
-        <p class="caption">Your account balance is used to access premium AI models. Different models have different pricing based on their capabilities.</p>
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-3">Popular Model Pricing</h5>
+                <p class="caption">Your account balance is used to access premium AI models. Different models have different pricing based on their capabilities.</p>
+            </div>
+            <button class="tab-button" onclick="openTab('pricing')">View all model prices</button>
+        </div>
         
         <div class="table-responsive mt-3">
             <table class="table table-dark table-sm">
@@ -499,7 +639,10 @@
                 </tbody>
             </table>
         </div>
-        <small class="caption">* Actual cost depends on message length and complexity.</small>
+        <div class="d-flex justify-content-between align-items-center mt-2">
+            <small class="caption">* Actual cost depends on message length and complexity.</small>
+            <a href="#" onclick="openTab('pricing'); return false;" class="caption text-info">See full pricing details <i class="fas fa-arrow-right"></i></a>
+        </div>
     </div>
 </div>
 
@@ -549,6 +692,454 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Activate the clicked button
         event.currentTarget.classList.add('active');
+        
+        // Load pricing data if the pricing tab is selected
+        if (tabName === 'pricing') {
+            loadPricingData();
+        }
+    }
+    
+    // Model Pricing Table functionality
+    let pricingData = [];
+    let sortColumn = 0;
+    let sortDirection = 1; // 1 for ascending, -1 for descending
+    
+    // Function to load pricing data from API
+    function loadPricingData() {
+        const pricingTableBody = document.getElementById('pricingTableBody');
+        const pricingError = document.getElementById('pricingError');
+        const lastUpdated = document.getElementById('lastUpdated');
+        
+        // Show loading state
+        pricingTableBody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-5">
+                    <div class="d-flex flex-column align-items-center">
+                        <div class="spinner-border text-info mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="caption">Loading pricing data from OpenRouter...</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        pricingError.classList.add('d-none');
+        
+        // Check for cached data first (localStorage)
+        const cachedData = localStorage.getItem('modelPricingData');
+        const cachedTimestamp = localStorage.getItem('modelPricingTimestamp');
+        const currentTime = new Date().getTime();
+        
+        // Use cached data if it's less than 4 hours old
+        if (cachedData && cachedTimestamp && (currentTime - parseInt(cachedTimestamp)) < 4 * 60 * 60 * 1000) {
+            try {
+                pricingData = JSON.parse(cachedData);
+                lastUpdated.textContent = `Last updated: ${new Date(parseInt(cachedTimestamp)).toLocaleTimeString()}`;
+                renderPricingTable();
+                return;
+            } catch (e) {
+                console.error('Error parsing cached pricing data:', e);
+                // Continue to fetch from API if parsing fails
+            }
+        }
+        
+        // Fetch data from API
+        fetch('/api/model-pricing')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch pricing data');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Check for API error response
+                if (data.error) {
+                    console.warn('API returned an error:', data.error);
+                    
+                    // Insert warning alert at the top of the tab
+                    const warningHtml = `
+                        <div class="alert alert-warning mb-3" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>OpenRouter API Connection Issue</strong>
+                            </div>
+                            <p class="mt-2 mb-0">${data.message || 'Unable to fetch current pricing data from OpenRouter.'}</p>
+                        </div>
+                    `;
+                    
+                    // Remove any existing alert first
+                    const existingAlert = document.querySelector('#pricing .alert');
+                    if (existingAlert) existingAlert.remove();
+                    
+                    // Add new alert
+                    document.querySelector('#pricing .balance-card').insertAdjacentHTML('afterbegin', warningHtml);
+                    
+                    // Try to use fallback data if provided in the response
+                    if (data.data && data.data.length > 0) {
+                        pricingData = data.data;
+                        renderPricingTable();
+                    } 
+                    // Otherwise try to use cached data if available
+                    else if (cachedData) {
+                        try {
+                            pricingData = JSON.parse(cachedData);
+                            renderPricingTable();
+                            console.log('Using cached data as fallback');
+                        } catch (e) {
+                            console.error('Failed to parse cached data:', e);
+                            pricingError.classList.remove('d-none');
+                        }
+                    } else {
+                        // No data available at all
+                        pricingError.classList.remove('d-none');
+                    }
+                    return;
+                }
+                
+                // Normal successful response
+                pricingData = data.data;
+                
+                // Store in localStorage for caching
+                try {
+                    localStorage.setItem('modelPricingData', JSON.stringify(pricingData));
+                    localStorage.setItem('modelPricingTimestamp', new Date().getTime().toString());
+                } catch (e) {
+                    console.warn('Could not store pricing data in localStorage:', e);
+                }
+                
+                // Remove any existing alert
+                const existingAlert = document.querySelector('#pricing .alert');
+                if (existingAlert) existingAlert.remove();
+                
+                // Render the table
+                renderPricingTable();
+                const currentTime = new Date();
+                lastUpdated.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
+            })
+            .catch(error => {
+                console.error('Error loading pricing data:', error);
+                
+                // Try to use cached data if available
+                if (cachedData) {
+                    try {
+                        pricingData = JSON.parse(cachedData);
+                        renderPricingTable();
+                        
+                        // Show cached data notice
+                        const cacheNotice = `
+                            <div class="alert alert-info mb-3" role="alert">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Using cached data</strong>
+                                </div>
+                                <p class="mt-2 mb-0">Could not connect to OpenRouter API. Showing data from ${new Date(parseInt(cachedTimestamp)).toLocaleString()}.</p>
+                            </div>
+                        `;
+                        // Remove any existing alert first
+                        const existingAlert = document.querySelector('#pricing .alert');
+                        if (existingAlert) existingAlert.remove();
+                        
+                        document.querySelector('#pricing .balance-card').insertAdjacentHTML('afterbegin', cacheNotice);
+                        return;
+                    } catch (e) {
+                        console.error('Failed to use cached data:', e);
+                    }
+                }
+                
+                // No cached data or failed to parse it
+                pricingTableBody.innerHTML = '';
+                pricingError.classList.remove('d-none');
+            });
+    }
+    
+    // Function to render the pricing table
+    function renderPricingTable() {
+        const pricingTableBody = document.getElementById('pricingTableBody');
+        const searchTerm = document.getElementById('modelSearch')?.value.toLowerCase() || '';
+        
+        // Filter data based on search term
+        const filteredData = pricingData.filter(model => 
+            model.model_name.toLowerCase().includes(searchTerm) || 
+            model.model_id.toLowerCase().includes(searchTerm)
+        );
+        
+        // Sort data
+        filteredData.sort((a, b) => {
+            let aValue, bValue;
+            
+            // Check for special cases
+            const aIsAutoRouter = a.model_id.toLowerCase().includes('router') || a.model_id.toLowerCase().includes('openrouter');
+            const bIsAutoRouter = b.model_id.toLowerCase().includes('router') || b.model_id.toLowerCase().includes('openrouter');
+            const aIsFreeModel = a.input_price === '$0.00' && a.output_price === '$0.00';
+            const bIsFreeModel = b.input_price === '$0.00' && b.output_price === '$0.00';
+            
+            // Handle different columns
+            switch(sortColumn) {
+                case 0: // Model Name
+                    aValue = a.model_name.toLowerCase();
+                    bValue = b.model_name.toLowerCase();
+                    break;
+                    
+                case 1: // Input Cost
+                    // Special handling for pricing sorts
+                    if (a.input_price === 'Variable' || aIsAutoRouter) {
+                        // For AutoRouter models, sort them between free and paid models
+                        aValue = 0.00005; 
+                    } else if (a.input_price === 'N/A') {
+                        aValue = Infinity;
+                    } else {
+                        // Parse all prices as numbers for sorting
+                        aValue = parseFloat(a.input_price.replace('$', ''));
+                        // Make sure $0.00 values are treated as 0 for sorting
+                        if (isNaN(aValue)) aValue = 0;
+                    }
+                    
+                    if (b.input_price === 'Variable' || bIsAutoRouter) {
+                        bValue = 0.00005;
+                    } else if (b.input_price === 'N/A') {
+                        bValue = Infinity;
+                    } else {
+                        bValue = parseFloat(b.input_price.replace('$', ''));
+                        // Make sure $0.00 values are treated as 0 for sorting
+                        if (isNaN(bValue)) bValue = 0;
+                    }
+                    break;
+                    
+                case 2: // Output Cost
+                    // Special handling for output cost sorting
+                    if (a.output_price === 'Variable' || aIsAutoRouter) {
+                        aValue = 0.00005;
+                    } else if (a.output_price === 'N/A') {
+                        aValue = Infinity;
+                    } else {
+                        aValue = parseFloat(a.output_price.replace('$', ''));
+                        // Make sure $0.00 values are treated as 0 for sorting
+                        if (isNaN(aValue)) aValue = 0;
+                    }
+                    
+                    if (b.output_price === 'Variable' || bIsAutoRouter) {
+                        bValue = 0.00005;
+                    } else if (b.output_price === 'N/A') {
+                        bValue = Infinity;
+                    } else {
+                        bValue = parseFloat(b.output_price.replace('$', ''));
+                        // Make sure $0.00 values are treated as 0 for sorting
+                        if (isNaN(bValue)) bValue = 0;
+                    }
+                    break;
+                    
+                case 3: // Context Length
+                    // Context length sorting with proper handling for N/A values
+                    aValue = a.context_length === 'N/A' ? 0 : parseInt(a.context_length);
+                    bValue = b.context_length === 'N/A' ? 0 : parseInt(b.context_length);
+                    break;
+                    
+                case 4: // Multimodal (previously case 5)
+                    // Yes comes before No for multimodal sorting
+                    aValue = a.multimodal === 'Yes' ? 0 : 1;
+                    bValue = b.multimodal === 'Yes' ? 0 : 1;
+                    break;
+                    
+                default:
+                    aValue = a.model_name.toLowerCase();
+                    bValue = b.model_name.toLowerCase();
+            }
+            
+            // Compare values based on sort direction
+            if (aValue < bValue) return -1 * sortDirection;
+            if (aValue > bValue) return 1 * sortDirection;
+            
+            // If values are equal, use model name as secondary sort
+            const aName = a.model_name.toLowerCase();
+            const bName = b.model_name.toLowerCase();
+            if (aName < bName) return -1;
+            if (aName > bName) return 1;
+            return 0;
+        });
+        
+        // Generate table content
+        if (filteredData.length === 0) {
+            pricingTableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center py-4">
+                        <p class="caption">No matching models found.</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        pricingTableBody.innerHTML = filteredData.map(model => {
+            // Check for special model types
+            const isAutoRouter = model.model_id.toLowerCase().includes('router') || model.model_id.toLowerCase().includes('openrouter');
+            // Check for free models - looking for $0.00 prices or very low values (for rounding issues)
+            const inputPrice = parseFloat(model.input_price?.replace('$', '') || '0');
+            const outputPrice = parseFloat(model.output_price?.replace('$', '') || '0');
+            const isFreeModel = (model.input_price === '$0.00' || inputPrice === 0 || inputPrice <= 0.001) &&
+                               (model.output_price === '$0.00' || outputPrice === 0 || outputPrice <= 0.001);
+            const isEmbedding = model.model_id === 'text-embedding-3-large';
+            
+            // Handle model name display with appropriate styling
+            let modelNameClass = '';
+            if (isAutoRouter) modelNameClass = 'text-warning';
+            else if (isEmbedding) modelNameClass = 'text-warning';
+            else if (model.multimodal === 'Yes') modelNameClass = 'text-info';
+            
+            // Format model name with appropriate badges
+            let badges = [];
+            
+            // Add multimodal badge if applicable
+            if (model.multimodal === 'Yes') {
+                badges.push(`<span class="badge bg-info me-1 mb-1"><i class="fas fa-image"></i> Image</span>`);
+            }
+            
+            // Add value badge if applicable
+            const isGoodValue = !isAutoRouter && !isFreeModel && 
+                              model.input_price !== 'N/A' && model.input_price !== 'Variable' &&
+                              parseFloat(model.input_price.replace('$', '')) < 10.0;
+            
+            if (isGoodValue) {
+                badges.push(`<span class="badge bg-secondary me-1 mb-1"><i class="fas fa-dollar-sign"></i> Value</span>`);
+            }
+            
+            // Add free badge if applicable
+            if (isFreeModel) {
+                badges.push(`<span class="badge bg-success me-1 mb-1"><i class="fas fa-tag"></i> Free</span>`);
+            }
+            
+            // Add variable badge for AutoRouter
+            if (isAutoRouter) {
+                badges.push(`<span class="badge bg-warning text-dark me-1 mb-1"><i class="fas fa-random"></i> Auto</span>`);
+            }
+            
+            // Handle price display
+            let inputPriceDisplay = model.input_price;
+            let outputPriceDisplay = model.output_price;
+            
+            // Format for AutoRouter with tooltip explanation
+            if (isAutoRouter) {
+                inputPriceDisplay = `
+                    <span class="tooltip-container">
+                        <span class="fw-bold text-warning">Variable</span>
+                        <span class="tooltip-text">AutoRouter dynamically selects a model based on quality and cost at the time of your request.</span>
+                    </span>`;
+                outputPriceDisplay = `
+                    <span class="tooltip-container">
+                        <span class="fw-bold text-warning">Variable</span>
+                        <span class="tooltip-text">Costs vary based on the selected model.</span>
+                    </span>`;
+            }
+            
+            // Format free models with green color
+            if (isFreeModel) {
+                inputPriceDisplay = `<span class="text-success">$0.00</span>`;
+                outputPriceDisplay = `<span class="text-success">$0.00</span>`;
+            }
+            
+            // Determine if costs should have special color for good value models
+            const goodPriceClass = isGoodValue ? 'text-success' : '';
+            if (isGoodValue && !isAutoRouter && !isFreeModel) {
+                inputPriceDisplay = `<span class="${goodPriceClass}">${model.input_price}</span>`;
+            }
+            
+            // Format context length with K or M suffix
+            let contextDisplay = model.context_length;
+            if (model.context_length !== 'N/A' && !isNaN(model.context_length)) {
+                const contextNum = parseInt(model.context_length);
+                contextDisplay = contextNum >= 1000000 
+                    ? `${(contextNum / 1000000).toFixed(1)}M` 
+                    : `${(contextNum / 1000).toFixed(0)}K`;
+            }
+            
+            // Create multimodal badge/label for the dedicated column
+            const multimodalDisplay = model.multimodal === 'Yes' 
+                ? '<span class="badge bg-success">Yes</span>' 
+                : '<span class="badge bg-secondary">No</span>';
+            
+            return `
+                <tr>
+                    <td>
+                        <div>
+                            ${badges.join('')}
+                            <span class="${modelNameClass} fw-medium">${model.model_name}</span>
+                        </div>
+                        <small class="text-muted d-block text-truncate" style="max-width: 250px;">${model.model_id}</small>
+                    </td>
+                    <td class="text-end">${inputPriceDisplay}</td>
+                    <td class="text-end">${outputPriceDisplay}</td>
+                    <td class="text-end">${contextDisplay}</td>
+                    <td class="text-center">
+                        ${multimodalDisplay}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+    
+    // Function to handle table sorting
+    window.sortPricingTable = function(columnIndex) {
+        // If clicking the same column, reverse the sort direction
+        if (sortColumn === columnIndex) {
+            sortDirection *= -1;
+        } else {
+            sortColumn = columnIndex;
+            sortDirection = 1;
+        }
+        
+        // Update the table with new sort order
+        renderPricingTable();
+        
+        // Update sort icons (optional enhancement)
+        document.querySelectorAll('#pricingTable th i').forEach((icon, index) => {
+            if (index === sortColumn) {
+                icon.className = sortDirection === 1 ? 'fas fa-sort-up' : 'fas fa-sort-down';
+            } else {
+                icon.className = 'fas fa-sort';
+            }
+        });
+    };
+    
+    // Search functionality for pricing table
+    if (document.getElementById('modelSearch')) {
+        document.getElementById('modelSearch').addEventListener('input', renderPricingTable);
+    }
+    
+    // Refresh pricing data
+    if (document.getElementById('refreshPricing')) {
+        document.getElementById('refreshPricing').addEventListener('click', loadPricingData);
+    }
+    
+    // Retry button for error state
+    if (document.getElementById('retryPricing')) {
+        document.getElementById('retryPricing').addEventListener('click', loadPricingData);
+    }
+    
+    // Function to sort the pricing table
+    window.sortPricingTable = function(column) {
+        // Toggle sort direction if clicking the same column
+        if (sortColumn === column) {
+            sortDirection *= -1;
+        } else {
+            sortColumn = column;
+            sortDirection = 1;
+        }
+        
+        // Update sort icons
+        for (let i = 0; i < 5; i++) {
+            const icon = document.getElementById(`sort-icon-${i}`);
+            if (i === column) {
+                icon.className = sortDirection === 1 ? 'fas fa-sort-up' : 'fas fa-sort-down';
+            } else {
+                icon.className = 'fas fa-sort';
+            }
+        }
+        
+        renderPricingTable();
+    };
+
+    // Load pricing data on page load if we're on the pricing tab
+    if (window.location.hash === '#pricing') {
+        openTab('pricing');
     }
 });
 </script>

@@ -1714,25 +1714,19 @@ def chat(): # Synchronous function
 
 
 # --- Other Synchronous Routes (Keep As Is) ---
-@app.route('/models', methods=['GET'])
-def get_models():
-    """ Fetch available models """
+# Helper function to fetch models from OpenRouter
+def _fetch_openrouter_models():
+    """Fetch models from OpenRouter API"""
     try:
-        current_time = time.time()
-        if (OPENROUTER_MODELS_CACHE["data"] is not None and 
-            (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]):
-            logger.debug("Returning cached models")
-            return jsonify(OPENROUTER_MODELS_CACHE["data"])
-
         api_key = os.environ.get('OPENROUTER_API_KEY')
         if not api_key:
             logger.error("OPENROUTER_API_KEY not found")
-            abort(500, description="API key not configured")
+            return None
 
         headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
 
         logger.debug("Fetching models from OpenRouter...")
-        response = requests.get( # Make sure requests is imported
+        response = requests.get(
             'https://openrouter.ai/api/v1/models',
             headers=headers,
             timeout=15.0 
@@ -1740,7 +1734,7 @@ def get_models():
 
         response.raise_for_status() 
         models_data = response.json()
-
+        
         processed_models = []
         for model in models_data.get('data', []):
             model_id = model.get('id', '').lower()
@@ -1754,25 +1748,162 @@ def get_models():
 
             model['is_free'] = ':free' in model_id or prompt_price == 0.0
             model['is_multimodal'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
-                                           for keyword in ['vision', 'image', 'multi', 'gpt-4o'])
+                                        for keyword in ['vision', 'image', 'multi', 'gpt-4o'])
             model['is_perplexity'] = 'perplexity/' in model_id
             model['is_reasoning'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
-                                           for keyword in ['reasoning', 'opus', 'o1', 'o3']) 
+                                        for keyword in ['reasoning', 'opus', 'o1', 'o3']) 
             processed_models.append(model)
 
-        result_data = {"data": processed_models} 
-
+        result_data = {"data": processed_models}
+        
+        # Update the cache
         OPENROUTER_MODELS_CACHE["data"] = result_data
-        OPENROUTER_MODELS_CACHE["timestamp"] = current_time
+        OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
         logger.info(f"Fetched and cached {len(processed_models)} models from OpenRouter")
+        
+        return result_data
+    except Exception as e:
+        logger.exception("Error fetching models from OpenRouter")
+        return None
 
+@app.route('/api/model-pricing', methods=['GET'])
+def get_model_pricing():
+    """ Fetch model pricing information """
+    try:
+        # Use the existing model cache or fetch new data
+        current_time = time.time()
+        if (OPENROUTER_MODELS_CACHE["data"] is not None and 
+            (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]):
+            models_data = OPENROUTER_MODELS_CACHE["data"]
+            logger.info("Using cached model pricing data from OpenRouter")
+        else:
+            # Fetch models from OpenRouter if cache is empty or expired
+            logger.info("Fetching fresh model pricing data from OpenRouter")
+            models_data = _fetch_openrouter_models()
+            
+        if not models_data:
+            logger.error("Failed to fetch model data from OpenRouter API")
+            return jsonify({
+                "error": "Unable to connect to OpenRouter API",
+                "message": "Please try again later or contact support if the problem persists.",
+                "data": []  # Return empty data array for proper frontend handling
+            }), 200  # Return 200 so the error can be handled gracefully in the UI
+            
+        # Process models to create pricing data
+        pricing_data = []
+        
+        # Define our internal price mapping (multiply OpenRouter prices by markup factor)
+        markup_factor = 2.0
+        
+        # Process the models to extract pricing information
+        for model in models_data.get('data', []):
+            model_id = model.get('id', '')
+            context_length = model.get('context_length', 'N/A')
+            
+            # Extract pricing information
+            pricing = model.get('pricing', {})
+            input_price_per_token = pricing.get('prompt', 0)
+            output_price_per_token = pricing.get('completion', 0)
+            
+            # Handle special case for AutoRouter
+            is_autorouter = "router" in model_id.lower() or "openrouter" in model_id.lower()
+            
+            # Handle free models
+            is_free_model = (input_price_per_token == 0 and output_price_per_token == 0)
+            
+            # Apply markup to prices
+            our_input_price = float(input_price_per_token) * markup_factor if input_price_per_token else 0
+            our_output_price = float(output_price_per_token) * markup_factor if output_price_per_token else 0
+            
+            # Format prices for display (per million tokens)
+            if is_autorouter:
+                # For AutoRouter, we display "Variable" but use a nominal value for sorting
+                input_price_display = "Variable"
+                output_price_display = "Variable"
+                # Assign a nominal value for sorting that places it between free and paid models
+                our_input_price = 0.00005  # This value is only used for sorting
+            elif is_free_model or our_input_price == 0:
+                # For free models, explicitly show $0.00
+                input_price_display = "$0.00"
+                output_price_display = "$0.00" if our_output_price == 0 else f"${our_output_price * 1000000:.2f}"
+            else:
+                # Standard pricing display for most models
+                input_price_display = f"${our_input_price * 1000000:.2f}"
+                output_price_display = f"${our_output_price * 1000000:.2f}" if our_output_price else "$0.00"
+            
+            # Get multimodal support
+            is_multimodal = model.get('is_multimodal', False)
+            
+            # Get throughput data
+            # Try to get actual throughput from API if available
+            throughput_tokens_per_second = model.get('throughput', {}).get('tokens_per_second')
+            if throughput_tokens_per_second:
+                throughput_estimate = f"{throughput_tokens_per_second} tokens/sec"
+            else:
+                # Fallback to estimated categories based on model type
+                if is_autorouter:
+                    throughput_estimate = "Variable"
+                elif "gpt-3.5" in model_id.lower() or "llama" in model_id.lower():
+                    throughput_estimate = "High (~500 tokens/sec)"
+                elif "gpt-4" in model_id.lower() or ("claude-3" in model_id.lower() and "opus" in model_id.lower()):
+                    throughput_estimate = "Limited (~50 tokens/sec)"
+                else:
+                    throughput_estimate = "No data"
+            
+            pricing_data.append({
+                "model_id": model_id,
+                "model_name": model.get('name', model_id),
+                "input_price": input_price_display,
+                "output_price": output_price_display,
+                "context_length": context_length,
+                "throughput": throughput_estimate,
+                "multimodal": "Yes" if is_multimodal else "No"
+            })
+        
+        # Add the manually defined text-embedding-3-large model
+        pricing_data.append({
+            "model_id": "text-embedding-3-large",
+            "model_name": "Text Embedding 3 Large",
+            "input_price": "$2.00",  # $1 per million with markup
+            "output_price": "N/A",
+            "context_length": "8192",
+            "throughput": "Very High",
+            "multimodal": "No"
+        })
+        
+        # Sort models alphabetically for consistent display
+        pricing_data.sort(key=lambda x: x['model_name'].lower())
+        
+        return jsonify({"data": pricing_data})
+            
+    except Exception as e:
+        logger.exception("Error processing model pricing data")
+        return jsonify({
+            "error": "Server error processing model pricing data",
+            "message": "We encountered an issue retrieving pricing information. Using cached data if available.",
+            "data": []
+        }), 200  # Return 200 so frontend can handle gracefully
+
+@app.route('/models', methods=['GET'])
+def get_models():
+    """ Fetch available models """
+    try:
+        current_time = time.time()
+        if (OPENROUTER_MODELS_CACHE["data"] is not None and 
+            (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]):
+            logger.debug("Returning cached models")
+            return jsonify(OPENROUTER_MODELS_CACHE["data"])
+
+        # Use the helper function to fetch models
+        result_data = _fetch_openrouter_models()
+        
+        if not result_data:
+            abort(500, description="Failed to fetch models from OpenRouter")
+            
         return jsonify(result_data)
 
-    except requests.exceptions.RequestException as e:
-        logger.exception("Error fetching models from OpenRouter API")
-        abort(500, description=f"API Error fetching models: {e}")
     except Exception as e:
-        logger.exception("Error processing models data")
+        logger.exception("Error in get_models")
         abort(500, description=f"Server error processing models: {e}")
 
 
