@@ -1865,7 +1865,7 @@ def get_model_pricing():
             "model_id": "text-embedding-3-large",
             "model_name": "Text Embedding 3 Large",
             "input_price": "$2.00",  # $1 per million with markup
-            "output_price": "N/A",
+            "output_price": "$0.00",  # Changed from "N/A" to "$0.00" for consistency
             "context_length": "8192",
             "throughput": "Very High",
             "multimodal": "No"

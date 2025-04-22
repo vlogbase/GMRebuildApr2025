@@ -429,11 +429,7 @@
                 </div>
                 
                 <div class="mt-3 mb-2">
-                    <span class="badge bg-info me-1"><i class="fas fa-image"></i> Image</span>
-                    <span class="badge bg-secondary me-1"><i class="fas fa-dollar-sign"></i> Value</span>
-                    <span class="badge bg-success me-1"><i class="fas fa-tag"></i> Free</span>
-                    <span class="badge bg-warning text-dark me-1"><i class="fas fa-random"></i> Auto</span>
-                    <span class="caption ms-2">• Prices are per million tokens • All prices include our platform fee</span>
+                    <span class="caption">• Prices are per million tokens • All prices include our platform fee</span>
                 </div>
                 
                 <div class="table-responsive mt-2" style="max-height: 600px; overflow-y: auto;">
@@ -886,7 +882,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         // For AutoRouter models, sort them between free and paid models
                         aValue = 0.00005; 
                     } else if (a.input_price === 'N/A') {
-                        aValue = Infinity;
+                        // Treat N/A as $0.00 for sorting
+                        aValue = 0;
                     } else {
                         // Parse all prices as numbers for sorting
                         aValue = parseFloat(a.input_price.replace('$', ''));
@@ -897,7 +894,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (b.input_price === 'Variable' || bIsAutoRouter) {
                         bValue = 0.00005;
                     } else if (b.input_price === 'N/A') {
-                        bValue = Infinity;
+                        // Treat N/A as $0.00 for sorting
+                        bValue = 0;
                     } else {
                         bValue = parseFloat(b.input_price.replace('$', ''));
                         // Make sure $0.00 values are treated as 0 for sorting
@@ -910,7 +908,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (a.output_price === 'Variable' || aIsAutoRouter) {
                         aValue = 0.00005;
                     } else if (a.output_price === 'N/A') {
-                        aValue = Infinity;
+                        // Treat N/A as $0.00 for sorting
+                        aValue = 0;
                     } else {
                         aValue = parseFloat(a.output_price.replace('$', ''));
                         // Make sure $0.00 values are treated as 0 for sorting
@@ -920,7 +919,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (b.output_price === 'Variable' || bIsAutoRouter) {
                         bValue = 0.00005;
                     } else if (b.output_price === 'N/A') {
-                        bValue = Infinity;
+                        // Treat N/A as $0.00 for sorting
+                        bValue = 0;
                     } else {
                         bValue = parseFloat(b.output_price.replace('$', ''));
                         // Make sure $0.00 values are treated as 0 for sorting
@@ -985,32 +985,10 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (isEmbedding) modelNameClass = 'text-warning';
             else if (model.multimodal === 'Yes') modelNameClass = 'text-info';
             
-            // Format model name with appropriate badges
-            let badges = [];
-            
-            // Add multimodal badge if applicable
-            if (model.multimodal === 'Yes') {
-                badges.push(`<span class="badge bg-info me-1 mb-1"><i class="fas fa-image"></i> Image</span>`);
-            }
-            
-            // Add value badge if applicable
+            // No badges needed for the model display
             const isGoodValue = !isAutoRouter && !isFreeModel && 
                               model.input_price !== 'N/A' && model.input_price !== 'Variable' &&
                               parseFloat(model.input_price.replace('$', '')) < 10.0;
-            
-            if (isGoodValue) {
-                badges.push(`<span class="badge bg-secondary me-1 mb-1"><i class="fas fa-dollar-sign"></i> Value</span>`);
-            }
-            
-            // Add free badge if applicable
-            if (isFreeModel) {
-                badges.push(`<span class="badge bg-success me-1 mb-1"><i class="fas fa-tag"></i> Free</span>`);
-            }
-            
-            // Add variable badge for AutoRouter
-            if (isAutoRouter) {
-                badges.push(`<span class="badge bg-warning text-dark me-1 mb-1"><i class="fas fa-random"></i> Auto</span>`);
-            }
             
             // Handle price display
             let inputPriceDisplay = model.input_price;
@@ -1060,7 +1038,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 <tr>
                     <td>
                         <div>
-                            ${badges.join('')}
                             <span class="${modelNameClass} fw-medium">${model.model_name}</span>
                         </div>
                         <small class="text-muted d-block text-truncate" style="max-width: 250px;">${model.model_id}</small>
