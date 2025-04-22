@@ -129,8 +129,8 @@ def purchase_custom():
         amount_usd = float(request.form.get('amount', 0))
         
         # Validate amount
-        if amount_usd < 1.00 or amount_usd > 100.00:
-            flash("Invalid amount. Please enter an amount between $1.00 and $100.00", "error")
+        if amount_usd < 5.00 or amount_usd > 100.00:
+            flash("Invalid amount. Please enter an amount between $5.00 and $100.00", "error")
             return redirect(url_for('billing.account_management'))
         
         # Calculate credits to give (base credits + bonus)
