@@ -284,7 +284,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Change button behavior to redirect to login
                 btn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    window.location.href = '/google_login';
+                    window.location.href = '/login?redirect=chat&feature=premium_model';
                 });
             }
         });
@@ -295,7 +295,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Change button behavior to redirect to login
             uploadDocumentsBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                window.location.href = '/google_login';
+                window.location.href = '/login?redirect=chat&feature=document_upload';
             });
             
             const tooltip = document.createElement('span');
@@ -321,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function() {
             conversationsList.innerHTML = `
                 <div class="login-prompt">
                     <p>Sign in to save your chat history and access premium features</p>
-                    <button class="auth-btn google-auth-btn" onclick="window.location.href='/google_login'">
+                    <button class="auth-btn google-auth-btn" onclick="window.location.href='/login?redirect=chat'">
                         <i class="fa-brands fa-google"></i> Sign in with Google
                     </button>
                 </div>
@@ -330,73 +330,87 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Image upload and camera event listeners with premium access checks
-    imageUploadButton.addEventListener('click', () => {
-        // Check premium access before allowing image upload
-        if (!checkPremiumAccess('image_upload')) {
-            return; // Stop if access check failed
-        }
-        imageUploadInput.click();
-    });
-    
-    imageUploadInput.addEventListener('change', event => {
-        const file = event.target.files[0];
-        if (file && file.type.startsWith('image/')) {
-            // Check premium access before processing the image
+    if (imageUploadButton) {
+        imageUploadButton.addEventListener('click', () => {
+            // Check premium access before allowing image upload
             if (!checkPremiumAccess('image_upload')) {
                 return; // Stop if access check failed
             }
-            handleImageFile(file);
-        }
-        // Reset the input so the same file can be selected again
-        event.target.value = null;
-    });
+            imageUploadInput.click();
+        });
+    }
     
-    cameraButton.addEventListener('click', async () => {
-        // Check premium access before allowing camera use
-        if (!checkPremiumAccess('camera')) {
-            return; // Stop if access check failed
-        }
-        
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            cameraStream.srcObject = stream;
-            cameraModal.style.display = 'block';
-            loadCameraDevices();
-        } catch (err) {
-            console.error('Camera access error:', err);
-            alert('Camera access denied or not available');
-        }
-    });
+    if (imageUploadInput) {
+        imageUploadInput.addEventListener('change', event => {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                // Check premium access before processing the image
+                if (!checkPremiumAccess('image_upload')) {
+                    return; // Stop if access check failed
+                }
+                handleImageFile(file);
+            }
+            // Reset the input so the same file can be selected again
+            event.target.value = null;
+        });
+    }
     
-    captureButton.addEventListener('click', () => {
-        // Set canvas dimensions to match video
-        const width = cameraStream.videoWidth;
-        const height = cameraStream.videoHeight;
-        imageCanvas.width = width;
-        imageCanvas.height = height;
-        
-        // Draw video frame to canvas
-        const ctx = imageCanvas.getContext('2d');
-        ctx.drawImage(cameraStream, 0, 0, width, height);
-        
-        // Convert canvas to blob
-        imageCanvas.toBlob(blob => {
-            handleImageFile(blob);
+    if (cameraButton) {
+        cameraButton.addEventListener('click', async () => {
+            // Check premium access before allowing camera use
+            if (!checkPremiumAccess('camera')) {
+                return; // Stop if access check failed
+            }
             
-            // Stop camera stream and close modal
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                cameraStream.srcObject = stream;
+                cameraModal.style.display = 'block';
+                loadCameraDevices();
+            } catch (err) {
+                console.error('Camera access error:', err);
+                alert('Camera access denied or not available');
+            }
+        });
+    }
+    
+    if (captureButton) {
+        captureButton.addEventListener('click', () => {
+            // Set canvas dimensions to match video
+            const width = cameraStream.videoWidth;
+            const height = cameraStream.videoHeight;
+            imageCanvas.width = width;
+            imageCanvas.height = height;
+            
+            // Draw video frame to canvas
+            const ctx = imageCanvas.getContext('2d');
+            ctx.drawImage(cameraStream, 0, 0, width, height);
+            
+            // Convert canvas to blob
+            imageCanvas.toBlob(blob => {
+                handleImageFile(blob);
+                
+                // Stop camera stream and close modal
+                stopCameraStream();
+                cameraModal.style.display = 'none';
+            }, 'image/jpeg', 0.85);
+        });
+    }
+    
+    if (switchCameraButton) {
+        switchCameraButton.addEventListener('click', switchCamera);
+    }
+    
+    if (closeCameraButton) {
+        closeCameraButton.addEventListener('click', () => {
             stopCameraStream();
             cameraModal.style.display = 'none';
-        }, 'image/jpeg', 0.85);
-    });
+        });
+    }
     
-    switchCameraButton.addEventListener('click', switchCamera);
-    
-    closeCameraButton.addEventListener('click', () => {
-        stopCameraStream();
-        cameraModal.style.display = 'none';
-    });
-    
-    removeImageButton.addEventListener('click', clearAttachedImage);
+    if (removeImageButton) {
+        removeImageButton.addEventListener('click', clearAttachedImage);
+    }
     
     // Image handling functions
     async function handleImageFile(fileOrBlob) {
@@ -467,6 +481,12 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     // Add a new function to update all image previews based on the attached URLs
     function updateImagePreviews() {
+        // Check if the preview area exists
+        if (!imagePreviewArea) {
+            console.warn('Image preview area not found');
+            return;
+        }
+        
         // Clear existing previews
         imagePreviewArea.innerHTML = '';
         
@@ -618,7 +638,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function stopCameraStream() {
-        if (cameraStream.srcObject) {
+        if (cameraStream && cameraStream.srcObject) {
             const tracks = cameraStream.srcObject.getTracks();
             tracks.forEach(track => track.stop());
             cameraStream.srcObject = null;
@@ -626,7 +646,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     async function switchCamera() {
-        if (cameras.length > 1) {
+        if (cameras.length > 1 && cameraStream) {
             stopCameraStream();
             currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
             
@@ -634,7 +654,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 const stream = await navigator.mediaDevices.getUserMedia({
                     video: { deviceId: { exact: cameras[currentCameraIndex].deviceId } }
                 });
-                cameraStream.srcObject = stream;
+                if (cameraStream) {
+                    cameraStream.srcObject = stream;
+                }
             } catch (err) {
                 console.error('Error switching camera:', err);
                 alert('Failed to switch camera');
@@ -653,23 +675,27 @@ document.addEventListener('DOMContentLoaded', function() {
             cameras = devices.filter(device => device.kind === 'videoinput');
             
             // Enable/disable switch camera button based on available cameras
-            switchCameraButton.style.display = cameras.length > 1 ? 'block' : 'none';
+            if (switchCameraButton) {
+                switchCameraButton.style.display = cameras.length > 1 ? 'block' : 'none';
+            }
         } catch (err) {
             console.error('Error enumerating devices:', err);
         }
     }
     
     // Event Listeners
-    messageInput.addEventListener('keydown', function(event) {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            sendMessage();
-        }
-        
-        // Auto-resize textarea
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-    });
+    if (messageInput) {
+        messageInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+            
+            // Auto-resize textarea
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
     
     // Add clipboard paste event listener to the message input
     document.addEventListener('paste', function(event) {
@@ -701,7 +727,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    sendButton.addEventListener('click', sendMessage);
+    if (sendButton) {
+        sendButton.addEventListener('click', sendMessage);
+    }
     
     // Initialize model data
     fetchUserPreferences();
@@ -822,11 +850,15 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log(`🖼️ Multimodal UI check for ${modelId}: isMultimodalModel=${isMultimodalModel}, isPreset4=${isPreset4}`);
         
         // Show/hide upload and camera buttons
-        imageUploadButton.style.display = isMultimodalModel ? 'inline-flex' : 'none';
+        if (imageUploadButton) {
+            imageUploadButton.style.display = isMultimodalModel ? 'inline-flex' : 'none';
+        }
         
         // Only show camera button if browser supports it
         const hasCamera = !!navigator.mediaDevices?.getUserMedia;
-        cameraButton.style.display = isMultimodalModel && hasCamera ? 'inline-flex' : 'none';
+        if (cameraButton) {
+            cameraButton.style.display = isMultimodalModel && hasCamera ? 'inline-flex' : 'none';
+        }
         
         // If switching to a non-multimodal model, clear any attached image
         if (!isMultimodalModel) {
@@ -874,8 +906,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Update button text to reflect preferences
                     updatePresetButtonLabels();
                     
-                    // Select the first preset by default
-                    selectPresetButton('1');
+                    // Select default preset - use preset 6 (free) for non-authenticated users
+                    selectPresetButton(isAuthenticated ? '1' : '6');
                 }
                 
                 // After loading preferences, fetch available models
@@ -886,8 +918,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Still try to fetch models if preferences fail
                 fetchAvailableModels();
                 
-                // Use defaults and select first preset
-                selectPresetButton('1');
+                // Use defaults and select the appropriate preset - free for non-authenticated users
+                selectPresetButton(isAuthenticated ? '1' : '6');
             });
     }
     
@@ -1017,8 +1049,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to close the model selector
     function closeModelSelector() {
-        modelSelector.style.display = 'none';
-        currentlyEditingPresetId = null;
+        if (modelSelector) {
+            modelSelector.style.display = 'none';
+            currentlyEditingPresetId = null;
+        }
     }
     
     // Function to populate the model list based on preset filters
@@ -1197,52 +1231,66 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // New chat button
-    newChatButton.addEventListener('click', function() {
-        // Clear chat messages except the welcome message
-        clearChat();
-    });
+    if (newChatButton) {
+        newChatButton.addEventListener('click', function() {
+            // Clear chat messages except the welcome message
+            clearChat();
+        });
+    }
     
     // Clear conversations button
-    clearConversationsButton.addEventListener('click', function() {
-        // Clear chat and reset conversation items in sidebar
-        clearChat();
-        // In a real app, you would also clear the storage/backend
-    });
+    if (clearConversationsButton) {
+        clearConversationsButton.addEventListener('click', function() {
+            // Clear chat and reset conversation items in sidebar
+            clearChat();
+            // In a real app, you would also clear the storage/backend
+        });
+    }
     
     // Example question button
-    exampleQuestionButton.addEventListener('click', function() {
-        const exampleQuestions = [
-            "What are the major differences between renewable and fossil fuel energy sources?",
-            "Can you explain how artificial intelligence works in simple terms?",
-            "What are some effective strategies for reducing carbon emissions?",
-            "How does quantum computing differ from classical computing?",
-            "What are the potential implications of gene editing technologies?"
-        ];
-        
-        // Select a random example question
-        const randomQuestion = exampleQuestions[Math.floor(Math.random() * exampleQuestions.length)];
-        
-        // Set the input value and trigger sending
-        messageInput.value = randomQuestion;
-        sendMessage();
-    });
+    if (exampleQuestionButton) {
+        exampleQuestionButton.addEventListener('click', function() {
+            const exampleQuestions = [
+                "What are the major differences between renewable and fossil fuel energy sources?",
+                "Can you explain how artificial intelligence works in simple terms?",
+                "What are some effective strategies for reducing carbon emissions?",
+                "How does quantum computing differ from classical computing?",
+                "What are the potential implications of gene editing technologies?"
+            ];
+            
+            // Select a random example question
+            const randomQuestion = exampleQuestions[Math.floor(Math.random() * exampleQuestions.length)];
+            
+            // Set the input value and trigger sending
+            if (messageInput) {
+                messageInput.value = randomQuestion;
+                sendMessage();
+            }
+        });
+    }
     
     // Function to send message
     function sendMessage() {
+        // Add null check for messageInput
+        if (!messageInput) {
+            console.warn('Message input not found');
+            return;
+        }
+        
         const message = messageInput.value.trim();
-        if (!message && attachedImageUrls.length === 0) return;
+        if (!message && (!attachedImageUrls || attachedImageUrls.length === 0)) return;
         
         // Clear input
         messageInput.value = '';
         messageInput.style.height = 'auto';
         
         // First time? Clear welcome message
-        if (document.querySelector('.welcome-container')) {
+        if (document.querySelector('.welcome-container') && chatMessages) {
             chatMessages.innerHTML = '';
         }
         
         // Check if we're sending a multimodal message with images
-        if (attachedImageUrls.length > 0) {
+        if (attachedImageUrls && attachedImageUrls.length > 0) {
             // Create a standardized content array for user messages with images
             const userContent = [
                 { type: 'text', text: message || 'Image:' }
@@ -1491,9 +1539,13 @@ document.addEventListener('DOMContentLoaded', function() {
         messageElement.appendChild(avatar);
         messageElement.appendChild(messageWrapper);
         
-        // Add to chat container
-        chatMessages.appendChild(messageElement);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        // Add to chat container if it exists
+        if (chatMessages) {
+            chatMessages.appendChild(messageElement);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        } else {
+            console.warn('Chat messages container not found');
+        }
         
         return messageElement;
     }
@@ -1611,6 +1663,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to load a specific conversation
     function loadConversation(conversationId) {
+        // Make sure chatMessages exists
+        if (!chatMessages) {
+            console.error('Chat messages container not found');
+            return;
+        }
+        
         // Clear the current chat
         chatMessages.innerHTML = '';
         messageHistory = [];
@@ -1645,7 +1703,9 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .then(data => {
                 // Remove loading indicator
-                chatMessages.removeChild(loadingMessage);
+                if (chatMessages && chatMessages.contains(loadingMessage)) {
+                    chatMessages.removeChild(loadingMessage);
+                }
                 
                 console.log(`Loaded ${data.messages.length} messages for conversation ${conversationId}`);
                 
@@ -1689,7 +1749,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error loading conversation:', error);
                 
                 // Remove loading indicator and show error message
-                chatMessages.removeChild(loadingMessage);
+                if (chatMessages && chatMessages.contains(loadingMessage)) {
+                    chatMessages.removeChild(loadingMessage);
+                }
                 
                 const errorMessage = document.createElement('div');
                 errorMessage.className = 'system-message error';
@@ -1791,9 +1853,15 @@ document.addEventListener('DOMContentLoaded', function() {
             let buffer = '';
             let responseText = '';
             
-            // Remove typing indicator
-            if (typingIndicator) {
-                chatMessages.removeChild(typingIndicator);
+            // Remove typing indicator - with extra safe checks
+            if (typingIndicator && chatMessages) {
+                try {
+                    if (chatMessages.contains(typingIndicator)) {
+                        chatMessages.removeChild(typingIndicator);
+                    }
+                } catch (e) {
+                    console.warn('Error removing typing indicator:', e);
+                }
             }
             
             // Add empty assistant message
@@ -1852,16 +1920,23 @@ document.addEventListener('DOMContentLoaded', function() {
                                     console.log("==> Processing type: content"); // ADD THIS LOG
                                     // Append content
                                     if (parsedData.content) {
-                                        // Track if we need to scroll
-                                        const shouldScroll = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
+                                        // Track if we need to scroll (check if chatMessages exists first)
+                                        let shouldScroll = false;
+                                        if (chatMessages) {
+                                            shouldScroll = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
+                                        }
                                         
                                         responseText += parsedData.content;
                                         // Use your existing formatMessage function
                                         messageContent.innerHTML = formatMessage(responseText); 
                                         
-                                        // Only auto-scroll if user was already at the bottom
-                                        if (shouldScroll) {
-                                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                                        // Only auto-scroll if user was already at the bottom and chatMessages exists
+                                        if (shouldScroll && chatMessages) {
+                                            try {
+                                                chatMessages.scrollTop = chatMessages.scrollHeight;
+                                            } catch (e) {
+                                                console.warn('Error scrolling chat messages:', e);
+                                            }
                                         }
                                     }
                                     // Update conversation ID if it's the first message
@@ -2213,6 +2288,12 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear the message history
         messageHistory = [];
         
+        // Make sure chatMessages exists
+        if (!chatMessages) {
+            console.warn('Chat messages container not found - cannot clear chat');
+            return;
+        }
+        
         // Keep only the welcome container or create it if it doesn't exist
         if (!document.querySelector('.welcome-container')) {
             chatMessages.innerHTML = `
@@ -2250,8 +2331,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Initialize by focusing on the input
-    messageInput.focus();
+    // Initialize by focusing on the input if it exists
+    if (messageInput) {
+        messageInput.focus();
+    }
     
     // ====== Document Upload Handlers ======
     
