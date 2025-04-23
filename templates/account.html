@@ -374,23 +374,23 @@
                 
                 <div id="usage-summary-tab" class="usage-sub-tab active">
                 {% if recent_usage %}
-                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                    <table class="table table-dark table-hover table-striped" id="usageSummaryTable">
-                        <thead class="table-dark sticky-top">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
                             <tr>
-                                <th style="min-width: 110px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">Date</th>
-                                <th style="min-width: 80px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">Type</th>
-                                <th style="min-width: 220px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">Model</th>
-                                <th style="min-width: 80px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Cost</th>
+                                <th style="min-width: 110px;">Date</th>
+                                <th style="min-width: 80px;">Type</th>
+                                <th style="min-width: 180px;">Model</th>
+                                <th style="min-width: 80px;">Cost</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for usage in recent_usage %}
                             <tr>
-                                <td class="py-3">{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
-                                <td class="py-3">{{ usage.usage_type }}</td>
-                                <td class="py-3">{{ usage.model_id }}</td>
-                                <td class="text-end py-3">${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
+                                <td>{{ usage.usage_type }}</td>
+                                <td>{{ usage.model_id }}</td>
+                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -411,26 +411,26 @@
 
                 <div id="usage-detailed-tab" class="usage-sub-tab" style="display: none;">
                 {% if recent_usage %}
-                <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                    <table class="table table-dark table-hover table-striped" id="usageDetailedTable">
-                        <thead class="table-dark sticky-top">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
                             <tr>
-                                <th style="min-width: 110px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">Date</th>
-                                <th style="min-width: 220px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">Model</th>
-                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Input Tokens</th>
-                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Input Cost</th>
-                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Output Tokens</th>
-                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Output Cost</th>
-                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">Total Cost</th>
+                                <th style="min-width: 110px;">Date</th>
+                                <th style="min-width: 180px;">Model</th>
+                                <th style="min-width: 100px;">Input Tokens</th>
+                                <th style="min-width: 100px;">Input Cost</th>
+                                <th style="min-width: 100px;">Output Tokens</th>
+                                <th style="min-width: 100px;">Output Cost</th>
+                                <th style="min-width: 100px;">Total Cost</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for usage in recent_usage %}
                             <tr>
-                                <td class="py-3">{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td class="py-3">{{ usage.model_id }}</td>
-                                <td class="text-end py-3">{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
-                                <td class="text-end py-3">
+                                <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ usage.model_id }}</td>
+                                <td>{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
+                                <td>
                                     {% if usage.prompt_tokens and usage.model_id %}
                                         {% set input_cost = ((usage.credits_used / 1000) * 0.7)|float %}
                                         ${{ "%.4f"|format(input_cost) }}
@@ -438,8 +438,8 @@
                                         N/A
                                     {% endif %}
                                 </td>
-                                <td class="text-end py-3">{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
-                                <td class="text-end py-3">
+                                <td>{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
+                                <td>
                                     {% if usage.completion_tokens and usage.model_id %}
                                         {% set output_cost = ((usage.credits_used / 1000) * 0.3)|float %}
                                         ${{ "%.4f"|format(output_cost) }}
@@ -447,7 +447,7 @@
                                         N/A
                                     {% endif %}
                                 </td>
-                                <td class="text-end py-3">${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -535,21 +535,7 @@
                 </div>
                 
                 <style>
-                /* Shared table styles for all tables in the account page */
-                .table-dark tbody tr {
-                    transition: background-color 0.15s ease-in-out;
-                }
-                
-                .table-dark tbody tr:hover {
-                    background-color: rgba(255, 255, 255, 0.1) !important;
-                }
-                
-                .table-dark td {
-                    padding: 0.75rem 1rem;
-                    vertical-align: middle;
-                }
-                
-                /* Specific pricing table styles */
+                /* Additional styles for the pricing table */
                 #pricingTable tbody tr {
                     transition: background-color 0.15s ease-in-out;
                 }
@@ -559,23 +545,6 @@
                 }
                 
                 #pricingTable td {
-                    padding: 0.75rem 1rem;
-                    vertical-align: middle;
-                }
-                
-                /* Usage analytics table styles */
-                #usageSummaryTable tbody tr,
-                #usageDetailedTable tbody tr {
-                    transition: background-color 0.15s ease-in-out;
-                }
-                
-                #usageSummaryTable tbody tr:hover,
-                #usageDetailedTable tbody tr:hover {
-                    background-color: rgba(255, 255, 255, 0.1) !important;
-                }
-                
-                #usageSummaryTable td,
-                #usageDetailedTable td {
                     padding: 0.75rem 1rem;
                     vertical-align: middle;
                 }
@@ -647,79 +616,6 @@
                         <input type="checkbox" class="form-check-input" id="lowBalanceAlerts" checked>
                         <label class="form-check-label" for="lowBalanceAlerts">Low balance alerts</label>
                     </div>
-                    
-                    <hr class="my-4" style="border-color: #3f4246;">
-                    
-                    <h5>Model Filter Settings</h5>
-                    <p class="caption mb-3">Set maximum cost limits to filter which AI models are displayed in the chat interface.</p>
-                    
-                    <div class="card p-4 mb-4" style="background-color: #1e2124; border-color: #2c2f33;">
-                        <div class="mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label for="maxInputCost" class="form-label h6 mb-0">Max Input Token Cost</label>
-                                <span class="caption text-muted">per million tokens</span>
-                            </div>
-                            
-                            <div class="d-flex align-items-center gap-3">
-                                <div style="flex-grow: 1;">
-                                    <input type="range" class="form-range custom-range" id="maxInputCost" min="0" max="100" value="100" style="height: 16px;">
-                                </div>
-                                <div class="input-group" style="width: 150px;">
-                                    <span class="input-group-text bg-dark text-light border-secondary">$</span>
-                                    <input type="number" id="maxInputCostValue" class="form-control custom-amount-input" value="1500" min="0.01" max="1500" step="0.01">
-                                </div>
-                            </div>
-                            
-                            <div class="d-flex justify-content-between mt-1">
-                                <span class="caption">$0.01</span>
-                                <span class="caption">$1500</span>
-                            </div>
-                            <div class="mt-2">
-                                <p class="caption" id="inputCostExplainer">
-                                    Models with input costs above $1500 per million tokens will be disabled in model selection.
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <label for="maxOutputCost" class="form-label h6 mb-0">Max Output Token Cost</label>
-                                <span class="caption text-muted">per million tokens</span>
-                            </div>
-                            
-                            <div class="d-flex align-items-center gap-3">
-                                <div style="flex-grow: 1;">
-                                    <input type="range" class="form-range custom-range" id="maxOutputCost" min="0" max="100" value="100" style="height: 16px;">
-                                </div>
-                                <div class="input-group" style="width: 150px;">
-                                    <span class="input-group-text bg-dark text-light border-secondary">$</span>
-                                    <input type="number" id="maxOutputCostValue" class="form-control custom-amount-input" value="1500" min="0.01" max="1500" step="0.01">
-                                </div>
-                            </div>
-                            
-                            <div class="d-flex justify-content-between mt-1">
-                                <span class="caption">$0.01</span>
-                                <span class="caption">$1500</span>
-                            </div>
-                            <div class="mt-2">
-                                <p class="caption" id="outputCostExplainer">
-                                    Models with output costs above $1500 per million tokens will be disabled in model selection.
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div class="d-flex justify-content-end mt-3 gap-3">
-                            <button type="button" class="select-button" id="saveFilterSettingsBtn">
-                                <i class="fas fa-save me-2"></i>Save Filter Settings
-                            </button>
-                            <a href="/?from_settings=true" class="select-button text-center" style="background-color: #6c757d; text-decoration: none;">
-                                <i class="fas fa-arrow-left me-2"></i>Return to Chat
-                            </a>
-                        </div>
-                    </div>
-                    
-                    <!-- Feedback Container -->
-                    <div id="filterFeedbackContainer" class="mt-3" style="min-height: 60px;"></div>
                     
                     <hr class="my-4" style="border-color: #3f4246;">
                     
@@ -1355,401 +1251,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the usage analytics functionality
     handleUsageSubTabs();
     handleCsvExport();
-    
-    // Model Filter Sliders Functionality
-    const handleModelFilterSliders = function() {
-        const maxInputCostSlider = document.getElementById('maxInputCost');
-        const maxOutputCostSlider = document.getElementById('maxOutputCost');
-        const maxInputCostValue = document.getElementById('maxInputCostValue');
-        const maxOutputCostValue = document.getElementById('maxOutputCostValue');
-        const inputCostExplainer = document.getElementById('inputCostExplainer');
-        const outputCostExplainer = document.getElementById('outputCostExplainer');
-        const saveFilterSettingsBtn = document.getElementById('saveFilterSettings');
-        const filterFeedbackContainer = document.getElementById('filterFeedbackContainer');
-        
-        // Constants for slider range
-        const MIN_COST = 0.01;  // $0.01 per million tokens
-        const MAX_INPUT_COST = 1500.0;  // $1500 per million tokens
-        const MAX_OUTPUT_COST = 1500.0; // $1500 per million tokens
-        
-        // Logarithmic scale conversion functions
-        const sliderToInputCost = function(sliderValue) {
-            // Convert slider value (0-100) to logarithmic scale between MIN_COST and MAX_INPUT_COST
-            const minLog = Math.log10(MIN_COST);
-            const maxLog = Math.log10(MAX_INPUT_COST);
-            const scale = (maxLog - minLog) / 100;
-            return Math.pow(10, minLog + scale * sliderValue);
-        };
-        
-        const sliderToOutputCost = function(sliderValue) {
-            // Convert slider value (0-100) to logarithmic scale between MIN_COST and MAX_OUTPUT_COST
-            const minLog = Math.log10(MIN_COST);
-            const maxLog = Math.log10(MAX_OUTPUT_COST);
-            const scale = (maxLog - minLog) / 100;
-            return Math.pow(10, minLog + scale * sliderValue);
-        };
-        
-        const inputCostToSlider = function(costValue) {
-            // Make sure the cost value is within bounds
-            costValue = Math.max(MIN_COST, Math.min(MAX_INPUT_COST, costValue));
-            
-            // Convert cost value to slider position (0-100)
-            const minLog = Math.log10(MIN_COST);
-            const maxLog = Math.log10(MAX_INPUT_COST);
-            const scale = (maxLog - minLog) / 100;
-            return (Math.log10(costValue) - minLog) / scale;
-        };
-        
-        const outputCostToSlider = function(costValue) {
-            // Make sure the cost value is within bounds
-            costValue = Math.max(MIN_COST, Math.min(MAX_OUTPUT_COST, costValue));
-            
-            // Convert cost value to slider position (0-100)
-            const minLog = Math.log10(MIN_COST);
-            const maxLog = Math.log10(MAX_OUTPUT_COST);
-            const scale = (maxLog - minLog) / 100;
-            return (Math.log10(costValue) - minLog) / scale;
-        };
-        
-        // Update values and explanations
-        const updateInputCostUI = function(value) {
-            if (typeof value === 'string') {
-                value = parseFloat(value);
-            }
-            // Clamp value to valid range
-            value = Math.max(MIN_COST, Math.min(MAX_INPUT_COST, value));
-            
-            // Update numeric input field (to 2 decimal places for display)
-            maxInputCostValue.value = value.toFixed(2);
-            
-            // Update explainer text
-            inputCostExplainer.textContent = `Models with input costs above $${value.toFixed(2)} per million tokens will be disabled in model selection.`;
-        };
-        
-        const updateOutputCostUI = function(value) {
-            if (typeof value === 'string') {
-                value = parseFloat(value);
-            }
-            // Clamp value to valid range
-            value = Math.max(MIN_COST, Math.min(MAX_OUTPUT_COST, value));
-            
-            // Update numeric input field (to 2 decimal places for display)
-            maxOutputCostValue.value = value.toFixed(2);
-            
-            // Update explainer text
-            outputCostExplainer.textContent = `Models with output costs above $${value.toFixed(2)} per million tokens will be disabled in model selection.`;
-        };
-        
-        // Function to show feedback
-        const showFeedback = function(message, isSuccess = true) {
-            // Clear any existing feedback
-            filterFeedbackContainer.innerHTML = '';
-            
-            const feedbackDiv = document.createElement('div');
-            feedbackDiv.className = 'notification-card';
-            feedbackDiv.style.animation = 'fadeInAndSlide 0.4s ease-out';
-            feedbackDiv.style.backgroundColor = isSuccess ? 'rgba(46, 204, 113, 0.15)' : 'rgba(231, 76, 60, 0.15)';
-            feedbackDiv.style.borderLeft = `4px solid ${isSuccess ? '#2ecc71' : '#e74c3c'}`;
-            feedbackDiv.style.padding = '15px';
-            feedbackDiv.style.paddingRight = '35px'; // Extra space for the close button
-            feedbackDiv.style.borderRadius = '6px';
-            feedbackDiv.style.marginBottom = '16px';
-            feedbackDiv.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
-            feedbackDiv.style.display = 'flex';
-            feedbackDiv.style.alignItems = 'center';
-            feedbackDiv.style.position = 'relative'; // For absolute positioning of close button
-            feedbackDiv.style.maxWidth = '95%';
-            feedbackDiv.style.transition = 'all 0.2s ease-in-out';
-            
-            const icon = document.createElement('i');
-            icon.className = isSuccess ? 'fas fa-check-circle me-2' : 'fas fa-exclamation-circle me-2';
-            icon.style.color = isSuccess ? '#2ecc71' : '#e74c3c';
-            icon.style.fontSize = '18px';
-            feedbackDiv.appendChild(icon);
-            
-            const messageSpan = document.createElement('span');
-            messageSpan.textContent = message;
-            messageSpan.style.fontWeight = '500';
-            feedbackDiv.appendChild(messageSpan);
-            
-            // Add a close button
-            const closeButton = document.createElement('button');
-            closeButton.className = 'btn-close btn-close-white';
-            closeButton.style.position = 'absolute';
-            closeButton.style.right = '10px';
-            closeButton.style.top = '10px';
-            closeButton.style.fontSize = '0.8rem';
-            closeButton.style.opacity = '0.7';
-            closeButton.style.background = 'transparent';
-            closeButton.style.border = 'none';
-            closeButton.style.cursor = 'pointer';
-            closeButton.setAttribute('aria-label', 'Close');
-            closeButton.onmouseover = function() {
-                closeButton.style.opacity = '1';
-            };
-            closeButton.onmouseout = function() {
-                closeButton.style.opacity = '0.7';
-            };
-            closeButton.onclick = function() { 
-                feedbackDiv.style.animation = 'fadeOut 0.3s';
-                setTimeout(() => {
-                    filterFeedbackContainer.removeChild(feedbackDiv);
-                }, 300);
-            };
-            feedbackDiv.appendChild(closeButton);
-            
-            filterFeedbackContainer.appendChild(feedbackDiv);
-            
-            // Add animations
-            const style = document.createElement('style');
-            style.textContent = `
-                @keyframes fadeInAndSlide {
-                    from { opacity: 0; transform: translateY(-10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                @keyframes fadeInUp {
-                    from { opacity: 0; transform: translateY(10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                @keyframes fadeOut {
-                    from { opacity: 1; transform: translateY(0); }
-                    to { opacity: 0; transform: translateY(-10px); }
-                }
-            `;
-            document.head.appendChild(style);
-            
-            // Scroll to make sure feedback is visible
-            feedbackDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            
-            // Auto dismiss after 5 seconds for success messages
-            if (isSuccess) {
-                setTimeout(() => {
-                    if (feedbackDiv.parentNode === filterFeedbackContainer) {
-                        feedbackDiv.style.animation = 'fadeOut 0.5s forwards';
-                        setTimeout(() => {
-                            if (feedbackDiv.parentNode === filterFeedbackContainer) {
-                                filterFeedbackContainer.removeChild(feedbackDiv);
-                            }
-                        }, 500);
-                    }
-                }, 10000); // Increased to 10 seconds for better visibility
-            }
-        };
-        
-        // Preview models affected counter
-        let previewDebounceTimer;
-        const previewContainer = document.createElement('div');
-        previewContainer.id = 'filter-preview-container';
-        previewContainer.style.marginTop = '15px';
-        previewContainer.style.fontSize = '0.9rem';
-        previewContainer.style.padding = '12px 16px';
-        previewContainer.style.borderRadius = '8px';
-        previewContainer.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
-        previewContainer.style.border = '1px solid rgba(52, 152, 219, 0.2)';
-        previewContainer.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.05)';
-        previewContainer.style.display = 'none';
-        previewContainer.style.animation = 'fadeInUp 0.3s ease-out';
-        previewContainer.style.transition = 'all 0.2s ease-in-out';
-        filterFeedbackContainer.appendChild(previewContainer);
-        
-        // Function to preview filter impact
-        const previewFilterImpact = function(inputCost, outputCost) {
-            clearTimeout(previewDebounceTimer);
-            
-            previewContainer.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Calculating impact...';
-            previewContainer.style.display = 'block';
-            
-            // Debounce the actual API call to prevent too many requests while sliding
-            previewDebounceTimer = setTimeout(() => {
-                // Call the API to get a count of models that would be filtered with these settings
-                fetch(`/api/preview_filter_impact?input_cost=${inputCost}&output_cost=${outputCost}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.success) {
-                            const hiddenCount = data.hidden_count || 0;
-                            const totalCount = data.total_count || 0;
-                            
-                            previewContainer.innerHTML = `
-                                <i class="fas fa-info-circle me-2 text-warning"></i>
-                                <span>
-                                    With these settings, <strong>${hiddenCount}</strong> of ${totalCount} models 
-                                    ${hiddenCount === 1 ? 'would be' : 'would be'} disabled.
-                                </span>
-                            `;
-                            
-                            // Hide after 8 seconds of no changes
-                            setTimeout(() => {
-                                previewContainer.style.display = 'none';
-                            }, 8000); // Increased from 5 to 8 seconds for better visibility
-                        } else {
-                            previewContainer.style.display = 'none';
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error previewing filter impact:', error);
-                        previewContainer.style.display = 'none';
-                    });
-            }, 500); // 500ms debounce
-        };
-        
-        // Update UI when sliders change
-        if (maxInputCostSlider) {
-            maxInputCostSlider.addEventListener('input', function() {
-                const value = sliderToInputCost(this.value);
-                updateInputCostUI(value);
-                
-                // Preview impact if both values are valid
-                const outputValue = parseFloat(maxOutputCostValue.value);
-                if (!isNaN(outputValue) && outputValue >= MIN_COST) {
-                    previewFilterImpact(value, outputValue);
-                }
-            });
-        }
-        
-        if (maxOutputCostSlider) {
-            maxOutputCostSlider.addEventListener('input', function() {
-                const value = sliderToOutputCost(this.value);
-                updateOutputCostUI(value);
-                
-                // Preview impact if both values are valid
-                const inputValue = parseFloat(maxInputCostValue.value);
-                if (!isNaN(inputValue) && inputValue >= MIN_COST) {
-                    previewFilterImpact(inputValue, value);
-                }
-            });
-        }
-        
-        // Update sliders when input fields change
-        if (maxInputCostValue) {
-            maxInputCostValue.addEventListener('input', function() {
-                const value = parseFloat(this.value);
-                if (!isNaN(value) && value >= MIN_COST) {
-                    maxInputCostSlider.value = inputCostToSlider(value);
-                    updateInputCostUI(value);
-                    
-                    // Preview impact if both values are valid
-                    const outputValue = parseFloat(maxOutputCostValue.value);
-                    if (!isNaN(outputValue) && outputValue >= MIN_COST) {
-                        previewFilterImpact(value, outputValue);
-                    }
-                }
-            });
-        }
-        
-        if (maxOutputCostValue) {
-            maxOutputCostValue.addEventListener('input', function() {
-                const value = parseFloat(this.value);
-                if (!isNaN(value) && value >= MIN_COST) {
-                    maxOutputCostSlider.value = outputCostToSlider(value);
-                    updateOutputCostUI(value);
-                    
-                    // Preview impact if both values are valid
-                    const inputValue = parseFloat(maxInputCostValue.value);
-                    if (!isNaN(inputValue) && inputValue >= MIN_COST) {
-                        previewFilterImpact(inputValue, value);
-                    }
-                }
-            });
-        }
-        
-        // Save filter settings
-        if (saveFilterSettingsBtn) {
-            saveFilterSettingsBtn.addEventListener('click', function() {
-                // Show saving state
-                saveFilterSettingsBtn.disabled = true;
-                saveFilterSettingsBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Saving...';
-                
-                const inputCost = parseFloat(maxInputCostValue.value);
-                const outputCost = parseFloat(maxOutputCostValue.value);
-                
-                fetch('/api/save_model_filters', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        max_input_cost: inputCost,
-                        max_output_cost: outputCost
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Reset button state
-                    saveFilterSettingsBtn.disabled = false;
-                    saveFilterSettingsBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Filter Settings';
-                    
-                    if (data.success) {
-                        // Count how many models will be hidden
-                        fetch(`/api/preview_filter_impact?input_cost=${inputCost}&output_cost=${outputCost}`)
-                            .then(response => response.json())
-                            .then(previewData => {
-                                const hiddenCount = previewData.hidden_count;
-                                const totalCount = previewData.total_count;
-                                
-                                showFeedback(`
-                                    <strong>Settings saved successfully!</strong><br>
-                                    ${hiddenCount} of ${totalCount} models will be disabled based on your cost limits.<br>
-                                    Models exceeding your limits will appear greyed out in the model selection panel.<br>
-                                    <a href="/" class="text-info">Return to Chat</a> to see your changes.
-                                `, true);
-                                
-                                // Scroll to the notification to make sure it's visible
-                                filterFeedbackContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                            })
-                            .catch(() => {
-                                // Fallback if preview request fails
-                                showFeedback(`
-                                    <strong>Settings saved successfully!</strong><br>
-                                    Models exceeding your cost limits will appear greyed out in the chat interface.<br>
-                                    <a href="/" class="text-info">Return to Chat</a> to see your changes.
-                                `, true);
-                            });
-                    } else {
-                        showFeedback(`
-                            <strong>Error saving settings</strong><br>
-                            ${data.error || 'Unable to save your changes. Please try again.'}
-                        `, false);
-                    }
-                })
-                .catch(error => {
-                    // Reset button state
-                    saveFilterSettingsBtn.disabled = false;
-                    saveFilterSettingsBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Filter Settings';
-                    
-                    showFeedback('Error saving model filter settings: ' + (error.message || 'Unable to connect to server. Please try again.'), false);
-                    console.error('Error saving model filter settings:', error);
-                });
-            });
-        }
-        
-        // Load initial values from server
-        fetch('/api/get_model_filters')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Set slider and input field values
-                    if (maxInputCostSlider && maxInputCostValue) {
-                        const inputCost = data.max_input_cost;
-                        maxInputCostSlider.value = inputCostToSlider(inputCost);
-                        updateInputCostUI(inputCost);
-                    }
-                    
-                    if (maxOutputCostSlider && maxOutputCostValue) {
-                        const outputCost = data.max_output_cost;
-                        maxOutputCostSlider.value = outputCostToSlider(outputCost);
-                        updateOutputCostUI(outputCost);
-                    }
-                } else {
-                    console.error('Error loading filter settings:', data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error loading filter settings:', error);
-            });
-    };
-    
-    // Initialize model filter sliders
-    handleModelFilterSliders();
 });
 </script>
 {% endblock %}

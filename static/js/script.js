@@ -224,11 +224,6 @@ document.addEventListener('DOMContentLoaded', function() {
     let allModels = []; // All models from OpenRouter
     let userPreferences = {}; // User preferences for preset buttons
     
-    // Model cost filter settings
-    let maxInputCost = 150.0;  // Default maximum value (effectively no filter)
-    let maxOutputCost = 600.0; // Default maximum value (effectively no filter)
-    let modelsHiddenByFilter = 0; // Track how many models are hidden by cost filters
-    
     // Filter configurations for each preset
     const presetFilters = {
         '1': (model) => !model.is_free, // All non-free models
@@ -246,19 +241,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Default model IDs for each preset button
     const defaultModels = {
         '1': 'google/gemini-2.5-pro-preview-03-25',
-        '2': 'anthropic/claude-3.7-sonnet', // Ensure this is NOT set to openai/o1-pro (costs $5 input, $15 output)
+        '2': 'anthropic/claude-3.7-sonnet',
         '3': 'openai/o4-Mini-High',
         '4': 'openai/gpt-4o', // Vision model for multimodal capabilities
         '5': 'perplexity/sonar-pro',
         '6': 'google/gemini-2.0-flash-exp:free'
     };
-    
-    // Manually blacklist specific expensive models that should never be used regardless of settings
-    const expensiveModelBlacklist = [
-        'openai/o1-pro',      // $5.00 input / $15.00 output
-        'cohere/command-r-plus', // Very expensive for both input/output
-        'anthropic/claude-3-opus'  // $15.00 input / $75.00 output
-    ];
     
     // Free model fallbacks (in order of preference)
     const freeModelFallbacks = [
@@ -801,75 +789,12 @@ document.addEventListener('DOMContentLoaded', function() {
             currentPresetId = presetId;
             
             // Get the model ID for this preset
-            const modelId = userPreferences[presetId] || defaultModels[presetId];
-            
-            // Check if the model exceeds cost filters (skip this check for free models preset)
-            if (presetId !== '6' && allModels.length > 0) {
-                const model = allModels.find(m => m.id === modelId);
-                if (model) {
-                    const inputCost = model.pricing?.prompt || 0;
-                    const outputCost = model.pricing?.completion || 0;
-                    
-                    if (inputCost > maxInputCost || outputCost > maxOutputCost) {
-                        console.warn(`Model ${modelId} exceeds cost filters, finding alternative...`);
-                        
-                        // Find a compliant model for this preset and update userPreferences
-                        const compliantModelId = findCostFilterCompliantModel(presetId);
-                        userPreferences[presetId] = compliantModelId;
-                        
-                        // Update the button text
-                        const nameSpan = activeButton.querySelector('.model-name');
-                        if (nameSpan) {
-                            if (presetId === '6') {
-                                nameSpan.textContent = 'FREE - ' + formatModelName(compliantModelId, true);
-                            } else {
-                                nameSpan.textContent = formatModelName(compliantModelId);
-                            }
-                        }
-                        
-                        // Show a notification about the model change
-                        showNotification(`Model ${formatModelName(modelId)} exceeds your cost filter settings. Using ${formatModelName(compliantModelId)} instead.`);
-                        
-                        // Save the new preference to server
-                        saveModelPreference(presetId, compliantModelId);
-                        
-                        // Use the compliant model
-                        currentModel = compliantModelId;
-                    } else {
-                        // Model is compliant with cost filters
-                        currentModel = modelId;
-                    }
-                } else {
-                    // Can't find model details, use as is
-                    currentModel = modelId;
-                }
-            } else {
-                // Free models or no model data loaded yet
-                currentModel = modelId;
-            }
-            
+            currentModel = userPreferences[presetId] || defaultModels[presetId];
             console.log(`Selected preset ${presetId} with model: ${currentModel}`);
             
             // Update multimodal controls based on the selected model
             updateMultimodalControls(currentModel);
         }
-    }
-    
-    // Function to show a notification
-    function showNotification(message, duration = 5000) {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = 'model-filter-notification';
-        notification.innerHTML = `<p>${message}</p>`;
-        
-        // Append to body
-        document.body.appendChild(notification);
-        
-        // Auto-remove after duration
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            setTimeout(() => notification.remove(), 500);
-        }, duration);
     }
     
     // Function to update multimodal controls (image upload, camera) based on model capability
@@ -899,110 +824,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to fetch user preferences for model presets
-    // Find a model that complies with cost filters for a specific preset
-    function findCostFilterCompliantModel(presetId) {
-        // For free models preset, return the default free model regardless of cost filters
-        if (presetId === '6') {
-            return defaultModels['6'];
-        }
-        
-        // Start with the default model for this preset
-        let candidateModelId = defaultModels[presetId];
-        
-        // First check if the model is in the blacklist of expensive models
-        if (expensiveModelBlacklist.includes(candidateModelId)) {
-            console.warn(`Model ${candidateModelId} is blacklisted as extremely expensive, finding alternative...`);
-            // Force finding an alternative model
-            candidateModelId = null;
-        }
-        
-        // If we don't have models loaded yet, we can't filter, so return the default
-        if (!allModels || allModels.length === 0) {
-            console.warn(`No models loaded yet, using default for preset ${presetId}: ${candidateModelId || 'NEED ALTERNATIVE'}`);
-            
-            // If the default was blacklisted, return a safe fallback
-            if (!candidateModelId) {
-                console.warn('Using claude-instant as a safe fallback');
-                return 'anthropic/claude-3-haiku-20240307';
-            }
-            
-            return candidateModelId;
-        }
-        
-        // Check if the default model complies with cost filters (if not already blacklisted)
-        if (candidateModelId) {
-            const defaultModel = allModels.find(m => m.id === candidateModelId);
-            if (defaultModel) {
-                const inputCost = defaultModel.pricing?.prompt || 0;
-                const outputCost = defaultModel.pricing?.completion || 0;
-                
-                // Log explicit details about why a model is rejected
-                if (inputCost > maxInputCost) {
-                    console.warn(`Model ${candidateModelId} exceeds input cost filter: $${inputCost.toFixed(2)} > $${maxInputCost.toFixed(2)}`);
-                    candidateModelId = null;
-                } else if (outputCost > maxOutputCost) {
-                    console.warn(`Model ${candidateModelId} exceeds output cost filter: $${outputCost.toFixed(2)} > $${maxOutputCost.toFixed(2)}`);
-                    candidateModelId = null;
-                } else {
-                    // Default model is okay, use it
-                    return candidateModelId;
-                }
-            }
-        }
-        
-        // Default model doesn't comply or was blacklisted, find an alternative that fits the preset filter and cost filters
-        console.warn(`Need to find alternative for preset ${presetId}`);
-        
-        // Get the filter function for this preset
-        const presetFilter = presetFilters[presetId];
-        
-        // Find all models that match the preset filter, cost filters, and are not blacklisted
-        const compatibleModels = allModels.filter(model => {
-            // Check if model is blacklisted
-            if (expensiveModelBlacklist.includes(model.id)) {
-                return false;
-            }
-            
-            const inputCost = model.pricing?.prompt || 0;
-            const outputCost = model.pricing?.completion || 0;
-            return presetFilter(model) && inputCost <= maxInputCost && outputCost <= maxOutputCost;
-        });
-        
-        if (compatibleModels.length > 0) {
-            // Sort by a combination of quality and cost
-            // Higher quality models first, but within similar quality bands, prefer lower cost
-            compatibleModels.sort((a, b) => {
-                // First try to sort by quality (higher first)
-                const qualityDiff = (b.quality_score || 0) - (a.quality_score || 0);
-                if (Math.abs(qualityDiff) > 0.1) { // If quality difference is significant
-                    return qualityDiff;
-                }
-                
-                // For similar quality models, prefer lower total cost
-                const aTotalCost = (a.pricing?.prompt || 0) + (a.pricing?.completion || 0);
-                const bTotalCost = (b.pricing?.prompt || 0) + (b.pricing?.completion || 0);
-                return aTotalCost - bTotalCost;
-            });
-            
-            // Use the best matching model
-            const bestMatch = compatibleModels[0].id;
-            console.log(`Found cost-compliant alternative for preset ${presetId}: ${bestMatch}`);
-            return bestMatch;
-        }
-        
-        // If no models match both the preset filter and cost filters,
-        // we need a fallback - use a free model as absolute last resort
-        console.warn(`No models match both preset ${presetId} filter and cost filters, using a free model`);
-        return defaultModels['6']; // Free model fallback
-    }
-
     function fetchUserPreferences() {
-        // First fetch models so we can validate preferences against them
-        fetchAvailableModels()
-            .then(() => {
-                // Now fetch user preferences
-                return fetch('/get_preferences');
-            })
+        fetch('/get_preferences')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -1012,84 +835,28 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.preferences) {
                     // Validate preferences to ensure presets 1-5 don't have free models
-                    // AND to ensure they comply with cost filters
                     const validatedPreferences = {};
                     
                     for (const presetId in data.preferences) {
                         const modelId = data.preferences[presetId];
                         const isFreeModel = modelId.includes(':free');
-                        let useAlternativeModel = false;
-                        let reasonForChange = "";
                         
-                        // Check if model is blacklisted as extremely expensive
-                        if (expensiveModelBlacklist.includes(modelId)) {
-                            useAlternativeModel = true;
-                            reasonForChange = `Model ${modelId} is blacklisted as extremely expensive (hardcoded)`;
-                        }
-                        // If it's preset 1-5 and has a free model, find an alternative
-                        else if (presetId !== '6' && isFreeModel) {
-                            useAlternativeModel = true;
-                            reasonForChange = `Preset ${presetId} has a free model (${modelId})`;
-                        } 
-                        
-                        // Check if model exceeds cost filters (for non-free presets)
-                        else if (presetId !== '6' && allModels.length > 0) {
-                            const model = allModels.find(m => m.id === modelId);
-                            if (model) {
-                                const inputCost = model.pricing?.prompt || 0;
-                                const outputCost = model.pricing?.completion || 0;
-                                
-                                if (inputCost > maxInputCost || outputCost > maxOutputCost) {
-                                    useAlternativeModel = true;
-                                    reasonForChange = `Model ${modelId} exceeds cost filters (Input: $${inputCost.toFixed(2)} > $${maxInputCost.toFixed(2)} or Output: $${outputCost.toFixed(2)} > $${maxOutputCost.toFixed(2)})`;
-                                }
+                        // If it's preset 1-5 and has a free model, use the default non-free model
+                        if (presetId !== '6' && isFreeModel) {
+                            console.warn(`Preset ${presetId} has a free model (${modelId}), reverting to default`);
+                            validatedPreferences[presetId] = defaultModels[presetId];
+                            
+                            // Note: Preset 4 is our vision model (openai/gpt-4o) for multimodal capabilities
+                            if (presetId === '4') {
+                                console.log(`Ensuring preset 4 uses vision-capable model: ${defaultModels['4']}`);
                             }
-                        }
-                        
-                        if (useAlternativeModel) {
-                            console.warn(`${reasonForChange}, finding alternative...`);
-                            validatedPreferences[presetId] = findCostFilterCompliantModel(presetId);
                         } else {
                             validatedPreferences[presetId] = modelId;
-                        }
-                        
-                        // Special handling for preset 4 (vision model)
-                        if (presetId === '4') {
-                            const model = allModels.find(m => m.id === validatedPreferences[presetId]);
-                            if (model && !model.is_multimodal) {
-                                console.warn(`Selected model for preset 4 (${validatedPreferences[presetId]}) is not multimodal, finding alternative...`);
-                                // Try to find a multimodal model that meets cost filters
-                                const multimodalModels = allModels.filter(m => 
-                                    m.is_multimodal && 
-                                    (m.pricing?.prompt || 0) <= maxInputCost && 
-                                    (m.pricing?.completion || 0) <= maxOutputCost
-                                );
-                                
-                                if (multimodalModels.length > 0) {
-                                    // Sort by quality score
-                                    multimodalModels.sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0));
-                                    validatedPreferences[presetId] = multimodalModels[0].id;
-                                    console.log(`Found multimodal alternative for preset 4: ${validatedPreferences[presetId]}`);
-                                }
-                            }
                         }
                     }
                     
                     userPreferences = validatedPreferences;
-                    console.log('Loaded and validated user preferences:', userPreferences);
-                    
-                    // Update button text to reflect preferences
-                    updatePresetButtonLabels();
-                    
-                    // Select the first preset by default
-                    selectPresetButton('1');
-                } else {
-                    // No preferences, set defaults that comply with cost filters
-                    userPreferences = {};
-                    for (const presetId in defaultModels) {
-                        userPreferences[presetId] = findCostFilterCompliantModel(presetId);
-                    }
-                    console.log('No user preferences, using filtered defaults:', userPreferences);
+                    console.log('Loaded user preferences:', userPreferences);
                     
                     // Update button text to reflect preferences
                     updatePresetButtonLabels();
@@ -1097,21 +864,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Select the first preset by default
                     selectPresetButton('1');
                 }
+                
+                // After loading preferences, fetch available models
+                fetchAvailableModels();
             })
             .catch(error => {
-                console.error('Error in preference/model loading sequence:', error);
+                console.error('Error fetching preferences:', error);
+                // Still try to fetch models if preferences fail
+                fetchAvailableModels();
                 
-                // In case of error, use defaults that comply with cost filters
-                userPreferences = {};
-                for (const presetId in defaultModels) {
-                    userPreferences[presetId] = findCostFilterCompliantModel(presetId);
-                }
-                console.log('Error occurred, using filtered defaults:', userPreferences);
-                
-                // Update button text to reflect preferences
-                updatePresetButtonLabels();
-                
-                // Select the first preset by default
+                // Use defaults and select first preset
                 selectPresetButton('1');
             });
     }
@@ -1130,13 +892,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else {
                         nameSpan.textContent = formatModelName(modelId);
                     }
-                }
-                
-                // Add tooltip showing current filter settings (except for free model preset)
-                if (presetId !== '6') {
-                    button.title = `Model filters: Max input cost $${maxInputCost}, Max output cost $${maxOutputCost} per million tokens`;
-                } else {
-                    button.title = 'Free models (not affected by cost filters)';
                 }
             }
         }
@@ -1181,76 +936,27 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to fetch available models from OpenRouter
     function fetchAvailableModels() {
-        // Return a Promise so we can properly chain this with other async operations
-        return new Promise((resolve, reject) => {
-            // Use the new filtered_models endpoint which applies cost filters on the server
-            fetch('/api/filtered_models')
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! Status: ${response.status}`);
+        fetch('/models')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.data && Array.isArray(data.data)) {
+                    allModels = data.data;
+                    console.log(`Loaded ${allModels.length} models from OpenRouter`);
+                    
+                    // Update multimodal controls for the current model
+                    if (currentModel) {
+                        updateMultimodalControls(currentModel);
                     }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.success && data.models && Array.isArray(data.models)) {
-                        // Store all models
-                        allModels = data.models;
-                        console.log(`Loaded ${allModels.length} filtered models from server`);
-                        
-                        // Set the hidden models count from the server response
-                        modelsHiddenByFilter = data.hidden_count || 0;
-                        
-                        // Update current filter settings
-                        maxInputCost = data.filter_settings?.max_input_cost || 1500.0;
-                        maxOutputCost = data.filter_settings?.max_output_cost || 1500.0;
-                        
-                        // Update multimodal controls for the current model
-                        if (currentModel) {
-                            updateMultimodalControls(currentModel);
-                        }
-                        
-                        if (modelsHiddenByFilter > 0) {
-                            console.warn(`${modelsHiddenByFilter} models exceed cost filters (input: $${maxInputCost}, output: $${maxOutputCost})`);
-                            
-                            // Update the model filter indicator in the UI
-                            updateModelFilterIndicator(modelsHiddenByFilter);
-                        } else {
-                            // No models are filtered, hide the indicator
-                            hideModelFilterIndicator();
-                        }
-                        
-                        resolve(allModels); // Resolve the promise with the loaded models
-                    } else if (data.data && Array.isArray(data.data)) {
-                        // Fallback to old format if needed
-                        allModels = data.data;
-                        console.log(`Loaded ${allModels.length} models from OpenRouter (old format)`);
-                        resolve(allModels);
-                    } else {
-                        console.warn("No models returned from server or unexpected format");
-                        resolve([]); // Resolve with empty array if no models found
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching filtered models:', error);
-                    // Fallback to original endpoint if filtered endpoint fails
-                    console.log('Falling back to unfiltered models endpoint');
-                    fetch('/models')
-                        .then(response => response.json())
-                        .then(data => {
-                            if (data.data && Array.isArray(data.data)) {
-                                allModels = data.data;
-                                console.log(`Loaded ${allModels.length} models from fallback endpoint`);
-                                resolve(allModels);
-                            } else {
-                                resolve([]);
-                            }
-                        })
-                        .catch(fallbackError => {
-                            console.error('Fallback also failed:', fallbackError);
-                            reject(error);
-                        });
-                });
-        });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching models:', error);
+            });
     }
     
     // Function to open the model selector for a specific preset
@@ -1317,92 +1023,45 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get filter function for this preset
         const filterFn = presetFilters[presetId] || (() => true);
         
-        // For preset 6 (free models), show all free models regardless of cost filters
-        // For other presets, apply both the preset filter and optionally show models that exceed cost filters with warning
-        
-        // Get all models matching the preset filter
-        let filteredModels = allModels.filter(filterFn);
-        
-        // Count how many models exceed the cost filter
-        let costFilteredModels = 0;
-        if (presetId !== '6') {  // Don't count for free models preset
-            costFilteredModels = filteredModels.filter(model => {
-                const inputCost = model.pricing?.prompt || 0;
-                const outputCost = model.pricing?.completion || 0;
-                return !model.is_free && (inputCost > maxInputCost || outputCost > maxOutputCost);
-            }).length;
-            
-            // Add a notice at the top if there are filtered models
-            if (costFilteredModels > 0) {
-                const notice = document.createElement('div');
-                notice.className = 'models-hidden-notice';
-                notice.innerHTML = `
-                    <p>
-                        <i class="fas fa-filter"></i> 
-                        ${costFilteredModels} model${costFilteredModels !== 1 ? 's' : ''} exceed${costFilteredModels === 1 ? 's' : ''} your cost filters.
-                        <a href="/billing/account#settings" class="filter-settings-link">Change filters</a>
-                    </p>
-                `;
-                modelList.appendChild(notice);
-            }
-        }
-        
-        // Sort models
-        filteredModels.sort((a, b) => {
-            // Special handling for preset 4 (vision models)
-            if (presetId === '4') {
-                // Always put GPT-4o at the top
-                if (a.id === 'openai/gpt-4o') return -1;
-                if (b.id === 'openai/gpt-4o') return 1;
+        // Filter and sort models
+        const filteredModels = allModels
+            .filter(filterFn)
+            .sort((a, b) => {
+                // Special handling for preset 4 (vision models)
+                if (presetId === '4') {
+                    // Always put GPT-4o at the top
+                    if (a.id === 'openai/gpt-4o') return -1;
+                    if (b.id === 'openai/gpt-4o') return 1;
+                    
+                    // Put Claude vision models next
+                    const aIsClaudeVision = a.id.includes('claude') && a.is_multimodal;
+                    const bIsClaudeVision = b.id.includes('claude') && b.is_multimodal;
+                    
+                    if (aIsClaudeVision && !bIsClaudeVision) return -1;
+                    if (!aIsClaudeVision && bIsClaudeVision) return 1;
+                    
+                    // Put Gemini vision models next
+                    const aIsGeminiVision = a.id.includes('gemini') && a.is_multimodal;
+                    const bIsGeminiVision = b.id.includes('gemini') && b.is_multimodal;
+                    
+                    if (aIsGeminiVision && !bIsGeminiVision) return -1;
+                    if (!aIsGeminiVision && bIsGeminiVision) return 1;
+                }
                 
-                // Put Claude vision models next
-                const aIsClaudeVision = a.id.includes('claude') && a.is_multimodal;
-                const bIsClaudeVision = b.id.includes('claude') && b.is_multimodal;
+                // Free models at the bottom
+                if (a.is_free && !b.is_free) return 1;
+                if (!a.is_free && b.is_free) return -1;
                 
-                if (aIsClaudeVision && !bIsClaudeVision) return -1;
-                if (!aIsClaudeVision && bIsClaudeVision) return 1;
-                
-                // Put Gemini vision models next
-                const aIsGeminiVision = a.id.includes('gemini') && a.is_multimodal;
-                const bIsGeminiVision = b.id.includes('gemini') && b.is_multimodal;
-                
-                if (aIsGeminiVision && !bIsGeminiVision) return -1;
-                if (!aIsGeminiVision && bIsGeminiVision) return 1;
-            }
-            
-            // For non-free presets, models that exceed cost filter should be at the bottom
-            if (presetId !== '6' && !a.is_free && !b.is_free) {
-                const aExceedsCost = (a.pricing?.prompt || 0) > maxInputCost || (a.pricing?.completion || 0) > maxOutputCost;
-                const bExceedsCost = (b.pricing?.prompt || 0) > maxInputCost || (b.pricing?.completion || 0) > maxOutputCost;
-                
-                if (aExceedsCost && !bExceedsCost) return 1;  // a exceeds cost, move to bottom
-                if (!aExceedsCost && bExceedsCost) return -1; // b exceeds cost, move to bottom
-            }
-            
-            // Free models at the bottom
-            if (a.is_free && !b.is_free) return 1;
-            if (!a.is_free && b.is_free) return -1;
-            
-            // Sort by pricing (cheapest first)
-            const aPrice = a.pricing?.prompt || 0;
-            const bPrice = b.pricing?.prompt || 0;
-            return aPrice - bPrice;
-        });
+                // Sort by pricing (cheapest first)
+                const aPrice = a.pricing?.prompt || 0;
+                const bPrice = b.pricing?.prompt || 0;
+                return aPrice - bPrice;
+            });
         
         // Add each model to the list
         filteredModels.forEach(model => {
             const li = document.createElement('li');
             li.dataset.modelId = model.id;
-            
-            // Check if model exceeds cost filters
-            const inputCost = model.pricing?.prompt || 0;
-            const outputCost = model.pricing?.completion || 0;
-            const exceedsCostFilter = !model.is_free && (inputCost > maxInputCost || outputCost > maxOutputCost);
-            
-            // Add class to indicate models that exceed cost filters
-            if (exceedsCostFilter && presetId !== '6') {
-                li.classList.add('exceeds-cost-filter');
-            }
             
             // Create model name element
             const nameSpan = document.createElement('span');
@@ -1422,44 +1081,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 li.appendChild(freeTag);
             }
             
-            // Add tag for filtered models (exceeding cost filter)
-            if (exceedsCostFilter && presetId !== '6') {
-                const filteredTag = document.createElement('span');
-                filteredTag.className = 'filtered-tag';
-                filteredTag.textContent = 'FILTERED';
-                li.appendChild(filteredTag);
-                
-                // Tooltip with details about why it's filtered
-                li.title = `This model exceeds your cost filter settings:
-- Model costs: Input $${inputCost.toFixed(2)}, Output $${outputCost.toFixed(2)} per million tokens
-- Your filters: Max input $${maxInputCost.toFixed(2)}, Max output $${maxOutputCost.toFixed(2)}`;
-            }
-            
             li.appendChild(nameSpan);
             li.appendChild(providerSpan);
             
-            // Add click handler based on whether model is filtered or not
+            // Add click handler to select this model
             li.addEventListener('click', function() {
-                if (exceedsCostFilter && presetId !== '6') {
-                    // For filtered models, redirect to settings page instead of selecting
-                    const wantToChangeSettings = confirm(`${model.name} exceeds your cost filter settings:
-
-• Model costs: Input $${inputCost.toFixed(2)}, Output $${outputCost.toFixed(2)} per million tokens
-• Your filters: Max input $${maxInputCost.toFixed(2)}, Max output $${maxOutputCost.toFixed(2)}
-
-Would you like to go to the settings page to adjust your filters?`);
-                    
-                    if (wantToChangeSettings) {
-                        // Close the model selector
-                        closeModelSelector();
-                        
-                        // Navigate to settings page
-                        window.location.href = '/billing/account#settings';
-                    }
-                    return; // Don't select the model regardless of response
-                }
-                
-                // For models that pass the filter, select as normal
                 selectModelForPreset(currentlyEditingPresetId, model.id);
             });
             
@@ -1497,21 +1123,6 @@ Would you like to go to the settings page to adjust your filters?`);
         if (presetId !== '6' && isFreeModel) {
             alert('Free models can only be selected for Preset 6');
             return;
-        }
-        
-        // Check if the model exceeds cost filters (skip this check for the free preset)
-        if (presetId !== '6') {
-            const model = allModels.find(m => m.id === modelId);
-            if (model) {
-                const inputCost = model.pricing?.prompt || 0;
-                const outputCost = model.pricing?.completion || 0;
-                
-                if (inputCost > maxInputCost || outputCost > maxOutputCost) {
-                    // Alert with details about why this model can't be used
-                    alert(`This model (${model.name}) exceeds your cost filter settings.\n\nModel costs:\n- Input: $${inputCost.toFixed(2)} per million tokens\n- Output: $${outputCost.toFixed(2)} per million tokens\n\nYour filters:\n- Max input cost: $${maxInputCost.toFixed(2)}\n- Max output cost: $${maxOutputCost.toFixed(2)}\n\nTo use this model, adjust your filter settings in Account > Settings.`);
-                    return; // Stop execution here
-                }
-            }
         }
         
         // Update the UI
@@ -2078,63 +1689,6 @@ Would you like to go to the settings page to adjust your filters?`);
     function sendMessageToBackend(message, modelId, typingIndicator) {
         // Check if we need to make a multimodal message
         const isMultimodalMessage = attachedImageUrls.length > 0;
-        
-        // Special handling for specific expensive models we know are problematic
-        if (modelId === 'openai/o1-pro' && currentPresetId !== '6') {
-            console.error(`Blocked attempt to use openai/o1-pro which costs $5.00 input / $15.00 output`);
-            
-            // Add an explicit error for o1-pro
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'message error-message';
-            errorDiv.innerHTML = `
-                <div class="message-content">
-                    <p><i class="fas fa-exclamation-triangle"></i> OpenAI o1-pro is an extremely expensive model ($5.00 input / $15.00 output) that exceeds your cost filters.</p>
-                    <p>This model has been blocked to prevent accidental usage. Please <a href="/billing/account#settings">adjust your filter settings</a> if you need to use this model.</p>
-                </div>
-            `;
-            chatMessages.appendChild(errorDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // Remove typing indicator
-            if (typingIndicator) {
-                typingIndicator.remove();
-            }
-            
-            return; // Stop execution here
-        }
-        
-        // First, check if the model exceeds our cost filters (except for free models preset 6)
-        const model = allModels.find(m => m.id === modelId);
-        if (model && currentPresetId !== '6') {
-            const inputCost = model.pricing?.prompt || 0;
-            const outputCost = model.pricing?.completion || 0;
-            
-            console.log(`Checking if model ${modelId} exceeds cost filters: Input $${inputCost.toFixed(2)} (max $${maxInputCost.toFixed(2)}), Output $${outputCost.toFixed(2)} (max $${maxOutputCost.toFixed(2)})`);
-            
-            if (inputCost > maxInputCost || outputCost > maxOutputCost) {
-                // Model exceeds our filter limits, show an error
-                const errorMessage = `This model exceeds your cost filter settings (Input: $${inputCost.toFixed(2)} > $${maxInputCost.toFixed(2)} or Output: $${outputCost.toFixed(2)} > $${maxOutputCost.toFixed(2)}). Please adjust your filter settings or choose a different model.`;
-                
-                // Add an error message in the chat
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'message error-message';
-                errorDiv.innerHTML = `
-                    <div class="message-content">
-                        <p><i class="fas fa-exclamation-triangle"></i> ${errorMessage}</p>
-                        <p>Consider using a less expensive model or <a href="/billing/account#settings">adjust your filter settings</a>.</p>
-                    </div>
-                `;
-                chatMessages.appendChild(errorDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-                
-                // Remove typing indicator
-                if (typingIndicator) {
-                    typingIndicator.remove();
-                }
-                
-                return; // Stop execution here
-            }
-        }
         
         // Always create a content array (OpenRouter's unified format)
         // Even for text-only messages, this ensures consistent payload structure
@@ -2895,368 +2449,6 @@ Would you like to go to the settings page to adjust your filters?`);
             from { opacity: 0; }
             to   { opacity: 1; }
         }
-        .models-hidden-notice {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #191c20;
-            border-radius: 6px;
-            text-align: center;
-            font-size: 0.9rem;
-        }
-        .filter-settings-link {
-            color: #14b8a6;
-            text-decoration: underline;
-            cursor: pointer;
-        }
-        
-        /* Notification for filter changes */
-        .model-filter-notification {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background-color: #14b8a6;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            z-index: 9999;
-            font-size: 14px;
-            text-align: center;
-            animation: slideDown 0.3s ease-out forwards;
-            opacity: 1;
-            transition: opacity 0.3s ease-out;
-        }
-        
-        @keyframes slideDown {
-            from { transform: translate(-50%, -20px); opacity: 0; }
-            to { transform: translate(-50%, 0); opacity: 1; }
-        }
     `;
     document.head.appendChild(style);
-    
-    // Function to load model filter settings
-    function loadModelFilterSettings() {
-        if (!isAuthenticated) return Promise.resolve(); // Only load for authenticated users
-        
-        return new Promise((resolve, reject) => {
-            fetch('/api/get_model_filters')
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Update global variables with filter settings
-                        maxInputCost = data.max_input_cost;
-                        maxOutputCost = data.max_output_cost;
-                        console.log(`Loaded model filters: Input $${maxInputCost}, Output $${maxOutputCost}`);
-                        
-                        // Reload models to apply new filters
-                        fetchAvailableModels();
-                        
-                        // Update tooltips on model buttons
-                        updatePresetButtonLabels();
-                        
-                        resolve(data);
-                    } else {
-                        console.error('Error loading model filter settings:', data.error);
-                        reject(new Error(data.error || 'Unknown error'));
-                    }
-                })
-                .catch(error => {
-                    console.error('Error fetching model filter settings:', error);
-                    reject(error);
-                });
-        });
-    }
-    
-    // Call to load the settings on page load
-    loadModelFilterSettings();
-    
-    // Check if we're coming back from account settings 
-    // (indicated by a URL parameter or hash)
-    function checkReturnFromSettings() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const fromSettings = urlParams.get('from_settings');
-        const hash = window.location.hash;
-        
-        if (fromSettings === 'true' || hash === '#from_settings') {
-            console.log('Detected return from settings page, reloading model filters');
-            // Remove the parameter/hash from URL to prevent repeated reloads
-            const newUrl = window.location.pathname;
-            window.history.replaceState({}, document.title, newUrl);
-            
-            // Reload filter settings and refresh models
-            loadModelFilterSettings()
-                .then(() => {
-                    // Show notification to user
-                    const notification = document.createElement('div');
-                    notification.className = 'model-filter-notification';
-                    
-                    // Create a more detailed notification that shows the filter values
-                    const notificationContent = document.createElement('div');
-                    notificationContent.innerHTML = `
-                        <strong>Model filter settings applied</strong>
-                        <div style="font-size: 0.9em; margin-top: 5px;">
-                            <div>Max input cost: $${maxInputCost.toFixed(2)}</div>
-                            <div>Max output cost: $${maxOutputCost.toFixed(2)}</div>
-                        </div>
-                    `;
-                    notification.appendChild(notificationContent);
-                    document.body.appendChild(notification);
-                    
-                    // Fade out and remove after delay
-                    setTimeout(() => {
-                        notification.style.opacity = '0';
-                        setTimeout(() => notification.remove(), 500);
-                    }, 3000);
-                });
-        }
-    }
-    
-    // Call the function to check if we're returning from settings
-    checkReturnFromSettings();
-    
-    // Override populateModelList to apply cost filters
-    const originalPopulateModelList = populateModelList;
-    populateModelList = function(presetId) {
-        // Clear existing items
-        modelList.innerHTML = '';
-        
-        if (!allModels || allModels.length === 0) {
-            const placeholder = document.createElement('li');
-            placeholder.textContent = 'Loading models...';
-            modelList.appendChild(placeholder);
-            return;
-        }
-        
-        // Get filter function for this preset
-        const filterFn = presetFilters[presetId] || (() => true);
-        
-        // Modified filter to include cost filtering
-        const combinedFilterFn = (model) => {
-            // Skip cost filter for free models (preset 6)
-            if (presetId === '6') return filterFn(model);
-            
-            // Apply the original preset filter first
-            if (!filterFn(model)) return false;
-            
-            // Get model costs
-            const inputCost = model.pricing?.prompt || 0;
-            const outputCost = model.pricing?.completion || 0;
-            
-            // Apply cost filters
-            return inputCost <= maxInputCost && outputCost <= maxOutputCost;
-        };
-        
-        // IMPROVEMENT: We'll also create a function to check if a model is filtered by cost
-        // This allows us to display filtered models but mark them as unavailable
-        const isFilteredByCost = (model) => {
-            if (presetId === '6') return false; // Skip cost filter for free models
-            const inputCost = model.pricing?.prompt || 0;
-            const outputCost = model.pricing?.completion || 0;
-            return inputCost > maxInputCost || outputCost > maxOutputCost;
-        };
-        
-        // Get all models that would pass the preset filter without cost filter
-        const presetFilteredModels = allModels.filter(filterFn);
-        
-        // IMPROVEMENT: Instead of hiding filtered models completely, we'll show them as disabled
-        // This gives users better feedback about why certain models aren't available
-        
-        // First get all models that pass the preset-specific filter
-        const visibleModels = presetFilteredModels.sort((a, b) => {
-                // Special handling for preset 4 (vision models)
-                if (presetId === '4') {
-                    // Always put GPT-4o at the top
-                    if (a.id === 'openai/gpt-4o') return -1;
-                    if (b.id === 'openai/gpt-4o') return 1;
-                    
-                    // Put Claude vision models next
-                    const aIsClaudeVision = a.id.includes('claude') && a.is_multimodal;
-                    const bIsClaudeVision = b.id.includes('claude') && b.is_multimodal;
-                    
-                    if (aIsClaudeVision && !bIsClaudeVision) return -1;
-                    if (!aIsClaudeVision && bIsClaudeVision) return 1;
-                    
-                    // Put Gemini vision models next
-                    const aIsGeminiVision = a.id.includes('gemini') && a.is_multimodal;
-                    const bIsGeminiVision = b.id.includes('gemini') && b.is_multimodal;
-                    
-                    if (aIsGeminiVision && !bIsGeminiVision) return -1;
-                    if (!aIsGeminiVision && bIsGeminiVision) return 1;
-                }
-                
-                // Free models at the bottom
-                if (a.is_free && !b.is_free) return 1;
-                if (!a.is_free && b.is_free) return -1;
-                
-                // Sort by pricing (cheapest first)
-                const aPrice = a.pricing?.prompt || 0;
-                const bPrice = b.pricing?.prompt || 0;
-                return aPrice - bPrice;
-            });
-        
-        // Show all presetFilteredModels but mark those that exceed cost thresholds
-        // First, keep count of models that exceed filter
-        let exceededFilterCount = 0;
-        
-        // Add each model to the list, including those that exceed cost filters
-        presetFilteredModels.forEach(model => {
-            const li = document.createElement('li');
-            li.dataset.modelId = model.id;
-            
-            // Check if this model exceeds cost filters
-            const filteredOut = isFilteredByCost(model);
-            if (filteredOut) {
-                exceededFilterCount++;
-                li.classList.add('filtered-by-cost');
-                
-                // Get specific costs to show in the filter reason
-                const inputCost = model.pricing?.prompt || 0;
-                const outputCost = model.pricing?.completion || 0;
-                
-                // Determine which filter(s) this model violates
-                let filterViolations = [];
-                if (inputCost > maxInputCost) filterViolations.push(`Input: $${inputCost.toFixed(2)} > $${maxInputCost.toFixed(2)}`);
-                if (outputCost > maxOutputCost) filterViolations.push(`Output: $${outputCost.toFixed(2)} > $${maxOutputCost.toFixed(2)}`);
-            }
-            
-            // Create model name element
-            const nameSpan = document.createElement('span');
-            nameSpan.className = 'model-name';
-            nameSpan.textContent = model.name;
-            
-            // Create provider badge
-            const providerSpan = document.createElement('span');
-            providerSpan.className = 'model-provider';
-            providerSpan.textContent = model.id.split('/')[0];
-            
-            // Add badge for free models
-            if (model.is_free) {
-                const freeTag = document.createElement('span');
-                freeTag.className = 'free-tag';
-                freeTag.textContent = 'FREE';
-                li.appendChild(freeTag);
-            }
-            
-            // Add filtered notice for filtered models
-            if (filteredOut) {
-                const filterNotice = document.createElement('span');
-                filterNotice.className = 'filter-notice';
-                filterNotice.textContent = 'FILTERED';
-                nameSpan.appendChild(filterNotice);
-                
-                // Create filter reason element explaining the cost that triggered the filter
-                const filterReason = document.createElement('span');
-                filterReason.className = 'filter-reason';
-                
-                // Get specific costs to display
-                const inputCost = model.pricing?.prompt || 0;
-                const outputCost = model.pricing?.completion || 0;
-                
-                // Format reason text
-                let reasonText = 'Exceeds filter: ';
-                if (inputCost > maxInputCost) reasonText += `Input $${inputCost.toFixed(2)} > $${maxInputCost.toFixed(2)}`;
-                if (inputCost > maxInputCost && outputCost > maxOutputCost) reasonText += ', ';
-                if (outputCost > maxOutputCost) reasonText += `Output $${outputCost.toFixed(2)} > $${maxOutputCost.toFixed(2)}`;
-                
-                filterReason.textContent = reasonText;
-                li.appendChild(filterReason);
-            }
-            
-            li.appendChild(nameSpan);
-            li.appendChild(providerSpan);
-            
-            // Add click handler with different behavior for filtered models
-            if (filteredOut) {
-                li.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    // Show message about changing filters instead of selecting
-                    const inputCost = model.pricing?.prompt || 0;
-                    const outputCost = model.pricing?.completion || 0;
-                    
-                    alert(`This model (${model.name}) exceeds your cost filter settings.\n\nModel costs:\n- Input: $${inputCost.toFixed(2)} per million tokens\n- Output: $${outputCost.toFixed(2)} per million tokens\n\nYour filters:\n- Max input cost: $${maxInputCost.toFixed(2)}\n- Max output cost: $${maxOutputCost.toFixed(2)}\n\nTo use this model, adjust your filter settings in Account > Settings.`);
-                });
-            } else {
-                li.addEventListener('click', function() {
-                    selectModelForPreset(currentlyEditingPresetId, model.id);
-                });
-            }
-            
-            modelList.appendChild(li);
-        });
-        
-        // Update the hidden filter count
-        modelsHiddenByFilter = exceededFilterCount;
-        
-        // If models are hidden by the cost filter, show a notice
-        if (modelsHiddenByFilter > 0 && presetId !== '6') {
-            const hiddenNotice = document.createElement('div');
-            hiddenNotice.className = 'models-hidden-notice';
-            hiddenNotice.style.backgroundColor = 'rgba(246, 229, 141, 0.15)';
-            hiddenNotice.style.borderLeft = '3px solid #f1c40f';
-            hiddenNotice.style.padding = '10px 15px';
-            hiddenNotice.style.margin = '10px 0';
-            hiddenNotice.style.borderRadius = '4px';
-            hiddenNotice.innerHTML = `
-                <p style="margin: 0; display: flex; align-items: center; justify-content: space-between;">
-                    <span><i class="fas fa-filter me-2" style="color: #f1c40f;"></i>
-                    <b>${modelsHiddenByFilter}</b> model${modelsHiddenByFilter > 1 ? 's are' : ' is'} disabled by your cost filters</span>
-                    <a class="filter-settings-link" style="color: #17a2b8; cursor: pointer; text-decoration: underline; white-space: nowrap;">
-                        <i class="fas fa-sliders-h me-1"></i>Change filters
-                    </a>
-                </p>
-            `;
-            modelList.appendChild(hiddenNotice);
-            
-            // Add click handler to the "Change filters" link
-            hiddenNotice.querySelector('.filter-settings-link').addEventListener('click', function() {
-                // Close the model selector
-                closeModelSelector();
-                
-                // Navigate to the account page settings tab with a marker to return
-                window.location.href = '/billing/account#settings';
-            });
-        }
-        
-        // If no models match the preset-specific filter at all
-        if (presetFilteredModels.length === 0) {
-            const noResults = document.createElement('li');
-            noResults.textContent = 'No models found for this preset type';
-            modelList.appendChild(noResults);
-        }
-    };
-    
-    // Function to update the model filter indicator in the UI
-    function updateModelFilterIndicator(hiddenCount) {
-        const filterIndicator = document.getElementById('model-filter-indicator');
-        if (!filterIndicator) {
-            // Create the indicator if it doesn't exist
-            const modelSelector = document.querySelector('.model-selector');
-            if (modelSelector) {
-                const indicator = document.createElement('div');
-                indicator.id = 'model-filter-indicator';
-                indicator.className = 'model-filter-indicator';
-                indicator.innerHTML = `
-                    <span>${hiddenCount} ${hiddenCount === 1 ? 'model is' : 'models are'} disabled by cost filters</span>
-                    <a href="/account#model-filters" class="change-filters-link">Change filters</a>
-                `;
-                modelSelector.appendChild(indicator);
-            }
-        } else {
-            // Update existing indicator
-            filterIndicator.innerHTML = `
-                <span>${hiddenCount} ${hiddenCount === 1 ? 'model is' : 'models are'} disabled by cost filters</span>
-                <a href="/account#model-filters" class="change-filters-link">Change filters</a>
-            `;
-            filterIndicator.style.display = 'flex';
-        }
-    }
-    
-    // Function to hide the model filter indicator
-    function hideModelFilterIndicator() {
-        const filterIndicator = document.getElementById('model-filter-indicator');
-        if (filterIndicator) {
-            filterIndicator.style.display = 'none';
-        }
-    }
 });
