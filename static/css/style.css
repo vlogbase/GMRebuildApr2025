@@ -1505,3 +1505,41 @@ code {
         height: 60vh;
     }
 }
+
+/* Model filter-related styles */
+.models-hidden-notice {
+    padding: 8px 12px;
+    margin: 10px 4px;
+    background-color: rgba(255, 229, 143, 0.1);
+    border: 1px solid rgba(255, 229, 143, 0.3);
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.models-hidden-notice p {
+    margin: 0;
+    color: #f3eacc;
+}
+
+.filter-settings-link {
+    color: var(--accent-color);
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+/* Filter notifications */
+.model-filter-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: rgba(36, 185, 189, 0.1);
+    border: 1px solid rgba(36, 185, 189, 0.3);
+    border-radius: 6px;
+    padding: 12px 20px;
+    color: var(--text-color);
+    z-index: 1000;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    transition: opacity 0.5s ease-in-out;
+    opacity: 1;
+    max-width: 300px;
+}

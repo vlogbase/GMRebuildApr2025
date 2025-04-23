@@ -898,6 +898,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         nameSpan.textContent = formatModelName(modelId);
                     }
                 }
+                
+                // Add tooltip showing current filter settings (except for free model preset)
+                if (presetId !== '6') {
+                    button.title = `Model filters: Max input cost $${maxInputCost}, Max output cost $${maxOutputCost} per million tokens`;
+                } else {
+                    button.title = 'Free models (not affected by cost filters)';
+                }
             }
         }
     }
@@ -2467,32 +2474,112 @@ document.addEventListener('DOMContentLoaded', function() {
             text-decoration: underline;
             cursor: pointer;
         }
+        
+        /* Notification for filter changes */
+        .model-filter-notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #14b8a6;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 9999;
+            font-size: 14px;
+            text-align: center;
+            animation: slideDown 0.3s ease-out forwards;
+            opacity: 1;
+            transition: opacity 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from { transform: translate(-50%, -20px); opacity: 0; }
+            to { transform: translate(-50%, 0); opacity: 1; }
+        }
     `;
     document.head.appendChild(style);
     
     // Function to load model filter settings
     function loadModelFilterSettings() {
-        if (!isAuthenticated) return; // Only load for authenticated users
+        if (!isAuthenticated) return Promise.resolve(); // Only load for authenticated users
         
-        fetch('/api/get_model_filters')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Update global variables with filter settings
-                    maxInputCost = data.max_input_cost;
-                    maxOutputCost = data.max_output_cost;
-                    console.log(`Loaded model filters: Input $${maxInputCost}, Output $${maxOutputCost}`);
-                } else {
-                    console.error('Error loading model filter settings:', data.error);
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching model filter settings:', error);
-            });
+        return new Promise((resolve, reject) => {
+            fetch('/api/get_model_filters')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Update global variables with filter settings
+                        maxInputCost = data.max_input_cost;
+                        maxOutputCost = data.max_output_cost;
+                        console.log(`Loaded model filters: Input $${maxInputCost}, Output $${maxOutputCost}`);
+                        
+                        // Reload models to apply new filters
+                        fetchAvailableModels();
+                        
+                        // Update tooltips on model buttons
+                        updatePresetButtonLabels();
+                        
+                        resolve(data);
+                    } else {
+                        console.error('Error loading model filter settings:', data.error);
+                        reject(new Error(data.error || 'Unknown error'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching model filter settings:', error);
+                    reject(error);
+                });
+        });
     }
     
     // Call to load the settings on page load
     loadModelFilterSettings();
+    
+    // Check if we're coming back from account settings 
+    // (indicated by a URL parameter or hash)
+    function checkReturnFromSettings() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const fromSettings = urlParams.get('from_settings');
+        const hash = window.location.hash;
+        
+        if (fromSettings === 'true' || hash === '#from_settings') {
+            console.log('Detected return from settings page, reloading model filters');
+            // Remove the parameter/hash from URL to prevent repeated reloads
+            const newUrl = window.location.pathname;
+            window.history.replaceState({}, document.title, newUrl);
+            
+            // Reload filter settings and refresh models
+            loadModelFilterSettings()
+                .then(() => {
+                    // Show notification to user
+                    const notification = document.createElement('div');
+                    notification.className = 'model-filter-notification';
+                    
+                    // Create a more detailed notification that shows the filter values
+                    const notificationContent = document.createElement('div');
+                    notificationContent.innerHTML = `
+                        <strong>Model filter settings applied</strong>
+                        <div style="font-size: 0.9em; margin-top: 5px;">
+                            <div>Max input cost: $${maxInputCost.toFixed(2)}</div>
+                            <div>Max output cost: $${maxOutputCost.toFixed(2)}</div>
+                        </div>
+                    `;
+                    notification.appendChild(notificationContent);
+                    document.body.appendChild(notification);
+                    
+                    // Fade out and remove after delay
+                    setTimeout(() => {
+                        notification.style.opacity = '0';
+                        setTimeout(() => notification.remove(), 500);
+                    }, 3000);
+                });
+        }
+    }
+    
+    // Call the function to check if we're returning from settings
+    checkReturnFromSettings();
     
     // Override populateModelList to apply cost filters
     const originalPopulateModelList = populateModelList;
@@ -2616,7 +2703,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Close the model selector
                 closeModelSelector();
                 
-                // Navigate to the account page settings tab
+                // Navigate to the account page settings tab with a marker to return
                 window.location.href = '/billing/account#settings';
             });
         }

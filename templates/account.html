@@ -710,10 +710,13 @@
                         
                         <div id="filterFeedbackContainer"></div>
                         
-                        <div class="d-flex justify-content-end mt-3">
+                        <div class="d-flex justify-content-end mt-3 gap-3">
                             <button type="button" class="select-button" id="saveFilterSettings">
                                 <i class="fas fa-save me-2"></i>Save Filter Settings
                             </button>
+                            <a href="/?from_settings=true" class="select-button text-center" style="background-color: #6c757d; text-decoration: none;">
+                                <i class="fas fa-arrow-left me-2"></i>Return to Chat
+                            </a>
                         </div>
                     </div>
                     
@@ -1542,7 +1545,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     saveFilterSettingsBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Filter Settings';
                     
                     if (data.success) {
-                        showFeedback('Filter settings saved successfully. Models in the chat interface will now be filtered based on these cost limits.', true);
+                        showFeedback('Filter settings saved successfully! Use the "Return to Chat" button to see your changes.', true);
                     } else {
                         showFeedback('Error saving filter settings: ' + (data.error || 'Unknown error'), false);
                     }
