@@ -662,21 +662,21 @@
                             
                             <div class="d-flex align-items-center gap-3">
                                 <div style="flex-grow: 1;">
-                                    <input type="range" class="form-range custom-range" id="maxInputCost" min="0" max="100" value="50" style="height: 10px;">
+                                    <input type="range" class="form-range custom-range" id="maxInputCost" min="0" max="100" value="100" style="height: 16px;">
                                 </div>
                                 <div class="input-group" style="width: 150px;">
                                     <span class="input-group-text bg-dark text-light border-secondary">$</span>
-                                    <input type="number" id="maxInputCostValue" class="form-control custom-amount-input" value="0.03" min="0.01" max="600" step="0.01">
+                                    <input type="number" id="maxInputCostValue" class="form-control custom-amount-input" value="1500" min="0.01" max="1500" step="0.01">
                                 </div>
                             </div>
                             
                             <div class="d-flex justify-content-between mt-1">
                                 <span class="caption">$0.01</span>
-                                <span class="caption">$600</span>
+                                <span class="caption">$1500</span>
                             </div>
                             <div class="mt-2">
                                 <p class="caption" id="inputCostExplainer">
-                                    Models with input costs above $0.03 per million tokens will be hidden from model selection.
+                                    Models with input costs above $1500 per million tokens will be disabled in model selection.
                                 </p>
                             </div>
                         </div>
@@ -689,29 +689,27 @@
                             
                             <div class="d-flex align-items-center gap-3">
                                 <div style="flex-grow: 1;">
-                                    <input type="range" class="form-range custom-range" id="maxOutputCost" min="0" max="100" value="60" style="height: 10px;">
+                                    <input type="range" class="form-range custom-range" id="maxOutputCost" min="0" max="100" value="100" style="height: 16px;">
                                 </div>
                                 <div class="input-group" style="width: 150px;">
                                     <span class="input-group-text bg-dark text-light border-secondary">$</span>
-                                    <input type="number" id="maxOutputCostValue" class="form-control custom-amount-input" value="0.06" min="0.01" max="600" step="0.01">
+                                    <input type="number" id="maxOutputCostValue" class="form-control custom-amount-input" value="1500" min="0.01" max="1500" step="0.01">
                                 </div>
                             </div>
                             
                             <div class="d-flex justify-content-between mt-1">
                                 <span class="caption">$0.01</span>
-                                <span class="caption">$600</span>
+                                <span class="caption">$1500</span>
                             </div>
                             <div class="mt-2">
                                 <p class="caption" id="outputCostExplainer">
-                                    Models with output costs above $0.06 per million tokens will be hidden from model selection.
+                                    Models with output costs above $1500 per million tokens will be disabled in model selection.
                                 </p>
                             </div>
                         </div>
                         
-                        <div id="filterFeedbackContainer"></div>
-                        
                         <div class="d-flex justify-content-end mt-3 gap-3">
-                            <button type="button" class="select-button" id="saveFilterSettings">
+                            <button type="button" class="select-button" id="saveFilterSettingsBtn">
                                 <i class="fas fa-save me-2"></i>Save Filter Settings
                             </button>
                             <a href="/?from_settings=true" class="select-button text-center" style="background-color: #6c757d; text-decoration: none;">
@@ -719,6 +717,9 @@
                             </a>
                         </div>
                     </div>
+                    
+                    <!-- Feedback Container -->
+                    <div id="filterFeedbackContainer" class="mt-3" style="min-height: 60px;"></div>
                     
                     <hr class="my-4" style="border-color: #3f4246;">
                     
@@ -1368,8 +1369,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Constants for slider range
         const MIN_COST = 0.01;  // $0.01 per million tokens
-        const MAX_INPUT_COST = 600.0;  // $600 per million tokens
-        const MAX_OUTPUT_COST = 600.0; // $600 per million tokens
+        const MAX_INPUT_COST = 1500.0;  // $1500 per million tokens
+        const MAX_OUTPUT_COST = 1500.0; // $1500 per million tokens
         
         // Logarithmic scale conversion functions
         const sliderToInputCost = function(sliderValue) {
@@ -1422,7 +1423,7 @@ document.addEventListener('DOMContentLoaded', function() {
             maxInputCostValue.value = value.toFixed(2);
             
             // Update explainer text
-            inputCostExplainer.textContent = `Models with input costs above $${value.toFixed(2)} per million tokens will be hidden from model selection.`;
+            inputCostExplainer.textContent = `Models with input costs above $${value.toFixed(2)} per million tokens will be disabled in model selection.`;
         };
         
         const updateOutputCostUI = function(value) {
@@ -1436,7 +1437,7 @@ document.addEventListener('DOMContentLoaded', function() {
             maxOutputCostValue.value = value.toFixed(2);
             
             // Update explainer text
-            outputCostExplainer.textContent = `Models with output costs above $${value.toFixed(2)} per million tokens will be hidden from model selection.`;
+            outputCostExplainer.textContent = `Models with output costs above $${value.toFixed(2)} per million tokens will be disabled in model selection.`;
         };
         
         // Function to show feedback
@@ -1445,25 +1446,70 @@ document.addEventListener('DOMContentLoaded', function() {
             filterFeedbackContainer.innerHTML = '';
             
             const feedbackDiv = document.createElement('div');
-            feedbackDiv.className = isSuccess ? 'alert alert-success mt-3' : 'alert alert-danger mt-3';
-            feedbackDiv.style.animation = 'fadeIn 0.3s';
+            feedbackDiv.className = 'notification-card';
+            feedbackDiv.style.animation = 'fadeInAndSlide 0.4s ease-out';
+            feedbackDiv.style.backgroundColor = isSuccess ? 'rgba(46, 204, 113, 0.15)' : 'rgba(231, 76, 60, 0.15)';
+            feedbackDiv.style.borderLeft = `4px solid ${isSuccess ? '#2ecc71' : '#e74c3c'}`;
+            feedbackDiv.style.padding = '15px';
+            feedbackDiv.style.paddingRight = '35px'; // Extra space for the close button
+            feedbackDiv.style.borderRadius = '6px';
+            feedbackDiv.style.marginBottom = '16px';
+            feedbackDiv.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.1)';
+            feedbackDiv.style.display = 'flex';
+            feedbackDiv.style.alignItems = 'center';
+            feedbackDiv.style.position = 'relative'; // For absolute positioning of close button
+            feedbackDiv.style.maxWidth = '95%';
+            feedbackDiv.style.transition = 'all 0.2s ease-in-out';
             
             const icon = document.createElement('i');
             icon.className = isSuccess ? 'fas fa-check-circle me-2' : 'fas fa-exclamation-circle me-2';
+            icon.style.color = isSuccess ? '#2ecc71' : '#e74c3c';
+            icon.style.fontSize = '18px';
             feedbackDiv.appendChild(icon);
             
             const messageSpan = document.createElement('span');
             messageSpan.textContent = message;
+            messageSpan.style.fontWeight = '500';
             feedbackDiv.appendChild(messageSpan);
+            
+            // Add a close button
+            const closeButton = document.createElement('button');
+            closeButton.className = 'btn-close btn-close-white';
+            closeButton.style.position = 'absolute';
+            closeButton.style.right = '10px';
+            closeButton.style.top = '10px';
+            closeButton.style.fontSize = '0.8rem';
+            closeButton.style.opacity = '0.7';
+            closeButton.style.background = 'transparent';
+            closeButton.style.border = 'none';
+            closeButton.style.cursor = 'pointer';
+            closeButton.setAttribute('aria-label', 'Close');
+            closeButton.onmouseover = function() {
+                closeButton.style.opacity = '1';
+            };
+            closeButton.onmouseout = function() {
+                closeButton.style.opacity = '0.7';
+            };
+            closeButton.onclick = function() { 
+                feedbackDiv.style.animation = 'fadeOut 0.3s';
+                setTimeout(() => {
+                    filterFeedbackContainer.removeChild(feedbackDiv);
+                }, 300);
+            };
+            feedbackDiv.appendChild(closeButton);
             
             filterFeedbackContainer.appendChild(feedbackDiv);
             
-            // Add simple fade in animation
+            // Add animations
             const style = document.createElement('style');
             style.textContent = `
-                @keyframes fadeIn {
+                @keyframes fadeInAndSlide {
                     from { opacity: 0; transform: translateY(-10px); }
                     to { opacity: 1; transform: translateY(0); }
+                }
+                @keyframes fadeOut {
+                    from { opacity: 1; transform: translateY(0); }
+                    to { opacity: 0; transform: translateY(-10px); }
                 }
             `;
             document.head.appendChild(style);
@@ -1471,13 +1517,17 @@ document.addEventListener('DOMContentLoaded', function() {
             // Scroll to make sure feedback is visible
             feedbackDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             
-            // Auto dismiss after 5 seconds
+            // Auto dismiss after 5 seconds for success messages
             if (isSuccess) {
                 setTimeout(() => {
-                    feedbackDiv.style.animation = 'fadeOut 0.5s forwards';
-                    setTimeout(() => {
-                        feedbackDiv.remove();
-                    }, 500);
+                    if (feedbackDiv.parentNode === filterFeedbackContainer) {
+                        feedbackDiv.style.animation = 'fadeOut 0.5s forwards';
+                        setTimeout(() => {
+                            if (feedbackDiv.parentNode === filterFeedbackContainer) {
+                                filterFeedbackContainer.removeChild(feedbackDiv);
+                            }
+                        }, 500);
+                    }
                 }, 5000);
             }
         };
@@ -1545,9 +1595,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     saveFilterSettingsBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Filter Settings';
                     
                     if (data.success) {
-                        showFeedback('Filter settings saved successfully! Use the "Return to Chat" button to see your changes.', true);
+                        showFeedback('Model filter settings saved successfully! Models exceeding your cost limits will appear greyed out in the chat interface. Click "Return to Chat" to see your changes.', true);
                     } else {
-                        showFeedback('Error saving filter settings: ' + (data.error || 'Unknown error'), false);
+                        showFeedback('Error saving model filter settings: ' + (data.error || 'Unable to save your changes. Please try again.'), false);
                     }
                 })
                 .catch(error => {
@@ -1555,8 +1605,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     saveFilterSettingsBtn.disabled = false;
                     saveFilterSettingsBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Filter Settings';
                     
-                    showFeedback('Error saving filter settings: ' + error.message, false);
-                    console.error('Error saving filter settings:', error);
+                    showFeedback('Error saving model filter settings: ' + (error.message || 'Unable to connect to server. Please try again.'), false);
+                    console.error('Error saving model filter settings:', error);
                 });
             });
         }

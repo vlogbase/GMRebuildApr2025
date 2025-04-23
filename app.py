@@ -2429,10 +2429,10 @@ def save_model_filters():
             max_output_cost = float(max_output_cost)
             
             # Validate ranges
-            if not (0.01 <= max_input_cost <= 600.0):
-                abort(400, description="max_input_cost must be between 0.01 and 600.0")
-            if not (0.01 <= max_output_cost <= 600.0):
-                abort(400, description="max_output_cost must be between 0.01 and 600.0")
+            if not (0.01 <= max_input_cost <= 1500.0):
+                abort(400, description="max_input_cost must be between 0.01 and 1500.0")
+            if not (0.01 <= max_output_cost <= 1500.0):
+                abort(400, description="max_output_cost must be between 0.01 and 1500.0")
                 
         except ValueError:
             abort(400, description="Cost values must be numeric")
@@ -2482,8 +2482,8 @@ def get_model_filters():
             # Return default values
             return jsonify({
                 "success": True,
-                "max_input_cost": 600.0,
-                "max_output_cost": 600.0
+                "max_input_cost": 1500.0,
+                "max_output_cost": 1500.0
             })
     except Exception as e:
         logger.exception("Error fetching model filter settings")

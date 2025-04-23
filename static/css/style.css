@@ -960,6 +960,12 @@ body {
     border-left: 2px solid rgba(231, 76, 60, 0.4);
 }
 
+.model-list li.filtered-by-cost .model-name {
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+    text-decoration-color: rgba(231, 76, 60, 0.7);
+}
+
 .model-list li.filtered-by-cost:hover {
     background-color: rgba(231, 76, 60, 0.1);
 }
@@ -1547,8 +1553,25 @@ code {
 
 /* Model filter-related styles */
 .exceeds-cost-filter {
-    opacity: 0.8;
+    opacity: 0.6;
     position: relative;
+    color: #888;
+    background-color: rgba(231, 76, 60, 0.05);
+    border-left: 3px solid rgba(231, 76, 60, 0.4);
+    cursor: default !important;
+}
+
+.exceeds-cost-filter:hover {
+    background-color: rgba(231, 76, 60, 0.1);
+}
+
+.exceeds-cost-filter .model-name {
+    text-decoration: line-through;
+    opacity: 0.8;
+}
+
+.exceeds-cost-filter .model-provider {
+    color: #777;
 }
 
 .filtered-tag {

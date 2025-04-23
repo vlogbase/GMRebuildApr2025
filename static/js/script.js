@@ -1297,6 +1297,30 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get all models matching the preset filter
         let filteredModels = allModels.filter(filterFn);
         
+        // Count how many models exceed the cost filter
+        let costFilteredModels = 0;
+        if (presetId !== '6') {  // Don't count for free models preset
+            costFilteredModels = filteredModels.filter(model => {
+                const inputCost = model.pricing?.prompt || 0;
+                const outputCost = model.pricing?.completion || 0;
+                return !model.is_free && (inputCost > maxInputCost || outputCost > maxOutputCost);
+            }).length;
+            
+            // Add a notice at the top if there are filtered models
+            if (costFilteredModels > 0) {
+                const notice = document.createElement('div');
+                notice.className = 'models-hidden-notice';
+                notice.innerHTML = `
+                    <p>
+                        <i class="fas fa-filter"></i> 
+                        ${costFilteredModels} model${costFilteredModels !== 1 ? 's' : ''} exceed${costFilteredModels === 1 ? 's' : ''} your cost filters.
+                        <a href="/billing/account#settings" class="filter-settings-link">Change filters</a>
+                    </p>
+                `;
+                modelList.appendChild(notice);
+            }
+        }
+        
         // Sort models
         filteredModels.sort((a, b) => {
             // Special handling for preset 4 (vision models)
@@ -1388,24 +1412,28 @@ document.addEventListener('DOMContentLoaded', function() {
             li.appendChild(nameSpan);
             li.appendChild(providerSpan);
             
-            // Add click handler to select this model - with warning for filtered models
+            // Add click handler based on whether model is filtered or not
             li.addEventListener('click', function() {
                 if (exceedsCostFilter && presetId !== '6') {
-                    // For filtered models, show warning before selecting
-                    const confirmUse = confirm(`Warning: ${model.name} exceeds your cost filter settings:
+                    // For filtered models, redirect to settings page instead of selecting
+                    const wantToChangeSettings = confirm(`${model.name} exceeds your cost filter settings:
 
 • Model costs: Input $${inputCost.toFixed(2)}, Output $${outputCost.toFixed(2)} per million tokens
 • Your filters: Max input $${maxInputCost.toFixed(2)}, Max output $${maxOutputCost.toFixed(2)}
 
-Do you want to proceed anyway?
-
-Note: You may not be able to send messages with this model unless you update your filter settings.`);
+Would you like to go to the settings page to adjust your filters?`);
                     
-                    if (!confirmUse) {
-                        return; // User canceled
+                    if (wantToChangeSettings) {
+                        // Close the model selector
+                        closeModelSelector();
+                        
+                        // Navigate to settings page
+                        window.location.href = '/billing/account#settings';
                     }
+                    return; // Don't select the model regardless of response
                 }
                 
+                // For models that pass the filter, select as normal
                 selectModelForPreset(currentlyEditingPresetId, model.id);
             });
             
@@ -3138,9 +3166,19 @@ Note: You may not be able to send messages with this model unless you update you
         if (modelsHiddenByFilter > 0 && presetId !== '6') {
             const hiddenNotice = document.createElement('div');
             hiddenNotice.className = 'models-hidden-notice';
+            hiddenNotice.style.backgroundColor = 'rgba(246, 229, 141, 0.15)';
+            hiddenNotice.style.borderLeft = '3px solid #f1c40f';
+            hiddenNotice.style.padding = '10px 15px';
+            hiddenNotice.style.margin = '10px 0';
+            hiddenNotice.style.borderRadius = '4px';
             hiddenNotice.innerHTML = `
-                <p>${modelsHiddenByFilter} model${modelsHiddenByFilter > 1 ? 's' : ''} hidden by your cost filters. 
-                <a class="filter-settings-link">Change filters</a></p>
+                <p style="margin: 0; display: flex; align-items: center; justify-content: space-between;">
+                    <span><i class="fas fa-filter me-2" style="color: #f1c40f;"></i>
+                    <b>${modelsHiddenByFilter}</b> model${modelsHiddenByFilter > 1 ? 's are' : ' is'} disabled by your cost filters</span>
+                    <a class="filter-settings-link" style="color: #17a2b8; cursor: pointer; text-decoration: underline; white-space: nowrap;">
+                        <i class="fas fa-sliders-h me-1"></i>Change filters
+                    </a>
+                </p>
             `;
             modelList.appendChild(hiddenNotice);
             

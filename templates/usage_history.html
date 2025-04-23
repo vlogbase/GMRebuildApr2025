@@ -131,6 +131,19 @@
         padding: 10px;
     }
     
+    .table-dark tr.usage-row:hover {
+        background-color: #2c2f33;
+        transition: background-color 0.2s ease;
+    }
+    
+    .tab-content {
+        display: none;
+    }
+    
+    .tab-content.active {
+        display: block;
+    }
+    
     .badge-dark-primary {
         background-color: #17a2b8;
         color: white;
@@ -212,9 +225,9 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h4 class="mb-0">Usage Analytics</h4>
             <div>
-                <button class="tab-button active">Summary</button>
-                <button class="tab-button">Detailed</button>
-                <button class="tab-button">
+                <button class="tab-button active" id="tab-summary" onclick="switchTab('summary')">Summary</button>
+                <button class="tab-button" id="tab-detailed" onclick="switchTab('detailed')">Detailed</button>
+                <button class="tab-button" id="btn-export-csv" onclick="exportCSV()">
                     <i class="fas fa-download me-1"></i> Export CSV
                 </button>
             </div>
@@ -223,9 +236,9 @@
         <div class="mb-4">
             <h6 class="mb-2">Date Range</h6>
             <div>
-                <button class="tab-button">Last 30 Days</button>
-                <button class="tab-button">Last 7 Days</button>
-                <button class="tab-button active">This Month</button>
+                <button class="tab-button" onclick="setDateRange('30days')">Last 30 Days</button>
+                <button class="tab-button" onclick="setDateRange('7days')">Last 7 Days</button>
+                <button class="tab-button active" onclick="setDateRange('month')">This Month</button>
             </div>
         </div>
         
@@ -375,46 +388,84 @@
                 </div>
             </div>
             
-            <!-- Detailed Usage Table -->
-            <h5 class="mb-3">Detailed Usage</h5>
-            <div class="table-responsive">
-                <table class="table table-dark">
-                    <thead>
-                        <tr>
-                            <th>Date/Time</th>
-                            <th>Type</th>
-                            <th>Model</th>
-                            <th>Tokens</th>
-                            <th>Cost</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for usage in usage_list %}
-                        <tr>
-                            <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                            <td>
-                                {% if usage.usage_type == 'chat' %}
-                                    <span class="badge-dark-primary">Chat</span>
-                                {% elif usage.usage_type == 'embedding' %}
-                                    <span class="badge-dark-info">Embedding</span>
-                                {% else %}
-                                    <span class="badge-dark-secondary">{{ usage.usage_type|capitalize }}</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ usage.model_id|truncate(20) if usage.model_id else 'N/A' }}</td>
-                            <td>
-                                {% if usage.prompt_tokens and usage.completion_tokens %}
-                                    {{ usage.prompt_tokens + usage.completion_tokens }}
-                                    <small class="caption">({{ usage.prompt_tokens }} in / {{ usage.completion_tokens }} out)</small>
-                                {% else %}
-                                    N/A
-                                {% endif %}
-                            </td>
-                            <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <!-- Tab Content Sections -->
+            <div id="summary-content" class="tab-content active">
+                <!-- Detailed Usage Table Summary View -->
+                <h5 class="mb-3">Detailed Usage</h5>
+                <div class="table-responsive">
+                    <table class="table table-dark">
+                        <thead>
+                            <tr class="bg-dark">
+                                <th>Date/Time</th>
+                                <th>Type</th>
+                                <th>Model</th>
+                                <th>Tokens</th>
+                                <th>Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usage in usage_list %}
+                            <tr class="usage-row">
+                                <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    {% if usage.usage_type == 'chat' %}
+                                        <span class="badge-dark-primary">Chat</span>
+                                    {% elif usage.usage_type == 'embedding' %}
+                                        <span class="badge-dark-info">Embedding</span>
+                                    {% else %}
+                                        <span class="badge-dark-secondary">{{ usage.usage_type|capitalize }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ usage.model_id|truncate(20) if usage.model_id else 'N/A' }}</td>
+                                <td>
+                                    {% if usage.prompt_tokens and usage.completion_tokens %}
+                                        {{ usage.prompt_tokens + usage.completion_tokens }}
+                                        <small class="caption">({{ usage.prompt_tokens }} in / {{ usage.completion_tokens }} out)</small>
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div id="detailed-content" class="tab-content">
+                <!-- Detailed Usage Table Full View -->
+                <h5 class="mb-3">Detailed Usage Analytics</h5>
+                <div class="table-responsive">
+                    <table class="table table-dark">
+                        <thead>
+                            <tr class="bg-dark">
+                                <th>Date</th>
+                                <th>Model</th>
+                                <th>Input Tokens</th>
+                                <th>Input Cost</th>
+                                <th>Output Tokens</th>
+                                <th>Output Cost</th>
+                                <th>Total Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usage in usage_list %}
+                            {% if usage.usage_type == 'chat' and usage.model_id and usage.prompt_tokens and usage.completion_tokens %}
+                            <tr class="usage-row">
+                                <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>{{ usage.model_id|truncate(20) }}</td>
+                                <td>{{ usage.prompt_tokens }}</td>
+                                <td>${{ "%.4f"|format((usage.prompt_tokens * (usage.credits_used / (usage.prompt_tokens + usage.completion_tokens))) / 1000) }}</td>
+                                <td>{{ usage.completion_tokens }}</td>
+                                <td>${{ "%.4f"|format((usage.completion_tokens * (usage.credits_used / (usage.prompt_tokens + usage.completion_tokens))) / 1000) }}</td>
+                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
             
             <div class="d-flex justify-content-between align-items-center mt-4">
@@ -505,4 +556,137 @@
         </div>
     </div>
 </div>
+
+{% block scripts %}
+{{ super() }}
+<script>
+    // Tab switching functionality
+    function switchTab(tabName) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.getElementById(`tab-${tabName}`).classList.add('active');
+        
+        // Show selected tab content
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        document.getElementById(`${tabName}-content`).classList.add('active');
+    }
+    
+    // Date range switching
+    function setDateRange(range) {
+        // Update date range buttons
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            if (btn.textContent.trim() === 'Last 30 Days' || 
+                btn.textContent.trim() === 'Last 7 Days' || 
+                btn.textContent.trim() === 'This Month') {
+                btn.classList.remove('active');
+            }
+        });
+        
+        let activeButton;
+        if (range === '30days') {
+            activeButton = 'Last 30 Days';
+        } else if (range === '7days') {
+            activeButton = 'Last 7 Days';
+        } else {
+            activeButton = 'This Month';
+        }
+        
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            if (btn.textContent.trim() === activeButton) {
+                btn.classList.add('active');
+            }
+        });
+        
+        // In a real application, we would reload the data for the new range
+        // For now, we'll just show a notification
+        showNotification(`Date range changed to ${activeButton}`);
+    }
+    
+    // CSV Export functionality
+    function exportCSV() {
+        // Get table data
+        const tableRows = document.querySelectorAll('#detailed-content table tbody tr');
+        if (tableRows.length === 0) {
+            showNotification('No data to export');
+            return;
+        }
+        
+        // Create CSV content with headers
+        let csvContent = 'Date,Model,Input Tokens,Input Cost,Output Tokens,Output Cost,Total Cost\n';
+        
+        // Add each row
+        tableRows.forEach(row => {
+            const cells = row.querySelectorAll('td');
+            const rowData = Array.from(cells).map(cell => {
+                // Clean the cell content (remove $ signs, commas, etc.)
+                let content = cell.textContent.trim().replace(/\$/g, '');
+                // If the content has commas or quotes, wrap in quotes
+                if (content.includes(',') || content.includes('"')) {
+                    content = `"${content.replace(/"/g, '""')}"`;
+                }
+                return content;
+            });
+            csvContent += rowData.join(',') + '\n';
+        });
+        
+        // Create and download the CSV file
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', 'usage_analytics.csv');
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showNotification('CSV file downloaded successfully');
+    }
+    
+    // Notification functionality
+    function showNotification(message, duration = 3000) {
+        // Create notification element if it doesn't exist
+        let notification = document.getElementById('notification');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'notification';
+            notification.style.position = 'fixed';
+            notification.style.bottom = '20px';
+            notification.style.right = '20px';
+            notification.style.backgroundColor = '#17a2b8';
+            notification.style.color = 'white';
+            notification.style.padding = '10px 20px';
+            notification.style.borderRadius = '4px';
+            notification.style.boxShadow = '0 2px 10px rgba(0,0,0,0.2)';
+            notification.style.zIndex = '1000';
+            notification.style.display = 'flex';
+            notification.style.alignItems = 'center';
+            notification.style.justifyContent = 'space-between';
+            notification.style.minWidth = '200px';
+            notification.style.maxWidth = '400px';
+            
+            document.body.appendChild(notification);
+        }
+        
+        // Set message
+        notification.innerHTML = `
+            <span>${message}</span>
+            <button onclick="this.parentElement.style.display='none'" style="background:none; border:none; color:white; margin-left:10px; cursor:pointer;">×</button>
+        `;
+        
+        // Show notification
+        notification.style.display = 'flex';
+        
+        // Hide after duration
+        clearTimeout(notification.timeout);
+        notification.timeout = setTimeout(() => {
+            notification.style.display = 'none';
+        }, duration);
+    }
+</script>
+{% endblock %}
 {% endblock %}
