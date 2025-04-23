@@ -26,6 +26,10 @@ class User(UserMixin, db.Model):
     # Billing fields
     credits = db.Column(db.Integer, nullable=False, default=0)  # User's credit balance in credits (1 credit = $0.001)
     
+    # Model cost filter preferences
+    max_input_cost_filter = db.Column(db.Float, nullable=True)  # Maximum input cost per million tokens
+    max_output_cost_filter = db.Column(db.Float, nullable=True)  # Maximum output cost per million tokens
+    
     # Relationships
     conversations = db.relationship('Conversation', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     preferences = db.relationship('UserPreference', backref='user', lazy='dynamic', cascade='all, delete-orphan')
