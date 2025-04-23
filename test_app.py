@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple script to run the Flask application for testing in the Replit environment.
+Test script to run the Flask application with pre-loaded price data.
 """
 import os
 import sys
@@ -18,8 +18,12 @@ logging.basicConfig(
 
 if __name__ == "__main__":
     # Pre-load price data from OpenRouter before starting the app
+    logging.info("Starting test application with pre-fetched model prices...")
+    
+    # First, fetch prices from OpenRouter API
     logging.info("Pre-fetching model prices from OpenRouter API...")
     success = fetch_and_store_openrouter_prices()
+    
     if success:
         logging.info("Successfully pre-fetched model pricing data")
     else:
@@ -31,4 +35,4 @@ if __name__ == "__main__":
     # Run the Flask app
     port = int(os.environ.get("PORT", 5000))
     logging.info(f"Starting Flask server on port {port}")
-    app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port, debug=True)

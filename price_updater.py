@@ -63,17 +63,47 @@ def fetch_and_store_openrouter_prices() -> bool:
                 
             # Extract pricing information
             pricing = model.get('pricing', {})
-            input_price = pricing.get('prompt', 0)
-            output_price = pricing.get('completion', 0)
+            input_price_str = pricing.get('prompt', '0') 
+            output_price_str = pricing.get('completion', '0')
+            
+            # Convert string prices to float, handling any format issues
+            try:
+                input_price = float(input_price_str) if input_price_str else 0
+            except ValueError:
+                logger.warning(f"Invalid input price format for {model_id}: {input_price_str}, using 0")
+                input_price = 0
+                
+            try:
+                output_price = float(output_price_str) if output_price_str else 0
+            except ValueError:
+                logger.warning(f"Invalid output price format for {model_id}: {output_price_str}, using 0")
+                output_price = 0
+            
+            # Check if model has multimodal capabilities from architecture
+            architecture = model.get('architecture', {})
+            is_multimodal = False
+            
+            if architecture:
+                input_modalities = architecture.get('input_modalities', [])
+                is_multimodal = len(input_modalities) > 1 or 'image' in input_modalities
             
             # Apply our markup and store in the cache
+            # Calculate per million tokens pricing for easier display/calculation
+            input_price_million = input_price * 1000000
+            output_price_million = output_price * 1000000
+            
+            # Apply markup
+            marked_up_input = input_price_million * markup_factor
+            marked_up_output = output_price_million * markup_factor
+            
             prices[model_id] = {
-                'input_price': float(input_price) * markup_factor if input_price else 0,
-                'output_price': float(output_price) * markup_factor if output_price else 0,
-                'raw_input_price': float(input_price) if input_price else 0,
-                'raw_output_price': float(output_price) if output_price else 0,
+                'input_price': marked_up_input,  # Price per million tokens with markup
+                'output_price': marked_up_output,  # Price per million tokens with markup
+                'raw_input_price': input_price_million,  # Price per million tokens without markup
+                'raw_output_price': output_price_million,  # Price per million tokens without markup
                 'context_length': model.get('context_length', 'Unknown'),
-                'is_multimodal': model.get('is_multimodal', False)
+                'is_multimodal': is_multimodal or model.get('is_multimodal', False),
+                'model_name': model.get('name', model_id.split('/')[-1])
             }
         
         # Update the cache with the new prices
@@ -128,11 +158,8 @@ def get_model_cost(model_id: str) -> dict:
             # Default fallback for unknown models
             return {'prompt_cost_per_million': 10.0, 'completion_cost_per_million': 20.0}
     
-    # Convert to price per million tokens for easier calculation
-    input_price_per_million = model_data['input_price'] * 1000000
-    output_price_per_million = model_data['output_price'] * 1000000
-    
+    # Prices are already stored per million tokens
     return {
-        'prompt_cost_per_million': input_price_per_million,
-        'completion_cost_per_million': output_price_per_million
+        'prompt_cost_per_million': model_data['input_price'],
+        'completion_cost_per_million': model_data['output_price']
     }

@@ -755,8 +755,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to load pricing data from API
     function loadPricingData() {
         const pricingTableBody = document.getElementById('pricingTableBody');
-        const lastUpdated = document.getElementById('lastUpdated');
-        
+        const lastUpdatedElem = document.getElementById('lastUpdated');
+
         // Show loading state
         pricingTableBody.innerHTML = `
             <tr>
@@ -765,82 +765,72 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="spinner-border text-info mb-3" role="status">
                             <span class="visually-hidden">Loading...</span>
                         </div>
-                        <p class="caption">Loading pricing data from OpenRouter...</p>
+                        <p class="caption">Loading pricing data...</p>
                     </div>
                 </td>
             </tr>
         `;
-        
-        // Check for cached data first (localStorage)
-        const cachedData = localStorage.getItem('modelPricingData');
-        const cachedTimestamp = localStorage.getItem('modelPricingTimestamp');
-        const currentTime = new Date().getTime();
-        
-        // Use cached data if it's less than 4 hours old
-        if (cachedData && cachedTimestamp && (currentTime - parseInt(cachedTimestamp)) < 4 * 60 * 60 * 1000) {
-            try {
-                pricingData = JSON.parse(cachedData);
-                lastUpdated.textContent = `Last updated: ${new Date(parseInt(cachedTimestamp)).toLocaleTimeString()}`;
-                renderPricingTable();
-                return;
-            } catch (e) {
-                console.error('Error parsing cached pricing data:', e);
-                // Continue to fetch from API if parsing fails
-            }
-        }
-        
-        // Fetch data from API
-        fetch('/api/model-pricing')
+        lastUpdatedElem.textContent = 'Loading...';
+
+        // Fetch data from API (Using the endpoint that works with our price_updater module)
+        fetch('/api/get_model_prices')
             .then(response => {
                 if (!response.ok) {
-                    throw new Error('Failed to fetch pricing data');
+                    // Try to get error message from response body
+                    return response.text().then(text => {
+                        throw new Error(`Failed to fetch pricing data. Status: ${response.status}. Message: ${text}`);
+                    });
                 }
                 return response.json();
             })
             .then(data => {
-                // Check for API error response
-                if (data.error) {
-                    console.warn('API returned an error:', data.error);
-                    // Log error but don't show any alert to the user
-                    
-                    // Try to use fallback data if provided in the response
-                    if (data.data && data.data.length > 0) {
-                        pricingData = data.data;
-                        renderPricingTable();
-                    } 
-                    // Otherwise try to use cached data if available
-                    else if (cachedData) {
-                        try {
-                            pricingData = JSON.parse(cachedData);
-                            renderPricingTable();
-                            console.log('Using cached data as fallback');
-                        } catch (e) {
-                            console.error('Failed to parse cached data:', e);
-                            // Show empty state instead of error
-                            pricingTableBody.innerHTML = `
-                                <tr>
-                                    <td colspan="5" class="text-center py-5">
-                                        <p class="caption">No pricing data available. Please try again later.</p>
-                                    </td>
-                                </tr>
-                            `;
-                        }
-                    } else {
-                        // No data available at all - show empty state
-                        pricingTableBody.innerHTML = `
-                            <tr>
-                                <td colspan="5" class="text-center py-5">
-                                    <p class="caption">No pricing data available. Please try again later.</p>
-                                </td>
-                            </tr>
-                        `;
-                    }
-                    return;
+                console.log("Received pricing data from API:", data); // Log the received data structure
+
+                // --- Check the structure of the received data ---
+                if (typeof data.prices !== 'object' || data.prices === null) {
+                    console.error('Invalid pricing data format received:', data);
+                    throw new Error('Invalid pricing data format from server.');
                 }
                 
-                // Normal successful response
-                pricingData = data.data;
-                
+                // Store the prices object in pricingData
+                pricingData = data.prices; // <-- This is the object containing model prices
+
+                // Convert the pricingData object into an array of model objects for table rendering
+                pricingData = Object.entries(pricingData).map(([modelId, modelDetails]) => {
+                    // Format the model name (use provided name if available, otherwise format the ID)
+                    const modelName = modelDetails.model_name || 
+                                      modelId.split('/').pop().replace(/-/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+                    
+                    // Format prices with appropriate precision
+                    // For very small values, show more decimal places
+                    let inputPriceStr, outputPriceStr;
+                    
+                    if (modelDetails.input_price === 0) {
+                        inputPriceStr = '$0.00';
+                    } else if (modelDetails.input_price < 0.01) {
+                        inputPriceStr = `$${modelDetails.input_price.toFixed(4)}`;
+                    } else {
+                        inputPriceStr = `$${modelDetails.input_price.toFixed(2)}`;
+                    }
+                    
+                    if (modelDetails.output_price === 0) {
+                        outputPriceStr = '$0.00';
+                    } else if (modelDetails.output_price < 0.01) {
+                        outputPriceStr = `$${modelDetails.output_price.toFixed(4)}`;
+                    } else {
+                        outputPriceStr = `$${modelDetails.output_price.toFixed(2)}`;
+                    }
+                    
+                    return {
+                        model_id: modelId,
+                        model_name: modelName,
+                        input_price: inputPriceStr,
+                        output_price: outputPriceStr,
+                        context_length: modelDetails.context_length || 'N/A',
+                        multimodal: modelDetails.is_multimodal ? 'Yes' : 'No'
+                    };
+                });
+
                 // Store in localStorage for caching
                 try {
                     localStorage.setItem('modelPricingData', JSON.stringify(pricingData));
@@ -855,25 +845,47 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Render the table
                 renderPricingTable();
-                const currentTime = new Date();
-                lastUpdated.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
+                
+                // Update last updated timestamp
+                if (data.last_updated) {
+                    const lastUpdatedDate = new Date(data.last_updated);
+                    lastUpdatedElem.textContent = `Last updated: ${lastUpdatedDate.toLocaleTimeString()} ${lastUpdatedDate.toLocaleDateString()}`;
+                } else {
+                    const currentTime = new Date();
+                    lastUpdatedElem.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
+                }
             })
             .catch(error => {
                 console.error('Error loading pricing data:', error);
                 
                 // Try to use cached data if available
+                const cachedData = localStorage.getItem('modelPricingData');
+                const cachedTimestamp = localStorage.getItem('modelPricingTimestamp');
+                
                 if (cachedData) {
                     try {
                         pricingData = JSON.parse(cachedData);
                         renderPricingTable();
                         
                         // Update the last updated timestamp to show it's cached data
-                        const lastUpdated = document.getElementById('lastUpdated');
-                        lastUpdated.textContent = `Last updated: ${new Date(parseInt(cachedTimestamp)).toLocaleString()} (cached)`;
+                        lastUpdatedElem.textContent = `Last updated: ${new Date(parseInt(cachedTimestamp)).toLocaleString()} (cached)`;
                         
                         // Remove any existing alert
                         const existingAlert = document.querySelector('#pricing .alert');
                         if (existingAlert) existingAlert.remove();
+                        
+                        // Show warning about using cached data
+                        const pricingCard = document.querySelector('#pricing .balance-card');
+                        const warningAlert = document.createElement('div');
+                        warningAlert.className = 'alert alert-warning mt-3';
+                        warningAlert.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Could not fetch current pricing data. Using previously cached data.';
+                        pricingCard.insertBefore(warningAlert, pricingCard.firstChild);
+                        
+                        // Auto-hide the warning message after 5 seconds
+                        setTimeout(() => {
+                            warningAlert.remove();
+                        }, 5000);
+                        
                         return;
                     } catch (e) {
                         console.error('Failed to use cached data:', e);
@@ -884,10 +896,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 pricingTableBody.innerHTML = `
                     <tr>
                         <td colspan="5" class="text-center py-5">
-                            <p class="caption">No pricing data available. Please try again later.</p>
+                            <p class="caption text-danger">No pricing data available. Please try again later.</p>
+                            <small class="text-muted">${error.message}</small>
                         </td>
                     </tr>
                 `;
+                lastUpdatedElem.textContent = 'Update failed';
             });
     }
     
@@ -1141,18 +1155,61 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // Update the localStorage cache with the new data
-                localStorage.setItem('modelPricingData', JSON.stringify(data.prices));
+                console.log("Received refreshed pricing data:", data);
+                
+                // Convert the prices object to the array format used by the table
+                const processedPrices = Object.entries(data.prices).map(([modelId, modelDetails]) => {
+                    // Format the model name (use provided name if available, otherwise format the ID)
+                    const modelName = modelDetails.model_name || 
+                                      modelId.split('/').pop().replace(/-/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+                    
+                    // Format prices with appropriate precision
+                    // For very small values, show more decimal places
+                    let inputPriceStr, outputPriceStr;
+                    
+                    if (modelDetails.input_price === 0) {
+                        inputPriceStr = '$0.00';
+                    } else if (modelDetails.input_price < 0.01) {
+                        inputPriceStr = `$${modelDetails.input_price.toFixed(4)}`;
+                    } else {
+                        inputPriceStr = `$${modelDetails.input_price.toFixed(2)}`;
+                    }
+                    
+                    if (modelDetails.output_price === 0) {
+                        outputPriceStr = '$0.00';
+                    } else if (modelDetails.output_price < 0.01) {
+                        outputPriceStr = `$${modelDetails.output_price.toFixed(4)}`;
+                    } else {
+                        outputPriceStr = `$${modelDetails.output_price.toFixed(2)}`;
+                    }
+                    
+                    return {
+                        model_id: modelId,
+                        model_name: modelName,
+                        input_price: inputPriceStr,
+                        output_price: outputPriceStr,
+                        context_length: modelDetails.context_length || 'N/A',
+                        multimodal: modelDetails.is_multimodal ? 'Yes' : 'No'
+                    };
+                });
+                
+                // Update the localStorage cache with the new processed data
+                localStorage.setItem('modelPricingData', JSON.stringify(processedPrices));
                 localStorage.setItem('modelPricingTimestamp', new Date().getTime().toString());
                 
                 // Update the pricing table
-                pricingData = data.prices;
+                pricingData = processedPrices;
                 renderPricingTable();
                 
                 // Update the last updated text
                 const lastUpdated = document.getElementById('lastUpdated');
-                const currentTime = new Date();
-                lastUpdated.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
+                if (data.last_updated) {
+                    const lastUpdatedDate = new Date(data.last_updated);
+                    lastUpdated.textContent = `Last updated: ${lastUpdatedDate.toLocaleTimeString()} ${lastUpdatedDate.toLocaleDateString()}`;
+                } else {
+                    const currentTime = new Date();
+                    lastUpdated.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
+                }
                 
                 // Show success message
                 const pricingCard = document.querySelector('#pricing .balance-card');
@@ -1167,6 +1224,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 5000);
             } else {
                 // Show error message
+                console.error('API returned error:', data.error);
                 const pricingCard = document.querySelector('#pricing .balance-card');
                 const errorAlert = document.createElement('div');
                 errorAlert.className = 'alert alert-danger mt-3';

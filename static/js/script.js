@@ -706,64 +706,77 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize model data
     fetchUserPreferences();
     
-    // Model preset button click handlers
-    modelPresetButtons.forEach(button => {
-        // Find selector icon within this button
-        const selectorIcon = button.querySelector('.selector-icon');
+    // Only initialize model selector related code if the model selector exists on this page
+    if (modelSelector) {
+        console.log('Model selector found, initializing selector functionality');
         
-        // Add click event to the model button
-        button.addEventListener('click', function(e) {
-            const presetId = this.getAttribute('data-preset-id');
-            
-            // If shift key or right-click, open model selector
-            if (e.shiftKey || e.button === 2) {
-                e.preventDefault();
-                openModelSelector(presetId, this);
-                return;
-            }
-            
-            // Otherwise, select this preset
-            selectPresetButton(presetId);
-        });
-        
-        // Add context menu to open selector
-        button.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            const presetId = this.getAttribute('data-preset-id');
-            openModelSelector(presetId, this);
-        });
-        
-        // Add click event to the selector icon
-        if (selectorIcon) {
-            selectorIcon.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation(); // Prevent button click from firing
+        // Model preset button click handlers
+        if (modelPresetButtons && modelPresetButtons.length > 0) {
+            modelPresetButtons.forEach(button => {
+                // Find selector icon within this button
+                const selectorIcon = button.querySelector('.selector-icon');
                 
-                const presetId = button.getAttribute('data-preset-id');
-                openModelSelector(presetId, button);
+                // Add click event to the model button
+                button.addEventListener('click', function(e) {
+                    const presetId = this.getAttribute('data-preset-id');
+                    
+                    // If shift key or right-click, open model selector
+                    if (e.shiftKey || e.button === 2) {
+                        e.preventDefault();
+                        openModelSelector(presetId, this);
+                        return;
+                    }
+                    
+                    // Otherwise, select this preset
+                    selectPresetButton(presetId);
+                });
+                
+                // Add context menu to open selector
+                button.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    const presetId = this.getAttribute('data-preset-id');
+                    openModelSelector(presetId, this);
+                });
+                
+                // Add click event to the selector icon
+                if (selectorIcon) {
+                    selectorIcon.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation(); // Prevent button click from firing
+                        
+                        const presetId = button.getAttribute('data-preset-id');
+                        openModelSelector(presetId, button);
+                    });
+                }
             });
         }
-    });
-    
-    // Close model selector on button click
-    closeSelector.addEventListener('click', function() {
-        closeModelSelector();
-    });
-    
-    // Close model selector when clicking outside
-    document.addEventListener('click', function(e) {
-        if (modelSelector.style.display === 'block' && 
-            !modelSelector.contains(e.target) && 
-            !e.target.matches('.model-preset-btn') && 
-            !e.target.closest('.model-preset-btn')) {
-            closeModelSelector();
+        
+        // Close model selector on button click (only if close button exists)
+        if (closeSelector) {
+            closeSelector.addEventListener('click', function() {
+                closeModelSelector();
+            });
         }
-    });
-    
-    // Search functionality for model selector
-    modelSearch.addEventListener('input', function() {
-        filterModelList(this.value.toLowerCase());
-    });
+        
+        // Close model selector when clicking outside
+        document.addEventListener('click', function(e) {
+            if (modelSelector.style.display === 'block' && 
+                !modelSelector.contains(e.target) && 
+                !e.target.matches('.model-preset-btn') && 
+                !e.target.closest('.model-preset-btn')) {
+                closeModelSelector();
+            }
+        });
+        
+        // Search functionality for model selector (only if search input exists)
+        if (modelSearch) {
+            modelSearch.addEventListener('input', function() {
+                filterModelList(this.value.toLowerCase());
+            });
+        }
+    } else {
+        console.log('Model selector not found on this page, skipping selector initialization');
+    }
     
     // Function to select a preset button and update the current model
     function selectPresetButton(presetId) {
