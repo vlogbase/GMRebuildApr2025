@@ -373,24 +373,57 @@
                 </div>
                 
                 <div id="usage-summary-tab" class="usage-sub-tab active">
+                <style>
+                    /* Usage analytics table styles - similar to pricing table */
+                    .usage-table tbody tr {
+                        transition: background-color 0.15s ease-in-out;
+                    }
+                    
+                    .usage-table tbody tr:hover {
+                        background-color: rgba(255, 255, 255, 0.1) !important;
+                    }
+                    
+                    .usage-table td {
+                        padding: 0.75rem 1rem;
+                        vertical-align: middle;
+                    }
+                    
+                    .usage-table th {
+                        padding: 0.75rem 1rem;
+                        border-bottom: 1px solid #2c2f33;
+                        background-color: #242628;
+                    }
+                    
+                    .usage-table {
+                        margin-bottom: 0;
+                    }
+                </style>
                 {% if recent_usage %}
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover">
-                        <thead>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-dark table-hover usage-table table-striped">
+                        <thead class="table-dark sticky-top">
                             <tr>
-                                <th style="min-width: 110px;">Date</th>
-                                <th style="min-width: 80px;">Type</th>
-                                <th style="min-width: 180px;">Model</th>
-                                <th style="min-width: 80px;">Cost</th>
+                                <th style="min-width: 110px; position: sticky; top: 0; z-index: 10; background-color: #212529;">Date</th>
+                                <th style="min-width: 80px; position: sticky; top: 0; z-index: 10; background-color: #212529;">Type</th>
+                                <th style="min-width: 180px; position: sticky; top: 0; z-index: 10; background-color: #212529;">Model</th>
+                                <th style="min-width: 80px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Cost</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for usage in recent_usage %}
                             <tr>
                                 <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
-                                <td>{{ usage.usage_type }}</td>
+                                <td>
+                                    {% if usage.usage_type == 'chat' %}
+                                        <span class="badge-dark-primary">Chat</span>
+                                    {% elif usage.usage_type == 'embedding' %}
+                                        <span class="badge-dark-info">Embedding</span>
+                                    {% else %}
+                                        <span class="badge-dark-secondary">{{ usage.usage_type|capitalize }}</span>
+                                    {% endif %}
+                                </td>
                                 <td>{{ usage.model_id }}</td>
-                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                <td class="text-end">${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -411,17 +444,17 @@
 
                 <div id="usage-detailed-tab" class="usage-sub-tab" style="display: none;">
                 {% if recent_usage %}
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover">
-                        <thead>
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-dark table-hover usage-table table-striped">
+                        <thead class="table-dark sticky-top">
                             <tr>
-                                <th style="min-width: 110px;">Date</th>
-                                <th style="min-width: 180px;">Model</th>
-                                <th style="min-width: 100px;">Input Tokens</th>
-                                <th style="min-width: 100px;">Input Cost</th>
-                                <th style="min-width: 100px;">Output Tokens</th>
-                                <th style="min-width: 100px;">Output Cost</th>
-                                <th style="min-width: 100px;">Total Cost</th>
+                                <th style="min-width: 110px; position: sticky; top: 0; z-index: 10; background-color: #212529;">Date</th>
+                                <th style="min-width: 180px; position: sticky; top: 0; z-index: 10; background-color: #212529;">Model</th>
+                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Input Tokens</th>
+                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Input Cost</th>
+                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Output Tokens</th>
+                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Output Cost</th>
+                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Total Cost</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -429,8 +462,8 @@
                             <tr>
                                 <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
                                 <td>{{ usage.model_id }}</td>
-                                <td>{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
-                                <td>
+                                <td class="text-end">{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
+                                <td class="text-end">
                                     {% if usage.prompt_tokens and usage.model_id %}
                                         {% set input_cost = ((usage.credits_used / 1000) * 0.7)|float %}
                                         ${{ "%.4f"|format(input_cost) }}
@@ -438,8 +471,8 @@
                                         N/A
                                     {% endif %}
                                 </td>
-                                <td>{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
-                                <td>
+                                <td class="text-end">{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
+                                <td class="text-end">
                                     {% if usage.completion_tokens and usage.model_id %}
                                         {% set output_cost = ((usage.credits_used / 1000) * 0.3)|float %}
                                         ${{ "%.4f"|format(output_cost) }}
@@ -447,7 +480,7 @@
                                         N/A
                                     {% endif %}
                                 </td>
-                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                <td class="text-end">${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
