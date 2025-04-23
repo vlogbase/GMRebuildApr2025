@@ -18,6 +18,7 @@ import secrets
 import threading
 import datetime
 import mimetypes
+import atexit
 from pathlib import Path
 from PIL import Image  # For image processing
 from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory # Added send_from_directory
@@ -26,6 +27,8 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure Blob Storage
+from apscheduler.schedulers.background import BackgroundScheduler
+from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
 
 # Check if we should enable advanced memory features
 ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
@@ -207,6 +210,20 @@ OPENROUTER_MODELS_CACHE = {
     "timestamp": 0,
     "expiry": 86400  # Cache expiry in seconds (24 hours)
 }
+
+# Initialize the scheduler for background tasks
+scheduler = BackgroundScheduler()
+scheduler.add_job(
+    func=fetch_and_store_openrouter_prices, 
+    trigger='interval', 
+    minutes=30, 
+    id='fetch_model_prices_job'
+)
+
+# Register scheduler shutdown with app exit
+@atexit.register
+def shutdown_scheduler():
+    scheduler.shutdown(wait=False)
 
 # --- Helper Functions ---
 def get_user_identifier():
@@ -1419,32 +1436,13 @@ def chat(): # Synchronous function
                     # Assume completion will be around half the prompt length
                     estimated_completion_tokens = max(100, estimated_prompt_tokens // 2)
                     
-                    # Determine model cost per million
-                    model_cost_per_million = None
-                    model_name = model_id.lower()
-                    
-                    # Default model cost if we can't find it
-                    if not model_cost_per_million:
-                        if "gpt-4" in model_name:
-                            model_cost_per_million = 60.0  # Approximate cost for GPT-4
-                        elif "claude-3" in model_name and "opus" in model_name:
-                            model_cost_per_million = 45.0  # Approximate cost for Claude-3 Opus
-                        elif "claude-3" in model_name and "sonnet" in model_name:
-                            model_cost_per_million = 15.0  # Approximate cost for Claude-3 Sonnet
-                        elif "claude-3" in model_name and "haiku" in model_name:
-                            model_cost_per_million = 3.0   # Approximate cost for Claude-3 Haiku
-                        elif "gemini-1.5" in model_name and "pro" in model_name:
-                            model_cost_per_million = 10.0  # Approximate cost for Gemini 1.5 Pro
-                        elif "gpt-3.5" in model_name:
-                            model_cost_per_million = 1.0   # Approximate cost for GPT-3.5
-                        else:
-                            model_cost_per_million = 10.0  # Default fallback
+                    # We'll use the model ID directly with the dynamic pricing system
                     
                     # Calculate estimated credits
                     estimated_credits = calculate_openrouter_credits(
                         prompt_tokens=estimated_prompt_tokens,
                         completion_tokens=estimated_completion_tokens,
-                        model_cost_per_million=model_cost_per_million
+                        model_id=model_id
                     )
                     
                     # Check if user has sufficient credits
@@ -1596,32 +1594,14 @@ def chat(): # Synchronous function
                             try:
                                 from billing import record_usage, calculate_openrouter_credits
                                 
-                                # Check if we can get model cost per million from OpenRouter info
-                                model_cost_per_million = None
+                                # Get the model ID that was actually used
                                 model_name = final_model_id_used or requested_model_id
-                                
-                                # Default model cost if we can't find it (for safety)
-                                if not model_cost_per_million:
-                                    if "gpt-4" in model_name.lower():
-                                        model_cost_per_million = 60.0  # Approximate cost for GPT-4
-                                    elif "claude-3" in model_name.lower() and "opus" in model_name.lower():
-                                        model_cost_per_million = 45.0  # Approximate cost for Claude-3 Opus
-                                    elif "claude-3" in model_name.lower() and "sonnet" in model_name.lower():
-                                        model_cost_per_million = 15.0  # Approximate cost for Claude-3 Sonnet
-                                    elif "claude-3" in model_name.lower() and "haiku" in model_name.lower():
-                                        model_cost_per_million = 3.0   # Approximate cost for Claude-3 Haiku
-                                    elif "gemini-1.5" in model_name.lower() and "pro" in model_name.lower():
-                                        model_cost_per_million = 10.0  # Approximate cost for Gemini 1.5 Pro
-                                    elif "gpt-3.5" in model_name.lower():
-                                        model_cost_per_million = 1.0   # Approximate cost for GPT-3.5
-                                    else:
-                                        model_cost_per_million = 10.0  # Default fallback
                                 
                                 # Calculate credits used
                                 credits_used = calculate_openrouter_credits(
                                     prompt_tokens=final_prompt_tokens,
                                     completion_tokens=final_completion_tokens,
-                                    model_cost_per_million=model_cost_per_million
+                                    model_id=model_name
                                 )
                                 
                                 # Record usage
@@ -1766,64 +1746,93 @@ def _fetch_openrouter_models():
         logger.exception("Error fetching models from OpenRouter")
         return None
 
+@app.route('/api/get_model_prices', methods=['GET'])
+def get_model_prices():
+    """ Get the current model prices from our dynamic pricing system """
+    try:
+        # Return the cached prices and the last_updated timestamp
+        return jsonify({
+            'success': True,
+            'prices': model_prices_cache['prices'],
+            'last_updated': model_prices_cache['last_updated']
+        })
+    except Exception as e:
+        logger.error(f"Error getting model prices: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/refresh_model_prices', methods=['POST'])
+def refresh_model_prices():
+    """ Manually refresh model prices from OpenRouter API """
+    try:
+        # Call the function to fetch and store prices
+        success = fetch_and_store_openrouter_prices()
+        
+        if success:
+            return jsonify({
+                'success': True,
+                'prices': model_prices_cache['prices'],
+                'last_updated': model_prices_cache['last_updated'],
+                'message': 'Model prices refreshed successfully'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Failed to refresh model prices from OpenRouter API'
+            }), 500
+            
+    except Exception as e:
+        logger.error(f"Error refreshing model prices: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/model-pricing', methods=['GET'])
 def get_model_pricing():
     """ Fetch model pricing information """
     try:
-        # Check for existing cached data regardless of expiry
-        has_cached_data = OPENROUTER_MODELS_CACHE["data"] is not None
+        from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
         
-        # Check if we should use cached data (not expired)
-        current_time = time.time()
-        cache_fresh = has_cached_data and (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]
-        
-        if cache_fresh:
-            # Use fresh cached data
-            models_data = OPENROUTER_MODELS_CACHE["data"]
-            logger.info("Using cached model pricing data from OpenRouter (still fresh)")
-        else:
-            # Fetch fresh data from OpenRouter
-            logger.info("Fetching fresh model pricing data from OpenRouter")
-            models_data = _fetch_openrouter_models()
+        # If cache is empty, fetch prices from OpenRouter
+        if not model_prices_cache['prices']:
+            logger.info("Model prices cache is empty, fetching from OpenRouter API...")
+            success = fetch_and_store_openrouter_prices()
             
-            # If the API call failed but we have cached data, use it as fallback
-            if not models_data and has_cached_data:
-                models_data = OPENROUTER_MODELS_CACHE["data"]
-                logger.info("API request failed, using older cached model pricing data as fallback")
-                # Return the data but add an error message for the UI to show warning
-                return jsonify({
-                    "error": "Unable to connect to OpenRouter API",
-                    "message": "Using cached data from previous successful connection.",
-                    "data": models_data.get('data', [])
-                }), 200
-            
-            # If no data at all (no cache, API failed)
-            if not models_data:
-                logger.error("Failed to fetch model data from OpenRouter API and no cache available")
+            if not success:
+                logger.error("Failed to fetch prices from OpenRouter API")
                 return jsonify({
                     "error": "Unable to connect to OpenRouter API",
                     "message": "Please try again later or contact support if the problem persists.",
-                    "data": []  # Return empty data array for proper frontend handling
+                    "data": []
                 }), 200  # Return 200 so the error can be handled gracefully in the UI
-            
+        
         # Process models to create pricing data
         pricing_data = []
         
         # Define our internal price mapping (multiply OpenRouter prices by markup factor)
         markup_factor = 2.0
         
+        # Fallback for throughput estimates based on model type
+        def get_throughput_estimate(model_id):
+            if "gpt-3.5" in model_id.lower() or "llama" in model_id.lower():
+                return "High (~500 tokens/sec)"
+            elif "gpt-4" in model_id.lower() or ("claude-3" in model_id.lower() and "opus" in model_id.lower()):
+                return "Limited (~50 tokens/sec)"
+            else:
+                return "No data"
+        
         # Process the models to extract pricing information
-        for model in models_data.get('data', []):
-            model_id = model.get('id', '')
-            context_length = model.get('context_length', 'N/A')
+        for model_id, model_data in model_prices_cache['prices'].items():
+            # Get model name (format from ID if not available)
+            model_name = model_id.split('/')[-1].replace('-', ' ').title()
+            is_autorouter = "router" in model_id.lower() or "openrouter" in model_id.lower()
             
             # Extract pricing information
-            pricing = model.get('pricing', {})
-            input_price_per_token = pricing.get('prompt', 0)
-            output_price_per_token = pricing.get('completion', 0)
-            
-            # Handle special case for AutoRouter
-            is_autorouter = "router" in model_id.lower() or "openrouter" in model_id.lower()
+            input_price_per_token = model_data['input_price'] / 1000000  # Convert from per million tokens
+            output_price_per_token = model_data['output_price'] / 1000000  # Convert from per million tokens
             
             # Handle free models
             is_free_model = (input_price_per_token == 0 and output_price_per_token == 0)
@@ -1837,8 +1846,6 @@ def get_model_pricing():
                 # For AutoRouter, we display "Variable" but use a nominal value for sorting
                 input_price_display = "Variable"
                 output_price_display = "Variable"
-                # Assign a nominal value for sorting that places it between free and paid models
-                our_input_price = 0.00005  # This value is only used for sorting
             elif is_free_model or our_input_price == 0:
                 # For free models, explicitly show $0.00
                 input_price_display = "$0.00"
@@ -1848,28 +1855,16 @@ def get_model_pricing():
                 input_price_display = f"${our_input_price * 1000000:.2f}"
                 output_price_display = f"${our_output_price * 1000000:.2f}" if our_output_price else "$0.00"
             
-            # Get multimodal support
-            is_multimodal = model.get('is_multimodal', False)
+            # Get context length and multimodal support
+            context_length = model_data.get('context_length', 'N/A')
+            is_multimodal = model_data.get('is_multimodal', False)
             
-            # Get throughput data
-            # Try to get actual throughput from API if available
-            throughput_tokens_per_second = model.get('throughput', {}).get('tokens_per_second')
-            if throughput_tokens_per_second:
-                throughput_estimate = f"{throughput_tokens_per_second} tokens/sec"
-            else:
-                # Fallback to estimated categories based on model type
-                if is_autorouter:
-                    throughput_estimate = "Variable"
-                elif "gpt-3.5" in model_id.lower() or "llama" in model_id.lower():
-                    throughput_estimate = "High (~500 tokens/sec)"
-                elif "gpt-4" in model_id.lower() or ("claude-3" in model_id.lower() and "opus" in model_id.lower()):
-                    throughput_estimate = "Limited (~50 tokens/sec)"
-                else:
-                    throughput_estimate = "No data"
+            # Get throughput estimate
+            throughput_estimate = get_throughput_estimate(model_id)
             
             pricing_data.append({
                 "model_id": model_id,
-                "model_name": model.get('name', model_id),
+                "model_name": model_name,
                 "input_price": input_price_display,
                 "output_price": output_price_display,
                 "context_length": context_length,
@@ -1891,13 +1886,16 @@ def get_model_pricing():
         # Sort models alphabetically for consistent display
         pricing_data.sort(key=lambda x: x['model_name'].lower())
         
-        return jsonify({"data": pricing_data})
+        return jsonify({
+            "data": pricing_data, 
+            "last_updated": model_prices_cache['last_updated']
+        })
             
     except Exception as e:
-        logger.exception("Error processing model pricing data")
+        logger.exception(f"Error processing model pricing data: {e}")
         return jsonify({
             "error": "Server error processing model pricing data",
-            "message": "We encountered an issue retrieving pricing information. Using cached data if available.",
+            "message": "We encountered an issue retrieving pricing information. Please try again later.",
             "data": []
         }), 200  # Return 200 so frontend can handle gracefully
 
@@ -2412,5 +2410,17 @@ def upload_documents():
 # --- Main Execution ---
 if __name__ == '__main__':
     logger.info("Starting Flask development server")
+    
+    # Perform initial model price fetch
+    try:
+        logger.info("Performing initial model price fetch on startup")
+        fetch_and_store_openrouter_prices()
+    except Exception as e:
+        logger.error(f"Error during initial model price fetch: {e}")
+    
+    # Start the price update scheduler
+    scheduler.start()
+    logger.info("Started background scheduler for model price updates")
+    
     # ensure gevent monkey-patching already happened at import time
     app.run(host='0.0.0.0', port=5000, debug=True)

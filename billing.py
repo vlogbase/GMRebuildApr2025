@@ -400,30 +400,39 @@ def transaction_history():
         flash(f"An error occurred: {str(e)}", "error")
         return redirect(url_for('billing.account_management'))
 
-def calculate_openrouter_credits(prompt_tokens, completion_tokens, model_cost_per_million):
+def calculate_openrouter_credits(prompt_tokens, completion_tokens, model_id):
     """
-    Calculate credits used for an OpenRouter request.
+    Calculate credits used for an OpenRouter request using dynamic pricing.
     
     Args:
         prompt_tokens (int): Number of prompt tokens
         completion_tokens (int): Number of completion tokens
-        model_cost_per_million (float): Model cost per million tokens in USD
+        model_id (str): The ID of the model to use
         
     Returns:
         int: Credits used
     """
-    # Calculate token cost
-    token_cost = model_cost_per_million / 1000000  # Cost per token
+    # Import here to avoid circular imports
+    from price_updater import get_model_cost
+    
+    # Get model costs from the cached pricing data
+    model_costs = get_model_cost(model_id)
+    prompt_cost_per_million = model_costs['prompt_cost_per_million']
+    completion_cost_per_million = model_costs['completion_cost_per_million']
+    
+    # Calculate token costs
+    prompt_cost = (prompt_tokens / 1000000) * prompt_cost_per_million
+    completion_cost = (completion_tokens / 1000000) * completion_cost_per_million
     
     # Calculate total cost
-    total_cost = (prompt_tokens * token_cost) + (completion_tokens * token_cost)
+    total_cost_usd = prompt_cost + completion_cost
     
     # Apply markup (2x)
-    total_cost_with_markup = total_cost * 2
+    user_cost_usd = total_cost_usd * 2
     
     # Convert to credits (1 credit = $0.001)
     # $1 = 1,000 credits
-    credits = int(total_cost_with_markup * 1000)
+    credits = int(user_cost_usd * 1000)
     
     return credits
 
