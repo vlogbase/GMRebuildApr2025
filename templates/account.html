@@ -622,6 +622,31 @@
                     
                     <hr class="my-4" style="border-color: #3f4246;">
                     
+                    <h5>Model Cost Filtering</h5>
+                    <p class="caption mb-3">Set maximum cost thresholds for AI models. Models exceeding these costs will be filtered out.</p>
+                    
+                    <div class="mb-3 filter-control">
+                        <label for="max-input-cost-slider">Max Input Cost (<span id="max-input-cost-label">$?.??</span> / million tokens):</label>
+                        <input type="range" id="max-input-cost-slider" min="0" max="100" step="1" class="form-range">
+                        <div class="d-flex align-items-center mt-2">
+                            <input type="number" id="max-input-cost-number" min="0.01" max="1500" step="0.01" class="form-control custom-amount-input" placeholder="e.g., 0.50">
+                            <button type="button" id="clear-input-cost-btn" class="btn btn-sm btn-secondary ms-2">Disable Filter</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3 filter-control">
+                        <label for="max-output-cost-slider">Max Output Cost (<span id="max-output-cost-label">$?.??</span> / million tokens):</label>
+                        <input type="range" id="max-output-cost-slider" min="0" max="100" step="1" class="form-range">
+                        <div class="d-flex align-items-center mt-2">
+                            <input type="number" id="max-output-cost-number" min="0.01" max="1500" step="0.01" class="form-control custom-amount-input" placeholder="e.g., 0.50">
+                            <button type="button" id="clear-output-cost-btn" class="btn btn-sm btn-secondary ms-2">Disable Filter</button>
+                        </div>
+                    </div>
+                    
+                    <div id="filter-save-status" class="caption mt-2" style="min-height: 1em;"></div>
+
+                    <hr class="my-4" style="border-color: #3f4246;">
+                    
                     <h5>Danger Zone</h5>
                     <p class="caption">These actions cannot be undone. Please proceed with caution.</p>
                     
@@ -1377,6 +1402,221 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the usage analytics functionality
     handleUsageSubTabs();
     handleCsvExport();
+    
+    // ===== Cost Filter Controls =====
+    // Get references to the filter elements
+    const maxInputCostSlider = document.getElementById('max-input-cost-slider');
+    const maxInputCostNumber = document.getElementById('max-input-cost-number');
+    const maxInputCostLabel = document.getElementById('max-input-cost-label');
+    const clearInputCostBtn = document.getElementById('clear-input-cost-btn');
+    
+    const maxOutputCostSlider = document.getElementById('max-output-cost-slider');
+    const maxOutputCostNumber = document.getElementById('max-output-cost-number');
+    const maxOutputCostLabel = document.getElementById('max-output-cost-label');
+    const clearOutputCostBtn = document.getElementById('clear-output-cost-btn');
+    
+    const filterSaveStatus = document.getElementById('filter-save-status');
+    
+    // Logarithmic mapping constants and functions
+    const LOG_MIN = 0.01; // Min cost ($ per million tokens)
+    const LOG_MAX = 1500; // Max cost ($ per million tokens)
+    
+    // Calculate log value from slider position (0-100)
+    function sliderPosToValue(sliderValue) {
+        if (sliderValue <= 0) return LOG_MIN;
+        const scale = Math.log(LOG_MAX / LOG_MIN);
+        let value = LOG_MIN * Math.exp(scale * sliderValue / 100);
+        return parseFloat(value.toFixed(4));
+    }
+    
+    // Calculate slider position (0-100) from log value
+    function valueToSliderPos(value) {
+        if (value <= LOG_MIN) return 0;
+        if (value >= LOG_MAX) return 100;
+        const scale = Math.log(LOG_MAX / LOG_MIN);
+        let pos = 100 * Math.log(value / LOG_MIN) / scale;
+        return Math.round(pos); // Round to nearest integer for slider position
+    }
+    
+    // Function to update the UI based on cost values
+    function updateFilterControls(inputCost, outputCost) {
+        // Handle input cost
+        if (inputCost === null || inputCost === undefined) {
+            maxInputCostSlider.value = 100; // Set to max
+            maxInputCostNumber.value = ''; // Clear the input
+            maxInputCostLabel.textContent = 'Disabled';
+        } else {
+            maxInputCostSlider.value = valueToSliderPos(inputCost);
+            maxInputCostNumber.value = inputCost.toFixed(2);
+            maxInputCostLabel.textContent = '$' + inputCost.toFixed(2);
+        }
+        
+        // Handle output cost
+        if (outputCost === null || outputCost === undefined) {
+            maxOutputCostSlider.value = 100; // Set to max
+            maxOutputCostNumber.value = ''; // Clear the input
+            maxOutputCostLabel.textContent = 'Disabled';
+        } else {
+            maxOutputCostSlider.value = valueToSliderPos(outputCost);
+            maxOutputCostNumber.value = outputCost.toFixed(2);
+            maxOutputCostLabel.textContent = '$' + outputCost.toFixed(2);
+        }
+    }
+    
+    // Function to save filter settings with debounce
+    let saveSettingsTimeout = null;
+    
+    function debouncedSaveSettings() {
+        if (saveSettingsTimeout) {
+            clearTimeout(saveSettingsTimeout);
+        }
+        
+        filterSaveStatus.textContent = 'Waiting...';
+        saveSettingsTimeout = setTimeout(saveFilterSettings, 800); // 800ms debounce
+    }
+    
+    function saveFilterSettings() {
+        // Get values from number inputs
+        let inputCostValue = maxInputCostNumber.value ? parseFloat(maxInputCostNumber.value) : null;
+        let outputCostValue = maxOutputCostNumber.value ? parseFloat(maxOutputCostNumber.value) : null;
+        
+        // If values are greater than or equal to LOG_MAX, set to null (disabled)
+        if (inputCostValue !== null && inputCostValue >= LOG_MAX) {
+            inputCostValue = null;
+        }
+        
+        if (outputCostValue !== null && outputCostValue >= LOG_MAX) {
+            outputCostValue = null;
+        }
+        
+        // Show saving status
+        filterSaveStatus.textContent = 'Saving...';
+        
+        // Make the API call
+        fetch('/api/user_settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                'max_input_cost': inputCostValue,
+                'max_output_cost': outputCostValue
+            }),
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                filterSaveStatus.textContent = 'Saved';
+                
+                // Clear the status after a delay
+                setTimeout(() => {
+                    filterSaveStatus.textContent = '';
+                }, 3000);
+            } else {
+                filterSaveStatus.textContent = 'Error: ' + (data.error || 'Unknown error');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving filter settings:', error);
+            filterSaveStatus.textContent = 'Error saving settings. Please try again.';
+        });
+    }
+    
+    // Add event listeners for slider input
+    maxInputCostSlider.addEventListener('input', function() {
+        const value = sliderPosToValue(this.value);
+        maxInputCostNumber.value = value.toFixed(2);
+        maxInputCostLabel.textContent = '$' + value.toFixed(2);
+        debouncedSaveSettings();
+    });
+    
+    maxOutputCostSlider.addEventListener('input', function() {
+        const value = sliderPosToValue(this.value);
+        maxOutputCostNumber.value = value.toFixed(2);
+        maxOutputCostLabel.textContent = '$' + value.toFixed(2);
+        debouncedSaveSettings();
+    });
+    
+    // Add event listeners for number input changes
+    maxInputCostNumber.addEventListener('change', function() {
+        const value = parseFloat(this.value);
+        if (!isNaN(value) && value >= LOG_MIN) {
+            maxInputCostSlider.value = valueToSliderPos(value);
+            maxInputCostLabel.textContent = '$' + value.toFixed(2);
+            debouncedSaveSettings();
+        } else if (this.value === '') {
+            // Handle empty input (disabled filter)
+            maxInputCostLabel.textContent = 'Disabled';
+            maxInputCostSlider.value = 100;
+            debouncedSaveSettings();
+        }
+    });
+    
+    maxOutputCostNumber.addEventListener('change', function() {
+        const value = parseFloat(this.value);
+        if (!isNaN(value) && value >= LOG_MIN) {
+            maxOutputCostSlider.value = valueToSliderPos(value);
+            maxOutputCostLabel.textContent = '$' + value.toFixed(2);
+            debouncedSaveSettings();
+        } else if (this.value === '') {
+            // Handle empty input (disabled filter)
+            maxOutputCostLabel.textContent = 'Disabled';
+            maxOutputCostSlider.value = 100;
+            debouncedSaveSettings();
+        }
+    });
+    
+    // Add event listeners for clear buttons
+    clearInputCostBtn.addEventListener('click', function() {
+        maxInputCostNumber.value = '';
+        maxInputCostLabel.textContent = 'Disabled';
+        maxInputCostSlider.value = 100;
+        debouncedSaveSettings();
+    });
+    
+    clearOutputCostBtn.addEventListener('click', function() {
+        maxOutputCostNumber.value = '';
+        maxOutputCostLabel.textContent = 'Disabled';
+        maxOutputCostSlider.value = 100;
+        debouncedSaveSettings();
+    });
+    
+    // Fetch settings when the settings tab is shown
+    function loadUserSettings() {
+        fetch('/api/user_settings')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(data => {
+                updateFilterControls(data.max_input_cost, data.max_output_cost);
+            })
+            .catch(error => {
+                console.error('Error fetching user settings:', error);
+                filterSaveStatus.textContent = 'Error loading settings. Please refresh.';
+            });
+    }
+    
+    // Add event listener to load settings when the settings tab is opened
+    document.querySelectorAll('.tab-button').forEach(button => {
+        button.addEventListener('click', function() {
+            if (this.textContent.trim().toLowerCase().includes('account settings')) {
+                loadUserSettings();
+            }
+        });
+    });
+    
+    // Load settings on page load if the settings tab is active
+    if (window.location.hash === '#settings' || document.getElementById('settings').classList.contains('active')) {
+        loadUserSettings();
+    }
 });
 </script>
 {% endblock %}

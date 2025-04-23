@@ -330,15 +330,18 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Image upload and camera event listeners with premium access checks
-    imageUploadButton.addEventListener('click', () => {
-        // Check premium access before allowing image upload
-        if (!checkPremiumAccess('image_upload')) {
-            return; // Stop if access check failed
-        }
-        imageUploadInput.click();
-    });
+    if (imageUploadButton) {
+        imageUploadButton.addEventListener('click', () => {
+            // Check premium access before allowing image upload
+            if (!checkPremiumAccess('image_upload')) {
+                return; // Stop if access check failed
+            }
+            imageUploadInput.click();
+        });
+    }
     
-    imageUploadInput.addEventListener('change', event => {
+    if (imageUploadInput) {
+        imageUploadInput.addEventListener('change', event => {
         const file = event.target.files[0];
         if (file && file.type.startsWith('image/')) {
             // Check premium access before processing the image
@@ -351,24 +354,27 @@ document.addEventListener('DOMContentLoaded', function() {
         event.target.value = null;
     });
     
-    cameraButton.addEventListener('click', async () => {
-        // Check premium access before allowing camera use
-        if (!checkPremiumAccess('camera')) {
-            return; // Stop if access check failed
-        }
-        
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            cameraStream.srcObject = stream;
-            cameraModal.style.display = 'block';
-            loadCameraDevices();
-        } catch (err) {
-            console.error('Camera access error:', err);
-            alert('Camera access denied or not available');
-        }
-    });
+    if (cameraButton) {
+        cameraButton.addEventListener('click', async () => {
+            // Check premium access before allowing camera use
+            if (!checkPremiumAccess('camera')) {
+                return; // Stop if access check failed
+            }
+            
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                cameraStream.srcObject = stream;
+                cameraModal.style.display = 'block';
+                loadCameraDevices();
+            } catch (err) {
+                console.error('Camera access error:', err);
+                alert('Camera access denied or not available');
+            }
+        });
+    }
     
-    captureButton.addEventListener('click', () => {
+    if (captureButton) {
+        captureButton.addEventListener('click', () => {
         // Set canvas dimensions to match video
         const width = cameraStream.videoWidth;
         const height = cameraStream.videoHeight;
@@ -389,14 +395,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 'image/jpeg', 0.85);
     });
     
-    switchCameraButton.addEventListener('click', switchCamera);
+    if (switchCameraButton) {
+        switchCameraButton.addEventListener('click', switchCamera);
+    }
     
-    closeCameraButton.addEventListener('click', () => {
-        stopCameraStream();
-        cameraModal.style.display = 'none';
-    });
+    if (closeCameraButton) {
+        closeCameraButton.addEventListener('click', () => {
+            stopCameraStream();
+            cameraModal.style.display = 'none';
+        });
+    }
     
-    removeImageButton.addEventListener('click', clearAttachedImage);
+    if (removeImageButton) {
+        removeImageButton.addEventListener('click', clearAttachedImage);
+    }
     
     // Image handling functions
     async function handleImageFile(fileOrBlob) {
@@ -705,6 +717,26 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize model data
     fetchUserPreferences();
+    // Initialize cost filter settings for model filtering
+    let maxInputCost = null;
+    let maxOutputCost = null;
+    
+    // Fetch user cost filter settings
+    function fetchCostFilterSettings() {
+        fetch('/api/get_user_settings')
+            .then(response => response.json())
+            .then(data => {
+                console.log('Loaded user cost filter settings:', data);
+                maxInputCost = data.max_input_cost;
+                maxOutputCost = data.max_output_cost;
+            })
+            .catch(error => {
+                console.error('Error fetching cost filter settings:', error);
+            });
+    }
+    
+    // Load cost filter settings on page load
+    fetchCostFilterSettings();
     
     // Only initialize model selector related code if the model selector exists on this page
     if (modelSelector) {
@@ -1036,9 +1068,36 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get filter function for this preset
         const filterFn = presetFilters[presetId] || (() => true);
         
-        // Filter and sort models
+        // Create cost filter function based on user preferences
+        const costFilterFn = model => {
+            // Skip cost filtering if no cost limits set or for free models (preset 6)
+            if ((maxInputCost === null && maxOutputCost === null) || presetId === '6') {
+                return true;
+            }
+            
+            // Get model pricing information
+            const inputPrice = model.pricing?.prompt || 0;
+            const outputPrice = model.pricing?.completion || 0;
+            
+            // Check if model exceeds any of the user's cost limits
+            let passesFilter = true;
+            
+            // Apply input cost filter if set
+            if (maxInputCost !== null && inputPrice > maxInputCost) {
+                passesFilter = false;
+            }
+            
+            // Apply output cost filter if set
+            if (maxOutputCost !== null && outputPrice > maxOutputCost) {
+                passesFilter = false;
+            }
+            
+            return passesFilter;
+        };
+        
+        // Filter and sort models (apply both preset filter and cost filter)
         const filteredModels = allModels
-            .filter(filterFn)
+            .filter(model => filterFn(model) && costFilterFn(model))
             .sort((a, b) => {
                 // Special handling for preset 4 (vision models)
                 if (presetId === '4') {
@@ -1092,6 +1151,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 freeTag.className = 'free-tag';
                 freeTag.textContent = 'FREE';
                 li.appendChild(freeTag);
+            }
+            
+            // Add price badges for non-free models
+            if (!model.is_free && model.pricing) {
+                // Check if model would be excluded by cost filters
+                const inputPrice = model.pricing?.prompt || 0;
+                const outputPrice = model.pricing?.completion || 0;
+                const exceedsInputCost = maxInputCost !== null && inputPrice > maxInputCost;
+                const exceedsOutputCost = maxOutputCost !== null && outputPrice > maxOutputCost;
+                
+                // Add pricing information tag
+                const pricingTag = document.createElement('span');
+                pricingTag.className = 'pricing-tag';
+                
+                // Format the display price with input and output costs
+                const formattedInputPrice = `$${inputPrice.toFixed(2)}`;
+                const formattedOutputPrice = `$${outputPrice.toFixed(2)}`;
+                pricingTag.textContent = `${formattedInputPrice}/${formattedOutputPrice}`;
+                
+                // Add warning class if model exceeds cost filters
+                if (exceedsInputCost || exceedsOutputCost) {
+                    pricingTag.classList.add('exceeds-cost-limit');
+                    pricingTag.title = 'This model exceeds your cost filter settings';
+                }
+                
+                li.appendChild(pricingTag);
             }
             
             li.appendChild(nameSpan);
@@ -2464,4 +2549,4 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     `;
     document.head.appendChild(style);
-});
+}); // End of DOMContentLoaded event listener

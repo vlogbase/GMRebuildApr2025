@@ -967,6 +967,22 @@ body {
     margin-right: 6px;
 }
 
+.model-list li .pricing-tag {
+    background-color: #2a2a2c;
+    color: #a8a8a8;
+    font-size: 10px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    margin-right: 6px;
+    font-family: monospace;
+}
+
+.model-list li .pricing-tag.exceeds-cost-limit {
+    background-color: #772a2a;
+    color: #ff9e9e;
+    border: 1px solid #ff5757;
+}
+
 .input-group {
     display: flex;
     align-items: flex-end;

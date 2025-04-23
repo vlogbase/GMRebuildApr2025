@@ -17,9 +17,9 @@ logging.basicConfig(
     ]
 )
 
-def main():
+def run():
     """
-    Run the Flask application as a Replit workflow
+    Run the Flask application
     """
     # Set up Flask environment
     os.environ['FLASK_APP'] = 'app.py'
@@ -43,4 +43,4 @@ def main():
     app.run(host="0.0.0.0", port=port)
 
 if __name__ == "__main__":
-    main()
+    run()
