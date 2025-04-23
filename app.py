@@ -2482,7 +2482,7 @@ def get_model_filters():
             # Return default values
             return jsonify({
                 "success": True,
-                "max_input_cost": 150.0,
+                "max_input_cost": 600.0,
                 "max_output_cost": 600.0
             })
     except Exception as e:
