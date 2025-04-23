@@ -246,19 +246,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Default model IDs for each preset button
     const defaultModels = {
         '1': 'google/gemini-2.5-pro-preview-03-25',
-        '2': 'anthropic/claude-3.7-sonnet', // Ensure this is NOT set to openai/o1-pro (costs $5 input, $15 output)
+        '2': 'anthropic/claude-3.7-sonnet',
         '3': 'openai/o4-Mini-High',
         '4': 'openai/gpt-4o', // Vision model for multimodal capabilities
         '5': 'perplexity/sonar-pro',
         '6': 'google/gemini-2.0-flash-exp:free'
     };
-    
-    // Manually blacklist specific expensive models that should never be used regardless of settings
-    const expensiveModelBlacklist = [
-        'openai/o1-pro',      // $5.00 input / $15.00 output
-        'cohere/command-r-plus', // Very expensive for both input/output
-        'anthropic/claude-3-opus'  // $15.00 input / $75.00 output
-    ];
     
     // Free model fallbacks (in order of preference)
     const freeModelFallbacks = [
@@ -909,60 +902,32 @@ document.addEventListener('DOMContentLoaded', function() {
         // Start with the default model for this preset
         let candidateModelId = defaultModels[presetId];
         
-        // First check if the model is in the blacklist of expensive models
-        if (expensiveModelBlacklist.includes(candidateModelId)) {
-            console.warn(`Model ${candidateModelId} is blacklisted as extremely expensive, finding alternative...`);
-            // Force finding an alternative model
-            candidateModelId = null;
-        }
-        
         // If we don't have models loaded yet, we can't filter, so return the default
         if (!allModels || allModels.length === 0) {
-            console.warn(`No models loaded yet, using default for preset ${presetId}: ${candidateModelId || 'NEED ALTERNATIVE'}`);
-            
-            // If the default was blacklisted, return a safe fallback
-            if (!candidateModelId) {
-                console.warn('Using claude-instant as a safe fallback');
-                return 'anthropic/claude-3-haiku-20240307';
-            }
-            
+            console.warn(`No models loaded yet, using default for preset ${presetId}: ${candidateModelId}`);
             return candidateModelId;
         }
         
-        // Check if the default model complies with cost filters (if not already blacklisted)
-        if (candidateModelId) {
-            const defaultModel = allModels.find(m => m.id === candidateModelId);
-            if (defaultModel) {
-                const inputCost = defaultModel.pricing?.prompt || 0;
-                const outputCost = defaultModel.pricing?.completion || 0;
-                
-                // Log explicit details about why a model is rejected
-                if (inputCost > maxInputCost) {
-                    console.warn(`Model ${candidateModelId} exceeds input cost filter: $${inputCost.toFixed(2)} > $${maxInputCost.toFixed(2)}`);
-                    candidateModelId = null;
-                } else if (outputCost > maxOutputCost) {
-                    console.warn(`Model ${candidateModelId} exceeds output cost filter: $${outputCost.toFixed(2)} > $${maxOutputCost.toFixed(2)}`);
-                    candidateModelId = null;
-                } else {
-                    // Default model is okay, use it
-                    return candidateModelId;
-                }
+        // Check if the default model complies with cost filters
+        const defaultModel = allModels.find(m => m.id === candidateModelId);
+        if (defaultModel) {
+            const inputCost = defaultModel.pricing?.prompt || 0;
+            const outputCost = defaultModel.pricing?.completion || 0;
+            
+            if (inputCost <= maxInputCost && outputCost <= maxOutputCost) {
+                // Default model is okay, use it
+                return candidateModelId;
             }
         }
         
-        // Default model doesn't comply or was blacklisted, find an alternative that fits the preset filter and cost filters
-        console.warn(`Need to find alternative for preset ${presetId}`);
+        // Default model doesn't comply, find an alternative that fits the preset filter and cost filters
+        console.warn(`Default model ${candidateModelId} exceeds cost filters, finding alternative...`);
         
         // Get the filter function for this preset
         const presetFilter = presetFilters[presetId];
         
-        // Find all models that match the preset filter, cost filters, and are not blacklisted
+        // Find all models that match the preset filter and cost filters
         const compatibleModels = allModels.filter(model => {
-            // Check if model is blacklisted
-            if (expensiveModelBlacklist.includes(model.id)) {
-                return false;
-            }
-            
             const inputCost = model.pricing?.prompt || 0;
             const outputCost = model.pricing?.completion || 0;
             return presetFilter(model) && inputCost <= maxInputCost && outputCost <= maxOutputCost;
@@ -1021,19 +986,14 @@ document.addEventListener('DOMContentLoaded', function() {
                         let useAlternativeModel = false;
                         let reasonForChange = "";
                         
-                        // Check if model is blacklisted as extremely expensive
-                        if (expensiveModelBlacklist.includes(modelId)) {
-                            useAlternativeModel = true;
-                            reasonForChange = `Model ${modelId} is blacklisted as extremely expensive (hardcoded)`;
-                        }
                         // If it's preset 1-5 and has a free model, find an alternative
-                        else if (presetId !== '6' && isFreeModel) {
+                        if (presetId !== '6' && isFreeModel) {
                             useAlternativeModel = true;
                             reasonForChange = `Preset ${presetId} has a free model (${modelId})`;
                         } 
                         
                         // Check if model exceeds cost filters (for non-free presets)
-                        else if (presetId !== '6' && allModels.length > 0) {
+                        if (presetId !== '6' && allModels.length > 0) {
                             const model = allModels.find(m => m.id === modelId);
                             if (model) {
                                 const inputCost = model.pricing?.prompt || 0;
@@ -1041,7 +1001,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 if (inputCost > maxInputCost || outputCost > maxOutputCost) {
                                     useAlternativeModel = true;
-                                    reasonForChange = `Model ${modelId} exceeds cost filters (Input: $${inputCost.toFixed(2)} > $${maxInputCost.toFixed(2)} or Output: $${outputCost.toFixed(2)} > $${maxOutputCost.toFixed(2)})`;
+                                    reasonForChange = `Model ${modelId} exceeds cost filters (Input: $${inputCost} > $${maxInputCost} or Output: $${outputCost} > $${maxOutputCost})`;
                                 }
                             }
                         }
@@ -2025,41 +1985,15 @@ Note: You may not be able to send messages with this model unless you update you
         // Check if we need to make a multimodal message
         const isMultimodalMessage = attachedImageUrls.length > 0;
         
-        // Special handling for specific expensive models we know are problematic
-        if (modelId === 'openai/o1-pro' && currentPresetId !== '6') {
-            console.error(`Blocked attempt to use openai/o1-pro which costs $5.00 input / $15.00 output`);
-            
-            // Add an explicit error for o1-pro
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'message error-message';
-            errorDiv.innerHTML = `
-                <div class="message-content">
-                    <p><i class="fas fa-exclamation-triangle"></i> OpenAI o1-pro is an extremely expensive model ($5.00 input / $15.00 output) that exceeds your cost filters.</p>
-                    <p>This model has been blocked to prevent accidental usage. Please <a href="/billing/account#settings">adjust your filter settings</a> if you need to use this model.</p>
-                </div>
-            `;
-            chatMessages.appendChild(errorDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            
-            // Remove typing indicator
-            if (typingIndicator) {
-                typingIndicator.remove();
-            }
-            
-            return; // Stop execution here
-        }
-        
         // First, check if the model exceeds our cost filters (except for free models preset 6)
         const model = allModels.find(m => m.id === modelId);
         if (model && currentPresetId !== '6') {
             const inputCost = model.pricing?.prompt || 0;
             const outputCost = model.pricing?.completion || 0;
             
-            console.log(`Checking if model ${modelId} exceeds cost filters: Input $${inputCost.toFixed(2)} (max $${maxInputCost.toFixed(2)}), Output $${outputCost.toFixed(2)} (max $${maxOutputCost.toFixed(2)})`);
-            
             if (inputCost > maxInputCost || outputCost > maxOutputCost) {
                 // Model exceeds our filter limits, show an error
-                const errorMessage = `This model exceeds your cost filter settings (Input: $${inputCost.toFixed(2)} > $${maxInputCost.toFixed(2)} or Output: $${outputCost.toFixed(2)} > $${maxOutputCost.toFixed(2)}). Please adjust your filter settings or choose a different model.`;
+                const errorMessage = `This model exceeds your cost filter settings (Input: $${inputCost} > $${maxInputCost} or Output: $${outputCost} > $${maxOutputCost}). Please adjust your filter settings or choose a different model.`;
                 
                 // Add an error message in the chat
                 const errorDiv = document.createElement('div');
