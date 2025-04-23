@@ -2,31 +2,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Create authentication and credit variables at the top level scope
     let isAuthenticated = false;
     let userCreditBalance = 0;
-    let authCheckComplete = false;
-    
-    // Helper function to check premium access and redirect if needed
-    // This will only work after authentication check is complete
-    function checkPremiumAccess(featureName) {
-        // If auth check isn't complete, assume we can proceed but log a warning
-        if (!authCheckComplete) {
-            console.warn(`Premium access check called before authentication check completed for ${featureName}`);
-            return true;
-        }
-        
-        if (!isAuthenticated) {
-            console.log(`Access denied: Not logged in, redirecting to login for ${featureName}`);
-            window.location.href = '/login?redirect=chat&feature=' + featureName;
-            return false;
-        }
-        
-        if (userCreditBalance <= 0) {
-            console.log(`Access denied: Insufficient credits, redirecting to account page for ${featureName}`);
-            window.location.href = '/billing/account?source=chat&feature=' + featureName;
-            return false;
-        }
-        
-        return true;
-    }
     
     // Delay authentication check slightly to ensure DOM is fully loaded
     setTimeout(() => {
@@ -48,9 +23,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Mark authentication check as complete
-        authCheckComplete = true;
-        
         // Initialize features that depend on authentication status
         if (isAuthenticated) {
             fetchConversations();
@@ -59,6 +31,23 @@ document.addEventListener('DOMContentLoaded', function() {
             lockPremiumFeatures();
         }
     }, 100); // 100ms delay to ensure DOM is fully loaded
+    
+    // Helper function to check premium access and redirect if needed
+    function checkPremiumAccess(featureName) {
+        if (!isAuthenticated) {
+            console.log(`Access denied: Not logged in, redirecting to login for ${featureName}`);
+            window.location.href = '/login?redirect=chat&feature=' + featureName;
+            return false;
+        }
+        
+        if (userCreditBalance <= 0) {
+            console.log(`Access denied: Insufficient credits, redirecting to account page for ${featureName}`);
+            window.location.href = '/billing/account?source=chat&feature=' + featureName;
+            return false;
+        }
+        
+        return true;
+    }
     
     // Setup clipboard paste event listener for the entire document
     document.addEventListener('paste', handlePaste);
@@ -692,27 +681,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Event Listeners - with null checks
-    if (messageInput) {
-        messageInput.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
-            }
-            
-            // Auto-resize textarea
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
-        });
-    }
+    // Event Listeners
+    messageInput.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+        
+        // Auto-resize textarea
+        this.style.height = 'auto';
+        this.style.height = (this.scrollHeight) + 'px';
+    });
     
     // Add clipboard paste event listener to the message input
     document.addEventListener('paste', function(event) {
-        // Check if messageInput exists first
-        if (!messageInput) {
-            return; // Skip this handler if no message input exists on this page
-        }
-        
         // Only process if we're focused on the message input or inside the chat container
         if (document.activeElement === messageInput || 
             document.activeElement.closest('.chat-input-container')) {
@@ -741,9 +723,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    if (sendButton) {
-        sendButton.addEventListener('click', sendMessage);
-    }
+    sendButton.addEventListener('click', sendMessage);
     
     // Initialize model data
     fetchUserPreferences();
@@ -863,19 +843,15 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log(`🖼️ Multimodal UI check for ${modelId}: isMultimodalModel=${isMultimodalModel}, isPreset4=${isPreset4}`);
         
-        // Show/hide upload and camera buttons (if they exist on this page)
-        if (imageUploadButton) {
-            imageUploadButton.style.display = isMultimodalModel ? 'inline-flex' : 'none';
-        }
+        // Show/hide upload and camera buttons
+        imageUploadButton.style.display = isMultimodalModel ? 'inline-flex' : 'none';
         
-        // Only show camera button if browser supports it and it exists on this page
+        // Only show camera button if browser supports it
         const hasCamera = !!navigator.mediaDevices?.getUserMedia;
-        if (cameraButton) {
-            cameraButton.style.display = isMultimodalModel && hasCamera ? 'inline-flex' : 'none';
-        }
+        cameraButton.style.display = isMultimodalModel && hasCamera ? 'inline-flex' : 'none';
         
-        // If switching to a non-multimodal model, clear any attached image (if we're on a page with image functionality)
-        if (!isMultimodalModel && typeof clearAttachedImage === 'function') {
+        // If switching to a non-multimodal model, clear any attached image
+        if (!isMultimodalModel) {
             clearAttachedImage();
         }
         
@@ -1242,42 +1218,36 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // New chat button - with null check
-    if (newChatButton) {
-        newChatButton.addEventListener('click', function() {
-            // Clear chat messages except the welcome message
-            clearChat();
-        });
-    }
+    // New chat button
+    newChatButton.addEventListener('click', function() {
+        // Clear chat messages except the welcome message
+        clearChat();
+    });
     
-    // Clear conversations button - with null check
-    if (clearConversationsButton) {
-        clearConversationsButton.addEventListener('click', function() {
-            // Clear chat and reset conversation items in sidebar
-            clearChat();
-            // In a real app, you would also clear the storage/backend
-        });
-    }
+    // Clear conversations button
+    clearConversationsButton.addEventListener('click', function() {
+        // Clear chat and reset conversation items in sidebar
+        clearChat();
+        // In a real app, you would also clear the storage/backend
+    });
     
-    // Example question button - with null check
-    if (exampleQuestionButton && messageInput) {
-        exampleQuestionButton.addEventListener('click', function() {
-            const exampleQuestions = [
-                "What are the major differences between renewable and fossil fuel energy sources?",
-                "Can you explain how artificial intelligence works in simple terms?",
-                "What are some effective strategies for reducing carbon emissions?",
-                "How does quantum computing differ from classical computing?",
-                "What are the potential implications of gene editing technologies?"
-            ];
-            
-            // Select a random example question
-            const randomQuestion = exampleQuestions[Math.floor(Math.random() * exampleQuestions.length)];
-            
-            // Set the input value and trigger sending
-            messageInput.value = randomQuestion;
-            sendMessage();
-        });
-    }
+    // Example question button
+    exampleQuestionButton.addEventListener('click', function() {
+        const exampleQuestions = [
+            "What are the major differences between renewable and fossil fuel energy sources?",
+            "Can you explain how artificial intelligence works in simple terms?",
+            "What are some effective strategies for reducing carbon emissions?",
+            "How does quantum computing differ from classical computing?",
+            "What are the potential implications of gene editing technologies?"
+        ];
+        
+        // Select a random example question
+        const randomQuestion = exampleQuestions[Math.floor(Math.random() * exampleQuestions.length)];
+        
+        // Set the input value and trigger sending
+        messageInput.value = randomQuestion;
+        sendMessage();
+    });
     
     // Function to send message
     function sendMessage() {

@@ -630,16 +630,6 @@
                         </div>
                     </div>
                     
-                    <div class="mt-3 mb-3 p-2 rounded" style="background-color: #2a2d31;">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <span>Models affected by filter:</span>
-                            <span id="model-filter-stats">Loading stats...</span>
-                        </div>
-                        <div class="progress mt-1" style="height: 8px;">
-                            <div id="model-filter-progress" class="progress-bar bg-info" role="progressbar" style="width: 0%"></div>
-                        </div>
-                    </div>
-                    
                     <div id="filter-save-status" class="caption mt-2" style="min-height: 1em;"></div>
                     
                     <hr class="my-4" style="border-color: #3f4246;">
@@ -1513,8 +1503,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 filterSaveStatus.textContent = 'Settings saved successfully';
                 // Update the UI to reflect the actual saved values
                 updateFilterControls(inputCost, outputCost);
-                // Update model filter stats display
-                updateModelFilterStats(inputCost, outputCost);
             } else {
                 filterSaveStatus.textContent = 'Error: ' + (data.error || 'Failed to save settings');
             }
@@ -1549,41 +1537,22 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event handler for input cost slider
     inputCostSlider.addEventListener('input', function() {
         const preciseValue = sliderPosToValue(this.value);
-        // Ensure we're working with a valid number and format to 2 decimal places
-        if (!isNaN(preciseValue)) {
-            inputCostNumber.value = preciseValue.toFixed(2);
-            inputCostLabel.textContent = '$' + preciseValue.toFixed(2);
-            
-            // Get current output cost for filter stats update
-            const outputCost = outputCostNumber.value ? parseFloat(outputCostNumber.value) : null;
-            
-            // Update UI immediately without waiting for save to complete
-            updateModelFilterStats(preciseValue, outputCost);
-            debouncedSaveSettings();
-        }
+        inputCostNumber.value = preciseValue.toFixed(2);
+        inputCostLabel.textContent = '$' + preciseValue.toFixed(2);
+        debouncedSaveSettings();
     });
     
     // Event handler for output cost slider
     outputCostSlider.addEventListener('input', function() {
         const preciseValue = sliderPosToValue(this.value);
-        // Ensure we're working with a valid number and format to 2 decimal places
-        if (!isNaN(preciseValue)) {
-            outputCostNumber.value = preciseValue.toFixed(2);
-            outputCostLabel.textContent = '$' + preciseValue.toFixed(2);
-            
-            // Get current input cost for filter stats update
-            const inputCost = inputCostNumber.value ? parseFloat(inputCostNumber.value) : null;
-            
-            // Update UI immediately without waiting for save to complete
-            updateModelFilterStats(inputCost, preciseValue);
-            debouncedSaveSettings();
-        }
+        outputCostNumber.value = preciseValue.toFixed(2);
+        outputCostLabel.textContent = '$' + preciseValue.toFixed(2);
+        debouncedSaveSettings();
     });
     
     // Event handler for input cost number input
     inputCostNumber.addEventListener('change', function() {
         const value = this.value ? parseFloat(this.value) : null;
-        let inputCost = null;
         
         if (value !== null && !isNaN(value) && value >= LOG_MIN) {
             // Valid number
@@ -1591,33 +1560,24 @@ document.addEventListener('DOMContentLoaded', function() {
             const sliderPos = valueToSliderPos(cappedValue);
             inputCostSlider.value = sliderPos;
             inputCostLabel.textContent = '$' + cappedValue.toFixed(2);
-            inputCost = cappedValue;
         } else if (value !== null && !isNaN(value) && value < LOG_MIN) {
             // Value too small, set to minimum
             this.value = LOG_MIN.toFixed(2);
             inputCostSlider.value = 0;
             inputCostLabel.textContent = '$' + LOG_MIN.toFixed(2);
-            inputCost = LOG_MIN;
         } else {
             // Invalid or empty input, treat as "disable"
             this.value = '';
             inputCostSlider.value = 100;
             inputCostLabel.textContent = 'Disabled';
-            inputCost = null;
         }
         
-        // Get current output cost for filter stats update
-        const outputCost = outputCostNumber.value ? parseFloat(outputCostNumber.value) : null;
-        
-        // Update filter stats
-        updateModelFilterStats(inputCost, outputCost);
         debouncedSaveSettings();
     });
     
     // Event handler for output cost number input
     outputCostNumber.addEventListener('change', function() {
         const value = this.value ? parseFloat(this.value) : null;
-        let outputCost = null;
         
         if (value !== null && !isNaN(value) && value >= LOG_MIN) {
             // Valid number
@@ -1625,26 +1585,18 @@ document.addEventListener('DOMContentLoaded', function() {
             const sliderPos = valueToSliderPos(cappedValue);
             outputCostSlider.value = sliderPos;
             outputCostLabel.textContent = '$' + cappedValue.toFixed(2);
-            outputCost = cappedValue;
         } else if (value !== null && !isNaN(value) && value < LOG_MIN) {
             // Value too small, set to minimum
             this.value = LOG_MIN.toFixed(2);
             outputCostSlider.value = 0;
             outputCostLabel.textContent = '$' + LOG_MIN.toFixed(2);
-            outputCost = LOG_MIN;
         } else {
             // Invalid or empty input, treat as "disable"
             this.value = '';
             outputCostSlider.value = 100;
             outputCostLabel.textContent = 'Disabled';
-            outputCost = null;
         }
         
-        // Get current input cost for filter stats update
-        const inputCost = inputCostNumber.value ? parseFloat(inputCostNumber.value) : null;
-        
-        // Update filter stats
-        updateModelFilterStats(inputCost, outputCost);
         debouncedSaveSettings();
     });
     
@@ -1653,12 +1605,6 @@ document.addEventListener('DOMContentLoaded', function() {
         inputCostNumber.value = '';
         inputCostSlider.value = 100;
         inputCostLabel.textContent = 'Disabled';
-        
-        // Get current output cost value for stats update
-        const outputCost = outputCostNumber.value ? parseFloat(outputCostNumber.value) : null;
-        
-        // Update stats to show the effect of disabling this filter
-        updateModelFilterStats(null, outputCost);
         debouncedSaveSettings();
     });
     
@@ -1667,85 +1613,8 @@ document.addEventListener('DOMContentLoaded', function() {
         outputCostNumber.value = '';
         outputCostSlider.value = 100;
         outputCostLabel.textContent = 'Disabled';
-        
-        // Get current input cost value for stats update
-        const inputCost = inputCostNumber.value ? parseFloat(inputCostNumber.value) : null;
-        
-        // Update stats to show the effect of disabling this filter
-        updateModelFilterStats(inputCost, null);
         debouncedSaveSettings();
     });
-    
-    // Update model filter stats display
-    let modelFilterStatsDebounce = null;
-    
-    function updateModelFilterStats(inputCost, outputCost) {
-        const statsElement = document.getElementById('model-filter-stats');
-        const progressBar = document.getElementById('model-filter-progress');
-        
-        if (!statsElement || !progressBar) return;
-        
-        // Set loading state
-        statsElement.textContent = 'Calculating...';
-        
-        // Clear previous debounce timer
-        if (modelFilterStatsDebounce) {
-            clearTimeout(modelFilterStatsDebounce);
-        }
-        
-        // Debounce to avoid too many API calls
-        modelFilterStatsDebounce = setTimeout(() => {
-            // Build query parameters
-            const params = new URLSearchParams();
-            if (inputCost !== null) params.append('input_cost', inputCost);
-            if (outputCost !== null) params.append('output_cost', outputCost);
-            
-            // Call the API to get model filter stats
-            fetch(`/api/model_filter_stats?${params.toString()}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Format counts for display
-                        const { total_models, filtered_models, remaining_models } = data;
-                        
-                        // Update the stats display
-                        if (filtered_models === 0) {
-                            statsElement.textContent = `All ${total_models} models available`;
-                            statsElement.classList.remove('text-warning');
-                            statsElement.classList.add('text-info');
-                        } else if (filtered_models === total_models) {
-                            statsElement.textContent = `All ${total_models} models will be filtered!`;
-                            statsElement.classList.remove('text-info');
-                            statsElement.classList.add('text-warning');
-                        } else {
-                            statsElement.textContent = `${filtered_models} of ${total_models} models will be filtered`;
-                            statsElement.classList.remove('text-info', 'text-warning');
-                        }
-                        
-                        // Update the progress bar
-                        const percentFiltered = (filtered_models / total_models) * 100;
-                        progressBar.style.width = `${percentFiltered}%`;
-                        
-                        // Change progress bar color based on percentage
-                        if (percentFiltered > 70) {
-                            progressBar.classList.remove('bg-info');
-                            progressBar.classList.add('bg-warning');
-                        } else {
-                            progressBar.classList.remove('bg-warning');
-                            progressBar.classList.add('bg-info');
-                        }
-                    } else {
-                        // Handle error
-                        statsElement.textContent = 'Error loading model stats';
-                        console.error('Error getting model filter stats:', data.error);
-                    }
-                })
-                .catch(error => {
-                    statsElement.textContent = 'Error loading model stats';
-                    console.error('Error fetching model filter stats:', error);
-                });
-        }, 300); // 300ms debounce
-    }
     
     // Function to fetch user settings when the settings tab is shown
     function fetchUserSettings() {
@@ -1754,9 +1623,6 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 // Update UI with the fetched values
                 updateFilterControls(data.max_input_cost, data.max_output_cost);
-                
-                // Update model filter stats
-                updateModelFilterStats(data.max_input_cost, data.max_output_cost);
             })
             .catch(error => {
                 console.error('Error fetching user settings:', error);
