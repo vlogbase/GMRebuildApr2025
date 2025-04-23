@@ -1,22 +1,36 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if user is authenticated (look for the logout button which only shows for logged in users)
-    const isAuthenticated = !!document.getElementById('logout-btn');
-    console.log('User authentication status:', isAuthenticated ? 'Logged in' : 'Not logged in');
-    
-    // Get user's credit balance if logged in
+    // Create authentication and credit variables at the top level scope
+    let isAuthenticated = false;
     let userCreditBalance = 0;
-    if (isAuthenticated) {
-        // Try to extract the credit amount from the account link in the sidebar
-        const accountLink = document.querySelector('.account-link');
-        if (accountLink) {
-            const balanceText = accountLink.textContent.trim();
-            const matches = balanceText.match(/Credits: \$([0-9.]+)/);
-            if (matches && matches[1]) {
-                userCreditBalance = parseFloat(matches[1]);
-                console.log('User credit balance:', userCreditBalance);
+    
+    // Delay authentication check slightly to ensure DOM is fully loaded
+    setTimeout(() => {
+        // Check if user is authenticated (look for the logout button which only shows for logged in users)
+        isAuthenticated = !!document.getElementById('logout-btn');
+        console.log('User authentication status:', isAuthenticated ? 'Logged in' : 'Not logged in');
+        
+        // Get user's credit balance if logged in
+        if (isAuthenticated) {
+            // Try to extract the credit amount from the account link in the sidebar
+            const accountLink = document.querySelector('.account-link');
+            if (accountLink) {
+                const balanceText = accountLink.textContent.trim();
+                const matches = balanceText.match(/Credits: \$([0-9.]+)/);
+                if (matches && matches[1]) {
+                    userCreditBalance = parseFloat(matches[1]);
+                    console.log('User credit balance:', userCreditBalance);
+                }
             }
         }
-    }
+        
+        // Initialize features that depend on authentication status
+        if (isAuthenticated) {
+            fetchConversations();
+        } else {
+            // For non-authenticated users, lock premium features
+            lockPremiumFeatures();
+        }
+    }, 100); // 100ms delay to ensure DOM is fully loaded
     
     // Helper function to check premium access and redirect if needed
     function checkPremiumAccess(featureName) {
@@ -260,13 +274,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Open selector variable - tracks which preset is being configured
     let currentlyEditingPresetId = null;
     
-    // Fetch conversations on load - only if authenticated
-    if (isAuthenticated) {
-        fetchConversations();
-    } else {
-        // For non-authenticated users, lock premium features
-        lockPremiumFeatures();
-    }
+    // NOTE: Authentication-based fetching is now handled in the setTimeout block above.
     
     // Function to lock premium features for non-authenticated users or those with zero balance
     function lockPremiumFeatures() {
@@ -330,73 +338,87 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Image upload and camera event listeners with premium access checks
-    imageUploadButton.addEventListener('click', () => {
-        // Check premium access before allowing image upload
-        if (!checkPremiumAccess('image_upload')) {
-            return; // Stop if access check failed
-        }
-        imageUploadInput.click();
-    });
-    
-    imageUploadInput.addEventListener('change', event => {
-        const file = event.target.files[0];
-        if (file && file.type.startsWith('image/')) {
-            // Check premium access before processing the image
+    if (imageUploadButton) {
+        imageUploadButton.addEventListener('click', () => {
+            // Check premium access before allowing image upload
             if (!checkPremiumAccess('image_upload')) {
                 return; // Stop if access check failed
             }
-            handleImageFile(file);
-        }
-        // Reset the input so the same file can be selected again
-        event.target.value = null;
-    });
+            imageUploadInput.click();
+        });
+    }
     
-    cameraButton.addEventListener('click', async () => {
-        // Check premium access before allowing camera use
-        if (!checkPremiumAccess('camera')) {
-            return; // Stop if access check failed
-        }
-        
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            cameraStream.srcObject = stream;
-            cameraModal.style.display = 'block';
-            loadCameraDevices();
-        } catch (err) {
-            console.error('Camera access error:', err);
-            alert('Camera access denied or not available');
-        }
-    });
+    if (imageUploadInput) {
+        imageUploadInput.addEventListener('change', event => {
+            const file = event.target.files[0];
+            if (file && file.type.startsWith('image/')) {
+                // Check premium access before processing the image
+                if (!checkPremiumAccess('image_upload')) {
+                    return; // Stop if access check failed
+                }
+                handleImageFile(file);
+            }
+            // Reset the input so the same file can be selected again
+            event.target.value = null;
+        });
+    }
     
-    captureButton.addEventListener('click', () => {
-        // Set canvas dimensions to match video
-        const width = cameraStream.videoWidth;
-        const height = cameraStream.videoHeight;
-        imageCanvas.width = width;
-        imageCanvas.height = height;
-        
-        // Draw video frame to canvas
-        const ctx = imageCanvas.getContext('2d');
-        ctx.drawImage(cameraStream, 0, 0, width, height);
-        
-        // Convert canvas to blob
-        imageCanvas.toBlob(blob => {
-            handleImageFile(blob);
+    if (cameraButton) {
+        cameraButton.addEventListener('click', async () => {
+            // Check premium access before allowing camera use
+            if (!checkPremiumAccess('camera')) {
+                return; // Stop if access check failed
+            }
             
-            // Stop camera stream and close modal
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                cameraStream.srcObject = stream;
+                cameraModal.style.display = 'block';
+                loadCameraDevices();
+            } catch (err) {
+                console.error('Camera access error:', err);
+                alert('Camera access denied or not available');
+            }
+        });
+    }
+    
+    if (captureButton) {
+        captureButton.addEventListener('click', () => {
+            // Set canvas dimensions to match video
+            const width = cameraStream.videoWidth;
+            const height = cameraStream.videoHeight;
+            imageCanvas.width = width;
+            imageCanvas.height = height;
+            
+            // Draw video frame to canvas
+            const ctx = imageCanvas.getContext('2d');
+            ctx.drawImage(cameraStream, 0, 0, width, height);
+            
+            // Convert canvas to blob
+            imageCanvas.toBlob(blob => {
+                handleImageFile(blob);
+                
+                // Stop camera stream and close modal
+                stopCameraStream();
+                cameraModal.style.display = 'none';
+            }, 'image/jpeg', 0.85);
+        });
+    }
+    
+    if (switchCameraButton) {
+        switchCameraButton.addEventListener('click', switchCamera);
+    }
+    
+    if (closeCameraButton) {
+        closeCameraButton.addEventListener('click', () => {
             stopCameraStream();
             cameraModal.style.display = 'none';
-        }, 'image/jpeg', 0.85);
-    });
+        });
+    }
     
-    switchCameraButton.addEventListener('click', switchCamera);
-    
-    closeCameraButton.addEventListener('click', () => {
-        stopCameraStream();
-        cameraModal.style.display = 'none';
-    });
-    
-    removeImageButton.addEventListener('click', clearAttachedImage);
+    if (removeImageButton) {
+        removeImageButton.addEventListener('click', clearAttachedImage);
+    }
     
     // Image handling functions
     async function handleImageFile(fileOrBlob) {
