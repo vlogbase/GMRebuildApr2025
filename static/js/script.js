@@ -794,12 +794,75 @@ document.addEventListener('DOMContentLoaded', function() {
             currentPresetId = presetId;
             
             // Get the model ID for this preset
-            currentModel = userPreferences[presetId] || defaultModels[presetId];
+            const modelId = userPreferences[presetId] || defaultModels[presetId];
+            
+            // Check if the model exceeds cost filters (skip this check for free models preset)
+            if (presetId !== '6' && allModels.length > 0) {
+                const model = allModels.find(m => m.id === modelId);
+                if (model) {
+                    const inputCost = model.pricing?.prompt || 0;
+                    const outputCost = model.pricing?.completion || 0;
+                    
+                    if (inputCost > maxInputCost || outputCost > maxOutputCost) {
+                        console.warn(`Model ${modelId} exceeds cost filters, finding alternative...`);
+                        
+                        // Find a compliant model for this preset and update userPreferences
+                        const compliantModelId = findCostFilterCompliantModel(presetId);
+                        userPreferences[presetId] = compliantModelId;
+                        
+                        // Update the button text
+                        const nameSpan = activeButton.querySelector('.model-name');
+                        if (nameSpan) {
+                            if (presetId === '6') {
+                                nameSpan.textContent = 'FREE - ' + formatModelName(compliantModelId, true);
+                            } else {
+                                nameSpan.textContent = formatModelName(compliantModelId);
+                            }
+                        }
+                        
+                        // Show a notification about the model change
+                        showNotification(`Model ${formatModelName(modelId)} exceeds your cost filter settings. Using ${formatModelName(compliantModelId)} instead.`);
+                        
+                        // Save the new preference to server
+                        saveModelPreference(presetId, compliantModelId);
+                        
+                        // Use the compliant model
+                        currentModel = compliantModelId;
+                    } else {
+                        // Model is compliant with cost filters
+                        currentModel = modelId;
+                    }
+                } else {
+                    // Can't find model details, use as is
+                    currentModel = modelId;
+                }
+            } else {
+                // Free models or no model data loaded yet
+                currentModel = modelId;
+            }
+            
             console.log(`Selected preset ${presetId} with model: ${currentModel}`);
             
             // Update multimodal controls based on the selected model
             updateMultimodalControls(currentModel);
         }
+    }
+    
+    // Function to show a notification
+    function showNotification(message, duration = 5000) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = 'model-filter-notification';
+        notification.innerHTML = `<p>${message}</p>`;
+        
+        // Append to body
+        document.body.appendChild(notification);
+        
+        // Auto-remove after duration
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => notification.remove(), 500);
+        }, duration);
     }
     
     // Function to update multimodal controls (image upload, camera) based on model capability
@@ -829,8 +892,82 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to fetch user preferences for model presets
+    // Find a model that complies with cost filters for a specific preset
+    function findCostFilterCompliantModel(presetId) {
+        // For free models preset, return the default free model regardless of cost filters
+        if (presetId === '6') {
+            return defaultModels['6'];
+        }
+        
+        // Start with the default model for this preset
+        let candidateModelId = defaultModels[presetId];
+        
+        // If we don't have models loaded yet, we can't filter, so return the default
+        if (!allModels || allModels.length === 0) {
+            console.warn(`No models loaded yet, using default for preset ${presetId}: ${candidateModelId}`);
+            return candidateModelId;
+        }
+        
+        // Check if the default model complies with cost filters
+        const defaultModel = allModels.find(m => m.id === candidateModelId);
+        if (defaultModel) {
+            const inputCost = defaultModel.pricing?.prompt || 0;
+            const outputCost = defaultModel.pricing?.completion || 0;
+            
+            if (inputCost <= maxInputCost && outputCost <= maxOutputCost) {
+                // Default model is okay, use it
+                return candidateModelId;
+            }
+        }
+        
+        // Default model doesn't comply, find an alternative that fits the preset filter and cost filters
+        console.warn(`Default model ${candidateModelId} exceeds cost filters, finding alternative...`);
+        
+        // Get the filter function for this preset
+        const presetFilter = presetFilters[presetId];
+        
+        // Find all models that match the preset filter and cost filters
+        const compatibleModels = allModels.filter(model => {
+            const inputCost = model.pricing?.prompt || 0;
+            const outputCost = model.pricing?.completion || 0;
+            return presetFilter(model) && inputCost <= maxInputCost && outputCost <= maxOutputCost;
+        });
+        
+        if (compatibleModels.length > 0) {
+            // Sort by a combination of quality and cost
+            // Higher quality models first, but within similar quality bands, prefer lower cost
+            compatibleModels.sort((a, b) => {
+                // First try to sort by quality (higher first)
+                const qualityDiff = (b.quality_score || 0) - (a.quality_score || 0);
+                if (Math.abs(qualityDiff) > 0.1) { // If quality difference is significant
+                    return qualityDiff;
+                }
+                
+                // For similar quality models, prefer lower total cost
+                const aTotalCost = (a.pricing?.prompt || 0) + (a.pricing?.completion || 0);
+                const bTotalCost = (b.pricing?.prompt || 0) + (b.pricing?.completion || 0);
+                return aTotalCost - bTotalCost;
+            });
+            
+            // Use the best matching model
+            const bestMatch = compatibleModels[0].id;
+            console.log(`Found cost-compliant alternative for preset ${presetId}: ${bestMatch}`);
+            return bestMatch;
+        }
+        
+        // If no models match both the preset filter and cost filters,
+        // we need a fallback - use a free model as absolute last resort
+        console.warn(`No models match both preset ${presetId} filter and cost filters, using a free model`);
+        return defaultModels['6']; // Free model fallback
+    }
+
     function fetchUserPreferences() {
-        fetch('/get_preferences')
+        // First fetch models so we can validate preferences against them
+        fetchAvailableModels()
+            .then(() => {
+                // Now fetch user preferences
+                return fetch('/get_preferences');
+            })
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -840,28 +977,79 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(data => {
                 if (data.preferences) {
                     // Validate preferences to ensure presets 1-5 don't have free models
+                    // AND to ensure they comply with cost filters
                     const validatedPreferences = {};
                     
                     for (const presetId in data.preferences) {
                         const modelId = data.preferences[presetId];
                         const isFreeModel = modelId.includes(':free');
+                        let useAlternativeModel = false;
+                        let reasonForChange = "";
                         
-                        // If it's preset 1-5 and has a free model, use the default non-free model
+                        // If it's preset 1-5 and has a free model, find an alternative
                         if (presetId !== '6' && isFreeModel) {
-                            console.warn(`Preset ${presetId} has a free model (${modelId}), reverting to default`);
-                            validatedPreferences[presetId] = defaultModels[presetId];
-                            
-                            // Note: Preset 4 is our vision model (openai/gpt-4o) for multimodal capabilities
-                            if (presetId === '4') {
-                                console.log(`Ensuring preset 4 uses vision-capable model: ${defaultModels['4']}`);
+                            useAlternativeModel = true;
+                            reasonForChange = `Preset ${presetId} has a free model (${modelId})`;
+                        } 
+                        
+                        // Check if model exceeds cost filters (for non-free presets)
+                        if (presetId !== '6' && allModels.length > 0) {
+                            const model = allModels.find(m => m.id === modelId);
+                            if (model) {
+                                const inputCost = model.pricing?.prompt || 0;
+                                const outputCost = model.pricing?.completion || 0;
+                                
+                                if (inputCost > maxInputCost || outputCost > maxOutputCost) {
+                                    useAlternativeModel = true;
+                                    reasonForChange = `Model ${modelId} exceeds cost filters (Input: $${inputCost} > $${maxInputCost} or Output: $${outputCost} > $${maxOutputCost})`;
+                                }
                             }
+                        }
+                        
+                        if (useAlternativeModel) {
+                            console.warn(`${reasonForChange}, finding alternative...`);
+                            validatedPreferences[presetId] = findCostFilterCompliantModel(presetId);
                         } else {
                             validatedPreferences[presetId] = modelId;
+                        }
+                        
+                        // Special handling for preset 4 (vision model)
+                        if (presetId === '4') {
+                            const model = allModels.find(m => m.id === validatedPreferences[presetId]);
+                            if (model && !model.is_multimodal) {
+                                console.warn(`Selected model for preset 4 (${validatedPreferences[presetId]}) is not multimodal, finding alternative...`);
+                                // Try to find a multimodal model that meets cost filters
+                                const multimodalModels = allModels.filter(m => 
+                                    m.is_multimodal && 
+                                    (m.pricing?.prompt || 0) <= maxInputCost && 
+                                    (m.pricing?.completion || 0) <= maxOutputCost
+                                );
+                                
+                                if (multimodalModels.length > 0) {
+                                    // Sort by quality score
+                                    multimodalModels.sort((a, b) => (b.quality_score || 0) - (a.quality_score || 0));
+                                    validatedPreferences[presetId] = multimodalModels[0].id;
+                                    console.log(`Found multimodal alternative for preset 4: ${validatedPreferences[presetId]}`);
+                                }
+                            }
                         }
                     }
                     
                     userPreferences = validatedPreferences;
-                    console.log('Loaded user preferences:', userPreferences);
+                    console.log('Loaded and validated user preferences:', userPreferences);
+                    
+                    // Update button text to reflect preferences
+                    updatePresetButtonLabels();
+                    
+                    // Select the first preset by default
+                    selectPresetButton('1');
+                } else {
+                    // No preferences, set defaults that comply with cost filters
+                    userPreferences = {};
+                    for (const presetId in defaultModels) {
+                        userPreferences[presetId] = findCostFilterCompliantModel(presetId);
+                    }
+                    console.log('No user preferences, using filtered defaults:', userPreferences);
                     
                     // Update button text to reflect preferences
                     updatePresetButtonLabels();
@@ -869,16 +1057,21 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Select the first preset by default
                     selectPresetButton('1');
                 }
-                
-                // After loading preferences, fetch available models
-                fetchAvailableModels();
             })
             .catch(error => {
-                console.error('Error fetching preferences:', error);
-                // Still try to fetch models if preferences fail
-                fetchAvailableModels();
+                console.error('Error in preference/model loading sequence:', error);
                 
-                // Use defaults and select first preset
+                // In case of error, use defaults that comply with cost filters
+                userPreferences = {};
+                for (const presetId in defaultModels) {
+                    userPreferences[presetId] = findCostFilterCompliantModel(presetId);
+                }
+                console.log('Error occurred, using filtered defaults:', userPreferences);
+                
+                // Update button text to reflect preferences
+                updatePresetButtonLabels();
+                
+                // Select the first preset by default
                 selectPresetButton('1');
             });
     }
@@ -948,27 +1141,43 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to fetch available models from OpenRouter
     function fetchAvailableModels() {
-        fetch('/models')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! Status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.data && Array.isArray(data.data)) {
-                    allModels = data.data;
-                    console.log(`Loaded ${allModels.length} models from OpenRouter`);
-                    
-                    // Update multimodal controls for the current model
-                    if (currentModel) {
-                        updateMultimodalControls(currentModel);
+        // Return a Promise so we can properly chain this with other async operations
+        return new Promise((resolve, reject) => {
+            fetch('/models')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
                     }
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching models:', error);
-            });
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.data && Array.isArray(data.data)) {
+                        allModels = data.data;
+                        console.log(`Loaded ${allModels.length} models from OpenRouter`);
+                        
+                        // Update multimodal controls for the current model
+                        if (currentModel) {
+                            updateMultimodalControls(currentModel);
+                        }
+                        
+                        // Filter models by cost and update count of hidden models
+                        modelsHiddenByFilter = allModels.filter(model => {
+                            const inputCost = model.pricing?.prompt || 0;
+                            const outputCost = model.pricing?.completion || 0;
+                            return !model.is_free && (inputCost > maxInputCost || outputCost > maxOutputCost);
+                        }).length;
+                        
+                        console.log(`${modelsHiddenByFilter} models are hidden by cost filters`);
+                        resolve(allModels); // Resolve the promise with the loaded models
+                    } else {
+                        resolve([]); // Resolve with empty array if no models found
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching models:', error);
+                    reject(error); // Reject the promise with the error
+                });
+        });
     }
     
     // Function to open the model selector for a specific preset
@@ -1035,45 +1244,68 @@ document.addEventListener('DOMContentLoaded', function() {
         // Get filter function for this preset
         const filterFn = presetFilters[presetId] || (() => true);
         
-        // Filter and sort models
-        const filteredModels = allModels
-            .filter(filterFn)
-            .sort((a, b) => {
-                // Special handling for preset 4 (vision models)
-                if (presetId === '4') {
-                    // Always put GPT-4o at the top
-                    if (a.id === 'openai/gpt-4o') return -1;
-                    if (b.id === 'openai/gpt-4o') return 1;
-                    
-                    // Put Claude vision models next
-                    const aIsClaudeVision = a.id.includes('claude') && a.is_multimodal;
-                    const bIsClaudeVision = b.id.includes('claude') && b.is_multimodal;
-                    
-                    if (aIsClaudeVision && !bIsClaudeVision) return -1;
-                    if (!aIsClaudeVision && bIsClaudeVision) return 1;
-                    
-                    // Put Gemini vision models next
-                    const aIsGeminiVision = a.id.includes('gemini') && a.is_multimodal;
-                    const bIsGeminiVision = b.id.includes('gemini') && b.is_multimodal;
-                    
-                    if (aIsGeminiVision && !bIsGeminiVision) return -1;
-                    if (!aIsGeminiVision && bIsGeminiVision) return 1;
-                }
+        // For preset 6 (free models), show all free models regardless of cost filters
+        // For other presets, apply both the preset filter and optionally show models that exceed cost filters with warning
+        
+        // Get all models matching the preset filter
+        let filteredModels = allModels.filter(filterFn);
+        
+        // Sort models
+        filteredModels.sort((a, b) => {
+            // Special handling for preset 4 (vision models)
+            if (presetId === '4') {
+                // Always put GPT-4o at the top
+                if (a.id === 'openai/gpt-4o') return -1;
+                if (b.id === 'openai/gpt-4o') return 1;
                 
-                // Free models at the bottom
-                if (a.is_free && !b.is_free) return 1;
-                if (!a.is_free && b.is_free) return -1;
+                // Put Claude vision models next
+                const aIsClaudeVision = a.id.includes('claude') && a.is_multimodal;
+                const bIsClaudeVision = b.id.includes('claude') && b.is_multimodal;
                 
-                // Sort by pricing (cheapest first)
-                const aPrice = a.pricing?.prompt || 0;
-                const bPrice = b.pricing?.prompt || 0;
-                return aPrice - bPrice;
-            });
+                if (aIsClaudeVision && !bIsClaudeVision) return -1;
+                if (!aIsClaudeVision && bIsClaudeVision) return 1;
+                
+                // Put Gemini vision models next
+                const aIsGeminiVision = a.id.includes('gemini') && a.is_multimodal;
+                const bIsGeminiVision = b.id.includes('gemini') && b.is_multimodal;
+                
+                if (aIsGeminiVision && !bIsGeminiVision) return -1;
+                if (!aIsGeminiVision && bIsGeminiVision) return 1;
+            }
+            
+            // For non-free presets, models that exceed cost filter should be at the bottom
+            if (presetId !== '6' && !a.is_free && !b.is_free) {
+                const aExceedsCost = (a.pricing?.prompt || 0) > maxInputCost || (a.pricing?.completion || 0) > maxOutputCost;
+                const bExceedsCost = (b.pricing?.prompt || 0) > maxInputCost || (b.pricing?.completion || 0) > maxOutputCost;
+                
+                if (aExceedsCost && !bExceedsCost) return 1;  // a exceeds cost, move to bottom
+                if (!aExceedsCost && bExceedsCost) return -1; // b exceeds cost, move to bottom
+            }
+            
+            // Free models at the bottom
+            if (a.is_free && !b.is_free) return 1;
+            if (!a.is_free && b.is_free) return -1;
+            
+            // Sort by pricing (cheapest first)
+            const aPrice = a.pricing?.prompt || 0;
+            const bPrice = b.pricing?.prompt || 0;
+            return aPrice - bPrice;
+        });
         
         // Add each model to the list
         filteredModels.forEach(model => {
             const li = document.createElement('li');
             li.dataset.modelId = model.id;
+            
+            // Check if model exceeds cost filters
+            const inputCost = model.pricing?.prompt || 0;
+            const outputCost = model.pricing?.completion || 0;
+            const exceedsCostFilter = !model.is_free && (inputCost > maxInputCost || outputCost > maxOutputCost);
+            
+            // Add class to indicate models that exceed cost filters
+            if (exceedsCostFilter && presetId !== '6') {
+                li.classList.add('exceeds-cost-filter');
+            }
             
             // Create model name element
             const nameSpan = document.createElement('span');
@@ -1093,11 +1325,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 li.appendChild(freeTag);
             }
             
+            // Add tag for filtered models (exceeding cost filter)
+            if (exceedsCostFilter && presetId !== '6') {
+                const filteredTag = document.createElement('span');
+                filteredTag.className = 'filtered-tag';
+                filteredTag.textContent = 'FILTERED';
+                li.appendChild(filteredTag);
+                
+                // Tooltip with details about why it's filtered
+                li.title = `This model exceeds your cost filter settings:
+- Model costs: Input $${inputCost.toFixed(2)}, Output $${outputCost.toFixed(2)} per million tokens
+- Your filters: Max input $${maxInputCost.toFixed(2)}, Max output $${maxOutputCost.toFixed(2)}`;
+            }
+            
             li.appendChild(nameSpan);
             li.appendChild(providerSpan);
             
-            // Add click handler to select this model
+            // Add click handler to select this model - with warning for filtered models
             li.addEventListener('click', function() {
+                if (exceedsCostFilter && presetId !== '6') {
+                    // For filtered models, show warning before selecting
+                    const confirmUse = confirm(`Warning: ${model.name} exceeds your cost filter settings:
+
+• Model costs: Input $${inputCost.toFixed(2)}, Output $${outputCost.toFixed(2)} per million tokens
+• Your filters: Max input $${maxInputCost.toFixed(2)}, Max output $${maxOutputCost.toFixed(2)}
+
+Do you want to proceed anyway?
+
+Note: You may not be able to send messages with this model unless you update your filter settings.`);
+                    
+                    if (!confirmUse) {
+                        return; // User canceled
+                    }
+                }
+                
                 selectModelForPreset(currentlyEditingPresetId, model.id);
             });
             
