@@ -681,17 +681,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Event Listeners
-    messageInput.addEventListener('keydown', function(event) {
-        if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
-            sendMessage();
-        }
-        
-        // Auto-resize textarea
-        this.style.height = 'auto';
-        this.style.height = (this.scrollHeight) + 'px';
-    });
+    // Event Listeners for chat input (only add if elements exist on page)
+    if (messageInput) {
+        messageInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                sendMessage();
+            }
+            
+            // Auto-resize textarea
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
+        });
+    }
     
     // Add clipboard paste event listener to the message input
     document.addEventListener('paste', function(event) {
@@ -723,7 +725,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    sendButton.addEventListener('click', sendMessage);
+    // Only add send button event listener if it exists on the page
+    if (sendButton) {
+        sendButton.addEventListener('click', sendMessage);
+    }
     
     // Initialize model data
     fetchUserPreferences();
@@ -843,15 +848,19 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log(`🖼️ Multimodal UI check for ${modelId}: isMultimodalModel=${isMultimodalModel}, isPreset4=${isPreset4}`);
         
-        // Show/hide upload and camera buttons
-        imageUploadButton.style.display = isMultimodalModel ? 'inline-flex' : 'none';
+        // Show/hide upload and camera buttons (if they exist)
+        if (imageUploadButton) {
+            imageUploadButton.style.display = isMultimodalModel ? 'inline-flex' : 'none';
+        }
         
-        // Only show camera button if browser supports it
+        // Only show camera button if browser supports it and button exists
         const hasCamera = !!navigator.mediaDevices?.getUserMedia;
-        cameraButton.style.display = isMultimodalModel && hasCamera ? 'inline-flex' : 'none';
+        if (cameraButton) {
+            cameraButton.style.display = isMultimodalModel && hasCamera ? 'inline-flex' : 'none';
+        }
         
         // If switching to a non-multimodal model, clear any attached image
-        if (!isMultimodalModel) {
+        if (!isMultimodalModel && attachedImageUrls && attachedImageUrls.length > 0) {
             clearAttachedImage();
         }
         
