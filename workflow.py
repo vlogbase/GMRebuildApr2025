@@ -1,12 +1,26 @@
-#!/usr/bin/env python3
-"""Workflow script to run the Flask application."""
-
+"""
+Workflow runner for the Replit environment.
+This automatically handles the workflow tasks defined in .replit.
+"""
 import os
-import gevent.monkey
-gevent.monkey.patch_all()
+import subprocess
+import sys
 
-from app import app
+def run_app():
+    """Run the Flask application with gunicorn."""
+    cmd = [
+        "gunicorn", 
+        "main:app", 
+        "-k", "gevent", 
+        "-w", "1", 
+        "--timeout", "300",
+        "--bind", "0.0.0.0:5000",
+        "--reload"
+    ]
+    subprocess.run(cmd)
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    if len(sys.argv) > 1 and sys.argv[1] == "run":
+        run_app()
+    else:
+        print("Usage: python workflow.py run")

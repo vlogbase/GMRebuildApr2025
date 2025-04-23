@@ -508,8 +508,11 @@
                 <p class="caption mb-4">Pricing information for all available AI models. Click on any column header to sort by that attribute.</p>
                 
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div>
-                        <span id="lastUpdated" class="caption"></span>
+                    <div class="d-flex align-items-center">
+                        <span id="lastUpdated" class="caption me-3"></span>
+                        <button id="refresh-prices-btn" class="btn btn-sm btn-outline-primary">
+                            🔄 Refresh prices
+                        </button>
                     </div>
                     <div class="d-flex align-items-center">
                         <i class="fas fa-search text-muted me-2"></i>
@@ -1284,6 +1287,40 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the usage analytics functionality
     handleUsageSubTabs();
     handleCsvExport();
+    
+    // Add event listener for the refresh prices button
+    async function fetchLatestPrices() {
+        try {
+            const res = await fetch('/api/pricing/refresh');
+            const data = await res.json();
+            if (!data.success) { 
+                throw new Error(data.error || 'Unknown error'); 
+            }
+            // Use the existing pricingData and renderPricingTable functions
+            pricingData = data.prices;
+            renderPricingTable();
+            
+            // Update the timestamp
+            const lastUpdated = document.getElementById('lastUpdated');
+            const currentTime = new Date();
+            lastUpdated.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
+            
+            // Update cache
+            localStorage.setItem('modelPricingData', JSON.stringify(pricingData));
+            localStorage.setItem('modelPricingTimestamp', currentTime.getTime().toString());
+            
+            // Show success message
+            showAlert('Pricing data refreshed successfully!', 'success');
+        } catch (err) {
+            console.error('Price refresh failed', err);
+            showAlert(`Price refresh failed: ${err.message}`, 'error');
+        }
+    }
+    
+    const refreshPricesBtn = document.getElementById('refresh-prices-btn');
+    if (refreshPricesBtn) {
+        refreshPricesBtn.addEventListener('click', fetchLatestPrices);
+    }
 });
 </script>
 {% endblock %}

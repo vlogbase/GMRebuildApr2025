@@ -140,7 +140,7 @@ except Exception as e:
 
 # Register billing blueprint
 try:
-    from billing import billing_bp
+    from billing import billing_bp, get_openrouter_prices
     app.register_blueprint(billing_bp)
     logger.info("Billing blueprint registered successfully")
 except Exception as e:
@@ -2116,6 +2116,54 @@ def view_shared_conversation(share_id):
         logger.exception(f"Error viewing shared conversation {share_id}")
         flash("An error occurred while trying to load the shared conversation.", "error")
         return redirect(url_for('index'))
+
+@app.route('/api/pricing/refresh', methods=['GET'])
+def refresh_pricing():
+    """
+    API endpoint to refresh pricing data directly from OpenRouter.
+    This bypasses any caching and forces a fresh fetch of pricing data.
+    """
+    try:
+        logger.info("Manual pricing refresh requested")
+        
+        # Use the helper function from billing.py to get the latest prices
+        from billing import get_openrouter_prices
+        prices = get_openrouter_prices()
+        
+        if prices:
+            # Convert to the format expected by the frontend
+            formatted_prices = []
+            for model in prices:
+                model_id = model.get('model_id', '')
+                prompt_cost = model.get('prompt_cost_per_mil', 0)
+                completion_cost = model.get('completion_cost_per_mil', 0)
+                
+                # Format costs as strings with dollar sign
+                input_price = f"${prompt_cost:.5f}" if prompt_cost else "$0.00"
+                output_price = f"${completion_cost:.5f}" if completion_cost else "$0.00"
+                
+                # Add model to formatted list with additional metadata
+                formatted_prices.append({
+                    "model_id": model_id,
+                    "model_name": model_id.split('/')[-1] if '/' in model_id else model_id,
+                    "input_price": input_price,
+                    "output_price": output_price,
+                    "context_length": "N/A",  # We don't have this info from the API
+                    "multimodal": "Yes" if any(mm_model in model_id.lower() for mm_model in MULTIMODAL_MODELS) else "No"
+                })
+            
+            # Update the cache with fresh data
+            OPENROUTER_MODELS_CACHE["data"] = {"data": formatted_prices}
+            OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
+            
+            return jsonify({"success": True, "prices": formatted_prices})
+        else:
+            logger.error("No pricing data returned from OpenRouter")
+            return jsonify({"success": False, "error": "No pricing data returned from OpenRouter"}), 500
+            
+    except Exception as e:
+        logger.exception(f"Error refreshing pricing data: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/rag/diagnostics', methods=['GET'])
 def rag_diagnostics():

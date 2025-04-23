@@ -11,6 +11,8 @@ It provides endpoints for:
 import os
 import logging
 import math
+import time
+import requests
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -26,6 +28,7 @@ from paypal_config import initialize_paypal, create_payment, execute_payment
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+router_logger = logging.getLogger('openrouter-pricing')
 
 # Create blueprint
 billing_bp = Blueprint('billing', __name__)
@@ -448,6 +451,32 @@ def calculate_embedding_credits(token_count):
     credits = int(total_cost * 1000)
     
     return credits
+
+def get_openrouter_prices():
+    """
+    Pull the latest model-pricing sheet from OpenRouter.
+    Returns a list of dicts: [{model_id, prompt_cost_per_mil, completion_cost_per_mil}]
+    """
+    API_KEY = os.getenv('OPENROUTER_API_KEY')
+    if not API_KEY:
+        raise RuntimeError('OPENROUTER_API_KEY not set')
+
+    r = requests.get(
+        'https://openrouter.ai/api/v1/models',
+        headers={'Authorization': f'Bearer {API_KEY}', 'HTTP-Referer': 'https://gloria-mundo.replit.app'},
+        timeout=15
+    )
+    r.raise_for_status()
+    models = r.json().get('data', [])
+    prices = []
+    for m in models:
+        cost = m.get('pricing', {})
+        prices.append({
+            'model_id': m.get('id'),
+            'prompt_cost_per_mil': cost.get('prompt', 0),
+            'completion_cost_per_mil': cost.get('completion', 0),
+        })
+    return prices
 
 def record_usage(user_id, credits_used, usage_type, model_id=None, message_id=None, prompt_tokens=None, completion_tokens=None):
     """
