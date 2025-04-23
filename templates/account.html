@@ -1532,11 +1532,70 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
         
+        // Preview models affected counter
+        let previewDebounceTimer;
+        const previewContainer = document.createElement('div');
+        previewContainer.id = 'filter-preview-container';
+        previewContainer.style.marginTop = '10px';
+        previewContainer.style.fontSize = '0.9rem';
+        previewContainer.style.padding = '8px 12px';
+        previewContainer.style.borderRadius = '6px';
+        previewContainer.style.backgroundColor = 'rgba(255, 213, 79, 0.1)';
+        previewContainer.style.border = '1px solid rgba(255, 213, 79, 0.2)';
+        previewContainer.style.display = 'none';
+        filterFeedbackContainer.appendChild(previewContainer);
+        
+        // Function to preview filter impact
+        const previewFilterImpact = function(inputCost, outputCost) {
+            clearTimeout(previewDebounceTimer);
+            
+            previewContainer.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Calculating impact...';
+            previewContainer.style.display = 'block';
+            
+            // Debounce the actual API call to prevent too many requests while sliding
+            previewDebounceTimer = setTimeout(() => {
+                // Call the API to get a count of models that would be filtered with these settings
+                fetch(`/api/preview_filter_impact?input_cost=${inputCost}&output_cost=${outputCost}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            const hiddenCount = data.hidden_count || 0;
+                            const totalCount = data.total_count || 0;
+                            
+                            previewContainer.innerHTML = `
+                                <i class="fas fa-info-circle me-2 text-warning"></i>
+                                <span>
+                                    With these settings, <strong>${hiddenCount}</strong> of ${totalCount} models 
+                                    ${hiddenCount === 1 ? 'would be' : 'would be'} disabled.
+                                </span>
+                            `;
+                            
+                            // Hide after 5 seconds of no changes
+                            setTimeout(() => {
+                                previewContainer.style.display = 'none';
+                            }, 5000);
+                        } else {
+                            previewContainer.style.display = 'none';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error previewing filter impact:', error);
+                        previewContainer.style.display = 'none';
+                    });
+            }, 500); // 500ms debounce
+        };
+        
         // Update UI when sliders change
         if (maxInputCostSlider) {
             maxInputCostSlider.addEventListener('input', function() {
                 const value = sliderToInputCost(this.value);
                 updateInputCostUI(value);
+                
+                // Preview impact if both values are valid
+                const outputValue = parseFloat(maxOutputCostValue.value);
+                if (!isNaN(outputValue) && outputValue >= MIN_COST) {
+                    previewFilterImpact(value, outputValue);
+                }
             });
         }
         
@@ -1544,6 +1603,12 @@ document.addEventListener('DOMContentLoaded', function() {
             maxOutputCostSlider.addEventListener('input', function() {
                 const value = sliderToOutputCost(this.value);
                 updateOutputCostUI(value);
+                
+                // Preview impact if both values are valid
+                const inputValue = parseFloat(maxInputCostValue.value);
+                if (!isNaN(inputValue) && inputValue >= MIN_COST) {
+                    previewFilterImpact(inputValue, value);
+                }
             });
         }
         
@@ -1554,6 +1619,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!isNaN(value) && value >= MIN_COST) {
                     maxInputCostSlider.value = inputCostToSlider(value);
                     updateInputCostUI(value);
+                    
+                    // Preview impact if both values are valid
+                    const outputValue = parseFloat(maxOutputCostValue.value);
+                    if (!isNaN(outputValue) && outputValue >= MIN_COST) {
+                        previewFilterImpact(value, outputValue);
+                    }
                 }
             });
         }
@@ -1564,6 +1635,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!isNaN(value) && value >= MIN_COST) {
                     maxOutputCostSlider.value = outputCostToSlider(value);
                     updateOutputCostUI(value);
+                    
+                    // Preview impact if both values are valid
+                    const inputValue = parseFloat(maxInputCostValue.value);
+                    if (!isNaN(inputValue) && inputValue >= MIN_COST) {
+                        previewFilterImpact(inputValue, value);
+                    }
                 }
             });
         }

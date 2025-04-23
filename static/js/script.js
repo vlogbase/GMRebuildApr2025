@@ -1183,7 +1183,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function fetchAvailableModels() {
         // Return a Promise so we can properly chain this with other async operations
         return new Promise((resolve, reject) => {
-            fetch('/models')
+            // Use the new filtered_models endpoint which applies cost filters on the server
+            fetch('/api/filtered_models')
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -1191,39 +1192,63 @@ document.addEventListener('DOMContentLoaded', function() {
                     return response.json();
                 })
                 .then(data => {
-                    if (data.data && Array.isArray(data.data)) {
-                        allModels = data.data;
-                        console.log(`Loaded ${allModels.length} models from OpenRouter`);
+                    if (data.success && data.models && Array.isArray(data.models)) {
+                        // Store all models
+                        allModels = data.models;
+                        console.log(`Loaded ${allModels.length} filtered models from server`);
+                        
+                        // Set the hidden models count from the server response
+                        modelsHiddenByFilter = data.hidden_count || 0;
+                        
+                        // Update current filter settings
+                        maxInputCost = data.filter_settings?.max_input_cost || 1500.0;
+                        maxOutputCost = data.filter_settings?.max_output_cost || 1500.0;
                         
                         // Update multimodal controls for the current model
                         if (currentModel) {
                             updateMultimodalControls(currentModel);
                         }
                         
-                        // Filter models by cost and update count of hidden models
-                        const filteredModels = allModels.filter(model => {
-                            const inputCost = model.pricing?.prompt || 0;
-                            const outputCost = model.pricing?.completion || 0;
-                            return !model.is_free && (inputCost > maxInputCost || outputCost > maxOutputCost);
-                        });
-                        
-                        modelsHiddenByFilter = filteredModels.length;
-                        console.log("Models exceeding cost filters:", filteredModels.map(m => m.id).join(", "));
-                        
                         if (modelsHiddenByFilter > 0) {
                             console.warn(`${modelsHiddenByFilter} models exceed cost filters (input: $${maxInputCost}, output: $${maxOutputCost})`);
+                            
+                            // Update the model filter indicator in the UI
+                            updateModelFilterIndicator(modelsHiddenByFilter);
+                        } else {
+                            // No models are filtered, hide the indicator
+                            hideModelFilterIndicator();
                         }
                         
-                        console.log(`${modelsHiddenByFilter} models are hidden by cost filters`);
                         resolve(allModels); // Resolve the promise with the loaded models
+                    } else if (data.data && Array.isArray(data.data)) {
+                        // Fallback to old format if needed
+                        allModels = data.data;
+                        console.log(`Loaded ${allModels.length} models from OpenRouter (old format)`);
+                        resolve(allModels);
                     } else {
+                        console.warn("No models returned from server or unexpected format");
                         resolve([]); // Resolve with empty array if no models found
                     }
                 })
                 .catch(error => {
-                    console.error('Error fetching models:', error);
-                    reject(error); // Reject the promise with the error
-                });
+                    console.error('Error fetching filtered models:', error);
+                    // Fallback to original endpoint if filtered endpoint fails
+                    console.log('Falling back to unfiltered models endpoint');
+                    fetch('/models')
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.data && Array.isArray(data.data)) {
+                                allModels = data.data;
+                                console.log(`Loaded ${allModels.length} models from fallback endpoint`);
+                                resolve(allModels);
+                            } else {
+                                resolve([]);
+                            }
+                        })
+                        .catch(fallbackError => {
+                            console.error('Fallback also failed:', fallbackError);
+                            reject(error);
+                        });
         });
     }
     
@@ -3199,4 +3224,38 @@ Would you like to go to the settings page to adjust your filters?`);
             modelList.appendChild(noResults);
         }
     };
+    
+    // Function to update the model filter indicator in the UI
+    function updateModelFilterIndicator(hiddenCount) {
+        const filterIndicator = document.getElementById('model-filter-indicator');
+        if (!filterIndicator) {
+            // Create the indicator if it doesn't exist
+            const modelSelector = document.querySelector('.model-selector');
+            if (modelSelector) {
+                const indicator = document.createElement('div');
+                indicator.id = 'model-filter-indicator';
+                indicator.className = 'model-filter-indicator';
+                indicator.innerHTML = `
+                    <span>${hiddenCount} ${hiddenCount === 1 ? 'model is' : 'models are'} disabled by cost filters</span>
+                    <a href="/account#model-filters" class="change-filters-link">Change filters</a>
+                `;
+                modelSelector.appendChild(indicator);
+            }
+        } else {
+            // Update existing indicator
+            filterIndicator.innerHTML = `
+                <span>${hiddenCount} ${hiddenCount === 1 ? 'model is' : 'models are'} disabled by cost filters</span>
+                <a href="/account#model-filters" class="change-filters-link">Change filters</a>
+            `;
+            filterIndicator.style.display = 'flex';
+        }
+    }
+    
+    // Function to hide the model filter indicator
+    function hideModelFilterIndicator() {
+        const filterIndicator = document.getElementById('model-filter-indicator');
+        if (filterIndicator) {
+            filterIndicator.style.display = 'none';
+        }
+    }
 });

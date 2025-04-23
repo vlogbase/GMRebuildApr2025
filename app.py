@@ -2488,6 +2488,176 @@ def get_model_filters():
     except Exception as e:
         logger.exception("Error fetching model filter settings")
         return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/preview_filter_impact', methods=['GET'])
+def preview_filter_impact():
+    """ 
+    Preview how many models would be filtered with given cost limits.
+    Used for real-time feedback when adjusting filter sliders.
+    """
+    try:
+        # Get the cost parameters from the query string
+        input_cost = request.args.get('input_cost', default='1500.0', type=float)
+        output_cost = request.args.get('output_cost', default='1500.0', type=float)
+        
+        # Get all models first (from cache if available)
+        has_cached_data = OPENROUTER_MODELS_CACHE["data"] is not None
+        current_time = time.time()
+        cache_fresh = has_cached_data and (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]
+        
+        if cache_fresh:
+            # Use fresh cached data
+            logger.debug("Using cached models for filter impact preview")
+            all_models = OPENROUTER_MODELS_CACHE["data"].get('data', [])
+        else:
+            # Fetch fresh data from OpenRouter
+            logger.info("Fetching fresh models data from OpenRouter for filter preview")
+            all_models = _fetch_openrouter_models()
+            
+            # If the API call failed but we have cached data, use it as fallback
+            if not all_models and has_cached_data:
+                logger.warning("API request failed, using older cached models data for filter preview")
+                all_models = OPENROUTER_MODELS_CACHE["data"].get('data', [])
+                
+            # If no data at all (no cache, API failed)
+            if not all_models:
+                logger.error("Failed to fetch models for filter preview and no cached data available")
+                return jsonify({
+                    "success": False,
+                    "error": "Unable to connect to OpenRouter API",
+                    "message": "No model data available. Please try again later.",
+                    "hidden_count": 0,
+                    "total_count": 0
+                }), 500
+        
+        # Count models that would be hidden with these settings
+        hidden_count = 0
+        total_count = len(all_models)
+        
+        for model in all_models:
+            # Skip models with no pricing info
+            if not model.get('pricing'):
+                continue
+                
+            # Free models are always shown
+            if model.get('is_free', False):
+                continue
+                
+            input_cost_model = model.get('pricing', {}).get('prompt', 0) * 1000  # Convert to per 1M tokens
+            output_cost_model = model.get('pricing', {}).get('completion', 0) * 1000  # Convert to per 1M tokens
+                
+            # Check if model exceeds cost filters
+            if input_cost_model > input_cost or output_cost_model > output_cost:
+                hidden_count += 1
+        
+        return jsonify({
+            "success": True,
+            "hidden_count": hidden_count,
+            "total_count": total_count,
+            "preview_settings": {
+                "input_cost": input_cost,
+                "output_cost": output_cost
+            }
+        })
+    except Exception as e:
+        logger.exception(f"Error in preview_filter_impact: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": "An error occurred while processing your request",
+            "message": str(e),
+            "hidden_count": 0,
+            "total_count": 0
+        }), 500
+        
+@app.route('/api/filtered_models', methods=['GET'])
+def get_filtered_models():
+    """ Fetch models filtered by user's cost settings """
+    try:
+        # Get the current user
+        user_identifier = get_user_identifier()
+        from models import UserModelFilter
+        
+        # Get all models first
+        has_cached_data = OPENROUTER_MODELS_CACHE["data"] is not None
+        current_time = time.time()
+        cache_fresh = has_cached_data and (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]
+        
+        if cache_fresh:
+            # Use fresh cached data
+            logger.debug("Using cached models for filtering (still fresh)")
+            all_models = OPENROUTER_MODELS_CACHE["data"].get('data', [])
+        else:
+            # Fetch fresh data from OpenRouter
+            logger.info("Fetching fresh models data from OpenRouter for filtering")
+            all_models = _fetch_openrouter_models()
+            
+            # If the API call failed but we have cached data, use it as fallback
+            if not all_models and has_cached_data:
+                logger.warning("API request failed, using older cached models data for filtering")
+                all_models = OPENROUTER_MODELS_CACHE["data"].get('data', [])
+                
+            # If no data at all (no cache, API failed)
+            if not all_models:
+                logger.error("Failed to fetch models for filtering and no cached data available")
+                return jsonify({
+                    "error": "Unable to connect to OpenRouter API",
+                    "message": "No model data available. Please try again later.",
+                    "models": [],
+                    "hidden_count": 0
+                }), 500
+        
+        # Get the user's filter settings
+        user_filter = UserModelFilter.query.filter_by(user_identifier=user_identifier).first()
+        
+        # Default filter values if not set
+        max_input_cost = 1500.0  # Default to maximum if not set
+        max_output_cost = 1500.0  # Default to maximum if not set
+        
+        if user_filter:
+            max_input_cost = user_filter.max_input_cost
+            max_output_cost = user_filter.max_output_cost
+        
+        # Count models that will be hidden
+        hidden_count = 0
+        filtered_models = []
+        
+        for model in all_models:
+            # Skip models with no pricing info - always show these
+            if not model.get('pricing'):
+                filtered_models.append(model)
+                continue
+                
+            input_cost = model.get('pricing', {}).get('prompt', 0) * 1000  # Convert to per 1M tokens
+            output_cost = model.get('pricing', {}).get('completion', 0) * 1000  # Convert to per 1M tokens
+            
+            # Free models are always shown
+            if model.get('is_free', False):
+                filtered_models.append(model)
+                continue
+                
+            # Check if model exceeds cost filters
+            if input_cost > max_input_cost or output_cost > max_output_cost:
+                hidden_count += 1
+            else:
+                filtered_models.append(model)
+        
+        return jsonify({
+            "success": True, 
+            "models": filtered_models,
+            "hidden_count": hidden_count,
+            "filter_settings": {
+                "max_input_cost": max_input_cost,
+                "max_output_cost": max_output_cost
+            }
+        })
+    except Exception as e:
+        logger.exception(f"Error in filtered_models: {str(e)}")
+        return jsonify({
+            "success": False, 
+            "error": str(e),
+            "models": [], 
+            "hidden_count": 0
+        }), 500
         
 # --- Main Execution ---
 if __name__ == '__main__':

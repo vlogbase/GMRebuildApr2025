@@ -1574,6 +1574,36 @@ code {
     color: #777;
 }
 
+/* Model Filter Indicator */
+.model-filter-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: rgba(255, 213, 79, 0.15);
+    border: 1px solid rgba(255, 213, 79, 0.3);
+    border-radius: 6px;
+    margin: 5px 10px;
+    padding: 8px 12px;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.model-filter-indicator span {
+    display: inline-block;
+    margin-right: 10px;
+}
+
+.change-filters-link {
+    color: var(--accent-color);
+    font-weight: 500;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.change-filters-link:hover {
+    text-decoration: underline;
+}
+
 .filtered-tag {
     position: absolute;
     right: 8px;

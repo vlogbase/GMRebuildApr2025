@@ -1,3 +1,3 @@
-workflows = ["python app.py"]
+workflows = ["app"]
 [commands]
-python = "python app.py"
+app = "python app_workflow.py"
