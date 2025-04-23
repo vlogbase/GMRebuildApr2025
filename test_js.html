@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JavaScript Test</title>
+    <script>
+        console.log('Loading test page...');
+    </script>
+</head>
+<body>
+    <h1>JavaScript Test Page</h1>
+    <p>This page is used to test the fixed JavaScript code.</p>
+    
+    <div id="account-content">
+        <h2>Account Settings</h2>
+        <div id="cost-filters">
+            <div class="slider-container">
+                <label for="max-input-cost">Maximum Input Cost:</label>
+                <div class="cost-filter-controls">
+                    <input type="range" id="max-input-cost" min="0" max="100" step="0.1" value="0">
+                    <input type="number" id="max-input-cost-value" min="0" max="100" step="0.01" value="0">
+                    <button id="disable-input-cost-filter">Disable Filter</button>
+                </div>
+                <div class="filter-info">
+                    <span id="input-cost-filter-info">0 of 302 models will be disabled</span>
+                </div>
+            </div>
+            
+            <div class="slider-container">
+                <label for="max-output-cost">Maximum Output Cost:</label>
+                <div class="cost-filter-controls">
+                    <input type="range" id="max-output-cost" min="0" max="100" step="0.1" value="0">
+                    <input type="number" id="max-output-cost-value" min="0" max="100" step="0.01" value="0">
+                    <button id="disable-output-cost-filter">Disable Filter</button>
+                </div>
+                <div class="filter-info">
+                    <span id="output-cost-filter-info">0 of 302 models will be disabled</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Include the actual script.js file -->
+    <script src="/static/js/script.js"></script>
+    
+    <!-- Test script to verify our fixes -->
+    <script>
+        console.log('Test script loaded');
+        
+        // Verify authentication status reporting
+        setTimeout(() => {
+            console.log('Auth check should have run by now');
+        }, 200);
+    </script>
+</body>
+</html>

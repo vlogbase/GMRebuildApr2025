@@ -2428,6 +2428,76 @@ def get_user_settings():
             "error": str(e)
         }), 500
 
+@app.route('/api/model_filter_stats', methods=['GET'])
+@login_required
+def get_model_filter_stats():
+    """
+    Get statistics about how many models would be filtered by the given price thresholds.
+    
+    Query parameters:
+        input_cost: float or null - The maximum input cost filter
+        output_cost: float or null - The maximum output cost filter
+    
+    Returns:
+        JSON with stats about total models and filtered models
+    """
+    try:
+        # Get query parameters
+        input_cost_str = request.args.get('input_cost')
+        output_cost_str = request.args.get('output_cost')
+        
+        # Parse input cost (null if not provided or invalid)
+        input_cost = None
+        if input_cost_str and input_cost_str.lower() != 'null':
+            try:
+                input_cost = float(input_cost_str)
+            except ValueError:
+                input_cost = None
+        
+        # Parse output cost (null if not provided or invalid)
+        output_cost = None
+        if output_cost_str and output_cost_str.lower() != 'null':
+            try:
+                output_cost = float(output_cost_str)
+            except ValueError:
+                output_cost = None
+        
+        # Get all models from cache
+        if not model_prices_cache['prices']:
+            fetch_and_store_openrouter_prices()
+        
+        models = model_prices_cache['prices']
+        total_models = len(models)
+        
+        # Count models that would be filtered based on cost thresholds
+        filtered_models = 0
+        for model_id, model_data in models.items():
+            is_filtered = False
+            
+            # Check if model exceeds input cost threshold
+            if input_cost is not None and model_data['input_price'] > input_cost:
+                is_filtered = True
+                
+            # Check if model exceeds output cost threshold
+            if not is_filtered and output_cost is not None and model_data['output_price'] > output_cost:
+                is_filtered = True
+                
+            if is_filtered:
+                filtered_models += 1
+        
+        return jsonify({
+            'success': True,
+            'total_models': total_models,
+            'filtered_models': filtered_models,
+            'remaining_models': total_models - filtered_models
+        })
+    except Exception as e:
+        logger.exception(f"Error getting model filter stats: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @app.route('/api/user_settings', methods=['POST'])
 @login_required
 def save_user_settings():
