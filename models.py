@@ -115,8 +115,8 @@ class UserModelFilter(db.Model):
     """User model filter preferences for model cost limits"""
     id = db.Column(db.Integer, primary_key=True)
     user_identifier = db.Column(db.String(64), nullable=False, index=True)  # Temporary identifier or User ID
-    max_input_cost = db.Column(db.Float, nullable=False, default=150.0)  # Default to maximum value
-    max_output_cost = db.Column(db.Float, nullable=False, default=600.0)  # Default to maximum value
+    max_input_cost = db.Column(db.Float, nullable=False, default=1500.0)  # Default to maximum value
+    max_output_cost = db.Column(db.Float, nullable=False, default=1500.0)  # Default to maximum value
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Link to user when logged in
     

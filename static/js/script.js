@@ -1249,6 +1249,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             console.error('Fallback also failed:', fallbackError);
                             reject(error);
                         });
+                });
         });
     }
     

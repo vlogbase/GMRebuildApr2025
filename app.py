@@ -2500,6 +2500,19 @@ def preview_filter_impact():
         input_cost = request.args.get('input_cost', default='1500.0', type=float)
         output_cost = request.args.get('output_cost', default='1500.0', type=float)
         
+        # Ensure parameters are floats
+        if not isinstance(input_cost, float):
+            try:
+                input_cost = float(input_cost)
+            except (ValueError, TypeError):
+                input_cost = 1500.0
+                
+        if not isinstance(output_cost, float):
+            try:
+                output_cost = float(output_cost)
+            except (ValueError, TypeError):
+                output_cost = 1500.0
+        
         # Get all models first (from cache if available)
         has_cached_data = OPENROUTER_MODELS_CACHE["data"] is not None
         current_time = time.time()
@@ -2535,20 +2548,46 @@ def preview_filter_impact():
         total_count = len(all_models)
         
         for model in all_models:
+            # Check if model is a string (malformed data)
+            if isinstance(model, str):
+                logger.warning(f"Skipping model entry - not a dictionary object: {model[:30]}...")
+                continue
+                
             # Skip models with no pricing info
             if not model.get('pricing'):
+                logger.debug(f"Skipping model with no pricing info: {model.get('id', 'unknown')}")
                 continue
                 
             # Free models are always shown
             if model.get('is_free', False):
                 continue
                 
-            input_cost_model = model.get('pricing', {}).get('prompt', 0) * 1000  # Convert to per 1M tokens
-            output_cost_model = model.get('pricing', {}).get('completion', 0) * 1000  # Convert to per 1M tokens
+            # Extract pricing data with careful type conversion
+            pricing = model.get('pricing', {})
+            if not pricing or isinstance(pricing, str):
+                # Handle case where pricing might be a string or empty (malformed data)
+                logger.warning(f"Skipping model with invalid pricing format: {model.get('id', 'unknown')}")
+                continue
                 
-            # Check if model exceeds cost filters
-            if input_cost_model > input_cost or output_cost_model > output_cost:
-                hidden_count += 1
+            try:
+                prompt_cost = pricing.get('prompt', 0)
+                completion_cost = pricing.get('completion', 0)
+                
+                # Ensure values are numeric
+                if not isinstance(prompt_cost, (int, float)):
+                    prompt_cost = 0
+                if not isinstance(completion_cost, (int, float)):
+                    completion_cost = 0
+                    
+                input_cost_model = prompt_cost * 1000  # Convert to per 1M tokens
+                output_cost_model = completion_cost * 1000  # Convert to per 1M tokens
+                    
+                # Check if model exceeds cost filters
+                if input_cost_model > input_cost or output_cost_model > output_cost:
+                    hidden_count += 1
+            except (AttributeError, TypeError) as e:
+                logger.warning(f"Error processing model pricing: {e}")
+                continue
         
         return jsonify({
             "success": True,
@@ -2622,24 +2661,50 @@ def get_filtered_models():
         filtered_models = []
         
         for model in all_models:
+            # Check if model is a string (malformed data)
+            if isinstance(model, str):
+                logger.warning(f"Skipping model entry in filtered_models - not a dictionary object: {model[:30]}...")
+                continue
+                
             # Skip models with no pricing info - always show these
             if not model.get('pricing'):
                 filtered_models.append(model)
                 continue
-                
-            input_cost = model.get('pricing', {}).get('prompt', 0) * 1000  # Convert to per 1M tokens
-            output_cost = model.get('pricing', {}).get('completion', 0) * 1000  # Convert to per 1M tokens
             
-            # Free models are always shown
-            if model.get('is_free', False):
-                filtered_models.append(model)
+            # Extract pricing data with careful type conversion
+            pricing = model.get('pricing', {})
+            if isinstance(pricing, str):
+                # If pricing is a string, this is invalid data - skip
+                logger.warning(f"Skipping model with invalid pricing format: {model.get('id', 'unknown')}")
                 continue
                 
-            # Check if model exceeds cost filters
-            if input_cost > max_input_cost or output_cost > max_output_cost:
-                hidden_count += 1
-            else:
-                filtered_models.append(model)
+            try:
+                prompt_cost = pricing.get('prompt', 0)
+                completion_cost = pricing.get('completion', 0)
+                    
+                # Ensure values are numeric
+                if not isinstance(prompt_cost, (int, float)):
+                    prompt_cost = 0
+                if not isinstance(completion_cost, (int, float)):
+                    completion_cost = 0
+                    
+                input_cost = prompt_cost * 1000  # Convert to per 1M tokens
+                output_cost = completion_cost * 1000  # Convert to per 1M tokens
+                
+                # Free models are always shown
+                if model.get('is_free', False):
+                    filtered_models.append(model)
+                    continue
+                    
+                # Check if model exceeds cost filters
+                if input_cost > max_input_cost or output_cost > max_output_cost:
+                    hidden_count += 1
+                else:
+                    filtered_models.append(model)
+            except (AttributeError, TypeError) as e:
+                logger.warning(f"Error processing model pricing in filtered_models: {e}")
+                # Skip this model on error
+                continue
         
         return jsonify({
             "success": True, 

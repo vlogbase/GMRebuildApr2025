@@ -1507,6 +1507,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     from { opacity: 0; transform: translateY(-10px); }
                     to { opacity: 1; transform: translateY(0); }
                 }
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(10px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
                 @keyframes fadeOut {
                     from { opacity: 1; transform: translateY(0); }
                     to { opacity: 0; transform: translateY(-10px); }
@@ -1528,7 +1532,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             }
                         }, 500);
                     }
-                }, 5000);
+                }, 10000); // Increased to 10 seconds for better visibility
             }
         };
         
@@ -1536,13 +1540,16 @@ document.addEventListener('DOMContentLoaded', function() {
         let previewDebounceTimer;
         const previewContainer = document.createElement('div');
         previewContainer.id = 'filter-preview-container';
-        previewContainer.style.marginTop = '10px';
+        previewContainer.style.marginTop = '15px';
         previewContainer.style.fontSize = '0.9rem';
-        previewContainer.style.padding = '8px 12px';
-        previewContainer.style.borderRadius = '6px';
-        previewContainer.style.backgroundColor = 'rgba(255, 213, 79, 0.1)';
-        previewContainer.style.border = '1px solid rgba(255, 213, 79, 0.2)';
+        previewContainer.style.padding = '12px 16px';
+        previewContainer.style.borderRadius = '8px';
+        previewContainer.style.backgroundColor = 'rgba(52, 152, 219, 0.1)';
+        previewContainer.style.border = '1px solid rgba(52, 152, 219, 0.2)';
+        previewContainer.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.05)';
         previewContainer.style.display = 'none';
+        previewContainer.style.animation = 'fadeInUp 0.3s ease-out';
+        previewContainer.style.transition = 'all 0.2s ease-in-out';
         filterFeedbackContainer.appendChild(previewContainer);
         
         // Function to preview filter impact
@@ -1570,10 +1577,10 @@ document.addEventListener('DOMContentLoaded', function() {
                                 </span>
                             `;
                             
-                            // Hide after 5 seconds of no changes
+                            // Hide after 8 seconds of no changes
                             setTimeout(() => {
                                 previewContainer.style.display = 'none';
-                            }, 5000);
+                            }, 8000); // Increased from 5 to 8 seconds for better visibility
                         } else {
                             previewContainer.style.display = 'none';
                         }
@@ -1672,9 +1679,36 @@ document.addEventListener('DOMContentLoaded', function() {
                     saveFilterSettingsBtn.innerHTML = '<i class="fas fa-save me-2"></i>Save Filter Settings';
                     
                     if (data.success) {
-                        showFeedback('Model filter settings saved successfully! Models exceeding your cost limits will appear greyed out in the chat interface. Click "Return to Chat" to see your changes.', true);
+                        // Count how many models will be hidden
+                        fetch(`/api/preview_filter_impact?input_cost=${inputCost}&output_cost=${outputCost}`)
+                            .then(response => response.json())
+                            .then(previewData => {
+                                const hiddenCount = previewData.hidden_count;
+                                const totalCount = previewData.total_count;
+                                
+                                showFeedback(`
+                                    <strong>Settings saved successfully!</strong><br>
+                                    ${hiddenCount} of ${totalCount} models will be disabled based on your cost limits.<br>
+                                    Models exceeding your limits will appear greyed out in the model selection panel.<br>
+                                    <a href="/" class="text-info">Return to Chat</a> to see your changes.
+                                `, true);
+                                
+                                // Scroll to the notification to make sure it's visible
+                                filterFeedbackContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                            })
+                            .catch(() => {
+                                // Fallback if preview request fails
+                                showFeedback(`
+                                    <strong>Settings saved successfully!</strong><br>
+                                    Models exceeding your cost limits will appear greyed out in the chat interface.<br>
+                                    <a href="/" class="text-info">Return to Chat</a> to see your changes.
+                                `, true);
+                            });
                     } else {
-                        showFeedback('Error saving model filter settings: ' + (data.error || 'Unable to save your changes. Please try again.'), false);
+                        showFeedback(`
+                            <strong>Error saving settings</strong><br>
+                            ${data.error || 'Unable to save your changes. Please try again.'}
+                        `, false);
                     }
                 })
                 .catch(error => {

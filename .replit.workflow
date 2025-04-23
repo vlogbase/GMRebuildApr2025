@@ -1,3 +1,3 @@
-workflows = ["app"]
-[commands]
-app = "python app_workflow.py"
+[app]
+command = "python app_workflow.py"
+web = true
