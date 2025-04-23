@@ -2490,10 +2490,15 @@ def get_model_filters():
         return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/api/preview_filter_impact', methods=['GET'])
+@app.route('/preview_filter_impact', methods=['GET'])  # Adding non-prefixed route for frontend compatibility
 def preview_filter_impact():
     """ 
     Preview how many models would be filtered with given cost limits.
     Used for real-time feedback when adjusting filter sliders.
+    
+    This endpoint is accessible via both:
+    - /api/preview_filter_impact (primary route used by frontend)
+    - /preview_filter_impact (alternate route for compatibility)
     """
     try:
         # Get the cost parameters from the query string
@@ -2548,14 +2553,17 @@ def preview_filter_impact():
         total_count = len(all_models)
         
         for model in all_models:
-            # Check if model is a string (malformed data)
-            if isinstance(model, str):
-                logger.warning(f"Skipping model entry - not a dictionary object: {model[:30]}...")
+            # First, handle any non-dictionary model objects (could be strings or other types)
+            if not isinstance(model, dict):
+                logger.warning(f"Skipping non-dictionary model entry: {str(model)[:50]}...")
                 continue
+            
+            # Make sure model has an ID for better logging
+            model_id = model.get('id', 'unknown')
                 
             # Skip models with no pricing info
             if not model.get('pricing'):
-                logger.debug(f"Skipping model with no pricing info: {model.get('id', 'unknown')}")
+                logger.debug(f"Skipping model with no pricing info: {model_id}")
                 continue
                 
             # Free models are always shown
@@ -2564,9 +2572,10 @@ def preview_filter_impact():
                 
             # Extract pricing data with careful type conversion
             pricing = model.get('pricing', {})
-            if not pricing or isinstance(pricing, str):
-                # Handle case where pricing might be a string or empty (malformed data)
-                logger.warning(f"Skipping model with invalid pricing format: {model.get('id', 'unknown')}")
+            
+            # Handle non-dictionary pricing data
+            if not isinstance(pricing, dict):
+                logger.warning(f"Skipping model with non-dictionary pricing format: {model_id}")
                 continue
                 
             try:
@@ -2575,8 +2584,10 @@ def preview_filter_impact():
                 
                 # Ensure values are numeric
                 if not isinstance(prompt_cost, (int, float)):
+                    logger.debug(f"Non-numeric prompt cost for model {model_id}, using 0")
                     prompt_cost = 0
                 if not isinstance(completion_cost, (int, float)):
+                    logger.debug(f"Non-numeric completion cost for model {model_id}, using 0")
                     completion_cost = 0
                     
                 input_cost_model = prompt_cost * 1000  # Convert to per 1M tokens
@@ -2585,8 +2596,9 @@ def preview_filter_impact():
                 # Check if model exceeds cost filters
                 if input_cost_model > input_cost or output_cost_model > output_cost:
                     hidden_count += 1
-            except (AttributeError, TypeError) as e:
-                logger.warning(f"Error processing model pricing: {e}")
+                    logger.debug(f"Model {model_id} would be hidden (input: ${input_cost_model}, output: ${output_cost_model})")
+            except Exception as e:
+                logger.warning(f"Error processing model pricing for {model_id}: {e}")
                 continue
         
         return jsonify({
@@ -2609,8 +2621,15 @@ def preview_filter_impact():
         }), 500
         
 @app.route('/api/filtered_models', methods=['GET'])
+@app.route('/filtered_models', methods=['GET'])  # Adding non-prefixed route for frontend compatibility
 def get_filtered_models():
-    """ Fetch models filtered by user's cost settings """
+    """ 
+    Fetch models filtered by user's cost settings 
+    
+    This endpoint is accessible via both:
+    - /api/filtered_models (primary route used by frontend)
+    - /filtered_models (alternate route for compatibility)
+    """
     try:
         # Get the current user
         user_identifier = get_user_identifier()
@@ -2661,21 +2680,28 @@ def get_filtered_models():
         filtered_models = []
         
         for model in all_models:
-            # Check if model is a string (malformed data)
-            if isinstance(model, str):
-                logger.warning(f"Skipping model entry in filtered_models - not a dictionary object: {model[:30]}...")
+            # First, handle any non-dictionary model objects (could be strings or other types)
+            if not isinstance(model, dict):
+                logger.warning(f"Skipping non-dictionary model entry in filtered_models: {str(model)[:50]}...")
                 continue
+            
+            # Make sure model has an ID for better logging
+            model_id = model.get('id', 'unknown')
                 
             # Skip models with no pricing info - always show these
             if not model.get('pricing'):
+                logger.debug(f"Model {model_id} has no pricing info, adding to filtered list")
                 filtered_models.append(model)
                 continue
             
             # Extract pricing data with careful type conversion
             pricing = model.get('pricing', {})
-            if isinstance(pricing, str):
-                # If pricing is a string, this is invalid data - skip
-                logger.warning(f"Skipping model with invalid pricing format: {model.get('id', 'unknown')}")
+            
+            # Handle non-dictionary pricing data
+            if not isinstance(pricing, dict):
+                logger.warning(f"Skipping model with non-dictionary pricing format: {model_id}")
+                # Add it anyway since we can't filter it
+                filtered_models.append(model)
                 continue
                 
             try:
@@ -2684,8 +2710,10 @@ def get_filtered_models():
                     
                 # Ensure values are numeric
                 if not isinstance(prompt_cost, (int, float)):
+                    logger.debug(f"Non-numeric prompt cost for model {model_id}, using 0")
                     prompt_cost = 0
                 if not isinstance(completion_cost, (int, float)):
+                    logger.debug(f"Non-numeric completion cost for model {model_id}, using 0")
                     completion_cost = 0
                     
                 input_cost = prompt_cost * 1000  # Convert to per 1M tokens
@@ -2693,17 +2721,21 @@ def get_filtered_models():
                 
                 # Free models are always shown
                 if model.get('is_free', False):
+                    logger.debug(f"Model {model_id} is free, adding to filtered list")
                     filtered_models.append(model)
                     continue
                     
                 # Check if model exceeds cost filters
                 if input_cost > max_input_cost or output_cost > max_output_cost:
                     hidden_count += 1
+                    logger.debug(f"Model {model_id} hidden (input: ${input_cost}, output: ${output_cost}, limits: ${max_input_cost}/${max_output_cost})")
                 else:
                     filtered_models.append(model)
-            except (AttributeError, TypeError) as e:
-                logger.warning(f"Error processing model pricing in filtered_models: {e}")
-                # Skip this model on error
+                    logger.debug(f"Model {model_id} included in filtered list (input: ${input_cost}, output: ${output_cost})")
+            except Exception as e:
+                logger.warning(f"Error processing model pricing for {model_id} in filtered_models: {e}")
+                # Add model anyway when there's an error (fail open approach)
+                filtered_models.append(model)
                 continue
         
         return jsonify({
