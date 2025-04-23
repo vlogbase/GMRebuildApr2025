@@ -355,9 +355,9 @@
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <h4 class="mb-0">Usage Analytics</h4>
                     <div>
-                        <button class="tab-button usage-tab-button active btn-sm" data-tab="summary">Summary</button>
-                        <button class="tab-button usage-tab-button btn-sm" data-tab="detailed">Detailed</button>
-                        <button class="tab-button btn-sm" id="exportCsvBtn">
+                        <button class="tab-button active btn-sm">Summary</button>
+                        <button class="tab-button btn-sm">Detailed</button>
+                        <button class="tab-button btn-sm">
                             <i class="fas fa-download"></i> Export CSV
                         </button>
                     </div>
@@ -366,64 +366,30 @@
                 <div class="mb-4">
                     <h6>Date Range</h6>
                     <div>
-                        <button class="tab-button date-range-btn btn-sm" data-range="30">Last 30 Days</button>
-                        <button class="tab-button date-range-btn btn-sm" data-range="7">Last 7 Days</button>
-                        <button class="tab-button date-range-btn active btn-sm" data-range="month">This Month</button>
+                        <button class="tab-button btn-sm">Last 30 Days</button>
+                        <button class="tab-button btn-sm">Last 7 Days</button>
+                        <button class="tab-button active btn-sm">This Month</button>
                     </div>
                 </div>
                 
-                <div id="usage-summary-tab" class="usage-sub-tab active">
-                <style>
-                    /* Usage analytics table styles - similar to pricing table */
-                    .usage-table tbody tr {
-                        transition: background-color 0.15s ease-in-out;
-                    }
-                    
-                    .usage-table tbody tr:hover {
-                        background-color: rgba(255, 255, 255, 0.1) !important;
-                    }
-                    
-                    .usage-table td {
-                        padding: 0.75rem 1rem;
-                        vertical-align: middle;
-                    }
-                    
-                    .usage-table th {
-                        padding: 0.75rem 1rem;
-                        border-bottom: 1px solid #2c2f33;
-                        background-color: #242628;
-                    }
-                    
-                    .usage-table {
-                        margin-bottom: 0;
-                    }
-                </style>
                 {% if recent_usage %}
-                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                    <table class="table table-dark table-hover usage-table table-striped">
-                        <thead class="table-dark sticky-top">
+                <div class="table-responsive">
+                    <table class="table table-dark table-hover">
+                        <thead>
                             <tr>
-                                <th style="min-width: 110px; position: sticky; top: 0; z-index: 10; background-color: #212529;">Date</th>
-                                <th style="min-width: 80px; position: sticky; top: 0; z-index: 10; background-color: #212529;">Type</th>
-                                <th style="min-width: 180px; position: sticky; top: 0; z-index: 10; background-color: #212529;">Model</th>
-                                <th style="min-width: 80px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Cost</th>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Model</th>
+                                <th>Cost</th>
                             </tr>
                         </thead>
                         <tbody>
                             {% for usage in recent_usage %}
                             <tr>
                                 <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
-                                <td>
-                                    {% if usage.usage_type == 'chat' %}
-                                        <span class="badge-dark-primary">Chat</span>
-                                    {% elif usage.usage_type == 'embedding' %}
-                                        <span class="badge-dark-info">Embedding</span>
-                                    {% else %}
-                                        <span class="badge-dark-secondary">{{ usage.usage_type|capitalize }}</span>
-                                    {% endif %}
-                                </td>
-                                <td>{{ usage.model_id }}</td>
-                                <td class="text-end">${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                <td>{{ usage.usage_type }}</td>
+                                <td>{{ usage.model_id|truncate(15) }}</td>
+                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
                             </tr>
                             {% endfor %}
                         </tbody>
@@ -440,64 +406,6 @@
                     <a href="{{ url_for('index') }}" class="select-button mt-2 w-auto d-inline-block px-4">Try Using Models</a>
                 </div>
                 {% endif %}
-                </div>
-
-                <div id="usage-detailed-tab" class="usage-sub-tab" style="display: none;">
-                {% if recent_usage %}
-                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                    <table class="table table-dark table-hover usage-table table-striped">
-                        <thead class="table-dark sticky-top">
-                            <tr>
-                                <th style="min-width: 110px; position: sticky; top: 0; z-index: 10; background-color: #212529;">Date</th>
-                                <th style="min-width: 180px; position: sticky; top: 0; z-index: 10; background-color: #212529;">Model</th>
-                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Input Tokens</th>
-                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Input Cost</th>
-                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Output Tokens</th>
-                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Output Cost</th>
-                                <th style="min-width: 100px; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="text-end">Total Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for usage in recent_usage %}
-                            <tr>
-                                <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td>{{ usage.model_id }}</td>
-                                <td class="text-end">{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
-                                <td class="text-end">
-                                    {% if usage.prompt_tokens and usage.model_id %}
-                                        {% set input_cost = ((usage.credits_used / 1000) * 0.7)|float %}
-                                        ${{ "%.4f"|format(input_cost) }}
-                                    {% else %}
-                                        N/A
-                                    {% endif %}
-                                </td>
-                                <td class="text-end">{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
-                                <td class="text-end">
-                                    {% if usage.completion_tokens and usage.model_id %}
-                                        {% set output_cost = ((usage.credits_used / 1000) * 0.3)|float %}
-                                        ${{ "%.4f"|format(output_cost) }}
-                                    {% else %}
-                                        N/A
-                                    {% endif %}
-                                </td>
-                                <td class="text-end">${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="text-center py-5">
-                    <div class="mb-3">
-                        <i class="fas fa-chart-line fa-3x text-muted"></i>
-                    </div>
-                    <h5>No Usage Data</h5>
-                    <p class="caption">No usage data available for the selected time period.</p>
-                    <p class="caption">Try a different date range or start using the AI models to generate usage data.</p>
-                    <a href="{{ url_for('index') }}" class="select-button mt-2 w-auto d-inline-block px-4">Try Using Models</a>
-                </div>
-                {% endif %}
-                </div>
             </div>
         </div>
         
@@ -508,11 +416,8 @@
                 <p class="caption mb-4">Pricing information for all available AI models. Click on any column header to sort by that attribute.</p>
                 
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="d-flex align-items-center">
-                        <span id="lastUpdated" class="caption me-3"></span>
-                        <button id="refresh-prices" class="btn btn-sm btn-outline-primary">
-                            🔄 Refresh prices
-                        </button>
+                    <div>
+                        <span id="lastUpdated" class="caption"></span>
                     </div>
                     <div class="d-flex align-items-center">
                         <i class="fas fa-search text-muted me-2"></i>
@@ -763,7 +668,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Deactivate all tab buttons
-        const tabButtons = document.querySelectorAll('.tab-navigation .tab-button');
+        const tabButtons = document.querySelectorAll('.tab-button');
         tabButtons.forEach(button => {
             button.classList.remove('active');
         });
@@ -1195,133 +1100,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Load pricing data on page load if we're on the pricing tab
     if (window.location.hash === '#pricing') {
         openTab('pricing');
-    }
-    
-    // Initialize the usage analytics sub-tab functionality
-    const handleUsageSubTabs = function() {
-        const usageTabButtons = document.querySelectorAll('.usage-tab-button');
-        const usageSubTabs = document.querySelectorAll('.usage-sub-tab');
-        
-        usageTabButtons.forEach(button => {
-            button.addEventListener('click', function() {
-                // Deactivate all tab buttons
-                usageTabButtons.forEach(btn => {
-                    btn.classList.remove('active');
-                });
-                
-                // Hide all sub-tabs
-                usageSubTabs.forEach(tab => {
-                    tab.style.display = 'none';
-                });
-                
-                // Activate the clicked button
-                button.classList.add('active');
-                
-                // Show the selected sub-tab
-                const tabToShow = button.getAttribute('data-tab');
-                document.getElementById(`usage-${tabToShow}-tab`).style.display = 'block';
-            });
-        });
-    };
-    
-    // CSV Export functionality
-    const handleCsvExport = function() {
-        const exportCsvBtn = document.getElementById('exportCsvBtn');
-        if (exportCsvBtn) {
-            exportCsvBtn.addEventListener('click', function() {
-                // Force switch to detailed tab before export
-                const detailedButton = document.querySelector('.usage-tab-button[data-tab="detailed"]');
-                if (detailedButton) {
-                    detailedButton.click();
-                }
-                
-                // Get the detailed table data
-                const detailedTab = document.getElementById('usage-detailed-tab');
-                if (!detailedTab) return;
-                
-                // Get the table rows from the detailed tab
-                const table = detailedTab.querySelector('table');
-                if (!table) {
-                    alert('No data available to export');
-                    return;
-                }
-                
-                // Get all table headers
-                const headers = [];
-                const headerCells = table.querySelectorAll('thead th');
-                headerCells.forEach(cell => {
-                    headers.push(cell.textContent.trim());
-                });
-                
-                // Get all table rows
-                const rows = [];
-                const tableRows = table.querySelectorAll('tbody tr');
-                tableRows.forEach(row => {
-                    const rowData = [];
-                    row.querySelectorAll('td').forEach(cell => {
-                        rowData.push(cell.textContent.trim().replace('$', ''));
-                    });
-                    rows.push(rowData);
-                });
-                
-                // Create CSV content
-                let csvContent = headers.join(',') + '\n';
-                rows.forEach(row => {
-                    csvContent += row.join(',') + '\n';
-                });
-                
-                // Create a Blob and download link
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.setAttribute('href', url);
-                link.setAttribute('download', 'usage_analytics_detailed.csv');
-                link.style.display = 'none';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            });
-        }
-    };
-    
-    // Initialize the usage analytics functionality
-    handleUsageSubTabs();
-    handleCsvExport();
-    
-    // Add event listener for the refresh prices button
-    function fetchLatestPrices() {
-        fetch('/api/pricing/refresh')
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    // Use the existing pricingData and renderPricingTable functions
-                    pricingData = data.prices;
-                    renderPricingTable();
-                    
-                    // Update the timestamp
-                    const lastUpdated = document.getElementById('lastUpdated');
-                    const currentTime = new Date();
-                    lastUpdated.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
-                    
-                    // Update cache
-                    localStorage.setItem('modelPricingData', JSON.stringify(pricingData));
-                    localStorage.setItem('modelPricingTimestamp', currentTime.getTime().toString());
-                    
-                    // Show success message
-                    alert('Prices refreshed successfully');
-                } else {
-                    alert('Price refresh failed: ' + (data.error || 'Unknown error'));
-                }
-            })
-            .catch(err => {
-                console.error('Price refresh failed', err);
-                alert('Error refreshing prices: ' + err.message);
-            });
-    }
-    
-    const refreshPricesBtn = document.getElementById('refresh-prices');
-    if (refreshPricesBtn) {
-        refreshPricesBtn.addEventListener('click', fetchLatestPrices);
     }
 });
 </script>
