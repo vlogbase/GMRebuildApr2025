@@ -1,3 +1,3 @@
-[app]
-command = "python app_workflow.py"
-web = true
+run = ["python", "app.py"]
+language = "python"
+onBoot = "cd /"

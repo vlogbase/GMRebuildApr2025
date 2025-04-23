@@ -2502,21 +2502,19 @@ def preview_filter_impact():
     """
     try:
         # Get the cost parameters from the query string
-        input_cost = request.args.get('input_cost', default='1500.0', type=float)
-        output_cost = request.args.get('output_cost', default='1500.0', type=float)
+        input_cost = request.args.get('input_cost', default='1500.0')
+        output_cost = request.args.get('output_cost', default='1500.0')
         
         # Ensure parameters are floats
-        if not isinstance(input_cost, float):
-            try:
-                input_cost = float(input_cost)
-            except (ValueError, TypeError):
-                input_cost = 1500.0
-                
-        if not isinstance(output_cost, float):
-            try:
-                output_cost = float(output_cost)
-            except (ValueError, TypeError):
-                output_cost = 1500.0
+        try:
+            input_cost = float(input_cost)
+        except (ValueError, TypeError):
+            input_cost = 1500.0
+            
+        try:
+            output_cost = float(output_cost)
+        except (ValueError, TypeError):
+            output_cost = 1500.0
         
         # Get all models first (from cache if available)
         has_cached_data = OPENROUTER_MODELS_CACHE["data"] is not None
@@ -2550,56 +2548,108 @@ def preview_filter_impact():
         
         # Count models that would be hidden with these settings
         hidden_count = 0
-        total_count = len(all_models)
+        total_count = 0
         
+        # Process models to determine which ones would be hidden
         for model in all_models:
-            # First, handle any non-dictionary model objects (could be strings or other types)
+            total_count += 1
+            
+            # Skip string entries (malformed data)
             if not isinstance(model, dict):
-                logger.warning(f"Skipping non-dictionary model entry: {str(model)[:50]}...")
+                # Count as hidden since we can't process it
+                hidden_count += 1
+                logger.warning(f"Non-dictionary model entry: {str(model)[:30]}... (will be hidden)")
                 continue
             
-            # Make sure model has an ID for better logging
             model_id = model.get('id', 'unknown')
-                
-            # Skip models with no pricing info
-            if not model.get('pricing'):
-                logger.debug(f"Skipping model with no pricing info: {model_id}")
-                continue
-                
-            # Free models are always shown
-            if model.get('is_free', False):
-                continue
-                
-            # Extract pricing data with careful type conversion
-            pricing = model.get('pricing', {})
             
-            # Handle non-dictionary pricing data
+            # Free models are always shown
+            if model.get('is_free', False):  # Default to false if not specified
+                logger.debug(f"Model {model_id} is free - will be shown")
+                continue
+                
+            # Models without pricing info are always shown
+            if not model.get('pricing'):
+                logger.debug(f"Model {model_id} has no pricing info - will be shown")
+                continue
+                
+            # Get pricing info
+            pricing = model.get('pricing', {})
             if not isinstance(pricing, dict):
-                logger.warning(f"Skipping model with non-dictionary pricing format: {model_id}")
+                # Non-dictionary pricing data - show model
+                logger.debug(f"Model {model_id} has non-dictionary pricing - will be shown")
                 continue
                 
+            # Process prompt cost
+            prompt_cost = None
             try:
-                prompt_cost = pricing.get('prompt', 0)
-                completion_cost = pricing.get('completion', 0)
+                # Get prompt cost value
+                prompt_cost_raw = pricing.get('prompt')
                 
-                # Ensure values are numeric
-                if not isinstance(prompt_cost, (int, float)):
-                    logger.debug(f"Non-numeric prompt cost for model {model_id}, using 0")
-                    prompt_cost = 0
-                if not isinstance(completion_cost, (int, float)):
-                    logger.debug(f"Non-numeric completion cost for model {model_id}, using 0")
-                    completion_cost = 0
-                    
-                input_cost_model = prompt_cost * 1000  # Convert to per 1M tokens
-                output_cost_model = completion_cost * 1000  # Convert to per 1M tokens
-                    
-                # Check if model exceeds cost filters
-                if input_cost_model > input_cost or output_cost_model > output_cost:
-                    hidden_count += 1
-                    logger.debug(f"Model {model_id} would be hidden (input: ${input_cost_model}, output: ${output_cost_model})")
+                # Handle string values
+                if isinstance(prompt_cost_raw, str):
+                    prompt_cost_raw = prompt_cost_raw.strip().lower()
+                    if prompt_cost_raw in ['free', '--', '—', '-']:
+                        prompt_cost = 0
+                    else:
+                        # Try to extract numeric part from strings like "$0.0123"
+                        try:
+                            prompt_cost = float(prompt_cost_raw.replace('$', '').strip())
+                        except (ValueError, TypeError):
+                            # Treat as exceeding limit
+                            prompt_cost = input_cost + 1
+                else:
+                    # Handle numeric values
+                    if isinstance(prompt_cost_raw, (int, float)):
+                        prompt_cost = float(prompt_cost_raw)
+                    else:
+                        # Unknown format, treat as exceeding limit
+                        prompt_cost = input_cost + 1
             except Exception as e:
-                logger.warning(f"Error processing model pricing for {model_id}: {e}")
-                continue
+                logger.warning(f"Error processing prompt cost for {model_id}: {e}")
+                # Treat as exceeding limit
+                prompt_cost = input_cost + 1
+                
+            # Process completion cost
+            completion_cost = None
+            try:
+                # Get completion cost value
+                completion_cost_raw = pricing.get('completion')
+                
+                # Handle string values
+                if isinstance(completion_cost_raw, str):
+                    completion_cost_raw = completion_cost_raw.strip().lower()
+                    if completion_cost_raw in ['free', '--', '—', '-']:
+                        completion_cost = 0
+                    else:
+                        # Try to extract numeric part from strings like "$0.0123"
+                        try:
+                            completion_cost = float(completion_cost_raw.replace('$', '').strip())
+                        except (ValueError, TypeError):
+                            # Treat as exceeding limit
+                            completion_cost = output_cost + 1
+                else:
+                    # Handle numeric values
+                    if isinstance(completion_cost_raw, (int, float)):
+                        completion_cost = float(completion_cost_raw)
+                    else:
+                        # Unknown format, treat as exceeding limit
+                        completion_cost = output_cost + 1
+            except Exception as e:
+                logger.warning(f"Error processing completion cost for {model_id}: {e}")
+                # Treat as exceeding limit
+                completion_cost = output_cost + 1
+                
+            # Calculate per-million costs
+            input_cost_model = prompt_cost * 1000 if prompt_cost is not None else input_cost + 1
+            output_cost_model = completion_cost * 1000 if completion_cost is not None else output_cost + 1
+            
+            # Compare costs
+            if input_cost_model > input_cost or output_cost_model > output_cost:
+                hidden_count += 1
+                logger.debug(f"Model {model_id} would be hidden (input: ${input_cost_model:.2f} > ${input_cost:.2f} or output: ${output_cost_model:.2f} > ${output_cost:.2f})")
+            else:
+                logger.debug(f"Model {model_id} would be shown (input: ${input_cost_model:.2f} <= ${input_cost:.2f} and output: ${output_cost_model:.2f} <= ${output_cost:.2f})")
         
         return jsonify({
             "success": True,
@@ -2678,64 +2728,117 @@ def get_filtered_models():
         # Count models that will be hidden
         hidden_count = 0
         filtered_models = []
+        total_count = 0
         
+        # Process models
         for model in all_models:
-            # First, handle any non-dictionary model objects (could be strings or other types)
+            total_count += 1
+            
+            # Skip string entries (malformed data)
             if not isinstance(model, dict):
-                logger.warning(f"Skipping non-dictionary model entry in filtered_models: {str(model)[:50]}...")
+                # Count as hidden since we can't process it
+                hidden_count += 1
+                logger.warning(f"Non-dictionary model entry: {str(model)[:30]}... (will be hidden)")
                 continue
             
-            # Make sure model has an ID for better logging
             model_id = model.get('id', 'unknown')
-                
-            # Skip models with no pricing info - always show these
-            if not model.get('pricing'):
-                logger.debug(f"Model {model_id} has no pricing info, adding to filtered list")
+            
+            # Free models are always shown
+            if model.get('is_free', False):  # Default to false if not specified
+                logger.debug(f"Model {model_id} is free - adding to filtered list")
                 filtered_models.append(model)
                 continue
-            
-            # Extract pricing data with careful type conversion
+                
+            # Models without pricing info are always shown
+            if not model.get('pricing'):
+                logger.debug(f"Model {model_id} has no pricing info - adding to filtered list")
+                filtered_models.append(model)
+                continue
+                
+            # Get pricing info
             pricing = model.get('pricing', {})
-            
-            # Handle non-dictionary pricing data
             if not isinstance(pricing, dict):
-                logger.warning(f"Skipping model with non-dictionary pricing format: {model_id}")
-                # Add it anyway since we can't filter it
+                # Non-dictionary pricing data - show model
+                logger.debug(f"Model {model_id} has non-dictionary pricing - adding to filtered list")
                 filtered_models.append(model)
                 continue
                 
             try:
-                prompt_cost = pricing.get('prompt', 0)
-                completion_cost = pricing.get('completion', 0)
+                # Process prompt cost
+                prompt_cost = None
+                try:
+                    # Get prompt cost value
+                    prompt_cost_raw = pricing.get('prompt')
                     
-                # Ensure values are numeric
-                if not isinstance(prompt_cost, (int, float)):
-                    logger.debug(f"Non-numeric prompt cost for model {model_id}, using 0")
-                    prompt_cost = 0
-                if not isinstance(completion_cost, (int, float)):
-                    logger.debug(f"Non-numeric completion cost for model {model_id}, using 0")
-                    completion_cost = 0
+                    # Handle string values
+                    if isinstance(prompt_cost_raw, str):
+                        prompt_cost_raw = prompt_cost_raw.strip().lower()
+                        if prompt_cost_raw in ['free', '--', '—', '-']:
+                            prompt_cost = 0
+                        else:
+                            # Try to extract numeric part from strings like "$0.0123"
+                            try:
+                                prompt_cost = float(prompt_cost_raw.replace('$', '').strip())
+                            except (ValueError, TypeError):
+                                # Treat as exceeding limit
+                                prompt_cost = max_input_cost + 1
+                    else:
+                        # Handle numeric values
+                        if isinstance(prompt_cost_raw, (int, float)):
+                            prompt_cost = float(prompt_cost_raw)
+                        else:
+                            # Unknown format, treat as exceeding limit
+                            prompt_cost = max_input_cost + 1
+                except Exception as e:
+                    logger.warning(f"Error processing prompt cost for {model_id}: {e}")
+                    # Treat as exceeding limit
+                    prompt_cost = max_input_cost + 1
                     
-                input_cost = prompt_cost * 1000  # Convert to per 1M tokens
-                output_cost = completion_cost * 1000  # Convert to per 1M tokens
+                # Process completion cost
+                completion_cost = None
+                try:
+                    # Get completion cost value
+                    completion_cost_raw = pricing.get('completion')
+                    
+                    # Handle string values
+                    if isinstance(completion_cost_raw, str):
+                        completion_cost_raw = completion_cost_raw.strip().lower()
+                        if completion_cost_raw in ['free', '--', '—', '-']:
+                            completion_cost = 0
+                        else:
+                            # Try to extract numeric part from strings like "$0.0123"
+                            try:
+                                completion_cost = float(completion_cost_raw.replace('$', '').strip())
+                            except (ValueError, TypeError):
+                                # Treat as exceeding limit
+                                completion_cost = max_output_cost + 1
+                    else:
+                        # Handle numeric values
+                        if isinstance(completion_cost_raw, (int, float)):
+                            completion_cost = float(completion_cost_raw)
+                        else:
+                            # Unknown format, treat as exceeding limit
+                            completion_cost = max_output_cost + 1
+                except Exception as e:
+                    logger.warning(f"Error processing completion cost for {model_id}: {e}")
+                    # Treat as exceeding limit
+                    completion_cost = max_output_cost + 1
+                    
+                # Calculate per-million costs
+                input_cost = prompt_cost * 1000 if prompt_cost is not None else max_input_cost + 1
+                output_cost = completion_cost * 1000 if completion_cost is not None else max_output_cost + 1
                 
-                # Free models are always shown
-                if model.get('is_free', False):
-                    logger.debug(f"Model {model_id} is free, adding to filtered list")
-                    filtered_models.append(model)
-                    continue
-                    
-                # Check if model exceeds cost filters
+                # Compare costs
                 if input_cost > max_input_cost or output_cost > max_output_cost:
                     hidden_count += 1
-                    logger.debug(f"Model {model_id} hidden (input: ${input_cost}, output: ${output_cost}, limits: ${max_input_cost}/${max_output_cost})")
+                    logger.debug(f"Model {model_id} filtered out (input: ${input_cost:.2f} > ${max_input_cost:.2f} or output: ${output_cost:.2f} > ${max_output_cost:.2f})")
                 else:
                     filtered_models.append(model)
-                    logger.debug(f"Model {model_id} included in filtered list (input: ${input_cost}, output: ${output_cost})")
+                    logger.debug(f"Model {model_id} included in filtered list (input: ${input_cost:.2f} <= ${max_input_cost:.2f} and output: ${output_cost:.2f} <= ${max_output_cost:.2f})")
             except Exception as e:
-                logger.warning(f"Error processing model pricing for {model_id} in filtered_models: {e}")
-                # Add model anyway when there's an error (fail open approach)
-                filtered_models.append(model)
+                logger.exception(f"Error processing model pricing for {model_id}: {e}")
+                # Models with processing errors are excluded (fail closed approach)
+                hidden_count += 1
                 continue
         
         return jsonify({
