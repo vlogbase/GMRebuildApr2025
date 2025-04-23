@@ -1137,6 +1137,21 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
+        // Check if the model exceeds cost filters (skip this check for the free preset)
+        if (presetId !== '6') {
+            const model = allModels.find(m => m.id === modelId);
+            if (model) {
+                const inputCost = model.pricing?.prompt || 0;
+                const outputCost = model.pricing?.completion || 0;
+                
+                if (inputCost > maxInputCost || outputCost > maxOutputCost) {
+                    // Alert with details about why this model can't be used
+                    alert(`This model (${model.name}) exceeds your cost filter settings.\n\nModel costs:\n- Input: $${inputCost.toFixed(2)} per million tokens\n- Output: $${outputCost.toFixed(2)} per million tokens\n\nYour filters:\n- Max input cost: $${maxInputCost.toFixed(2)}\n- Max output cost: $${maxOutputCost.toFixed(2)}\n\nTo use this model, adjust your filter settings in Account > Settings.`);
+                    return; // Stop execution here
+                }
+            }
+        }
+        
         // Update the UI
         const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
         if (button) {
@@ -1701,6 +1716,37 @@ document.addEventListener('DOMContentLoaded', function() {
     function sendMessageToBackend(message, modelId, typingIndicator) {
         // Check if we need to make a multimodal message
         const isMultimodalMessage = attachedImageUrls.length > 0;
+        
+        // First, check if the model exceeds our cost filters (except for free models preset 6)
+        const model = allModels.find(m => m.id === modelId);
+        if (model && currentPresetId !== '6') {
+            const inputCost = model.pricing?.prompt || 0;
+            const outputCost = model.pricing?.completion || 0;
+            
+            if (inputCost > maxInputCost || outputCost > maxOutputCost) {
+                // Model exceeds our filter limits, show an error
+                const errorMessage = `This model exceeds your cost filter settings (Input: $${inputCost} > $${maxInputCost} or Output: $${outputCost} > $${maxOutputCost}). Please adjust your filter settings or choose a different model.`;
+                
+                // Add an error message in the chat
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'message error-message';
+                errorDiv.innerHTML = `
+                    <div class="message-content">
+                        <p><i class="fas fa-exclamation-triangle"></i> ${errorMessage}</p>
+                        <p>Consider using a less expensive model or <a href="/billing/account#settings">adjust your filter settings</a>.</p>
+                    </div>
+                `;
+                chatMessages.appendChild(errorDiv);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Remove typing indicator
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+                
+                return; // Stop execution here
+            }
+        }
         
         // Always create a content array (OpenRouter's unified format)
         // Even for text-only messages, this ensures consistent payload structure
@@ -2613,13 +2659,23 @@ document.addEventListener('DOMContentLoaded', function() {
             return inputCost <= maxInputCost && outputCost <= maxOutputCost;
         };
         
+        // IMPROVEMENT: We'll also create a function to check if a model is filtered by cost
+        // This allows us to display filtered models but mark them as unavailable
+        const isFilteredByCost = (model) => {
+            if (presetId === '6') return false; // Skip cost filter for free models
+            const inputCost = model.pricing?.prompt || 0;
+            const outputCost = model.pricing?.completion || 0;
+            return inputCost > maxInputCost || outputCost > maxOutputCost;
+        };
+        
         // Get all models that would pass the preset filter without cost filter
         const presetFilteredModels = allModels.filter(filterFn);
         
-        // Apply combined filter
-        const filteredModels = allModels
-            .filter(combinedFilterFn)
-            .sort((a, b) => {
+        // IMPROVEMENT: Instead of hiding filtered models completely, we'll show them as disabled
+        // This gives users better feedback about why certain models aren't available
+        
+        // First get all models that pass the preset-specific filter
+        const visibleModels = presetFilteredModels.sort((a, b) => {
                 // Special handling for preset 4 (vision models)
                 if (presetId === '4') {
                     // Always put GPT-4o at the top
@@ -2651,13 +2707,30 @@ document.addEventListener('DOMContentLoaded', function() {
                 return aPrice - bPrice;
             });
         
-        // Calculate how many models were hidden by cost filter
-        modelsHiddenByFilter = presetFilteredModels.length - filteredModels.length;
+        // Show all presetFilteredModels but mark those that exceed cost thresholds
+        // First, keep count of models that exceed filter
+        let exceededFilterCount = 0;
         
-        // Add each model to the list
-        filteredModels.forEach(model => {
+        // Add each model to the list, including those that exceed cost filters
+        presetFilteredModels.forEach(model => {
             const li = document.createElement('li');
             li.dataset.modelId = model.id;
+            
+            // Check if this model exceeds cost filters
+            const filteredOut = isFilteredByCost(model);
+            if (filteredOut) {
+                exceededFilterCount++;
+                li.classList.add('filtered-by-cost');
+                
+                // Get specific costs to show in the filter reason
+                const inputCost = model.pricing?.prompt || 0;
+                const outputCost = model.pricing?.completion || 0;
+                
+                // Determine which filter(s) this model violates
+                let filterViolations = [];
+                if (inputCost > maxInputCost) filterViolations.push(`Input: $${inputCost.toFixed(2)} > $${maxInputCost.toFixed(2)}`);
+                if (outputCost > maxOutputCost) filterViolations.push(`Output: $${outputCost.toFixed(2)} > $${maxOutputCost.toFixed(2)}`);
+            }
             
             // Create model name element
             const nameSpan = document.createElement('span');
@@ -2677,16 +2750,55 @@ document.addEventListener('DOMContentLoaded', function() {
                 li.appendChild(freeTag);
             }
             
+            // Add filtered notice for filtered models
+            if (filteredOut) {
+                const filterNotice = document.createElement('span');
+                filterNotice.className = 'filter-notice';
+                filterNotice.textContent = 'FILTERED';
+                nameSpan.appendChild(filterNotice);
+                
+                // Create filter reason element explaining the cost that triggered the filter
+                const filterReason = document.createElement('span');
+                filterReason.className = 'filter-reason';
+                
+                // Get specific costs to display
+                const inputCost = model.pricing?.prompt || 0;
+                const outputCost = model.pricing?.completion || 0;
+                
+                // Format reason text
+                let reasonText = 'Exceeds filter: ';
+                if (inputCost > maxInputCost) reasonText += `Input $${inputCost.toFixed(2)} > $${maxInputCost.toFixed(2)}`;
+                if (inputCost > maxInputCost && outputCost > maxOutputCost) reasonText += ', ';
+                if (outputCost > maxOutputCost) reasonText += `Output $${outputCost.toFixed(2)} > $${maxOutputCost.toFixed(2)}`;
+                
+                filterReason.textContent = reasonText;
+                li.appendChild(filterReason);
+            }
+            
             li.appendChild(nameSpan);
             li.appendChild(providerSpan);
             
-            // Add click handler to select this model
-            li.addEventListener('click', function() {
-                selectModelForPreset(currentlyEditingPresetId, model.id);
-            });
+            // Add click handler with different behavior for filtered models
+            if (filteredOut) {
+                li.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // Show message about changing filters instead of selecting
+                    const inputCost = model.pricing?.prompt || 0;
+                    const outputCost = model.pricing?.completion || 0;
+                    
+                    alert(`This model (${model.name}) exceeds your cost filter settings.\n\nModel costs:\n- Input: $${inputCost.toFixed(2)} per million tokens\n- Output: $${outputCost.toFixed(2)} per million tokens\n\nYour filters:\n- Max input cost: $${maxInputCost.toFixed(2)}\n- Max output cost: $${maxOutputCost.toFixed(2)}\n\nTo use this model, adjust your filter settings in Account > Settings.`);
+                });
+            } else {
+                li.addEventListener('click', function() {
+                    selectModelForPreset(currentlyEditingPresetId, model.id);
+                });
+            }
             
             modelList.appendChild(li);
         });
+        
+        // Update the hidden filter count
+        modelsHiddenByFilter = exceededFilterCount;
         
         // If models are hidden by the cost filter, show a notice
         if (modelsHiddenByFilter > 0 && presetId !== '6') {
@@ -2708,14 +2820,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
-        // If no models match the filter
-        if (filteredModels.length === 0) {
+        // If no models match the preset-specific filter at all
+        if (presetFilteredModels.length === 0) {
             const noResults = document.createElement('li');
-            if (modelsHiddenByFilter > 0) {
-                noResults.textContent = 'All models filtered out by cost settings';
-            } else {
-                noResults.textContent = 'No models found';
-            }
+            noResults.textContent = 'No models found for this preset type';
             modelList.appendChild(noResults);
         }
     };

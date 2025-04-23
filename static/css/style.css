@@ -952,6 +952,35 @@ body {
     background-color: var(--hover-color);
 }
 
+/* Style for models that exceed cost filter */
+.model-list li.filtered-by-cost {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: rgba(231, 76, 60, 0.05);
+    border-left: 2px solid rgba(231, 76, 60, 0.4);
+}
+
+.model-list li.filtered-by-cost:hover {
+    background-color: rgba(231, 76, 60, 0.1);
+}
+
+.model-list li.filtered-by-cost .filter-reason {
+    display: block;
+    font-size: 11px;
+    color: #e74c3c;
+    margin-top: 2px;
+}
+
+.model-list li.filtered-by-cost .filter-notice {
+    font-weight: normal;
+    color: #e74c3c;
+    font-size: 10px;
+    padding: 0 4px;
+    border-radius: 2px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
 .model-list li .model-provider {
     font-size: 12px;
     color: var(--secondary-text);
@@ -965,6 +994,16 @@ body {
     padding: 2px 4px;
     border-radius: 4px;
     margin-right: 6px;
+}
+
+.model-list li .filter-notice {
+    background-color: rgba(231, 76, 60, 0.2);
+    color: #e74c3c;
+    font-size: 10px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    margin-left: 6px;
+    font-weight: normal;
 }
 
 .input-group {
@@ -1542,4 +1581,31 @@ code {
     transition: opacity 0.5s ease-in-out;
     opacity: 1;
     max-width: 300px;
+}
+
+/* Error message for model filtering */
+.error-message {
+    border-radius: 8px;
+    border-left: 4px solid #e74c3c;
+    background-color: rgba(231, 76, 60, 0.1);
+    margin: 10px 0;
+}
+
+.error-message .message-content {
+    padding: 12px 16px;
+    color: #f8d7da;
+}
+
+.error-message .fa-exclamation-triangle {
+    color: #e74c3c;
+    margin-right: 8px;
+}
+
+.error-message a {
+    color: #4cd964;
+    text-decoration: underline;
+}
+
+.error-message a:hover {
+    text-decoration: none;
 }
