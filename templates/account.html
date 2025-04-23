@@ -609,6 +609,31 @@
                     
                     <hr class="my-4" style="border-color: #3f4246;">
                     
+                    <h5>Model Cost Filter Preferences</h5>
+                    <p class="caption mb-3">Set maximum cost thresholds to filter out more expensive models. This helps you focus on models within your budget.</p>
+                    
+                    <div class="mb-3 filter-control">
+                        <label for="max-input-cost-slider">Max Input Cost (<span id="max-input-cost-label">$?.??</span> / million tokens):</label>
+                        <input type="range" id="max-input-cost-slider" min="0" max="100" step="1" class="form-range">
+                        <div class="d-flex align-items-center mt-2">
+                            <input type="number" id="max-input-cost-number" min="0.01" max="1500" step="0.01" class="form-control custom-amount-input" placeholder="e.g., 0.50">
+                            <button type="button" id="clear-input-cost-btn" class="btn btn-sm btn-secondary ms-2">Disable Filter</button>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3 filter-control">
+                        <label for="max-output-cost-slider">Max Output Cost (<span id="max-output-cost-label">$?.??</span> / million tokens):</label>
+                        <input type="range" id="max-output-cost-slider" min="0" max="100" step="1" class="form-range">
+                        <div class="d-flex align-items-center mt-2">
+                            <input type="number" id="max-output-cost-number" min="0.01" max="1500" step="0.01" class="form-control custom-amount-input" placeholder="e.g., 0.50">
+                            <button type="button" id="clear-output-cost-btn" class="btn btn-sm btn-secondary ms-2">Disable Filter</button>
+                        </div>
+                    </div>
+                    
+                    <div id="filter-save-status" class="caption mt-2" style="min-height: 1em;"></div>
+                    
+                    <hr class="my-4" style="border-color: #3f4246;">
+                    
                     <h5>Notification Preferences</h5>
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="emailNotifications" checked>
@@ -1377,6 +1402,254 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the usage analytics functionality
     handleUsageSubTabs();
     handleCsvExport();
+    
+    // Model Cost Filter functionality
+    // Constants for logarithmic mapping
+    const LOG_MIN = 0.01; // Min cost ($ per million tokens)
+    const LOG_MAX = 1500; // Max cost ($ per million tokens)
+    
+    // Elements for Input Cost
+    const inputCostSlider = document.getElementById('max-input-cost-slider');
+    const inputCostNumber = document.getElementById('max-input-cost-number');
+    const inputCostLabel = document.getElementById('max-input-cost-label');
+    const clearInputCostBtn = document.getElementById('clear-input-cost-btn');
+    
+    // Elements for Output Cost
+    const outputCostSlider = document.getElementById('max-output-cost-slider');
+    const outputCostNumber = document.getElementById('max-output-cost-number');
+    const outputCostLabel = document.getElementById('max-output-cost-label');
+    const clearOutputCostBtn = document.getElementById('clear-output-cost-btn');
+    
+    // Status indicator
+    const filterSaveStatus = document.getElementById('filter-save-status');
+    
+    // Debounce timer
+    let saveFilterTimer = null;
+    
+    // Logarithmic mapping functions
+    function sliderPosToValue(sliderValue) {
+        if (sliderValue <= 0) return LOG_MIN;
+        const scale = Math.log(LOG_MAX / LOG_MIN);
+        // Calculate precise value
+        let value = LOG_MIN * Math.exp(scale * Number(sliderValue) / 100);
+        // Return the precise value (don't round here)
+        return value;
+    }
+    
+    function valueToSliderPos(value) {
+        if (value <= LOG_MIN) return 0;
+        if (value >= LOG_MAX) return 100;
+        const scale = Math.log(LOG_MAX / LOG_MIN);
+        // Calculate precise position
+        let pos = 100 * Math.log(Number(value) / LOG_MIN) / scale;
+        // Return position rounded for slider
+        return Math.round(pos);
+    }
+    
+    // Function to update UI controls based on cost values
+    function updateFilterControls(inputCost, outputCost) {
+        // Update Input Cost controls
+        if (inputCost === null || inputCost >= LOG_MAX) {
+            inputCostNumber.value = '';
+            inputCostSlider.value = 100;
+            inputCostLabel.textContent = 'Disabled';
+        } else {
+            const sliderPos = valueToSliderPos(inputCost);
+            inputCostSlider.value = sliderPos;
+            inputCostNumber.value = inputCost.toFixed(2);
+            inputCostLabel.textContent = '$' + inputCost.toFixed(2);
+        }
+        
+        // Update Output Cost controls
+        if (outputCost === null || outputCost >= LOG_MAX) {
+            outputCostNumber.value = '';
+            outputCostSlider.value = 100;
+            outputCostLabel.textContent = 'Disabled';
+        } else {
+            const sliderPos = valueToSliderPos(outputCost);
+            outputCostSlider.value = sliderPos;
+            outputCostNumber.value = outputCost.toFixed(2);
+            outputCostLabel.textContent = '$' + outputCost.toFixed(2);
+        }
+    }
+    
+    // Function to save filter settings to backend
+    function saveFilterSettings() {
+        // Read values from number inputs
+        let inputCostValue = inputCostNumber.value ? parseFloat(inputCostNumber.value) : null;
+        let outputCostValue = outputCostNumber.value ? parseFloat(outputCostNumber.value) : null;
+        
+        // Prepare data to send (null if disabled/empty or ≥ LOG_MAX)
+        const inputCost = (inputCostValue !== null && !isNaN(inputCostValue) && inputCostValue < LOG_MAX) ? inputCostValue : null;
+        const outputCost = (outputCostValue !== null && !isNaN(outputCostValue) && outputCostValue < LOG_MAX) ? outputCostValue : null;
+        
+        // Show saving status
+        filterSaveStatus.textContent = 'Saving...';
+        
+        // Send POST request to backend API
+        fetch('/api/user_settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                max_input_cost: inputCost,
+                max_output_cost: outputCost
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                filterSaveStatus.textContent = 'Settings saved successfully';
+                // Update the UI to reflect the actual saved values
+                updateFilterControls(inputCost, outputCost);
+            } else {
+                filterSaveStatus.textContent = 'Error: ' + (data.error || 'Failed to save settings');
+            }
+            
+            // Clear status message after 3 seconds
+            setTimeout(() => {
+                filterSaveStatus.textContent = '';
+            }, 3000);
+        })
+        .catch(error => {
+            filterSaveStatus.textContent = 'Error: ' + error.message;
+            console.error('Error saving filter settings:', error);
+            
+            // Clear status message after 3 seconds
+            setTimeout(() => {
+                filterSaveStatus.textContent = '';
+            }, 3000);
+        });
+    }
+    
+    // Debounced save function to avoid too many API calls
+    function debouncedSaveSettings() {
+        if (saveFilterTimer) {
+            clearTimeout(saveFilterTimer);
+        }
+        
+        saveFilterTimer = setTimeout(() => {
+            saveFilterSettings();
+        }, 500); // 500ms debounce delay
+    }
+    
+    // Event handler for input cost slider
+    inputCostSlider.addEventListener('input', function() {
+        const preciseValue = sliderPosToValue(this.value);
+        inputCostNumber.value = preciseValue.toFixed(2);
+        inputCostLabel.textContent = '$' + preciseValue.toFixed(2);
+        debouncedSaveSettings();
+    });
+    
+    // Event handler for output cost slider
+    outputCostSlider.addEventListener('input', function() {
+        const preciseValue = sliderPosToValue(this.value);
+        outputCostNumber.value = preciseValue.toFixed(2);
+        outputCostLabel.textContent = '$' + preciseValue.toFixed(2);
+        debouncedSaveSettings();
+    });
+    
+    // Event handler for input cost number input
+    inputCostNumber.addEventListener('change', function() {
+        const value = this.value ? parseFloat(this.value) : null;
+        
+        if (value !== null && !isNaN(value) && value >= LOG_MIN) {
+            // Valid number
+            const cappedValue = Math.min(value, LOG_MAX);
+            const sliderPos = valueToSliderPos(cappedValue);
+            inputCostSlider.value = sliderPos;
+            inputCostLabel.textContent = '$' + cappedValue.toFixed(2);
+        } else if (value !== null && !isNaN(value) && value < LOG_MIN) {
+            // Value too small, set to minimum
+            this.value = LOG_MIN.toFixed(2);
+            inputCostSlider.value = 0;
+            inputCostLabel.textContent = '$' + LOG_MIN.toFixed(2);
+        } else {
+            // Invalid or empty input, treat as "disable"
+            this.value = '';
+            inputCostSlider.value = 100;
+            inputCostLabel.textContent = 'Disabled';
+        }
+        
+        debouncedSaveSettings();
+    });
+    
+    // Event handler for output cost number input
+    outputCostNumber.addEventListener('change', function() {
+        const value = this.value ? parseFloat(this.value) : null;
+        
+        if (value !== null && !isNaN(value) && value >= LOG_MIN) {
+            // Valid number
+            const cappedValue = Math.min(value, LOG_MAX);
+            const sliderPos = valueToSliderPos(cappedValue);
+            outputCostSlider.value = sliderPos;
+            outputCostLabel.textContent = '$' + cappedValue.toFixed(2);
+        } else if (value !== null && !isNaN(value) && value < LOG_MIN) {
+            // Value too small, set to minimum
+            this.value = LOG_MIN.toFixed(2);
+            outputCostSlider.value = 0;
+            outputCostLabel.textContent = '$' + LOG_MIN.toFixed(2);
+        } else {
+            // Invalid or empty input, treat as "disable"
+            this.value = '';
+            outputCostSlider.value = 100;
+            outputCostLabel.textContent = 'Disabled';
+        }
+        
+        debouncedSaveSettings();
+    });
+    
+    // Event handler for clear input cost button
+    clearInputCostBtn.addEventListener('click', function() {
+        inputCostNumber.value = '';
+        inputCostSlider.value = 100;
+        inputCostLabel.textContent = 'Disabled';
+        debouncedSaveSettings();
+    });
+    
+    // Event handler for clear output cost button
+    clearOutputCostBtn.addEventListener('click', function() {
+        outputCostNumber.value = '';
+        outputCostSlider.value = 100;
+        outputCostLabel.textContent = 'Disabled';
+        debouncedSaveSettings();
+    });
+    
+    // Function to fetch user settings when the settings tab is shown
+    function fetchUserSettings() {
+        fetch('/api/user_settings')
+            .then(response => response.json())
+            .then(data => {
+                // Update UI with the fetched values
+                updateFilterControls(data.max_input_cost, data.max_output_cost);
+            })
+            .catch(error => {
+                console.error('Error fetching user settings:', error);
+                filterSaveStatus.textContent = 'Error loading settings: ' + error.message;
+                
+                // Clear error message after 3 seconds
+                setTimeout(() => {
+                    filterSaveStatus.textContent = '';
+                }, 3000);
+            });
+    }
+    
+    // Add event listener for settings tab (extended openTab function)
+    const originalOpenTab = window.openTab;
+    window.openTab = function(tabName) {
+        originalOpenTab(tabName);
+        
+        // If the settings tab is selected, fetch user settings
+        if (tabName === 'settings') {
+            fetchUserSettings();
+        }
+    };
+    
+    // Initialize settings if the settings tab is already active
+    if (document.getElementById('settings').classList.contains('active')) {
+        fetchUserSettings();
+    }
 });
 </script>
 {% endblock %}
