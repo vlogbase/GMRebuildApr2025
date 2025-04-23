@@ -510,7 +510,7 @@
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <div class="d-flex align-items-center">
                         <span id="lastUpdated" class="caption me-3"></span>
-                        <button id="refresh-prices-btn" class="btn btn-sm btn-outline-primary">
+                        <button id="refresh-prices" class="btn btn-sm btn-outline-primary">
                             🔄 Refresh prices
                         </button>
                     </div>
@@ -1289,35 +1289,37 @@ document.addEventListener('DOMContentLoaded', function() {
     handleCsvExport();
     
     // Add event listener for the refresh prices button
-    async function fetchLatestPrices() {
-        try {
-            const res = await fetch('/api/pricing/refresh');
-            const data = await res.json();
-            if (!data.success) { 
-                throw new Error(data.error || 'Unknown error'); 
-            }
-            // Use the existing pricingData and renderPricingTable functions
-            pricingData = data.prices;
-            renderPricingTable();
-            
-            // Update the timestamp
-            const lastUpdated = document.getElementById('lastUpdated');
-            const currentTime = new Date();
-            lastUpdated.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
-            
-            // Update cache
-            localStorage.setItem('modelPricingData', JSON.stringify(pricingData));
-            localStorage.setItem('modelPricingTimestamp', currentTime.getTime().toString());
-            
-            // Show success message
-            showAlert('Pricing data refreshed successfully!', 'success');
-        } catch (err) {
-            console.error('Price refresh failed', err);
-            showAlert(`Price refresh failed: ${err.message}`, 'error');
-        }
+    function fetchLatestPrices() {
+        fetch('/api/pricing/refresh')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    // Use the existing pricingData and renderPricingTable functions
+                    pricingData = data.prices;
+                    renderPricingTable();
+                    
+                    // Update the timestamp
+                    const lastUpdated = document.getElementById('lastUpdated');
+                    const currentTime = new Date();
+                    lastUpdated.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
+                    
+                    // Update cache
+                    localStorage.setItem('modelPricingData', JSON.stringify(pricingData));
+                    localStorage.setItem('modelPricingTimestamp', currentTime.getTime().toString());
+                    
+                    // Show success message
+                    alert('Prices refreshed successfully');
+                } else {
+                    alert('Price refresh failed: ' + (data.error || 'Unknown error'));
+                }
+            })
+            .catch(err => {
+                console.error('Price refresh failed', err);
+                alert('Error refreshing prices: ' + err.message);
+            });
     }
     
-    const refreshPricesBtn = document.getElementById('refresh-prices-btn');
+    const refreshPricesBtn = document.getElementById('refresh-prices');
     if (refreshPricesBtn) {
         refreshPricesBtn.addEventListener('click', fetchLatestPrices);
     }

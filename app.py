@@ -2138,9 +2138,19 @@ def refresh_pricing():
                 prompt_cost = model.get('prompt_cost_per_mil', 0)
                 completion_cost = model.get('completion_cost_per_mil', 0)
                 
+                # Convert costs to floats safely before formatting
+                try:
+                    pc = float(prompt_cost)
+                except (TypeError, ValueError):
+                    pc = 0.0
+                try:
+                    cc = float(completion_cost)
+                except (TypeError, ValueError):
+                    cc = 0.0
+                
                 # Format costs as strings with dollar sign
-                input_price = f"${prompt_cost:.5f}" if prompt_cost else "$0.00"
-                output_price = f"${completion_cost:.5f}" if completion_cost else "$0.00"
+                input_price = f"${pc:.5f}"
+                output_price = f"${cc:.5f}"
                 
                 # Add model to formatted list with additional metadata
                 formatted_prices.append({
