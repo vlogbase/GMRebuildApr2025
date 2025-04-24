@@ -1854,7 +1854,8 @@ def _generate_fallback_model_data():
             'context_length': 200000,
             'is_multimodal': False,
             'model_name': 'Claude 3.7 Sonnet',
-            'is_reasoning': True
+            'is_reasoning': True,
+            'cost_band': '$$$$'
         },
         'anthropic/claude-3.5-sonnet': {
             'input_price': 3.0,
@@ -1864,7 +1865,8 @@ def _generate_fallback_model_data():
             'context_length': 200000,
             'is_multimodal': True,
             'model_name': 'Claude 3.5 Sonnet Vision',
-            'is_reasoning': True
+            'is_reasoning': True,
+            'cost_band': '$$$'
         },
         # Gemini Models
         'google/gemini-2.5-pro-preview-03-25': {
@@ -1875,7 +1877,8 @@ def _generate_fallback_model_data():
             'context_length': 100000,
             'is_multimodal': True,
             'model_name': 'Gemini 2.5 Pro Preview',
-            'is_reasoning': True
+            'is_reasoning': True,
+            'cost_band': '$$$$'
         },
         # Perplexity Models
         'perplexity/sonar-pro': {
@@ -1886,7 +1889,8 @@ def _generate_fallback_model_data():
             'context_length': 24000,
             'is_multimodal': False,
             'model_name': 'Perplexity Sonar Pro',
-            'is_perplexity': True
+            'is_perplexity': True,
+            'cost_band': '$$'
         },
         # Free Models
         'google/gemini-2.0-flash-exp:free': {
@@ -1897,7 +1901,8 @@ def _generate_fallback_model_data():
             'context_length': 8000,
             'is_multimodal': False,
             'model_name': 'Gemini 2.0 Flash (FREE)',
-            'is_free': True
+            'is_free': True,
+            'cost_band': ''  # Empty cost band for free models
         }
     }
     
