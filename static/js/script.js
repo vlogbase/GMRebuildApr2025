@@ -183,6 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Document upload elements
     const uploadDocumentsBtn = document.getElementById('upload-documents-btn');
+    const refreshPricesBtn = document.getElementById('refresh-prices-btn');
     const documentUploadModal = document.getElementById('document-upload-modal');
     const closeUploadModal = document.getElementById('close-upload-modal');
     const uploadDropzone = document.getElementById('upload-dropzone');
@@ -419,6 +420,14 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (removeImageButton) {
         removeImageButton.addEventListener('click', clearAttachedImage);
+    }
+    
+    // Add event listener for refresh prices button
+    if (refreshPricesBtn) {
+        refreshPricesBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            refreshModelPrices();
+        });
     }
     
     // Image handling functions
