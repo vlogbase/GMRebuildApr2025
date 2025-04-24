@@ -113,6 +113,22 @@ def fetch_and_store_openrouter_prices() -> bool:
             marked_up_input = input_price_million * markup_factor
             marked_up_output = output_price_million * markup_factor
             
+            # Calculate cost band based on the higher of input and output price
+            max_price = max(marked_up_input, marked_up_output)
+            
+            # Determine the cost band
+            cost_band = ""
+            if max_price >= 100.0:
+                cost_band = "$$$$"
+            elif max_price >= 10.0:
+                cost_band = "$$$"
+            elif max_price >= 1.0:
+                cost_band = "$$"
+            elif max_price >= 0.01:
+                cost_band = "$"
+            else:
+                cost_band = ""  # Free or nearly free models get no cost band
+            
             prices[model_id] = {
                 'input_price': marked_up_input,  # Price per million tokens with markup
                 'output_price': marked_up_output,  # Price per million tokens with markup
@@ -120,7 +136,8 @@ def fetch_and_store_openrouter_prices() -> bool:
                 'raw_output_price': output_price_million,  # Price per million tokens without markup
                 'context_length': model.get('context_length', 'Unknown'),
                 'is_multimodal': is_multimodal or model.get('is_multimodal', False),
-                'model_name': model.get('name', model_id.split('/')[-1])
+                'model_name': model.get('name', model_id.split('/')[-1]),
+                'cost_band': cost_band  # Add cost band indicator
             }
         
         # Update the cache with the new prices
@@ -139,13 +156,13 @@ def fetch_and_store_openrouter_prices() -> bool:
 
 def get_model_cost(model_id: str) -> dict:
     """
-    Get the cost per million tokens for a specific model.
+    Get the cost per million tokens and cost band for a specific model.
     
     Args:
         model_id (str): The ID of the model
         
     Returns:
-        dict: Dictionary containing prompt_cost_per_million and completion_cost_per_million
+        dict: Dictionary containing prompt_cost_per_million, completion_cost_per_million, and cost_band
     """
     # If the cache is empty, try to fetch prices
     if not model_prices_cache['prices']:
@@ -159,24 +176,50 @@ def get_model_cost(model_id: str) -> dict:
         # Approximate fallback costs based on model name
         model_name = model_id.lower()
         
+        # Define prompt and completion costs with fallback values
+        prompt_cost = 0.0
+        completion_cost = 0.0
+        
         if "gpt-4" in model_name:
-            return {'prompt_cost_per_million': 60.0, 'completion_cost_per_million': 120.0}
+            prompt_cost = 60.0
+            completion_cost = 120.0
+            cost_band = "$$$$"
         elif "claude-3" in model_name and "opus" in model_name:
-            return {'prompt_cost_per_million': 45.0, 'completion_cost_per_million': 90.0}
+            prompt_cost = 45.0
+            completion_cost = 90.0
+            cost_band = "$$$$"
         elif "claude-3" in model_name and "sonnet" in model_name:
-            return {'prompt_cost_per_million': 15.0, 'completion_cost_per_million': 30.0}
+            prompt_cost = 15.0
+            completion_cost = 30.0
+            cost_band = "$$$"
         elif "claude-3" in model_name and "haiku" in model_name:
-            return {'prompt_cost_per_million': 3.0, 'completion_cost_per_million': 6.0}
+            prompt_cost = 3.0
+            completion_cost = 6.0
+            cost_band = "$$"
         elif "gemini-1.5" in model_name and "pro" in model_name:
-            return {'prompt_cost_per_million': 10.0, 'completion_cost_per_million': 20.0}
+            prompt_cost = 10.0
+            completion_cost = 20.0
+            cost_band = "$$$"
         elif "gpt-3.5" in model_name:
-            return {'prompt_cost_per_million': 1.0, 'completion_cost_per_million': 2.0}
+            prompt_cost = 1.0
+            completion_cost = 2.0
+            cost_band = "$$"
         else:
             # Default fallback for unknown models
-            return {'prompt_cost_per_million': 10.0, 'completion_cost_per_million': 20.0}
+            prompt_cost = 10.0
+            completion_cost = 20.0
+            cost_band = "$$$"
+            
+        # Return the fallback data with cost band
+        return {
+            'prompt_cost_per_million': prompt_cost,
+            'completion_cost_per_million': completion_cost,
+            'cost_band': cost_band
+        }
     
     # Prices are already stored per million tokens
     return {
         'prompt_cost_per_million': model_data['input_price'],
-        'completion_cost_per_million': model_data['output_price']
+        'completion_cost_per_million': model_data['output_price'],
+        'cost_band': model_data.get('cost_band', '')
     }

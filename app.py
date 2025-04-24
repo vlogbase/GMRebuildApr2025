@@ -1831,7 +1831,8 @@ def _generate_fallback_model_data():
             'context_length': 128000,
             'is_multimodal': True,
             'model_name': 'GPT-4o',
-            'is_reasoning': True
+            'is_reasoning': True,
+            'cost_band': '$$$'
         },
         'openai/o4-Mini-High': {
             'input_price': 2.0,
@@ -1841,7 +1842,8 @@ def _generate_fallback_model_data():
             'context_length': 128000,
             'is_multimodal': False,
             'model_name': 'GPT-4o Mini High',
-            'is_reasoning': True
+            'is_reasoning': True,
+            'cost_band': '$$'
         },
         # Claude Models
         'anthropic/claude-3.7-sonnet': {
