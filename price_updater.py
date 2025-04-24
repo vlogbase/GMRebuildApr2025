@@ -10,8 +10,10 @@ import logging
 import requests
 from datetime import datetime
 
-# Set up logging
+# Set up logging with more details for debugging
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 # Initialize a cache dict to store model prices
 model_prices_cache = {

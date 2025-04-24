@@ -228,13 +228,22 @@ document.addEventListener('DOMContentLoaded', function() {
     const presetFilters = {
         '1': (model) => !model.is_free, // All non-free models
         '2': (model) => !model.is_free, // All non-free models
-        '3': (model) => model.is_reasoning === true && !model.is_free,
+        '3': (model) => {
+            // Check if model has reasoning capability
+            // Add fallback check for missing property
+            const hasReasoning = model.is_reasoning === true || model.id.includes('o4') || model.id.includes('claude');
+            return hasReasoning && !model.is_free;
+        },
         '4': (model) => {
             // For preset 4, prioritize true vision models
             // OpenAI GPT-4o is the primary choice for this preset
             return model.is_multimodal === true && !model.is_free;
         },
-        '5': (model) => model.is_perplexity === true && !model.is_free,
+        '5': (model) => {
+            // Check for Perplexity models by ID
+            const isPerplexity = model.is_perplexity === true || model.id.includes('perplexity');
+            return isPerplexity && !model.is_free;
+        },
         '6': (model) => model.is_free === true // Only free models
     };
     
@@ -1060,8 +1069,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to fetch available models from OpenRouter
     function fetchAvailableModels() {
-        // First fetch the models for their attributes
-        fetch('/models')
+        // Fetch ONLY from the endpoint that includes cost bands
+        fetch('/api/get_model_prices')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -1069,45 +1078,90 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.json();
             })
             .then(data => {
-                if (data.data && Array.isArray(data.data)) {
-                    allModels = data.data;
-                    console.log(`Loaded ${allModels.length} models from OpenRouter`);
-                    
-                    // Now fetch pricing data to add cost bands
-                    return fetch('/api/get_model_prices');
-                }
-            })
-            .then(response => {
-                if (!response || !response.ok) {
-                    throw new Error(`HTTP error! Status: ${response ? response.status : 'No response'}`);
-                }
-                return response.json();
-            })
-            .then(data => {
+                // Check if the API call was successful and returned prices
                 if (data.success && data.prices) {
-                    // Add cost band information to each model
-                    allModels = allModels.map(model => {
-                        const modelPricing = data.prices[model.id];
-                        if (modelPricing) {
-                            model.cost_band = modelPricing.cost_band || '';
-                        }
-                        return model;
-                    });
+                    // Log 1: Raw API response
+                    console.log('[Debug] Raw API Response:', JSON.stringify(data, null, 2));
                     
-                    // Update the UI with the enhanced model data
-                    if (currentModel) {
-                        updateMultimodalControls(currentModel);
+                    // Create model data array directly from pricing data
+                    const modelDataArray = [];
+                    for (const modelId in data.prices) {
+                        const modelData = data.prices[modelId];
+                        // Format the model name if it doesn't exist in the pricing data
+                        const formatModelName = (id) => {
+                            return id.split('/').pop().replace(/-/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+                        };
+                        
+                        // Construct the model object directly from pricing data
+                        modelDataArray.push({
+                            id: modelId,
+                            // Use name from pricing data, fallback to parsing ID
+                            name: modelData.model_name || formatModelName(modelId),
+                            // Determine if free based on pricing
+                            is_free: (modelData.input_price === 0 && modelData.output_price === 0),
+                            // Get multimodal status from pricing data
+                            is_multimodal: modelData.is_multimodal || false,
+                            // Add reasoning flag if available or detect from model ID
+                            is_reasoning: modelData.is_reasoning || modelId.includes('o4') || modelId.includes('claude'),
+                            // Add perplexity flag based on model ID
+                            is_perplexity: modelId.includes('perplexity'),
+                            // Include context length for display elsewhere
+                            context_length: modelData.context_length,
+                            // Store pricing info if needed elsewhere
+                            pricing: {
+                                prompt: modelData.input_price,
+                                completion: modelData.output_price
+                            },
+                            // Directly include the cost band provided by the API
+                            cost_band: modelData.cost_band || ''
+                        });
+                    }
+
+                    // Assign the fully processed data to the global variable
+                    allModels = modelDataArray;
+                    
+                    // Log 2: Transformed model array info
+                    console.log(`[Debug] Transformed allModels array created. Count: ${allModels.length}`);
+                    if (allModels.length > 0) {
+                        console.log('[Debug] First model object in allModels:', JSON.stringify(allModels[0], null, 2));
+                        // Log properties relevant to filtering for the first model
+                        console.log(`[Debug] First model flags: is_free=${allModels[0].is_free}, is_reasoning=${allModels[0].is_reasoning || 'undefined'}, is_perplexity=${allModels[0].is_perplexity}, is_multimodal=${allModels[0].is_multimodal}`);
                     }
                     
-                    // Update preset button labels with cost indicators
+                    console.log(`Loaded ${allModels.length} models with cost bands from /api/get_model_prices`);
+
+                    // Log 3: Before UI updates
+                    console.log('[Debug] About to update UI elements based on fetched models.');
+                    
+                    // Update UI elements that depend on allModels
+                    if (currentModel) {
+                        // Update controls for the initially selected model
+                        updateMultimodalControls(currentModel);
+                        updateSelectedModelCostIndicator(currentModel);
+                    }
+                    
+                    // Update preset buttons now that we have cost bands
                     updatePresetButtonLabels();
                     
-                    // Update the selected model cost indicator in the header
-                    updateSelectedModelCostIndicator(currentModel);
+                    // If model selector is open, refresh it with complete data
+                    if (modelSelector && modelSelector.style.display === 'block' && currentlyEditingPresetId) {
+                        populateModelList(currentlyEditingPresetId);
+                    }
+                } else {
+                    // Handle case where API call succeeded but returned no data
+                    console.error('API call succeeded but no valid pricing data received:', data);
+                    allModels = []; // Clear models if fetch failed
                 }
             })
             .catch(error => {
-                console.error('Error fetching models or prices:', error);
+                // Log 4: Error in fetch
+                console.error('[Debug] Error occurred in fetchAvailableModels:', error);
+                console.error('Error fetching models and prices:', error);
+                allModels = []; // Clear models on error
+                // Show error in UI if model list is visible
+                if (modelList && modelList.innerHTML === '') {
+                    modelList.innerHTML = '<li>Error loading models.</li>';
+                }
             });
     }
     
@@ -1149,6 +1203,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clear search input
             modelSearch.value = '';
             
+            // Log 8: Before populating the model list
+            console.log(`[Debug] openModelSelector called for preset ${presetId}. About to call populateModelList.`);
+            
             // Populate model list for this preset
             populateModelList(presetId);
         }
@@ -1164,6 +1221,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to populate the model list based on preset filters
     function populateModelList(presetId) {
+        // Log 5: At function start
+        console.log(`[Debug] populateModelList called for presetId: ${presetId}`);
+        console.log(`[Debug] Current global allModels count: ${allModels ? allModels.length : 'undefined'}`);
+        
         // Clear existing items
         modelList.innerHTML = '';
         
@@ -1212,8 +1273,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 return aPrice - bPrice;
             });
         
+        // Log 6: After filtering
+        console.log(`[Debug] Filtered models count for preset ${presetId}: ${filteredModels.length}`);
+        if (filteredModels.length === 0 && allModels && allModels.length > 0) {
+            console.warn(`[Debug] Filtering for preset ${presetId} resulted in 0 models. Check filter logic and model properties.`);
+            // Log the filter function itself if possible
+            console.log('[Debug] Filter function:', filterFn.toString());
+            // Log the first few models from allModels again for comparison
+            console.log('[Debug] First few models in allModels before filtering:', JSON.stringify(allModels.slice(0, 3), null, 2));
+        }
+        
         // Add each model to the list
         filteredModels.forEach(model => {
+            // Log 7: Inside rendering loop
+            console.log(`[Debug] Rendering list item for model: ${model.id}, Band: ${model.cost_band}`);
+            
             const li = document.createElement('li');
             li.dataset.modelId = model.id;
             

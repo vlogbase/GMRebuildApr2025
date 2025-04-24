@@ -520,6 +520,11 @@
                                         Multimodal <i id="sort-icon-4" class="fas fa-sort"></i>
                                     </div>
                                 </th>
+                                <th onclick="sortPricingTable(5)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-center py-3">
+                                    <div class="d-flex justify-content-center align-items-center">
+                                        Cost Band <i id="sort-icon-5" class="fas fa-sort"></i>
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="pricingTableBody">
@@ -649,6 +654,7 @@
                 <thead>
                     <tr>
                         <th>Model</th>
+                        <th>Band</th>
                         <th>Cost per 1K tokens</th>
                         <th>Approximate usage</th>
                     </tr>
@@ -656,31 +662,37 @@
                 <tbody>
                     <tr>
                         <td>GPT-3.5</td>
+                        <td><span class="cost-band-indicator cost-band-$">$</span></td>
                         <td>$0.0003</td>
                         <td>~3,000 messages with $1</td>
                     </tr>
                     <tr>
                         <td>Claude-3 Haiku</td>
+                        <td><span class="cost-band-indicator cost-band-$">$</span></td>
                         <td>$0.003</td>
                         <td>~300 messages with $1</td>
                     </tr>
                     <tr>
                         <td>Gemini 1.5 Pro</td>
+                        <td><span class="cost-band-indicator cost-band-$">$</span></td>
                         <td>$0.01</td>
                         <td>~100 messages with $1</td>
                     </tr>
                     <tr>
                         <td>Claude-3 Sonnet</td>
+                        <td><span class="cost-band-indicator cost-band-$$">$$</span></td>
                         <td>$0.015</td>
                         <td>~70 messages with $1</td>
                     </tr>
                     <tr>
                         <td>Claude-3 Opus</td>
+                        <td><span class="cost-band-indicator cost-band-$$">$$</span></td>
                         <td>$0.045</td>
                         <td>~25 messages with $1</td>
                     </tr>
                     <tr>
                         <td>GPT-4</td>
+                        <td><span class="cost-band-indicator cost-band-$$">$$</span></td>
                         <td>$0.06</td>
                         <td>~18 messages with $1</td>
                     </tr>
@@ -794,7 +806,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show loading state
         pricingTableBody.innerHTML = `
             <tr>
-                <td colspan="5" class="text-center py-5">
+                <td colspan="6" class="text-center py-5">
                     <div class="d-flex flex-column align-items-center">
                         <div class="spinner-border text-info mb-3" role="status">
                             <span class="visually-hidden">Loading...</span>
@@ -861,7 +873,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         input_price: inputPriceStr,
                         output_price: outputPriceStr,
                         context_length: modelDetails.context_length || 'N/A',
-                        multimodal: modelDetails.is_multimodal ? 'Yes' : 'No'
+                        multimodal: modelDetails.is_multimodal ? 'Yes' : 'No',
+                        cost_band: modelDetails.cost_band || ''
                     };
                 });
 
@@ -929,7 +942,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // No cached data or failed to parse it - show empty state
                 pricingTableBody.innerHTML = `
                     <tr>
-                        <td colspan="5" class="text-center py-5">
+                        <td colspan="6" class="text-center py-5">
                             <p class="caption text-danger">No pricing data available. Please try again later.</p>
                             <small class="text-muted">${error.message}</small>
                         </td>
@@ -1025,10 +1038,16 @@ document.addEventListener('DOMContentLoaded', function() {
                     bValue = b.context_length === 'N/A' ? 0 : parseInt(b.context_length);
                     break;
                     
-                case 4: // Multimodal (previously case 5)
+                case 4: // Multimodal
                     // Yes comes before No for multimodal sorting
                     aValue = a.multimodal === 'Yes' ? 0 : 1;
                     bValue = b.multimodal === 'Yes' ? 0 : 1;
+                    break;
+                
+                case 5: // Cost Band
+                    // Sort by number of $ characters
+                    aValue = a.cost_band ? a.cost_band.length : 0;
+                    bValue = b.cost_band ? b.cost_band.length : 0;
                     break;
                     
                 default:
@@ -1052,7 +1071,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (filteredData.length === 0) {
             pricingTableBody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="text-center py-4">
+                    <td colspan="6" class="text-center py-4">
                         <p class="caption">No matching models found.</p>
                     </td>
                 </tr>
@@ -1171,6 +1190,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td class="text-center">
                         ${multimodalDisplay}
                     </td>
+                    <td class="text-center">
+                        ${costBand ? `<span class="cost-band-indicator ${costBandClass}">${costBand}</span>` : ''}
+                    </td>
                 </tr>
             `;
         }).join('');
@@ -1255,7 +1277,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         input_price: inputPriceStr,
                         output_price: outputPriceStr,
                         context_length: modelDetails.context_length || 'N/A',
-                        multimodal: modelDetails.is_multimodal ? 'Yes' : 'No'
+                        multimodal: modelDetails.is_multimodal ? 'Yes' : 'No',
+                        cost_band: modelDetails.cost_band || ''
                     };
                 });
                 
@@ -1336,7 +1359,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Update sort icons
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 6; i++) {
             const icon = document.getElementById(`sort-icon-${i}`);
             if (i === column) {
                 icon.className = sortDirection === 1 ? 'fas fa-sort-up' : 'fas fa-sort-down';
