@@ -696,6 +696,40 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Function to calculate cost band based on pricing
+    function calculateCostBand(inputPrice, outputPrice) {
+        // Handle string price inputs (with $ symbol)
+        if (typeof inputPrice === 'string') {
+            inputPrice = parseFloat(inputPrice.replace('$', '')) || 0;
+        }
+        if (typeof outputPrice === 'string') {
+            outputPrice = parseFloat(outputPrice.replace('$', '')) || 0;
+        }
+        
+        // Determine if this is a free model
+        const isFreeModel = (inputPrice === 0 || inputPrice <= 0.001) && 
+                           (outputPrice === 0 || outputPrice <= 0.001);
+        
+        if (isFreeModel) {
+            return '';  // Free models don't show a cost band
+        }
+        
+        // Calculate band based on maximum price
+        const maxPrice = Math.max(inputPrice, outputPrice);
+        
+        if (maxPrice >= 100.0) {
+            return '$$$$';
+        } else if (maxPrice >= 10.0) {
+            return '$$$';
+        } else if (maxPrice >= 1.0) {
+            return '$$';
+        } else if (maxPrice >= 0.01) {
+            return '$';
+        }
+        
+        return '';  // Default for very low prices
+    }
+    
     // Custom amount calculator
     const amountInput = document.getElementById('amount');
     const amountDisplay = document.getElementById('amount-display');
@@ -1042,7 +1076,38 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (isEmbedding) modelNameClass = 'text-warning';
             else if (model.multimodal === 'Yes') modelNameClass = 'text-info';
             
-            // No badges needed for the model display
+            // Calculate cost band based on pricing data
+            let costBand = '';
+            let costBandClass = '';
+            
+            if (isFreeModel) {
+                costBand = '';  // Free models don't need a cost band
+                costBandClass = 'cost-band-free';
+            } else if (isAutoRouter) {
+                costBand = '$$$';  // AutoRouter is variable but typically higher end
+                costBandClass = 'cost-band-3-warn';
+            } else {
+                // Extract numeric values from price strings
+                const inputPrice = parseFloat(model.input_price.replace('$', '')) || 0;
+                const outputPrice = parseFloat(model.output_price.replace('$', '')) || 0;
+                const maxPrice = Math.max(inputPrice, outputPrice);
+                
+                if (maxPrice >= 100.0) {
+                    costBand = '$$$$';
+                    costBandClass = 'cost-band-4-danger';
+                } else if (maxPrice >= 10.0) {
+                    costBand = '$$$';
+                    costBandClass = 'cost-band-3-warn';
+                } else if (maxPrice >= 1.0) {
+                    costBand = '$$';
+                    costBandClass = 'cost-band-2';
+                } else if (maxPrice >= 0.01) {
+                    costBand = '$';
+                    costBandClass = 'cost-band-1';
+                }
+            }
+            
+            // Determine if the model is a good value
             const isGoodValue = !isAutoRouter && !isFreeModel && 
                               model.input_price !== 'N/A' && model.input_price !== 'Variable' &&
                               parseFloat(model.input_price.replace('$', '')) < 10.0;
@@ -1096,6 +1161,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>
                         <div>
                             <span class="${modelNameClass} fw-medium">${model.model_name}</span>
+                            ${costBand ? `<span class="cost-band-indicator ${costBandClass}">${costBand}</span>` : ''}
                         </div>
                         <small class="text-muted d-block text-truncate" style="max-width: 250px;">${model.model_id}</small>
                     </td>

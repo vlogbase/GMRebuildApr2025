@@ -835,7 +835,57 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update multimodal controls based on the selected model
             updateMultimodalControls(currentModel);
+            
+            // Update the cost indicator for the selected model
+            updateSelectedModelCostIndicator(currentModel);
         }
+    }
+    
+    // Function to update the selected model's cost indicator in the UI
+    function updateSelectedModelCostIndicator(modelId) {
+        if (!modelId) return;
+        
+        // Find the model in allModels to get its cost band
+        const model = allModels?.find(m => m.id === modelId);
+        if (!model || !model.cost_band) return;
+        
+        // Find the active model button
+        const activeButton = document.querySelector('.model-preset-btn.active');
+        if (!activeButton) return;
+        
+        // Check if this is the free preset
+        const isFreeBand = activeButton.getAttribute('data-preset-id') === '6';
+        if (isFreeBand) return; // Don't show cost band on free preset
+        
+        // Update cost indicator in the active button
+        const nameSpan = activeButton.querySelector('.model-name');
+        if (!nameSpan) return;
+        
+        // Remove any existing cost band indicators
+        const existingCostBand = nameSpan.querySelector('.cost-band-indicator');
+        if (existingCostBand) {
+            existingCostBand.remove();
+        }
+        
+        // Create the cost indicator
+        const costSpan = document.createElement('span');
+        costSpan.textContent = model.cost_band;
+        costSpan.className = 'cost-band-indicator';
+        
+        // Add the specific band class based on the band value
+        if (model.cost_band === '$$$$') {
+            costSpan.classList.add('cost-band-4-danger');
+        } else if (model.cost_band === '$$$') {
+            costSpan.classList.add('cost-band-3-warn');
+        } else if (model.cost_band === '$$') {
+            costSpan.classList.add('cost-band-2');
+        } else if (model.cost_band === '$') {
+            costSpan.classList.add('cost-band-1');
+        } else {
+            costSpan.classList.add('cost-band-free');
+        }
+        
+        nameSpan.appendChild(costSpan);
     }
     
     // Function to update multimodal controls (image upload, camera) based on model capability
@@ -931,11 +981,40 @@ document.addEventListener('DOMContentLoaded', function() {
             if (button) {
                 const nameSpan = button.querySelector('.model-name');
                 if (nameSpan) {
+                    // Remove any existing cost band indicators
+                    const existingCostBand = nameSpan.querySelector('.cost-band-indicator');
+                    if (existingCostBand) {
+                        existingCostBand.remove();
+                    }
+                    
                     // Special handling for preset 6 (Free Model)
                     if (presetId === '6') {
                         nameSpan.textContent = 'FREE - ' + formatModelName(modelId, true);
                     } else {
                         nameSpan.textContent = formatModelName(modelId);
+                        
+                        // Find the model in allModels to get its cost band
+                        const model = allModels?.find(m => m.id === modelId);
+                        if (model?.cost_band) {
+                            const costSpan = document.createElement('span');
+                            costSpan.textContent = model.cost_band;
+                            costSpan.className = 'cost-band-indicator';
+                            
+                            // Add the specific band class based on the band value
+                            if (model.cost_band === '$$$$') {
+                                costSpan.classList.add('cost-band-4-danger');
+                            } else if (model.cost_band === '$$$') {
+                                costSpan.classList.add('cost-band-3-warn');
+                            } else if (model.cost_band === '$$') {
+                                costSpan.classList.add('cost-band-2');
+                            } else if (model.cost_band === '$') {
+                                costSpan.classList.add('cost-band-1');
+                            } else {
+                                costSpan.classList.add('cost-band-free');
+                            }
+                            
+                            nameSpan.appendChild(costSpan);
+                        }
                     }
                 }
             }
@@ -981,6 +1060,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to fetch available models from OpenRouter
     function fetchAvailableModels() {
+        // First fetch the models for their attributes
         fetch('/models')
             .then(response => {
                 if (!response.ok) {
@@ -993,14 +1073,41 @@ document.addEventListener('DOMContentLoaded', function() {
                     allModels = data.data;
                     console.log(`Loaded ${allModels.length} models from OpenRouter`);
                     
-                    // Update multimodal controls for the current model
+                    // Now fetch pricing data to add cost bands
+                    return fetch('/api/get_model_prices');
+                }
+            })
+            .then(response => {
+                if (!response || !response.ok) {
+                    throw new Error(`HTTP error! Status: ${response ? response.status : 'No response'}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.prices) {
+                    // Add cost band information to each model
+                    allModels = allModels.map(model => {
+                        const modelPricing = data.prices[model.id];
+                        if (modelPricing) {
+                            model.cost_band = modelPricing.cost_band || '';
+                        }
+                        return model;
+                    });
+                    
+                    // Update the UI with the enhanced model data
                     if (currentModel) {
                         updateMultimodalControls(currentModel);
                     }
+                    
+                    // Update preset button labels with cost indicators
+                    updatePresetButtonLabels();
+                    
+                    // Update the selected model cost indicator in the header
+                    updateSelectedModelCostIndicator(currentModel);
                 }
             })
             .catch(error => {
-                console.error('Error fetching models:', error);
+                console.error('Error fetching models or prices:', error);
             });
     }
     
@@ -1114,6 +1221,29 @@ document.addEventListener('DOMContentLoaded', function() {
             const nameSpan = document.createElement('span');
             nameSpan.className = 'model-name';
             nameSpan.textContent = model.name;
+            
+            // Add cost band indicator if available
+            if (model.cost_band) {
+                const costSpan = document.createElement('span');
+                costSpan.textContent = model.cost_band;
+                costSpan.className = 'cost-band-indicator';
+                
+                // Add the specific band class based on the band value
+                if (model.cost_band === '$$$$') {
+                    costSpan.classList.add('cost-band-4-danger');
+                } else if (model.cost_band === '$$$') {
+                    costSpan.classList.add('cost-band-3-warn');
+                } else if (model.cost_band === '$$') {
+                    costSpan.classList.add('cost-band-2');
+                } else if (model.cost_band === '$') {
+                    costSpan.classList.add('cost-band-1');
+                } else {
+                    // For empty band (free models)
+                    costSpan.classList.add('cost-band-free');
+                }
+                
+                nameSpan.appendChild(costSpan);
+            }
             
             // Create provider badge
             const providerSpan = document.createElement('span');

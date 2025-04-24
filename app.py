@@ -1750,11 +1750,38 @@ def _fetch_openrouter_models():
 def get_model_prices():
     """ Get the current model prices from our dynamic pricing system """
     try:
-        # Return the cached prices and the last_updated timestamp
+        # Get the cached prices
+        prices = model_prices_cache.get('prices', {})
+        
+        # Iterate through the prices dictionary to add cost bands
+        for model_id, model_data in prices.items():
+            # Safely get the markup-adjusted input and output costs (per million tokens), defaulting to 0
+            input_price = model_data.get('input_price', 0) or 0
+            output_price = model_data.get('output_price', 0) or 0
+            
+            # Calculate the maximum cost
+            max_cost = max(input_price, output_price)
+            
+            # Determine the cost_band string based on thresholds
+            if max_cost >= 100.0:
+                cost_band = '$$$$'
+            elif max_cost >= 10.0:
+                cost_band = '$$$'
+            elif max_cost >= 1.0:
+                cost_band = '$$'
+            elif max_cost >= 0.01:
+                cost_band = '$'
+            else:
+                cost_band = '' # Free
+                
+            # Add the calculated band to the model's data
+            model_data['cost_band'] = cost_band
+        
+        # Return the modified prices dictionary and the last_updated timestamp
         return jsonify({
             'success': True,
-            'prices': model_prices_cache['prices'],
-            'last_updated': model_prices_cache['last_updated']
+            'prices': prices,
+            'last_updated': model_prices_cache.get('last_updated')
         })
     except Exception as e:
         logger.error(f"Error getting model prices: {e}")

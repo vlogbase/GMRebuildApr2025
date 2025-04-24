@@ -18,6 +18,42 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
+/* Cost band indicator styles */
+.cost-band-indicator {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: bold;
+    vertical-align: middle;
+}
+
+.cost-band-free {
+    background-color: #2563eb;
+    color: white;
+}
+
+.cost-band-1 {
+    background-color: #10b981;
+    color: white;
+}
+
+.cost-band-2 {
+    background-color: #34d399;
+    color: #0f172a;
+}
+
+.cost-band-3-warn {
+    background-color: #f59e0b;
+    color: #0f172a;
+}
+
+.cost-band-4-danger {
+    background-color: #ef4444;
+    color: white;
+}
+
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
@@ -1504,4 +1540,38 @@ code {
     .chat-container {
         height: 60vh;
     }
+}
+
+/* === Cost Band Indicators === */
+.cost-band-indicator {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 0.8em;
+    vertical-align: middle;
+    padding: 1px 4px; /* Subtle background */
+    border-radius: 3px;
+    font-weight: 600; /* Make symbols slightly bolder */
+    line-height: 1; /* Ensure consistent height */
+}
+
+/* Specific band styles */
+.cost-band-free {
+    /* Optional: Style for free models if desired */
+    color: #24b9bd;
+}
+
+.cost-band-1 {
+    color: #24b9bd;
+}
+
+.cost-band-2 {
+    color: #24b9bd;
+}
+
+.cost-band-3-warn {
+    color: #ff9800;
+}
+
+.cost-band-4-danger {
+    color: #e53935;
 }
