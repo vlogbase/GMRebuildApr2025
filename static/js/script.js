@@ -1067,10 +1067,61 @@ document.addEventListener('DOMContentLoaded', function() {
         return name;
     }
     
+    // Function to manually refresh model prices from the server
+    function refreshModelPrices() {
+        console.log("Manually refreshing model prices from the server...");
+        
+        // Show a visual indicator that refresh is in progress
+        const modelButtons = document.querySelectorAll('.model-preset-btn');
+        modelButtons.forEach(btn => {
+            const originalHtml = btn.innerHTML;
+            btn.dataset.originalHtml = originalHtml;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Refreshing...';
+            btn.disabled = true;
+        });
+        
+        // Call the refresh endpoint
+        return fetch('/api/refresh_model_prices', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log("Refresh response:", data);
+            if (data.success) {
+                // Fetch the updated models
+                return fetchAvailableModels();
+            } else {
+                throw new Error(data.error || "Failed to refresh model prices");
+            }
+        })
+        .catch(error => {
+            console.error("Error refreshing model prices:", error);
+            alert("Failed to refresh model prices. Check the console for details.");
+        })
+        .finally(() => {
+            // Restore the original button state
+            modelButtons.forEach(btn => {
+                if (btn.dataset.originalHtml) {
+                    btn.innerHTML = btn.dataset.originalHtml;
+                    delete btn.dataset.originalHtml;
+                }
+                btn.disabled = false;
+            });
+        });
+    }
+    
     // Function to fetch available models from OpenRouter
     function fetchAvailableModels() {
         // Fetch ONLY from the endpoint that includes cost bands
-        fetch('/api/get_model_prices')
+        return fetch('/api/get_model_prices')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
