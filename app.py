@@ -1753,6 +1753,28 @@ def get_model_prices():
         # Get the cached prices
         prices = model_prices_cache.get('prices', {})
         
+        # Log the state of the prices cache
+        logger.debug(f"get_model_prices called. Cache has {len(prices)} models.")
+        
+        # If prices is empty, try to fetch them immediately
+        if not prices:
+            logger.warning("Prices cache is empty, attempting to fetch from OpenRouter API...")
+            success = fetch_and_store_openrouter_prices()
+            
+            # Get the updated prices
+            prices = model_prices_cache.get('prices', {})
+            
+            # Log the result of the fetch attempt
+            if success:
+                logger.info(f"Successfully fetched prices for {len(prices)} models.")
+            else:
+                logger.error("Failed to fetch prices from OpenRouter API.")
+            
+            # If still empty after fetch attempt, use fallback data for essential models
+            if not prices:
+                logger.warning("Using fallback model data since API fetch failed.")
+                prices = _generate_fallback_model_data()
+        
         # Iterate through the prices dictionary to add cost bands
         for model_id, model_data in prices.items():
             # Safely get the markup-adjusted input and output costs (per million tokens), defaulting to 0
@@ -1789,6 +1811,99 @@ def get_model_prices():
             'success': False,
             'error': str(e)
         }), 500
+
+def _generate_fallback_model_data():
+    """
+    Generate fallback model data when OpenRouter API is unavailable.
+    This ensures the frontend can still function with essential models.
+    """
+    # Get current timestamp for the fallback data
+    current_time = datetime.now().isoformat()
+    
+    # Define fallback models with their properties
+    fallback_models = {
+        # GPT-4 Series
+        'openai/gpt-4o': {
+            'input_price': 10.0,
+            'output_price': 30.0,
+            'raw_input_price': 5.0,
+            'raw_output_price': 15.0,
+            'context_length': 128000,
+            'is_multimodal': True,
+            'model_name': 'GPT-4o',
+            'is_reasoning': True
+        },
+        'openai/o4-Mini-High': {
+            'input_price': 2.0,
+            'output_price': 6.0,
+            'raw_input_price': 1.0,
+            'raw_output_price': 3.0,
+            'context_length': 128000,
+            'is_multimodal': False,
+            'model_name': 'GPT-4o Mini High',
+            'is_reasoning': True
+        },
+        # Claude Models
+        'anthropic/claude-3.7-sonnet': {
+            'input_price': 15.0,
+            'output_price': 60.0,
+            'raw_input_price': 7.5,
+            'raw_output_price': 30.0,
+            'context_length': 200000,
+            'is_multimodal': False,
+            'model_name': 'Claude 3.7 Sonnet',
+            'is_reasoning': True
+        },
+        'anthropic/claude-3.5-sonnet': {
+            'input_price': 3.0,
+            'output_price': 15.0,
+            'raw_input_price': 1.5,
+            'raw_output_price': 7.5,
+            'context_length': 200000,
+            'is_multimodal': True,
+            'model_name': 'Claude 3.5 Sonnet Vision',
+            'is_reasoning': True
+        },
+        # Gemini Models
+        'google/gemini-2.5-pro-preview-03-25': {
+            'input_price': 14.0,
+            'output_price': 42.0,
+            'raw_input_price': 7.0,
+            'raw_output_price': 21.0,
+            'context_length': 100000,
+            'is_multimodal': True,
+            'model_name': 'Gemini 2.5 Pro Preview',
+            'is_reasoning': True
+        },
+        # Perplexity Models
+        'perplexity/sonar-pro': {
+            'input_price': 1.0,
+            'output_price': 6.0,
+            'raw_input_price': 0.5,
+            'raw_output_price': 3.0,
+            'context_length': 24000,
+            'is_multimodal': False,
+            'model_name': 'Perplexity Sonar Pro',
+            'is_perplexity': True
+        },
+        # Free Models
+        'google/gemini-2.0-flash-exp:free': {
+            'input_price': 0.0,
+            'output_price': 0.0,
+            'raw_input_price': 0.0,
+            'raw_output_price': 0.0,
+            'context_length': 8000,
+            'is_multimodal': False,
+            'model_name': 'Gemini 2.0 Flash (FREE)',
+            'is_free': True
+        }
+    }
+    
+    # Model properties are now directly usable by frontend filtering
+    # Log that we're using fallback data
+    logger.warning(f"Using fallback data for {len(fallback_models)} essential models")
+    
+    return fallback_models
 
 @app.route('/api/refresh_model_prices', methods=['POST'])
 def refresh_model_prices():

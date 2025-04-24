@@ -42,15 +42,30 @@ def fetch_and_store_openrouter_prices() -> bool:
 
         # Fetch models from OpenRouter
         logger.info("Fetching model prices from OpenRouter API...")
+        
+        # Log the API request details (without exposing the full key)
+        masked_key = api_key[:4] + "..." + api_key[-4:] if len(api_key) > 8 else "***"
+        logger.debug(f"API Request URL: https://openrouter.ai/api/v1/models")
+        logger.debug(f"Using API key: {masked_key}")
+        
         response = requests.get(
             'https://openrouter.ai/api/v1/models',
             headers=headers,
             timeout=15.0
         )
         
+        # Log response status
+        logger.debug(f"OpenRouter API response status code: {response.status_code}")
+        
         # Check response status
         response.raise_for_status()
+        
+        # Parse response JSON
         models_data = response.json()
+        
+        # Log response data (limited for brevity)
+        data_count = len(models_data.get('data', []))
+        logger.debug(f"Received data for {data_count} models from OpenRouter API")
         
         # Process model data to extract pricing
         prices = {}
