@@ -1,3 +1,13 @@
+// Utility function to debounce function calls
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
@@ -762,9 +772,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Find selector icon within this button
                 const selectorIcon = button.querySelector('.selector-icon');
                 
-                // Add click event to the model button
-                button.addEventListener('click', function(e) {
+                // Add debounced click event to the model button
+                button.addEventListener('click', debounce(function(e) {
                     const presetId = this.getAttribute('data-preset-id');
+                    
+                    // If the button is already in loading state, do nothing
+                    if (this.classList.contains('loading')) {
+                        return;
+                    }
                     
                     // If shift key or right-click, open model selector
                     if (e.shiftKey || e.button === 2) {
@@ -775,7 +790,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Otherwise, select this preset
                     selectPresetButton(presetId);
-                });
+                }, 300)); // 300ms debounce
                 
                 // Add context menu to open selector
                 button.addEventListener('contextmenu', function(e) {
@@ -843,6 +858,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Add active class to selected button
         const activeButton = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
         if (activeButton) {
+            // Add loading state
+            activeButton.classList.add('loading');
+            
+            // Add active class
             activeButton.classList.add('active');
             activePresetButton = activeButton;
             currentPresetId = presetId;
@@ -856,6 +875,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update the cost indicator for the selected model
             updateSelectedModelCostIndicator(currentModel);
+            
+            // Save preference - passing the button element to handle loading state
+            saveModelPreference(presetId, currentModel, activeButton);
         }
     }
     
@@ -1469,7 +1491,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to save model preference to the server
-    function saveModelPreference(presetId, modelId) {
+    function saveModelPreference(presetId, modelId, buttonElement) {
         fetch('/save_preference', {
             method: 'POST',
             headers: {
@@ -1488,9 +1510,34 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(data => {
             console.log('Preference saved:', data);
+            
+            // Show success feedback if button element was provided
+            if (buttonElement) {
+                buttonElement.classList.remove('loading');
+                
+                // Optional: Show a brief success indicator
+                buttonElement.classList.add('save-success');
+                setTimeout(() => {
+                    buttonElement.classList.remove('save-success');
+                }, 1000);
+            }
         })
         .catch(error => {
             console.error('Error saving preference:', error);
+            
+            // Remove loading state and show error if button element was provided
+            if (buttonElement) {
+                buttonElement.classList.remove('loading');
+                buttonElement.classList.add('save-error');
+                
+                // Remove error state after a short time
+                setTimeout(() => {
+                    buttonElement.classList.remove('save-error');
+                }, 2000);
+            }
+            
+            // Optionally display an error notification
+            console.warn('Could not save preference. Please try again.');
         });
     }
     

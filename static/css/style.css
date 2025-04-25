@@ -1531,6 +1531,40 @@ code {
     color: #ff5555;
 }
 
+/* Button Loading and Feedback States */
+.model-preset-btn.loading {
+    opacity: 0.7;
+    position: relative;
+}
+
+.model-preset-btn.loading::after {
+    content: "";
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    top: 50%;
+    right: 10px;
+    margin-top: -7px;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: button-spinner 0.6s linear infinite;
+}
+
+.model-preset-btn.save-success {
+    /* Brief flash of green or checkmark */
+    border-color: #4CAF50;
+}
+
+.model-preset-btn.save-error {
+    /* Brief flash of red */
+    border-color: #F44336;
+}
+
+@keyframes button-spinner {
+    to {transform: rotate(360deg);}
+}
+
 /* Media queries for responsiveness */
 @media (max-width: 768px) {
     .sidebar {
