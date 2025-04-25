@@ -294,34 +294,100 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.model-preset-btn').forEach(btn => {
             const presetId = btn.getAttribute('data-preset-id');
             if (presetId !== '6') { // All except the free model
-                btn.classList.add('premium-locked');
-                // Add tooltip
-                const tooltip = document.createElement('span');
-                tooltip.className = 'locked-tooltip';
-                tooltip.textContent = 'Premium feature - Sign in to unlock';
-                btn.appendChild(tooltip);
+                // Reset classes first
+                btn.classList.remove('disabled', 'disabled-login', 'disabled-payment');
                 
-                // Change button behavior to redirect to login
-                btn.addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    window.location.href = '/login?redirect=chat&feature=premium_model';
-                });
+                if (!isAuthenticated) {
+                    // User is not logged in - show login requirement
+                    btn.classList.add('disabled', 'disabled-login', 'premium-locked');
+                    
+                    // Add tooltip if it doesn't exist
+                    if (!btn.querySelector('.locked-tooltip')) {
+                        const tooltip = document.createElement('span');
+                        tooltip.className = 'locked-tooltip';
+                        tooltip.textContent = 'Premium feature - Sign in to unlock';
+                        btn.appendChild(tooltip);
+                    }
+                    
+                    // Change button behavior to redirect to login
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        window.location.href = '/login?redirect=chat&feature=premium_model';
+                    });
+                } else if (userCreditBalance <= 0) {
+                    // User is logged in but has no credits - show payment requirement
+                    btn.classList.add('disabled', 'disabled-payment', 'premium-locked');
+                    
+                    // Add tooltip if it doesn't exist
+                    if (!btn.querySelector('.locked-tooltip')) {
+                        const tooltip = document.createElement('span');
+                        tooltip.className = 'locked-tooltip';
+                        tooltip.textContent = 'Add credits to use premium models';
+                        btn.appendChild(tooltip);
+                    }
+                    
+                    // Change button behavior to redirect to account page
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        window.location.href = '/billing/account?source=chat&feature=premium_model';
+                    });
+                }
             }
         });
         
         // Lock document upload button
         if (uploadDocumentsBtn) {
-            uploadDocumentsBtn.classList.add('premium-locked');
-            // Change button behavior to redirect to login
-            uploadDocumentsBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                window.location.href = '/login?redirect=chat&feature=document_upload';
-            });
+            uploadDocumentsBtn.classList.remove('disabled', 'disabled-login', 'disabled-payment');
             
-            const tooltip = document.createElement('span');
-            tooltip.className = 'locked-tooltip';
-            tooltip.textContent = 'Premium feature - Sign in to unlock';
-            uploadDocumentsBtn.appendChild(tooltip);
+            if (!isAuthenticated) {
+                // User not logged in
+                uploadDocumentsBtn.classList.add('premium-locked', 'disabled', 'disabled-login');
+                
+                // Change button behavior to redirect to login
+                uploadDocumentsBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.location.href = '/login?redirect=chat&feature=document_upload';
+                });
+                
+                // Add overlay if it doesn't exist
+                if (!uploadDocumentsBtn.querySelector('.button-overlay')) {
+                    const overlay = document.createElement('span');
+                    overlay.className = 'button-overlay';
+                    uploadDocumentsBtn.appendChild(overlay);
+                }
+                
+                // Add tooltip if it doesn't exist
+                if (!uploadDocumentsBtn.querySelector('.locked-tooltip')) {
+                    const tooltip = document.createElement('span');
+                    tooltip.className = 'locked-tooltip';
+                    tooltip.textContent = 'Premium feature - Sign in to unlock';
+                    uploadDocumentsBtn.appendChild(tooltip);
+                }
+            } else if (userCreditBalance <= 0) {
+                // User logged in but no credits
+                uploadDocumentsBtn.classList.add('premium-locked', 'disabled', 'disabled-payment');
+                
+                // Change button behavior to redirect to account page
+                uploadDocumentsBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    window.location.href = '/billing/account?source=chat&feature=document_upload';
+                });
+                
+                // Add overlay if it doesn't exist
+                if (!uploadDocumentsBtn.querySelector('.button-overlay')) {
+                    const overlay = document.createElement('span');
+                    overlay.className = 'button-overlay';
+                    uploadDocumentsBtn.appendChild(overlay);
+                }
+                
+                // Add tooltip if it doesn't exist
+                if (!uploadDocumentsBtn.querySelector('.locked-tooltip')) {
+                    const tooltip = document.createElement('span');
+                    tooltip.className = 'locked-tooltip';
+                    tooltip.textContent = 'Add credits to use document upload';
+                    uploadDocumentsBtn.appendChild(tooltip);
+                }
+            }
         }
         
         // Lock image upload and camera buttons

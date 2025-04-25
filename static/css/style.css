@@ -669,8 +669,56 @@ body {
 /* Locked premium features */
 .premium-locked {
     position: relative;
-    opacity: 0.6;
+    filter: blur(1px);
     cursor: pointer;
+}
+
+/* Style for the button overlay */
+.button-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1em;
+    font-weight: bold;
+    color: var(--text-color);
+    background-color: rgba(0, 0, 0, 0.3);
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    z-index: 2;
+}
+
+/* Shared disabled styles */
+.model-preset-btn.disabled {
+    cursor: not-allowed;
+    filter: blur(1px);
+}
+
+/* Show the overlay when disabled */
+.model-preset-btn.disabled .button-overlay {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Specific overlay content for login required */
+.model-preset-btn.disabled-login .button-overlay::before {
+    content: "Log In";
+    color: white;
+}
+
+/* Specific overlay content for payment required */
+.model-preset-btn.disabled-payment .button-overlay::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f3d1";  /* Credit card icon */
+    font-size: 1.2em;
+    color: white;
 }
 
 .premium-locked::after {
@@ -683,6 +731,7 @@ body {
     transform: translateY(-50%);
     color: rgba(255, 255, 255, 0.8);
     font-size: 12px;
+    z-index: 3;
 }
 
 .upload-documents-btn.premium-locked::after {
@@ -690,6 +739,36 @@ body {
     right: 30%;
     font-size: 14px;
     transform: translate(50%, 50%);
+}
+
+/* Style for disabled upload buttons */
+.upload-documents-btn.disabled {
+    cursor: not-allowed;
+    filter: blur(1px);
+}
+
+/* Show the overlay when disabled */
+.upload-documents-btn.disabled .button-overlay {
+    opacity: 1;
+    pointer-events: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Specific overlay content */
+.upload-documents-btn.disabled-login .button-overlay::before {
+    content: "Log In";
+    color: white;
+    font-size: 0.7em;
+}
+
+.upload-documents-btn.disabled-payment .button-overlay::before {
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+    content: "\f3d1";  /* Credit card icon */
+    font-size: 0.9em;
+    color: white;
 }
 
 .premium-locked:hover {
@@ -714,6 +793,18 @@ body {
 
 .premium-locked:hover .locked-tooltip {
     display: block;
+}
+
+/* Enhance tooltip visibility on hover for better UX */
+.model-preset-btn.disabled:hover {
+    filter: blur(0.5px); /* Reduce blur on hover for better readability */
+}
+
+.model-preset-btn.disabled:hover .button-overlay,
+.upload-documents-btn.disabled:hover .button-overlay {
+    background-color: rgba(0, 0, 0, 0.5); /* Darker background for better visibility */
+    color: white;
+    font-weight: bold;
 }
 
 /* Login prompt in sidebar */
