@@ -293,13 +293,46 @@ document.addEventListener('DOMContentLoaded', function() {
         // Lock premium model presets (1-5)
         document.querySelectorAll('.model-preset-btn').forEach(btn => {
             const presetId = btn.getAttribute('data-preset-id');
+            // Selector icon container - we'll preserve its functionality
+            const selectorContainer = btn.querySelector('.selector-icon-container');
+            // Button overlay - this will be clickable for disabled states
+            const buttonOverlay = btn.querySelector('.button-overlay');
+            
             if (presetId !== '6') { // All except the free model
                 // Reset classes first
                 btn.classList.remove('disabled', 'disabled-login', 'disabled-payment');
                 
+                // Remove any existing event listeners (to prevent duplicates)
+                const newBtn = btn.cloneNode(true);
+                btn.parentNode.replaceChild(newBtn, btn);
+                btn = newBtn;
+                
+                // Re-query the selector container in the cloned button
+                const newSelectorContainer = btn.querySelector('.selector-icon-container');
+                const newButtonOverlay = btn.querySelector('.button-overlay');
+                
                 if (!isAuthenticated) {
                     // User is not logged in - show login requirement
-                    btn.classList.add('disabled', 'disabled-login', 'premium-locked');
+                    btn.classList.add('disabled', 'disabled-login');
+                    
+                    // Keep the selector functionality separate
+                    if (newSelectorContainer) {
+                        // Preserve the selector container click functionality
+                        newSelectorContainer.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Prevent button click
+                            // We still want to keep the dropdown disabled in login-required state
+                            // Add login redirect here 
+                            window.location.href = '/login?redirect=chat&feature=premium_model';
+                        });
+                    }
+                    
+                    // Make the overlay clickable for login
+                    if (newButtonOverlay) {
+                        newButtonOverlay.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            window.location.href = '/login?redirect=chat&feature=premium_model';
+                        });
+                    }
                     
                     // Add tooltip if it doesn't exist
                     if (!btn.querySelector('.locked-tooltip')) {
@@ -308,15 +341,28 @@ document.addEventListener('DOMContentLoaded', function() {
                         tooltip.textContent = 'Premium feature - Sign in to unlock';
                         btn.appendChild(tooltip);
                     }
-                    
-                    // Change button behavior to redirect to login
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        window.location.href = '/login?redirect=chat&feature=premium_model';
-                    });
                 } else if (userCreditBalance <= 0) {
                     // User is logged in but has no credits - show payment requirement
-                    btn.classList.add('disabled', 'disabled-payment', 'premium-locked');
+                    btn.classList.add('disabled', 'disabled-payment');
+                    
+                    // Keep the selector functionality separate
+                    if (newSelectorContainer) {
+                        // Preserve the selector container click functionality
+                        newSelectorContainer.addEventListener('click', (e) => {
+                            e.stopPropagation(); // Prevent button click
+                            // We still want to keep the dropdown disabled in payment-required state
+                            // Add payment redirect here
+                            window.location.href = '/billing/account?source=chat&feature=premium_model';
+                        });
+                    }
+                    
+                    // Make the overlay clickable for payment
+                    if (newButtonOverlay) {
+                        newButtonOverlay.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            window.location.href = '/billing/account?source=chat&feature=premium_model';
+                        });
+                    }
                     
                     // Add tooltip if it doesn't exist
                     if (!btn.querySelector('.locked-tooltip')) {
@@ -325,55 +371,77 @@ document.addEventListener('DOMContentLoaded', function() {
                         tooltip.textContent = 'Add credits to use premium models';
                         btn.appendChild(tooltip);
                     }
-                    
-                    // Change button behavior to redirect to account page
-                    btn.addEventListener('click', (e) => {
-                        e.stopPropagation();
-                        window.location.href = '/billing/account?source=chat&feature=premium_model';
-                    });
                 }
             }
         });
         
         // Lock document upload button
         if (uploadDocumentsBtn) {
+            // Clean up existing classes
             uploadDocumentsBtn.classList.remove('disabled', 'disabled-login', 'disabled-payment');
+            
+            // Clone to remove existing event listeners
+            const newUploadBtn = uploadDocumentsBtn.cloneNode(true);
+            uploadDocumentsBtn.parentNode.replaceChild(newUploadBtn, uploadDocumentsBtn);
+            const uploadBtn = newUploadBtn;
+            
+            // Check for button overlay
+            const buttonOverlay = uploadBtn.querySelector('.button-overlay');
             
             if (!isAuthenticated) {
                 // User not logged in
-                uploadDocumentsBtn.classList.add('premium-locked', 'disabled', 'disabled-login');
+                uploadBtn.classList.add('disabled', 'disabled-login');
                 
-                // Change button behavior to redirect to login
-                uploadDocumentsBtn.addEventListener('click', (e) => {
+                // Make button and overlay redirect to login
+                uploadBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     window.location.href = '/login?redirect=chat&feature=document_upload';
                 });
                 
+                // Make overlay clickable too
+                if (buttonOverlay) {
+                    buttonOverlay.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        window.location.href = '/login?redirect=chat&feature=document_upload';
+                    });
+                }
+                
                 // Add tooltip if it doesn't exist
-                if (!uploadDocumentsBtn.querySelector('.locked-tooltip')) {
+                if (!uploadBtn.querySelector('.locked-tooltip')) {
                     const tooltip = document.createElement('span');
                     tooltip.className = 'locked-tooltip';
                     tooltip.textContent = 'Premium feature - Sign in to unlock';
-                    uploadDocumentsBtn.appendChild(tooltip);
+                    uploadBtn.appendChild(tooltip);
                 }
             } else if (userCreditBalance <= 0) {
                 // User logged in but no credits
-                uploadDocumentsBtn.classList.add('premium-locked', 'disabled', 'disabled-payment');
+                uploadBtn.classList.add('disabled', 'disabled-payment');
                 
-                // Change button behavior to redirect to account page
-                uploadDocumentsBtn.addEventListener('click', (e) => {
+                // Make button and overlay redirect to account page
+                uploadBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     window.location.href = '/billing/account?source=chat&feature=document_upload';
                 });
                 
+                // Make overlay clickable too
+                if (buttonOverlay) {
+                    buttonOverlay.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        window.location.href = '/billing/account?source=chat&feature=document_upload';
+                    });
+                }
+                
                 // Add tooltip if it doesn't exist
-                if (!uploadDocumentsBtn.querySelector('.locked-tooltip')) {
+                if (!uploadBtn.querySelector('.locked-tooltip')) {
                     const tooltip = document.createElement('span');
                     tooltip.className = 'locked-tooltip';
                     tooltip.textContent = 'Add credits to use document upload';
-                    uploadDocumentsBtn.appendChild(tooltip);
+                    uploadBtn.appendChild(tooltip);
                 }
             }
+            
+            // Reassign uploadDocumentsBtn for subsequent operations
+            uploadDocumentsBtn = uploadBtn;
         }
         
         // Lock image upload and camera buttons
@@ -821,7 +889,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Model preset button click handlers
         if (modelPresetButtons && modelPresetButtons.length > 0) {
             modelPresetButtons.forEach(button => {
-                // Find selector icon within this button
+                // Find selector icon container within this button
+                const selectorIconContainer = button.querySelector('.selector-icon-container');
                 const selectorIcon = button.querySelector('.selector-icon');
                 
                 // Add debounced click event to the model button
@@ -830,6 +899,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // If the button is already in loading state, do nothing
                     if (this.classList.contains('loading')) {
+                        return;
+                    }
+                    
+                    // If the click target is the selector icon or its container, do nothing
+                    // as those have their own handlers
+                    if (e.target.classList.contains('selector-icon') || 
+                        e.target.classList.contains('selector-icon-container') ||
+                        e.target.closest('.selector-icon-container')) {
                         return;
                     }
                     
@@ -851,8 +928,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     openModelSelector(presetId, this);
                 });
                 
-                // Add click event to the selector icon
-                if (selectorIcon) {
+                // Add click event to the selector icon or container
+                if (selectorIconContainer) {
+                    selectorIconContainer.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation(); // Prevent button click from firing
+                        
+                        const presetId = button.getAttribute('data-preset-id');
+                        openModelSelector(presetId, button);
+                    });
+                } else if (selectorIcon) {
+                    // Fallback to direct icon if container not found
                     selectorIcon.addEventListener('click', function(e) {
                         e.preventDefault();
                         e.stopPropagation(); // Prevent button click from firing

@@ -1,16 +1,15 @@
 """
-Workflow functions for Replit workflow integration.
+Flask application workflow runner
 """
+import os
 import sys
-import subprocess
+from app import app
 
-def run(workflow_name=None):
-    """Run a script based on the workflow name."""
-    print(f"Running {workflow_name or 'default'} workflow")
-    
-    if workflow_name == "favicon-test":
-        # Run the web server script for testing favicons
-        subprocess.run(["python", "web_server.py"])
-    else:
-        # Default execution
-        subprocess.run(["python", "app.py"])
+def run():
+    """
+    Run the Flask application with the development server
+    """
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
+if __name__ == "__main__":
+    run()

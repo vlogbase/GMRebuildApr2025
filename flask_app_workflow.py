@@ -1,12 +1,16 @@
 """
-Script to run the Flask application for the Replit workflow.
-This runs the main Flask app for testing favicon implementation.
+Simple script to run the Flask application for testing in the Replit environment.
+This is a wrapper script to start the app.py Flask application.
 """
 import os
 import sys
-import subprocess
-from app_workflow import run
+from app import app
+
+def run():
+    """
+    Run the Flask application.
+    """
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 if __name__ == "__main__":
-    # Run the app
     run()
