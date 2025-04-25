@@ -349,13 +349,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.location.href = '/login?redirect=chat&feature=document_upload';
                 });
                 
-                // Add overlay if it doesn't exist
-                if (!uploadDocumentsBtn.querySelector('.button-overlay')) {
-                    const overlay = document.createElement('span');
-                    overlay.className = 'button-overlay';
-                    uploadDocumentsBtn.appendChild(overlay);
-                }
-                
                 // Add tooltip if it doesn't exist
                 if (!uploadDocumentsBtn.querySelector('.locked-tooltip')) {
                     const tooltip = document.createElement('span');
@@ -372,13 +365,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     e.stopPropagation();
                     window.location.href = '/billing/account?source=chat&feature=document_upload';
                 });
-                
-                // Add overlay if it doesn't exist
-                if (!uploadDocumentsBtn.querySelector('.button-overlay')) {
-                    const overlay = document.createElement('span');
-                    overlay.className = 'button-overlay';
-                    uploadDocumentsBtn.appendChild(overlay);
-                }
                 
                 // Add tooltip if it doesn't exist
                 if (!uploadDocumentsBtn.querySelector('.locked-tooltip')) {
