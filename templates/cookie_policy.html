@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}Cookie Policy - GloriaMundo Chat{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .cookie-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+    }
+    
+    .cookie-table th, .cookie-table td {
+        padding: 10px;
+        border: 1px solid var(--border-color);
+    }
+    
+    .cookie-table th {
+        background-color: rgba(36, 185, 189, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="policy-container">
+    <a href="{{ url_for('index') }}" class="back-link"><i class="fa-solid fa-arrow-left"></i> Back to GloriaMundo</a>
+    
+    <h1>Cookie Policy</h1>
+    
+    <p>Last Updated: April 24, 2025</p>
+    
+    <h2>1. Introduction</h2>
+    <p>This Cookie Policy explains how Sentigral Limited ("we", "us", or "our") uses cookies and similar technologies when you visit the GloriaMundo website or interact with our services. This policy provides you with information about what cookies are, what types we use, and how you can control them.</p>
+    
+    <h2>2. What Are Cookies?</h2>
+    <p>Cookies are small text files that are stored on your computer or mobile device when you visit a website. They are widely used to make websites work more efficiently and provide information to the owners of the site. Cookies can store a range of information, including personal preferences and session data.</p>
+    
+    <h2>3. Types of Cookies We Use</h2>
+    <p>We use the following types of cookies on our website:</p>
+    
+    <table class="cookie-table">
+        <thead>
+            <tr>
+                <th>Type of Cookie</th>
+                <th>Purpose</th>
+                <th>Duration</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Essential/Necessary Cookies</td>
+                <td>These cookies are necessary for the website to function properly. They enable core functionality such as security, network management, and account access. You cannot opt out of these cookies.</td>
+                <td>Session to 1 year</td>
+            </tr>
+            <tr>
+                <td>Functionality Cookies</td>
+                <td>These cookies allow the website to remember choices you make and provide enhanced features. For instance, they may remember your language preferences or the region you are in.</td>
+                <td>Session to 1 year</td>
+            </tr>
+            <tr>
+                <td>Performance/Analytics Cookies</td>
+                <td>These cookies collect information about how you use the website, such as which pages you visit most often. This helps us improve how our website works. All information these cookies collect is aggregated and anonymous.</td>
+                <td>Session to 2 years</td>
+            </tr>
+            <tr>
+                <td>Authentication Cookies</td>
+                <td>These cookies help us recognize you when you log in and remember your login session.</td>
+                <td>Session to 2 weeks</td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <h2>4. Third-Party Cookies</h2>
+    <p>We may use third-party services such as Google Authentication which set their own cookies. We do not control the placement of cookies by third-party services. Some of these providers may be located outside the EU/UK.</p>
+    
+    <h2>5. How to Control Cookies</h2>
+    <p>You can control and/or delete cookies as you wish. You can delete all cookies that are already on your computer and you can set most browsers to prevent them from being placed. However, if you do this, you may have to manually adjust some preferences every time you visit a site, and some services and functionalities may not work.</p>
+    
+    <p>You can control cookies in these ways:</p>
+    <ul>
+        <li><strong>Browser Controls:</strong> Most web browsers allow you to manage your cookie preferences. You can usually find these settings in the "options" or "preferences" menu of your browser.</li>
+        <li><strong>Our Cookie Consent Tool:</strong> You can adjust your cookie preferences using our cookie consent banner or by clicking "Cookie Settings" in the footer of our website.</li>
+    </ul>
+    
+    <h2>6. What Happens If You Disable Cookies</h2>
+    <p>If you disable cookies, some features of our website may not function properly. In particular:</p>
+    <ul>
+        <li>You may not be able to log in to your account using Google Authentication</li>
+        <li>Your preferences and settings may not be remembered between sessions</li>
+        <li>Some interactive features of the service may not work correctly</li>
+    </ul>
+    
+    <h2>7. Changes to Our Cookie Policy</h2>
+    <p>We may update our Cookie Policy from time to time. We will notify you of any changes by posting the new Cookie Policy on this page and updating the "Last Updated" date.</p>
+    
+    <h2>8. Contact Us</h2>
+    <p>If you have any questions about our use of cookies, please contact us at: <a href="mailto:andy@sentigral.com">andy@sentigral.com</a></p>
+    
+    <p class="effective-date">This Cookie Policy is effective as of April 24, 2025.</p>
+    
+    <div class="footer">
+        <a href="{{ url_for('terms_of_service') }}">Terms of Service</a>
+        <a href="{{ url_for('privacy_policy') }}">Privacy Policy</a>
+        <a href="javascript:void(0)" id="open-cookie-settings">Cookie Settings</a>
+    </div>
+</div>
+{% endblock %}

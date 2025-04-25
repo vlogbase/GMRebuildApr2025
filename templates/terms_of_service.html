@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Terms of Service - GloriaMundo Chat{% endblock %}
+
+{% block styles %}
+{{ super() }}
+{% endblock %}
+
+{% block content %}
+<div class="policy-container">
+    <a href="{{ url_for('index') }}" class="back-link"><i class="fa-solid fa-arrow-left"></i> Back to GloriaMundo</a>
+    
+    <h1>Terms of Service</h1>
+    
+    <p>Last Updated: April 24, 2025</p>
+    
+    <h2>1. Agreement to Terms</h2>
+    <p>By accessing or using GloriaMundo's AI-powered conversational platform, you agree to be bound by these Terms of Service and all applicable laws and regulations. If you do not agree with any of these terms, you are prohibited from using or accessing this service.</p>
+    
+    <h2>2. Company Information</h2>
+    <p>GloriaMundo is operated by Sentigral Limited, a company registered in the United Kingdom (company number 11278228), with its registered address at 21 Deacon Gardens, Seaton Carew, Hartlepool, England, TS25 1UU.</p>
+    
+    <h2>3. Service Description</h2>
+    <p>GloriaMundo provides an AI-powered conversational platform that enables intelligent, context-aware interactions through sophisticated model pricing and selection technologies. Our service utilizes multiple AI models through OpenRouter to provide responses to user queries.</p>
+    
+    <h2>4. User Accounts</h2>
+    <p>To access certain features of the service, you may be required to create an account using Google login. You are responsible for maintaining the confidentiality of your account information and for all activities that occur under your account. You agree to:</p>
+    <ul>
+        <li>Provide accurate and complete information when creating your account</li>
+        <li>Update your information to keep it current</li>
+        <li>Protect your account credentials and not share them with others</li>
+        <li>Notify us immediately of any unauthorized access to or use of your account</li>
+    </ul>
+    
+    <h2>5. Credits and Payment</h2>
+    <p>Our service operates on a credit system. Users can purchase credits which are used to access various AI models. By purchasing credits, you agree to the following:</p>
+    <ul>
+        <li>All payments are processed securely through our payment processor (Stripe)</li>
+        <li>Credits never expire once purchased</li>
+        <li>Prices for credits are subject to change without notice</li>
+        <li>No refunds are provided for purchased credits except as required by law</li>
+        <li>Different AI models may consume different amounts of credits based on their capabilities and costs</li>
+    </ul>
+    
+    <h2>6. Acceptable Use</h2>
+    <p>You agree not to use the service to:</p>
+    <ul>
+        <li>Violate any applicable laws or regulations</li>
+        <li>Infringe upon the rights of others, including intellectual property rights</li>
+        <li>Send spam or unsolicited messages</li>
+        <li>Upload or transmit viruses, malware, or other malicious code</li>
+        <li>Attempt to gain unauthorized access to any part of the service</li>
+        <li>Interfere with or disrupt the integrity or performance of the service</li>
+        <li>Harass, abuse, or harm another person</li>
+        <li>Generate, upload, or share illegal, harmful, or offensive content</li>
+    </ul>
+    
+    <h2>7. Content and Intellectual Property</h2>
+    <p>By using our service, you may provide input to the service ("User Content"). You retain ownership of your User Content. However, by providing User Content to the service, you grant us a worldwide, royalty-free, sublicensable, and transferable license to use, reproduce, modify, and distribute your User Content solely for the purpose of operating and improving our services.</p>
+    
+    <h2>8. AI-Generated Content</h2>
+    <p>Our service utilizes third-party AI models to generate responses. Please be aware of the following:</p>
+    <ul>
+        <li>AI-generated content may not always be accurate or complete</li>
+        <li>You should verify important information from authoritative sources</li>
+        <li>We do not guarantee the accuracy, quality, or appropriateness of AI-generated content</li>
+        <li>You are responsible for how you use AI-generated content</li>
+    </ul>
+    
+    <h2>9. Limitation of Liability</h2>
+    <p>To the maximum extent permitted by law, Sentigral Limited shall not be liable for any indirect, incidental, special, consequential, or punitive damages, or any loss of profits or revenues, whether incurred directly or indirectly, or any loss of data, use, goodwill, or other intangible losses resulting from:</p>
+    <ul>
+        <li>Your access to or use of or inability to access or use the service</li>
+        <li>Any conduct or content of any third party on the service</li>
+        <li>Any content obtained from the service</li>
+        <li>Unauthorized access, use, or alteration of your transmissions or content</li>
+    </ul>
+    
+    <h2>10. Disclaimers</h2>
+    <p>The service is provided "as is" and "as available" without warranties of any kind, either express or implied, including, but not limited to, implied warranties of merchantability, fitness for a particular purpose, non-infringement, or course of performance.</p>
+    
+    <h2>11. Indemnification</h2>
+    <p>You agree to defend, indemnify, and hold harmless Sentigral Limited and its licensees and licensors, and their employees, contractors, agents, officers, and directors, from and against any and all claims, damages, obligations, losses, liabilities, costs or debt, and expenses (including but not limited to attorney's fees) arising from your use of the service.</p>
+    
+    <h2>12. Termination</h2>
+    <p>We may terminate or suspend your account and access to the service immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach these Terms of Service.</p>
+    
+    <h2>13. Changes to Terms</h2>
+    <p>We reserve the right to modify or replace these Terms of Service at any time. If a revision is material, we will provide at least 30 days' notice prior to any new terms taking effect. We will determine what constitutes a material change in our sole discretion. By continuing to access or use our service after any revisions become effective, you agree to be bound by the revised terms.</p>
+    
+    <h2>14. Governing Law</h2>
+    <p>These Terms shall be governed and construed in accordance with the laws of the United Kingdom, without regard to its conflict of law provisions.</p>
+    
+    <h2>15. Contact Information</h2>
+    <p>If you have any questions about these Terms, please contact us at: <a href="mailto:andy@sentigral.com">andy@sentigral.com</a></p>
+    
+    <p class="effective-date">These Terms of Service are effective as of April 24, 2025.</p>
+    
+    <div class="footer">
+        <a href="{{ url_for('terms_of_service') }}">Terms of Service</a>
+        <a href="{{ url_for('privacy_policy') }}">Privacy Policy</a>
+        <a href="javascript:void(0)" id="open-cookie-settings">Cookie Settings</a>
+    </div>
+</div>
+{% endblock %}

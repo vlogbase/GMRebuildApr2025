@@ -19,10 +19,23 @@
     {% block styles %}
     <!-- Main CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Cookie Consent CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie_consent.css') }}">
     {% endblock %}
 </head>
 <body>
     {% block content %}{% endblock %}
+    
+    <!-- Global Footer (only visible in certain pages) -->
+    {% block footer %}
+    <div class="global-footer-links" style="display: none;">
+        <a href="{{ url_for('terms_of_service') }}">Terms of Service</a>
+        <a href="{{ url_for('privacy_policy') }}">Privacy Policy</a>
+        <a href="{{ url_for('cookie_policy') }}">Cookie Policy</a>
+        <a href="javascript:void(0)" id="open-cookie-settings">Cookie Settings</a>
+        <span class="copyright">© {{ now.year }} Sentigral Limited</span>
+    </div>
+    {% endblock %}
     
     {% block scripts %}
     <!-- Bootstrap JS Bundle with Popper -->
@@ -30,6 +43,9 @@
     
     <!-- Main JavaScript -->
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
+    <!-- Cookie Consent JavaScript -->
+    <script src="{{ url_for('static', filename='js/cookie_consent.js') }}"></script>
     {% endblock %}
 </body>
 </html>

@@ -1592,3 +1592,85 @@ code {
 .cost-band-4-danger {
     color: #e53935;
 }
+
+/* Footer Legal Links */
+.footer-legal-links {
+    text-align: center;
+    padding: 10px 0;
+    margin-top: 8px;
+    border-top: 1px solid var(--border-color);
+    color: var(--secondary-text);
+    font-size: 12px;
+}
+
+.footer-legal-links a {
+    color: var(--secondary-text);
+    text-decoration: none;
+    margin: 0 8px;
+    transition: color 0.2s;
+}
+
+.footer-legal-links a:hover {
+    color: var(--accent-color);
+}
+
+.footer-legal-links .copyright {
+    display: block;
+    margin-top: 5px;
+    font-size: 11px;
+}
+
+/* Policy Pages Styles */
+.policy-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    height: 100vh;
+    overflow-y: auto;
+    line-height: 1.6;
+}
+
+.policy-container h1 {
+    color: var(--accent-color);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.policy-container h2 {
+    color: var(--text-color);
+    margin-top: 30px;
+    margin-bottom: 15px;
+    font-size: 1.5em;
+}
+
+.policy-container p {
+    margin-bottom: 15px;
+}
+
+.policy-container ul {
+    margin-bottom: 15px;
+    padding-left: 20px;
+}
+
+.policy-container li {
+    margin-bottom: 5px;
+}
+
+.policy-container a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.policy-container a:hover {
+    text-decoration: underline;
+}
+
+.policy-container .return-link {
+    display: inline-block;
+    margin-top: 30px;
+    color: var(--accent-color);
+    font-weight: bold;
+}

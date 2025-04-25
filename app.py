@@ -78,6 +78,11 @@ if not app.secret_key:
      logger.warning("SESSION_SECRET environment variable not set. Using default for development.")
      app.secret_key = "default-dev-secret-key-please-change"
 
+# Add global template context variables
+@app.context_processor
+def inject_now():
+    return {'now': datetime.datetime.now()}
+
 # Initialize Azure Blob Storage for image uploads
 try:
     # Get connection string and container name from environment variables
@@ -518,6 +523,21 @@ def login():
     return render_template('login.html', 
                           flash_messages=flash_messages,
                           oauth_enabled=True)
+                          
+@app.route('/privacy-policy')
+def privacy_policy():
+    """Privacy Policy page"""
+    return render_template('privacy_policy.html')
+
+@app.route('/terms-of-service')
+def terms_of_service():
+    """Terms of Service page"""
+    return render_template('terms_of_service.html')
+
+@app.route('/cookie-policy')
+def cookie_policy():
+    """Cookie Policy page"""
+    return render_template('cookie_policy.html')
 
 @app.route('/test-upload')
 @login_required
