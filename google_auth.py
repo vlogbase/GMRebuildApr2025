@@ -5,7 +5,7 @@ import os
 
 import requests
 from app import db
-from flask import Blueprint, redirect, request, url_for
+from flask import Blueprint, redirect, request, url_for, session
 from flask_login import login_required, login_user, logout_user
 from models import User
 from oauthlib.oauth2 import WebApplicationClient
@@ -89,7 +89,15 @@ def callback():
 
     login_user(user)
 
-    return redirect(url_for("index"))
+    # Get the redirect parameter if it exists in the session
+    redirect_to = session.get('login_redirect', 'index')
+    
+    # Check if the redirect is to billing/account, if so redirect to index instead
+    if redirect_to and redirect_to.startswith('billing/account'):
+        return redirect(url_for('index'))
+    
+    # Redirect to index page for all users (existing and new)
+    return redirect(url_for('index'))
 
 
 @google_auth.route("/logout")
