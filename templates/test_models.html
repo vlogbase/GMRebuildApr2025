@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Default Models</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .model-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+        }
+        .preset-id {
+            font-weight: bold;
+            color: #333;
+        }
+        .model-id {
+            color: #0066cc;
+        }
+        h1 {
+            color: #333;
+        }
+        .button-preview {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        .icon {
+            margin-right: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Default Preset Models</h1>
+    <p>This page shows the current default preset models defined in app.py.</p>
+    
+    <div id="models-container">
+        <div class="model-card">
+            <div class="preset-id">Preset 1:</div>
+            <div class="model-id">google/gemini-2.5-pro-preview-03-25</div>
+            <div class="button-preview"><span class="icon">🤖</span> Gemini 2.5</div>
+        </div>
+        
+        <div class="model-card">
+            <div class="preset-id">Preset 2:</div>
+            <div class="model-id">meta/llama-4-maverick</div>
+            <div class="button-preview"><span class="icon">🤖</span> Llama 4 Maverick</div>
+        </div>
+        
+        <div class="model-card">
+            <div class="preset-id">Preset 3:</div>
+            <div class="model-id">openai/o4-Mini-High</div>
+            <div class="button-preview"><span class="icon">🧠</span> Reasoning</div>
+        </div>
+        
+        <div class="model-card">
+            <div class="preset-id">Preset 4:</div>
+            <div class="model-id">openai/gpt-4o</div>
+            <div class="button-preview"><span class="icon">🖼️</span> Multimodal</div>
+        </div>
+        
+        <div class="model-card">
+            <div class="preset-id">Preset 5:</div>
+            <div class="model-id">perplexity/sonar-pro</div>
+            <div class="button-preview"><span class="icon">🔍</span> Perplexity</div>
+        </div>
+        
+        <div class="model-card">
+            <div class="preset-id">Preset 6:</div>
+            <div class="model-id">google/gemini-2.0-flash-exp:free</div>
+            <div class="button-preview"><span class="icon">🎁</span> Free</div>
+        </div>
+    </div>
+    
+    <div style="margin-top: 30px;">
+        <p><strong>Note:</strong> Any user preferences will override these defaults for individual users. 
+        To reset all user preferences to these defaults, run the <code>reset_all_preferences.py</code> script.</p>
+        
+        <p>The reset script will delete all UserPreference entries from the database, forcing all users 
+        to use the default models defined in app.py.</p>
+    </div>
+</body>
+</html>
