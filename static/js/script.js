@@ -277,7 +277,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Default model IDs for each preset button
     const defaultModels = {
         '1': 'google/gemini-2.5-pro-preview-03-25',
-        '2': 'anthropic/claude-3.7-sonnet',
+        '2': 'meta/llama-4-maverick',
         '3': 'openai/o4-Mini-High',
         '4': 'openai/gpt-4o', // Vision model for multimodal capabilities
         '5': 'perplexity/sonar-pro',
@@ -973,6 +973,14 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
         
+        // Setup Reset to Default button
+        const resetToDefaultBtn = document.getElementById('reset-to-default');
+        if (resetToDefaultBtn) {
+            resetToDefaultBtn.addEventListener('click', function() {
+                resetToDefault(currentlyEditingPresetId);
+            });
+        }
+        
         // Close model selector when clicking outside
         document.addEventListener('click', function(e) {
             if (modelSelector.style.display === 'block' && 
@@ -1642,6 +1650,89 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Close the selector
         closeModelSelector();
+    }
+    
+    // Function to reset a preset or all presets to default
+    function resetToDefault(presetId) {
+        if (!confirm(presetId ? `Reset preset ${presetId} to its default model?` : 'Reset all model presets to their defaults?')) {
+            return;
+        }
+        
+        // Prepare the request data
+        const requestData = presetId ? { preset_id: presetId } : {};
+        
+        // Show loading state on button
+        const resetBtn = document.getElementById('reset-to-default');
+        if (resetBtn) {
+            resetBtn.classList.add('loading');
+            resetBtn.disabled = true;
+        }
+        
+        // Call the API to reset preference(s)
+        fetch('/reset_preferences', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Reset preferences response:', data);
+            
+            // If reset was successful, reload the preferences
+            if (data.success) {
+                // If resetting a specific preset, update it locally
+                if (presetId) {
+                    userPreferences[presetId] = defaultModels[presetId];
+                    
+                    // Update the button label right away
+                    const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
+                    if (button) {
+                        const nameSpan = button.querySelector('.model-name');
+                        if (nameSpan) {
+                            // Special handling for preset 6 (Free Model)
+                            if (presetId === '6') {
+                                nameSpan.textContent = 'FREE - ' + formatModelName(defaultModels[presetId], true);
+                            } else {
+                                nameSpan.textContent = formatModelName(defaultModels[presetId]);
+                            }
+                        }
+                    }
+                    
+                    // If the reset preset is the active one, update the model
+                    if (presetId === currentPresetId) {
+                        currentModel = defaultModels[presetId];
+                        updateMultimodalControls(currentModel);
+                    }
+                } else {
+                    // Full reset - reload all preferences from server
+                    fetchUserPreferences();
+                }
+                
+                // Show feedback
+                alert(data.message || 'Reset successful!');
+                
+                // Close the model selector
+                closeModelSelector();
+            }
+        })
+        .catch(error => {
+            console.error('Error resetting preferences:', error);
+            alert('Error resetting preferences. Please try again.');
+        })
+        .finally(() => {
+            // Remove loading state
+            if (resetBtn) {
+                resetBtn.classList.remove('loading');
+                resetBtn.disabled = false;
+            }
+        });
     }
     
     // Function to save model preference to the server

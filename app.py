@@ -2179,6 +2179,42 @@ def get_preferences():
         abort(500, description=str(e))
 
 
+@app.route('/reset_preferences', methods=['POST'])
+def reset_preferences():
+    """ Reset user model preferences to defaults """
+    try:
+        data = request.get_json()
+        preset_id = data.get('preset_id') if data else None
+        user_identifier = get_user_identifier()
+        from models import UserPreference 
+
+        if preset_id:
+            # Reset only the specific preset
+            try:
+                preset_id = int(preset_id)
+                if not 1 <= preset_id <= 6: 
+                    abort(400, description="preset_id must be between 1 and 6")
+                # Delete the specific preference
+                UserPreference.query.filter_by(
+                    user_identifier=user_identifier, 
+                    preset_id=preset_id
+                ).delete()
+                message = f"Preference for preset {preset_id} reset to default"
+            except ValueError: 
+                abort(400, description="preset_id must be a number")
+        else:
+            # Reset all presets
+            UserPreference.query.filter_by(user_identifier=user_identifier).delete()
+            message = "All preferences reset to defaults"
+        
+        db.session.commit()
+        return jsonify({"success": True, "message": message})
+    except Exception as e:
+        logger.exception("Error resetting preferences")
+        db.session.rollback()
+        abort(500, description=str(e))
+
+
 @app.route('/conversation/<int:conversation_id>/messages', methods=['GET'])
 @login_required
 def get_conversation_messages(conversation_id):

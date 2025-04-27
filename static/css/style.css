@@ -1147,6 +1147,36 @@ body {
     background-color: var(--hover-color);
 }
 
+.selector-footer {
+    padding: 10px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: center;
+}
+
+.reset-to-default-btn {
+    background-color: transparent;
+    color: var(--secondary-text);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.reset-to-default-btn:hover {
+    background-color: var(--hover-color);
+    color: var(--text-color);
+}
+
+.reset-to-default-btn i {
+    font-size: 12px;
+}
+
 .model-list li .model-provider {
     font-size: 12px;
     color: var(--secondary-text);
