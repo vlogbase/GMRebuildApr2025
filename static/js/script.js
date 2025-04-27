@@ -37,8 +37,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (userCreditBalance <= 0) {
-            console.log(`Access denied: Insufficient credits, redirecting to account page for ${featureName}`);
-            window.location.href = '/billing/account?source=chat&feature=' + featureName;
+            console.log(`Access denied: Insufficient credits, but redirecting to chat instead of billing for ${featureName}`);
+            window.location.href = '/?source=billing&feature=' + featureName;
             return false;
         }
         
@@ -350,9 +350,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Preserve the selector container click functionality
                         newSelectorContainer.addEventListener('click', (e) => {
                             e.stopPropagation(); // Prevent button click
-                            // We still want to keep the dropdown disabled in payment-required state
-                            // Add payment redirect here
-                            window.location.href = '/billing/account?source=chat&feature=premium_model';
+                            // Redirect to index page instead of billing
+                            window.location.href = '/?source=billing&feature=premium_model';
                         });
                     }
                     
@@ -360,7 +359,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (newButtonOverlay) {
                         newButtonOverlay.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            window.location.href = '/billing/account?source=chat&feature=premium_model';
+                            window.location.href = '/?source=billing&feature=premium_model';
                         });
                     }
                     
@@ -420,14 +419,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Make button and overlay redirect to account page
                 uploadBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    window.location.href = '/billing/account?source=chat&feature=document_upload';
+                    window.location.href = '/?source=billing&feature=document_upload';
                 });
                 
                 // Make overlay clickable too
                 if (buttonOverlay) {
                     buttonOverlay.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        window.location.href = '/billing/account?source=chat&feature=document_upload';
+                        window.location.href = '/?source=billing&feature=document_upload';
                     });
                 }
                 

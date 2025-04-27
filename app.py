@@ -149,8 +149,8 @@ except Exception as e:
 # Register billing blueprint
 try:
     from billing import billing_bp
-    app.register_blueprint(billing_bp)
-    logger.info("Billing blueprint registered successfully")
+    app.register_blueprint(billing_bp, url_prefix='/billing')
+    logger.info("Billing blueprint registered successfully with prefix /billing")
 except Exception as e:
     logger.error(f"Error registering Billing blueprint: {e}")
 
@@ -538,6 +538,18 @@ def terms_of_service():
 def cookie_policy():
     """Cookie Policy page"""
     return render_template('cookie_policy.html')
+    
+@app.route('/billing/account')
+def redirect_billing():
+    """
+    Fallback handler for /billing/account redirections.
+    This addresses the issue where client-side JS might still reference this route.
+    """
+    # Log the redirection for monitoring
+    logger.info(f"Redirecting from /billing/account to index page. Query params: {request.args}")
+    
+    # Redirect to the index page
+    return redirect(url_for('index', source='billing_redirect', **request.args))
 
 @app.route('/test-upload')
 @login_required
