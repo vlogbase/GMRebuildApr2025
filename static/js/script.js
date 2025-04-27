@@ -28,7 +28,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Helper function to check premium access and redirect if needed
+    // Remove billing query parameters on first load to prevent redirect loops
+    const qs = new URLSearchParams(window.location.search);
+    if (qs.get("source") === "billing") {
+        qs.delete("source");
+        qs.delete("feature");
+        history.replaceState(null, "", window.location.pathname);
+        console.log("Removed billing query parameters to prevent redirect loop");
+    }
+    
+    // The free model preset ID
+    const FREE_PRESET_ID = '6';
+    
+    // Helper function to check premium access and fallback to free model if needed
     function checkPremiumAccess(featureName) {
         if (!isAuthenticated) {
             console.log(`Access denied: Not logged in, redirecting to login for ${featureName}`);
@@ -37,8 +49,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         if (userCreditBalance <= 0) {
-            console.log(`Access denied: Insufficient credits, but redirecting to chat instead of billing for ${featureName}`);
-            window.location.href = '/?source=billing&feature=' + featureName;
+            console.log(`Access denied: Insufficient credits, switching to free model in-place for ${featureName}`);
+            if (featureName === 'premium_model') {
+                // Use in-place fallback instead of redirecting
+                console.warn("No credits – switching to free model in-place.");
+                selectPresetButton(FREE_PRESET_ID);
+            }
             return false;
         }
         
@@ -350,8 +366,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Preserve the selector container click functionality
                         newSelectorContainer.addEventListener('click', (e) => {
                             e.stopPropagation(); // Prevent button click
-                            // Redirect to index page instead of billing
-                            window.location.href = '/?source=billing&feature=premium_model';
+                            // Show a message about insufficient credits instead of redirecting
+                            alert('Insufficient credits. Please add credits to use premium models.');
                         });
                     }
                     
@@ -359,7 +375,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (newButtonOverlay) {
                         newButtonOverlay.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            window.location.href = '/?source=billing&feature=premium_model';
+                            // Show a message about insufficient credits instead of redirecting
+                            alert('Insufficient credits. Please add credits to use premium models.');
                         });
                     }
                     
@@ -416,17 +433,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 // User logged in but no credits
                 uploadBtn.classList.add('disabled', 'disabled-payment');
                 
-                // Make button and overlay redirect to account page
+                // Show a message about insufficient credits instead of redirecting
                 uploadBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    window.location.href = '/?source=billing&feature=document_upload';
+                    alert('Insufficient credits. Please add credits to use document upload feature.');
                 });
                 
-                // Make overlay clickable too
+                // Make overlay clickable too with the same message
                 if (buttonOverlay) {
                     buttonOverlay.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        window.location.href = '/?source=billing&feature=document_upload';
+                        alert('Insufficient credits. Please add credits to use document upload feature.');
                     });
                 }
                 

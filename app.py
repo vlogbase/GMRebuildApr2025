@@ -546,10 +546,13 @@ def redirect_billing():
     This addresses the issue where client-side JS might still reference this route.
     """
     # Log the redirection for monitoring
-    logger.info(f"Redirecting from /billing/account to index page. Query params: {request.args}")
+    logger.info(f"Redirecting from /billing/account to index page without query params")
     
-    # Redirect to the index page
-    return redirect(url_for('index', source='billing_redirect', **request.args))
+    # Flash a message to the user
+    flash("Billing features coming soon!", "info")
+    
+    # Redirect to the index page without any query parameters
+    return redirect(url_for('index'))
 
 @app.route('/test-upload')
 @login_required
