@@ -175,9 +175,9 @@ OPENROUTER_MODELS = {
 }
 DEFAULT_PRESET_MODELS = {
     "1": "google/gemini-2.5-pro-preview-03-25",
-    "2": "anthropic/claude-3.7-sonnet",
-    "3": "openai/o3-Mini-High",
-    "4": "openai/gpt-4.1-mini",
+    "2": "meta/llama-4-maverick",
+    "3": "openai/o4-Mini-High",
+    "4": "openai/gpt-4o",
     "5": "perplexity/sonar-pro",
     "6": "google/gemini-2.0-flash-exp:free"
 }
