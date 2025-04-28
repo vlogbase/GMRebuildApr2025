@@ -2113,31 +2113,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to fetch conversations from the backend
     function fetchConversations(bustCache = false) {
-        // Check if user is authenticated first
-        if (!isAuthenticated) {
-            console.log("User not logged in, showing sign-in prompt instead of loading conversations");
-            
-            // Replace loading indicator with login prompt if conversations list element exists
-            if (conversationsList) {
-                conversationsList.innerHTML = '';
-                
-                // Create login prompt
-                const loginPrompt = document.createElement('div');
-                loginPrompt.className = 'login-prompt';
-                loginPrompt.innerHTML = `
-                    <p>Sign in to save your conversations and access them from any device.</p>
-                    <button class="auth-btn google-auth-btn" onclick="window.location.href='/google_login'">
-                        <i class="fa-brands fa-google"></i> Sign in with Google
-                    </button>
-                `;
-                
-                conversationsList.appendChild(loginPrompt);
-            }
-            
-            return; // Don't attempt to fetch conversations if not logged in
-        }
-        
-        // For authenticated users, proceed with fetching conversations
         // ALWAYS use cache busting to ensure we get the latest titles
         const url = `/conversations?_=${Date.now()}`;
         
