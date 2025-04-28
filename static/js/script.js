@@ -338,7 +338,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to lock premium features for non-authenticated users or those with zero balance
     function lockPremiumFeatures() {
-        // Lock premium model presets (1-5)
+        // Process all model preset buttons
         document.querySelectorAll('.model-preset-btn').forEach(btn => {
             const presetId = btn.getAttribute('data-preset-id');
             // Selector icon container - we'll preserve its functionality
@@ -346,18 +346,44 @@ document.addEventListener('DOMContentLoaded', function() {
             // Button overlay - this will be clickable for disabled states
             const buttonOverlay = btn.querySelector('.button-overlay');
             
-            if (presetId !== '6') { // All except the free model
+            // Clone all buttons to remove existing event listeners, regardless of preset
+            const newBtn = btn.cloneNode(true);
+            btn.parentNode.replaceChild(newBtn, btn);
+            btn = newBtn;
+            
+            // Re-query the selector container in the cloned button
+            const newSelectorContainer = btn.querySelector('.selector-icon-container');
+            const newButtonOverlay = btn.querySelector('.button-overlay');
+            
+            if (presetId === '6') { // Free model button - always enabled for everyone
+                // Make sure it's set as active for non-logged in users
+                if (!isAuthenticated) {
+                    btn.classList.add('active');
+                }
+                
+                // Add click handler to select this preset
+                btn.addEventListener('click', function(e) {
+                    // If the click target is the selector or its container, do nothing
+                    if (e.target.classList.contains('selector-icon') || 
+                        e.target.classList.contains('selector-icon-container') ||
+                        e.target.closest('.selector-icon-container')) {
+                        return;
+                    }
+                    
+                    selectPresetButton('6');
+                });
+                
+                // Add click event for the selector dropdown
+                if (newSelectorContainer) {
+                    newSelectorContainer.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation(); // Prevent button click from firing
+                        openModelSelector('6', btn);
+                    });
+                }
+            } else { // Premium models (1-5)
                 // Reset classes first
                 btn.classList.remove('disabled', 'disabled-login', 'disabled-payment');
-                
-                // Remove any existing event listeners (to prevent duplicates)
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
-                btn = newBtn;
-                
-                // Re-query the selector container in the cloned button
-                const newSelectorContainer = btn.querySelector('.selector-icon-container');
-                const newButtonOverlay = btn.querySelector('.button-overlay');
                 
                 if (!isAuthenticated) {
                     // User is not logged in - show login requirement
