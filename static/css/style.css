@@ -614,15 +614,19 @@ body {
     display: flex;
     gap: 8px;
     margin-bottom: 16px;
-    overflow-x: auto;
+    overflow-x: visible;
     padding-bottom: 8px;
     width: 100%;
+    box-sizing: border-box;
 }
 
 .model-preset-container {
     display: flex;
     width: 75%; /* The preset buttons collectively occupy 75% of screen width */
     gap: 8px;
+    max-width: 75%;
+    min-width: 0; /* Allow container to shrink if needed */
+    overflow-x: visible; /* Allow overflow to be visible */
 }
 
 .model-preset-btn {
@@ -643,6 +647,8 @@ body {
     justify-content: center; /* Center the content of each button */
     min-height: 36px; /* Ensure consistent height */
     padding-right: 30px; /* Make space for the dropdown selector */
+    min-width: 0; /* Allow button to shrink if needed */
+    overflow: hidden; /* Prevent content from overflowing */
 }
 
 .model-preset-btn:hover {
@@ -671,16 +677,18 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-left: auto; /* Push to right edge of button */
     cursor: pointer;
     height: 100%;
-    padding: 0 10px; /* Wider padding for better clickability */
+    width: 24px; /* Fixed width for better consistency */
+    padding: 0; /* Remove padding to prevent overflow */
     border-radius: 0 16px 16px 0;
     transition: background-color 0.2s;
     position: absolute; /* Position absolutely */
     right: 0; /* Align to right edge */
     top: 0; /* Align to top edge */
     bottom: 0; /* Extend to bottom edge */
+    box-sizing: border-box; /* Include padding in width calculation */
+    overflow: hidden; /* Prevent icon from overflowing */
 }
 
 .model-preset-btn .selector-icon-container:hover {
@@ -1757,21 +1765,35 @@ code {
     
     .model-buttons {
         flex-wrap: nowrap;
-        overflow-x: auto;
+        overflow-x: visible;
+        width: 100%;
+        padding-right: 12px; /* Add some padding for safety */
+        box-sizing: border-box;
     }
     
     .model-preset-container {
         width: 75%; /* Maintain 75% width on smaller screens */
+        max-width: 75%;
         flex-wrap: nowrap;
-        overflow-x: auto;
+        overflow-x: visible;
     }
     
     .model-preset-btn {
-        min-width: 80px; /* Ensure buttons don't get too small */
+        min-width: 0; /* Remove fixed min-width to allow better shrinking */
+        max-width: 100%; /* Ensure buttons don't exceed their container */
     }
     
     .model-preset-btn .model-name {
         font-size: 11px; /* Even smaller font for mobile */
+        max-width: calc(100% - 28px); /* Allow text to truncate if needed */
+    }
+    
+    /* Better handle the send button and actions to prevent overflow */
+    .input-group {
+        display: flex;
+        flex-wrap: wrap;
+        width: 100%;
+        box-sizing: border-box;
     }
 }
 
@@ -1792,10 +1814,39 @@ code {
     
     .model-preset-container {
         width: 75%; /* Maintain 75% of screen width */
+        max-width: 75%;
+    }
+    
+    /* Force everything to fit on small screens */
+    .chat-input-container {
+        padding: 12px 8px;
+    }
+    
+    .model-buttons {
+        gap: 4px; /* Reduce gap on very small screens */
+    }
+    
+    .model-preset-container {
+        gap: 4px; /* Reduce gap on very small screens */
     }
     
     .model-preset-btn {
-        min-width: 70px; /* Even smaller minimum width for tiny screens */
+        padding: 6px 4px 6px 6px; /* Further reduce padding */
+    }
+    
+    .model-preset-btn .selector-icon-container {
+        width: 20px; /* Even smaller width on tiny screens */
+    }
+    
+    /* Adjust input group and send button to prevent overflow */
+    .input-group {
+        padding-right: 4px;
+    }
+    
+    .send-btn {
+        width: 36px;
+        height: 36px;
+        min-width: 36px; /* Ensure minimum width */
     }
 }
 
