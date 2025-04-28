@@ -642,6 +642,7 @@ body {
     flex: 1; /* Each button gets equal width within the container */
     justify-content: center; /* Center the content of each button */
     min-height: 36px; /* Ensure consistent height */
+    padding-right: 30px; /* Make space for the dropdown selector */
 }
 
 .model-preset-btn:hover {
@@ -670,12 +671,16 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-left: 2px;
+    margin-left: auto; /* Push to right edge of button */
     cursor: pointer;
     height: 100%;
-    padding: 0 6px;
+    padding: 0 10px; /* Wider padding for better clickability */
     border-radius: 0 16px 16px 0;
     transition: background-color 0.2s;
+    position: absolute; /* Position absolutely */
+    right: 0; /* Align to right edge */
+    top: 0; /* Align to top edge */
+    bottom: 0; /* Extend to bottom edge */
 }
 
 .model-preset-btn .selector-icon-container:hover {

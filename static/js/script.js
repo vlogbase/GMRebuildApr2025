@@ -303,14 +303,31 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log("User is logged in according to server, fetching conversations");
             fetchConversations();
         } else {
-            console.log("User is not logged in according to server, skipping conversation fetch");
-            // For non-logged in users, we don't need to do anything with the sidebar
-            // The login prompt is already shown via the template
+            console.log("User is not logged in according to server, showing login prompt");
+            // For non-logged in users, show the login prompt in the sidebar
+            if (conversationsList) {
+                conversationsList.innerHTML = `
+                    <div class="login-prompt">
+                        <p>Sign in to save your conversations and access them from any device.</p>
+                        <a href="/login" class="btn auth-btn">Sign in</a>
+                    </div>
+                `;
+            }
         }
     } else {
         // Fallback to DOM check if userIsLoggedIn is not defined
         if (isAuthenticated) {
             fetchConversations();
+        } else {
+            // Show login prompt as a fallback
+            if (conversationsList) {
+                conversationsList.innerHTML = `
+                    <div class="login-prompt">
+                        <p>Sign in to save your conversations and access them from any device.</p>
+                        <a href="/login" class="btn auth-btn">Sign in</a>
+                    </div>
+                `;
+            }
         }
     }
     
@@ -2115,10 +2132,20 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to fetch conversations from the backend
     function fetchConversations(bustCache = false) {
-        // Check if user is logged in - if not, don't attempt to fetch conversations
+        // Check if user is logged in - if not, show login prompt instead of loading
         // userIsLoggedIn is passed from the template
         if (typeof userIsLoggedIn !== 'undefined' && !userIsLoggedIn) {
-            console.log("User is not logged in, skipping conversation fetch");
+            console.log("User is not logged in, showing login prompt");
+            
+            // Display login prompt in the conversations list
+            if (conversationsList) {
+                conversationsList.innerHTML = `
+                    <div class="login-prompt">
+                        <p>Sign in to save your conversations and access them from any device.</p>
+                        <a href="/login" class="btn auth-btn">Sign in</a>
+                    </div>
+                `;
+            }
             return; // Exit early if user is not logged in
         }
         
