@@ -506,7 +506,26 @@ def get_object_storage_url(object_name, public=True, expires_in=3600, clean_url=
 @app.route('/')
 def index():
     # Allow non-authenticated users to use the app with limited functionality
-    return render_template('index.html', user=current_user)
+    is_logged_in = current_user.is_authenticated
+    
+    # Fetch conversations only if user is logged in
+    conversations = []
+    if is_logged_in:
+        try:
+            from models import Conversation
+            conversations = Conversation.query.filter_by(
+                is_active=True, 
+                user_id=current_user.id
+            ).order_by(Conversation.updated_at.desc()).all()
+        except Exception as e:
+            logger.error(f"Error fetching conversations: {e}")
+    
+    return render_template(
+        'index.html', 
+        user=current_user, 
+        is_logged_in=is_logged_in,
+        conversations=conversations
+    )
 
 @app.route('/login')
 def login():

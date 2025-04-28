@@ -296,11 +296,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Open selector variable - tracks which preset is being configured
     let currentlyEditingPresetId = null;
     
-    // Fetch conversations on load - only if authenticated
-    if (isAuthenticated) {
-        fetchConversations();
+    // Fetch conversations on load - rely on userIsLoggedIn from server
+    // userIsLoggedIn is set in the template and more reliable than DOM checks
+    if (typeof userIsLoggedIn !== 'undefined') {
+        if (userIsLoggedIn) {
+            console.log("User is logged in according to server, fetching conversations");
+            fetchConversations();
+        } else {
+            console.log("User is not logged in according to server, skipping conversation fetch");
+            // For non-logged in users, we don't need to do anything with the sidebar
+            // The login prompt is already shown via the template
+        }
     } else {
-        // For non-authenticated users, lock premium features
+        // Fallback to DOM check if userIsLoggedIn is not defined
+        if (isAuthenticated) {
+            fetchConversations();
+        }
+    }
+    
+    // For non-authenticated users, lock premium features regardless
+    if (!isAuthenticated) {
         lockPremiumFeatures();
     }
     
@@ -469,19 +484,6 @@ document.addEventListener('DOMContentLoaded', function() {
         if (cameraButton) {
             cameraButton.classList.add('premium-locked');
             cameraButton.style.display = 'none'; // Initially hidden, so hide it
-        }
-        
-        // Update conversations list with login message
-        const conversationsList = document.getElementById('conversations-list');
-        if (conversationsList) {
-            conversationsList.innerHTML = `
-                <div class="login-prompt">
-                    <p>Sign in to save your chat history and access premium features</p>
-                    <button class="auth-btn google-auth-btn" onclick="window.location.href='/login?redirect=chat'">
-                        <i class="fa-brands fa-google"></i> Sign in with Google
-                    </button>
-                </div>
-            `;
         }
     }
     
@@ -2113,6 +2115,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to fetch conversations from the backend
     function fetchConversations(bustCache = false) {
+        // Check if user is logged in - if not, don't attempt to fetch conversations
+        // userIsLoggedIn is passed from the template
+        if (typeof userIsLoggedIn !== 'undefined' && !userIsLoggedIn) {
+            console.log("User is not logged in, skipping conversation fetch");
+            return; // Exit early if user is not logged in
+        }
+        
         // ALWAYS use cache busting to ensure we get the latest titles
         const url = `/conversations?_=${Date.now()}`;
         

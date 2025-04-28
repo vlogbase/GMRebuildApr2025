@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Non-Authenticated User Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        .sidebar {
+            width: 300px;
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .conversation-list {
+            min-height: 200px;
+            border: 1px solid #eee;
+            padding: 10px;
+        }
+        .loading-indicator {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto 10px;
+        }
+        .loading-text {
+            font-size: 14px;
+        }
+        .login-prompt {
+            text-align: center;
+            padding: 20px;
+            border: 1px dashed #ccc;
+            background-color: #f9f9f9;
+        }
+        .login-prompt p {
+            margin-bottom: 15px;
+        }
+        .auth-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #4285F4;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <h1>Non-Authenticated User Test</h1>
+    <p>Testing if non-authenticated users see the login prompt instead of loading spinner</p>
+    
+    <div class="sidebar">
+        <h2>Sidebar</h2>
+        <div id="conversations-list" class="conversation-list">
+            {% if is_logged_in %}
+                <!-- Loading indicator only shown for logged in users -->
+                <div class="loading-indicator">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">Loading conversations...</div>
+                </div>
+            {% else %}
+                <!-- Login prompt for non-authenticated users -->
+                <div class="login-prompt">
+                    <p>Please sign in to view and save your conversations.</p>
+                    <a href="#" class="auth-btn">
+                        <i class="fa-brands fa-google"></i> Sign in with Google
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div>
+        <h3>Debug Information:</h3>
+        <p>User is logged in: {{ is_logged_in }}</p>
+        <p>Current user: {{ user.username }}</p>
+    </div>
+
+    <script>
+        // Pass the login status to JavaScript
+        const userIsLoggedIn = {{ is_logged_in|tojson }};
+        console.log('User is logged in according to template:', userIsLoggedIn);
+        
+        // Set up a DOM-based isAuthenticated check
+        const isAuthenticated = false; // Simulating the DOM check failing
+        console.log('DOM-based authentication check:', isAuthenticated);
+        
+        // Set this to true to show what would happen if the JavaScript tries 
+        // to modify the conversations list for non-authenticated users
+        const testOverride = false;
+        
+        if (testOverride && !userIsLoggedIn) {
+            // This represents the problematic code that we fixed
+            const conversationsList = document.getElementById('conversations-list');
+            conversationsList.innerHTML = '<div class="loading-indicator"><div class="loading-spinner"></div><div class="loading-text">Loading conversations...</div></div>';
+            console.log('JavaScript tried to override template-based login prompt');
+        } else {
+            console.log('JavaScript respects the template-based login prompt');
+        }
+    </script>
+</body>
+</html>

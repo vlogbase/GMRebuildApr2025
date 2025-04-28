@@ -616,13 +616,20 @@ body {
     margin-bottom: 16px;
     overflow-x: auto;
     padding-bottom: 8px;
+    width: 100%;
+}
+
+.model-preset-container {
+    display: flex;
+    width: 75%; /* The preset buttons collectively occupy 75% of screen width */
+    gap: 8px;
 }
 
 .model-preset-btn {
     background-color: var(--button-bg);
     color: var(--secondary-text);
     border: none;
-    padding: 6px 8px 6px 12px; /* Reduced right padding to allow for larger selector area */
+    padding: 6px 8px 6px 10px; /* Reduced padding for better fit */
     border-radius: 16px;
     cursor: pointer;
     font-size: 13px;
@@ -630,12 +637,11 @@ body {
     display: flex;
     position: relative; /* Needed for proper positioning of children */
     align-items: center;
-    gap: 4px; /* Spacing between elements within button */
-    transition: background-color 0.2s;
-    align-items: center;
-    gap: 4px;
-    position: relative;
+    gap: 3px; /* Reduced spacing between elements */
     transition: background-color 0.2s, color 0.2s;
+    flex: 1; /* Each button gets equal width within the container */
+    justify-content: center; /* Center the content of each button */
+    min-height: 36px; /* Ensure consistent height */
 }
 
 .model-preset-btn:hover {
@@ -652,11 +658,12 @@ body {
 }
 
 .model-preset-btn .model-name {
-    flex-grow: 1;
-    text-align: left;
+    text-align: center;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 120px;
+    /* Remove max-width to allow flexibility */
+    font-size: 12px; /* Slightly smaller font to ensure it fits */
+    line-height: 1.1;
 }
 
 .model-preset-btn .selector-icon-container {
@@ -1747,6 +1754,20 @@ code {
         flex-wrap: nowrap;
         overflow-x: auto;
     }
+    
+    .model-preset-container {
+        width: 75%; /* Maintain 75% width on smaller screens */
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+    
+    .model-preset-btn {
+        min-width: 80px; /* Ensure buttons don't get too small */
+    }
+    
+    .model-preset-btn .model-name {
+        font-size: 11px; /* Even smaller font for mobile */
+    }
 }
 
 @media (max-width: 576px) {
@@ -1762,6 +1783,14 @@ code {
     
     .chat-container {
         height: 60vh;
+    }
+    
+    .model-preset-container {
+        width: 75%; /* Maintain 75% of screen width */
+    }
+    
+    .model-preset-btn {
+        min-width: 70px; /* Even smaller minimum width for tiny screens */
     }
 }
 

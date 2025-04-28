@@ -1,43 +1,47 @@
 """
 Test file to validate our JavaScript fixes
 """
+from flask import Flask, render_template, g
+from flask_login import LoginManager, current_user, AnonymousUserMixin
 
-import time
-import webbrowser
-import subprocess
-import sys
-import os
+app = Flask(__name__)
+app.secret_key = "testkey"
+
+# Initialize login manager
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+# Anonymous user for testing
+class Anonymous(AnonymousUserMixin):
+    def __init__(self):
+        self.username = "Guest"
+        self.email = "guest@example.com"
+        self.id = None
+        
+    def is_authenticated(self):
+        return False
+
+# Register anonymous user loader
+@login_manager.user_loader
+def load_user(user_id):
+    return None  # Always return None to simulate no logged-in user
+
+# Set the anonymous user
+login_manager.anonymous_user = Anonymous
+
+@app.route('/')
+def index():
+    # Always pass is_logged_in=False to test the non-logged in state
+    is_logged_in = False
+    return render_template(
+        'index.html',
+        user=current_user,
+        is_logged_in=is_logged_in,
+        conversations=[]
+    )
 
 def main():
-    print("Starting Flask server for testing...")
-    
-    # Run the Flask app in the background
-    server_process = subprocess.Popen(
-        [sys.executable, "app.py"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT
-    )
-    
-    # Give the server a moment to start
-    time.sleep(3)
-    
-    print("Server started. You can access it at http://localhost:5000")
-    print("You can CTRL+C to stop the server when done testing")
-    
-    try:
-        # Keep the script running
-        while True:
-            # Print output from the server
-            line = server_process.stdout.readline()
-            if line:
-                print(line.decode('utf-8').strip())
-            
-            time.sleep(0.1)
-    except KeyboardInterrupt:
-        print("Stopping server...")
-        server_process.terminate()
-        server_process.wait()
-        print("Server stopped.")
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 if __name__ == "__main__":
     main()

@@ -13,12 +13,21 @@
             </div>
             
             <div id="conversations-list" class="conversation-list">
-                <!-- Conversation items will be dynamically loaded -->
-                <!-- Loading indicator displayed when conversations are being fetched -->
-                <div class="loading-indicator">
-                    <div class="loading-spinner"></div>
-                    <div class="loading-text">Loading conversations...</div>
-                </div>
+                {% if is_logged_in %}
+                    <!-- Loading indicator only shown for logged in users -->
+                    <div class="loading-indicator">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading conversations...</div>
+                    </div>
+                {% else %}
+                    <!-- Login prompt for non-authenticated users -->
+                    <div class="login-prompt">
+                        <p>Please sign in to view and save your conversations.</p>
+                        <a href="{{ url_for('google_auth.login') }}" class="auth-btn google-auth-btn">
+                            <i class="fa-brands fa-google"></i> Sign in with Google
+                        </a>
+                    </div>
+                {% endif %}
             </div>
             
             <div class="sidebar-footer">
@@ -81,54 +90,56 @@
             <!-- Input Area -->
             <div class="chat-input-container">
                 <div class="model-buttons">
-                    <button class="model-preset-btn" data-preset-id="1">
-                        <i class="fa-solid fa-robot model-icon"></i>
-                        <span class="model-name">Gemini 2.5</span>
-                        <span class="selector-icon-container">
-                            <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
-                        </span>
-                        <span class="button-overlay"></span>
-                    </button>
-                    <button class="model-preset-btn" data-preset-id="2">
-                        <i class="fa-solid fa-robot model-icon"></i>
-                        <span class="model-name">Llama 4 Maverick</span>
-                        <span class="selector-icon-container">
-                            <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
-                        </span>
-                        <span class="button-overlay"></span>
-                    </button>
-                    <button class="model-preset-btn" data-preset-id="3">
-                        <i class="fa-solid fa-brain model-icon"></i>
-                        <span class="model-name">Reasoning</span>
-                        <span class="selector-icon-container">
-                            <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
-                        </span>
-                        <span class="button-overlay"></span>
-                    </button>
-                    <button class="model-preset-btn" data-preset-id="4">
-                        <i class="fa-solid fa-image model-icon"></i>
-                        <span class="model-name">Multimodal</span>
-                        <span class="selector-icon-container">
-                            <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
-                        </span>
-                        <span class="button-overlay"></span>
-                    </button>
-                    <button class="model-preset-btn" data-preset-id="5">
-                        <i class="fa-solid fa-search model-icon"></i>
-                        <span class="model-name">Perplexity</span>
-                        <span class="selector-icon-container">
-                            <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
-                        </span>
-                        <span class="button-overlay"></span>
-                    </button>
-                    <button class="model-preset-btn free-preset" data-preset-id="6">
-                        <i class="fa-solid fa-gift model-icon"></i>
-                        <span class="model-name">Free</span>
-                        <span class="selector-icon-container">
-                            <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
-                        </span>
-                        <span class="button-overlay"></span>
-                    </button>
+                    <div class="model-preset-container">
+                        <button class="model-preset-btn" data-preset-id="1">
+                            <i class="fa-solid fa-robot model-icon"></i>
+                            <span class="model-name">Gemini 2.5</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                        <button class="model-preset-btn" data-preset-id="2">
+                            <i class="fa-solid fa-robot model-icon"></i>
+                            <span class="model-name">Llama 4 Maverick</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                        <button class="model-preset-btn" data-preset-id="3">
+                            <i class="fa-solid fa-brain model-icon"></i>
+                            <span class="model-name">Reasoning</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                        <button class="model-preset-btn" data-preset-id="4">
+                            <i class="fa-solid fa-image model-icon"></i>
+                            <span class="model-name">Multimodal</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                        <button class="model-preset-btn" data-preset-id="5">
+                            <i class="fa-solid fa-search model-icon"></i>
+                            <span class="model-name">Perplexity</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                        <button class="model-preset-btn free-preset" data-preset-id="6">
+                            <i class="fa-solid fa-gift model-icon"></i>
+                            <span class="model-name">Free</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                    </div>
                     <button id="upload-documents-btn" class="upload-documents-btn" title="Upload documents to enhance responses with your data">
                         <i class="fa-solid fa-file-upload"></i>
                         <span class="button-overlay"></span>
@@ -250,4 +261,8 @@
 
 {% block scripts %}
     {{ super() }}
+    <script>
+        // Pass the login status to JavaScript
+        const userIsLoggedIn = {{ is_logged_in|tojson }};
+    </script>
 {% endblock %}
