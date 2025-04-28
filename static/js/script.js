@@ -591,7 +591,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (refreshPricesBtn) {
         refreshPricesBtn.addEventListener('click', function(e) {
             e.preventDefault();
-            refreshModelPrices();
+            // Call resetToDefault with no presetId to reset all models to defaults
+            resetToDefault();
         });
     }
     

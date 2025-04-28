@@ -40,5 +40,9 @@ args = ["gunicorn", "main:app", "-k", "gevent", "-w", "4", "--timeout", "300", "
 waitForPort = 5000
 
 [[ports]]
+localPort = 3000
+externalPort = 3000
+
+[[ports]]
 localPort = 5000
 externalPort = 80
