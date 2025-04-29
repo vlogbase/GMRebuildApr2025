@@ -271,7 +271,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const isPerplexity = model.is_perplexity === true || model.id.includes('perplexity');
             return isPerplexity && !model.is_free;
         },
-        '6': (model) => model.is_free === true // Only free models
+        '6': (model) => model.is_free === true || model.id.includes(':free') // Include all free models, check model ID for :free suffix too
     };
     
     // Default model IDs for each preset button
@@ -1359,6 +1359,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to fetch available models from OpenRouter
     function fetchAvailableModels() {
+        console.log('Fetching available models...');
         // Fetch ONLY from the endpoint that includes cost bands
         return fetch('/api/get_model_prices')
             .then(response => {
@@ -1410,6 +1411,50 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Assign the fully processed data to the global variable
                     allModels = modelDataArray;
                     
+                    // For non-authenticated users, ensure we have at least the default free models available
+                    if (!isAuthenticated) {
+                        console.log('[Debug] User is not authenticated, ensuring fallback free models are available');
+                        
+                        // Check if we have any free models
+                        const hasFreeModels = allModels.some(model => model.is_free === true || model.id.includes(':free'));
+                        
+                        if (!hasFreeModels) {
+                            console.log('[Debug] No free models found, adding fallback free models');
+                            
+                            // Add fallback free models directly to allModels
+                            const fallbackFreeModels = [
+                                {
+                                    id: 'google/gemini-2.0-flash-exp:free',
+                                    name: 'Gemini 2.0 Flash',
+                                    is_free: true,
+                                    is_multimodal: false,
+                                    pricing: { prompt: 0, completion: 0 },
+                                    cost_band: ''
+                                },
+                                {
+                                    id: 'qwen/qwq-32b:free',
+                                    name: 'Qwen 32B',
+                                    is_free: true,
+                                    is_multimodal: false,
+                                    pricing: { prompt: 0, completion: 0 },
+                                    cost_band: ''
+                                },
+                                {
+                                    id: 'deepseek/deepseek-r1-distill-qwen-32b:free',
+                                    name: 'Deepseek R1 Qwen 32B', 
+                                    is_free: true,
+                                    is_multimodal: false,
+                                    pricing: { prompt: 0, completion: 0 },
+                                    cost_band: ''
+                                }
+                            ];
+                            
+                            // Add the fallback free models to allModels
+                            allModels = allModels.concat(fallbackFreeModels);
+                            console.log(`[Debug] Added ${fallbackFreeModels.length} fallback free models. New total: ${allModels.length}`);
+                        }
+                    }
+                    
                     // Log 2: Transformed model array info
                     console.log(`[Debug] Transformed allModels array created. Count: ${allModels.length}`);
                     if (allModels.length > 0) {
@@ -1440,17 +1485,87 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     // Handle case where API call succeeded but returned no data
                     console.error('API call succeeded but no valid pricing data received:', data);
-                    allModels = []; // Clear models if fetch failed
+                    
+                    // If not authenticated, provide fallback free models so the free preset works
+                    if (!isAuthenticated) {
+                        console.log('[Debug] No models returned from API, adding fallback free models for non-authenticated user');
+                        allModels = [
+                            {
+                                id: 'google/gemini-2.0-flash-exp:free',
+                                name: 'Gemini 2.0 Flash',
+                                is_free: true,
+                                is_multimodal: false,
+                                pricing: { prompt: 0, completion: 0 },
+                                cost_band: ''
+                            },
+                            {
+                                id: 'qwen/qwq-32b:free',
+                                name: 'Qwen 32B',
+                                is_free: true,
+                                is_multimodal: false,
+                                pricing: { prompt: 0, completion: 0 },
+                                cost_band: ''
+                            },
+                            {
+                                id: 'deepseek/deepseek-r1-distill-qwen-32b:free',
+                                name: 'Deepseek R1 Qwen 32B', 
+                                is_free: true,
+                                is_multimodal: false,
+                                pricing: { prompt: 0, completion: 0 },
+                                cost_band: ''
+                            }
+                        ];
+                    } else {
+                        allModels = []; // Clear models if fetch failed for authenticated users
+                    }
                 }
             })
             .catch(error => {
                 // Log 4: Error in fetch
                 console.error('[Debug] Error occurred in fetchAvailableModels:', error);
                 console.error('Error fetching models and prices:', error);
-                allModels = []; // Clear models on error
+                // For non-authenticated users, still provide fallback free models
+                if (!isAuthenticated) {
+                    console.log('[Debug] Error fetching models, adding fallback free models for non-authenticated user');
+                    allModels = [
+                        {
+                            id: 'google/gemini-2.0-flash-exp:free',
+                            name: 'Gemini 2.0 Flash',
+                            is_free: true,
+                            is_multimodal: false,
+                            pricing: { prompt: 0, completion: 0 },
+                            cost_band: ''
+                        },
+                        {
+                            id: 'qwen/qwq-32b:free',
+                            name: 'Qwen 32B',
+                            is_free: true,
+                            is_multimodal: false,
+                            pricing: { prompt: 0, completion: 0 },
+                            cost_band: ''
+                        },
+                        {
+                            id: 'deepseek/deepseek-r1-distill-qwen-32b:free',
+                            name: 'Deepseek R1 Qwen 32B', 
+                            is_free: true,
+                            is_multimodal: false,
+                            pricing: { prompt: 0, completion: 0 },
+                            cost_band: ''
+                        }
+                    ];
+                } else {
+                    // Clear models only for authenticated users who need accurate model data
+                    allModels = []; 
+                }
+                
                 // Show error in UI if model list is visible
                 if (modelList && modelList.innerHTML === '') {
-                    modelList.innerHTML = '<li>Error loading models.</li>';
+                    if (!isAuthenticated && currentlyEditingPresetId === '6') {
+                        // For free preset, just populate with fallback models
+                        populateModelList('6');
+                    } else {
+                        modelList.innerHTML = '<li>Error loading models.</li>';
+                    }
                 }
             });
     }
@@ -1518,6 +1633,77 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear existing items
         modelList.innerHTML = '';
         
+        // For FREE models (preset 6), ensure there's always at least the default free models available
+        // This is especially important for non-logged in users where the API might not return models
+        if (presetId === '6' && (!allModels || allModels.length === 0 || !allModels.some(m => m.is_free === true || m.id.includes(':free')))) {
+            console.log('[Debug] No free models found in allModels, using fallback models for preset 6');
+            
+            // Create fallback list of free models
+            const fallbackFreeModels = [
+                {
+                    id: 'google/gemini-2.0-flash-exp:free',
+                    name: 'Gemini 2.0 Flash',
+                    is_free: true,
+                    is_multimodal: false,
+                    pricing: { prompt: 0, completion: 0 },
+                    cost_band: ''
+                },
+                {
+                    id: 'qwen/qwq-32b:free',
+                    name: 'Qwen 32B',
+                    is_free: true,
+                    is_multimodal: false,
+                    pricing: { prompt: 0, completion: 0 },
+                    cost_band: ''
+                },
+                {
+                    id: 'deepseek/deepseek-r1-distill-qwen-32b:free',
+                    name: 'Deepseek R1 Qwen 32B',
+                    is_free: true,
+                    is_multimodal: false,
+                    pricing: { prompt: 0, completion: 0 },
+                    cost_band: ''
+                }
+            ];
+            
+            // Add these fallback models to the dropdown
+            fallbackFreeModels.forEach(model => {
+                const li = document.createElement('li');
+                li.dataset.modelId = model.id;
+                
+                // Create free tag
+                const freeTag = document.createElement('span');
+                freeTag.className = 'free-tag';
+                freeTag.textContent = 'FREE';
+                
+                // Create model name element
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'model-name';
+                nameSpan.textContent = model.name;
+                
+                // Create provider span
+                const providerSpan = document.createElement('span');
+                providerSpan.className = 'model-provider';
+                providerSpan.textContent = model.id.split('/')[0];
+                
+                // Assemble the elements
+                li.appendChild(freeTag);
+                li.appendChild(nameSpan);
+                li.appendChild(providerSpan);
+                
+                // Add click handler to select this model
+                li.addEventListener('click', function() {
+                    selectModelForPreset(presetId, model.id);
+                });
+                
+                modelList.appendChild(li);
+            });
+            
+            // Exit early as we've already populated the list with fallback models
+            return;
+        }
+        
+        // Standard case - API returned models properly
         if (!allModels || allModels.length === 0) {
             const placeholder = document.createElement('li');
             placeholder.textContent = 'Loading models...';
@@ -1615,7 +1801,7 @@ document.addEventListener('DOMContentLoaded', function() {
             providerSpan.textContent = model.id.split('/')[0];
             
             // Add badge for free models
-            if (model.is_free) {
+            if (model.is_free === true || model.id.includes(':free')) {
                 const freeTag = document.createElement('span');
                 freeTag.className = 'free-tag';
                 freeTag.textContent = 'FREE';
@@ -1660,7 +1846,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to select a model for a preset and save the preference
     function selectModelForPreset(presetId, modelId) {
         // Check if trying to assign a free model to a non-free preset
-        const isFreeModel = modelId.includes(':free');
+        const isFreeModel = modelId.includes(':free') || allModels.some(m => m.id === modelId && m.is_free === true);
         if (presetId !== '6' && isFreeModel) {
             alert('Free models can only be selected for Preset 6');
             return;
