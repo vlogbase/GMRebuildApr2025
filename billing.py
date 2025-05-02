@@ -4,7 +4,7 @@ Billing Module for GloriaMundo Chatbot
 This module handles billing routes, account management, and credit purchases.
 It provides endpoints for:
 1. Account management page
-2. Credit purchase through PayPal
+2. Credit purchase through Stripe
 3. Credit usage tracking
 """
 
@@ -16,12 +16,11 @@ from urllib.parse import urlparse
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session, jsonify
 from flask_login import current_user, login_required
-from sqlalchemy import desc
-import paypalrestsdk
+from sqlalchemy import desc, func
 
 from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
-from paypal_config import initialize_paypal, create_payment, execute_payment
+from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -30,8 +29,8 @@ logger = logging.getLogger(__name__)
 # Create blueprint
 billing_bp = Blueprint('billing', __name__)
 
-# Initialize PayPal
-initialize_paypal()
+# Initialize Stripe
+initialize_stripe()
 
 @billing_bp.route('/account', methods=['GET'])
 @login_required
@@ -68,7 +67,7 @@ def account_management():
 @login_required
 def purchase_package(package_id):
     """
-    Initiate a credit package purchase.
+    Initiate a credit package purchase using Stripe.
     
     Args:
         package_id: ID of the package to purchase
@@ -80,37 +79,53 @@ def purchase_package(package_id):
             flash("Invalid package selected", "error")
             return redirect(url_for('billing.account_management'))
         
+        # Check if user has completed transactions
+        has_previous_purchases = db.session.query(Transaction).filter(
+            Transaction.user_id == current_user.id,
+            Transaction.status == PaymentStatus.COMPLETED.value
+        ).count() > 0
+        
+        # Check if this is the Starter Pack ($5) and if the user has previous transactions
+        is_starter_package = package.stripe_price_id == 'price_1RKNWECkgfcNKUGFdQh7RdkG'
+        if is_starter_package and has_previous_purchases:
+            flash("The Starter Credit Pack is only available for first-time purchases.", "error")
+            return redirect(url_for('billing.account_management'))
+        
         # Create return URLs
         base_url = request.host_url.rstrip('/')
-        return_url = f"{base_url}{url_for('billing.execute_purchase', package_id=package_id)}"
+        success_url = f"{base_url}{url_for('billing.payment_success')}?session_id={{CHECKOUT_SESSION_ID}}"
         cancel_url = f"{base_url}{url_for('billing.cancel_purchase')}"
         
-        # Create PayPal payment
-        payment_result = create_payment(
-            amount_usd=package.amount_usd,
-            return_url=return_url,
+        # Check if this is the user's first purchase
+        is_first_purchase = not has_previous_purchases
+        
+        # Create Stripe Checkout Session
+        checkout_result = create_checkout_session(
+            price_id=package.stripe_price_id,
+            user_id=current_user.id,
+            success_url=success_url,
             cancel_url=cancel_url,
-            package_name=package.name
+            is_first_purchase=is_first_purchase
         )
         
-        if payment_result["success"]:
+        if checkout_result["success"]:
             # Create transaction record
             transaction = Transaction(
                 user_id=current_user.id,
                 package_id=package.id,
                 amount_usd=package.amount_usd,
                 credits=package.credits,
-                payment_method="paypal",
-                payment_id=payment_result["payment_id"],
+                payment_method="stripe",
+                payment_id=checkout_result["session_id"],
                 status=PaymentStatus.PENDING.value
             )
             db.session.add(transaction)
             db.session.commit()
             
-            # Redirect to PayPal approval URL
-            return redirect(payment_result["approval_url"])
+            # Redirect to Stripe Checkout
+            return redirect(checkout_result["checkout_url"])
         else:
-            flash(f"Error creating PayPal payment: {payment_result.get('error', 'Unknown error')}", "error")
+            flash(f"Error creating Stripe Checkout: {checkout_result.get('error', 'Unknown error')}", "error")
             return redirect(url_for('billing.account_management'))
     
     except Exception as e:
@@ -118,245 +133,125 @@ def purchase_package(package_id):
         flash(f"An error occurred: {str(e)}", "error")
         return redirect(url_for('billing.account_management'))
 
-@billing_bp.route('/purchase/custom', methods=['POST'])
-@login_required
-def purchase_custom():
-    """
-    Process a custom amount credit purchase.
-    """
-    try:
-        # Get amount
-        amount_usd = float(request.form.get('amount', 0))
-        
-        # Validate amount
-        if amount_usd < 5.00 or amount_usd > 100.00:
-            flash("Invalid amount. Please enter an amount between $5.00 and $100.00", "error")
-            return redirect(url_for('billing.account_management'))
-        
-        # Calculate credits to give (base credits + bonus)
-        # More generous bonus for higher amounts
-        base_credits = int(amount_usd * 1000)  # 1 credit = $0.001 ($1 = 1000 credits)
-        
-        if amount_usd >= 50:
-            bonus_percentage = 30  # 30% bonus for $50+
-        elif amount_usd >= 25:
-            bonus_percentage = 20  # 20% bonus for $25-49.99
-        elif amount_usd >= 10:
-            bonus_percentage = 10  # 10% bonus for $10-24.99
-        else:
-            bonus_percentage = 0  # No bonus for small amounts
-        
-        bonus_credits = int(base_credits * (bonus_percentage / 100))
-        total_credits = base_credits + bonus_credits
-        
-        # Create return URLs
-        base_url = request.host_url.rstrip('/')
-        return_url = f"{base_url}{url_for('billing.execute_custom_purchase')}"
-        cancel_url = f"{base_url}{url_for('billing.cancel_purchase')}"
-        
-        # Create PayPal payment
-        package_name = f"Custom ${amount_usd:.2f} Credit Purchase"
-        payment_result = create_payment(
-            amount_usd=amount_usd,
-            return_url=return_url,
-            cancel_url=cancel_url,
-            package_name=package_name
-        )
-        
-        if payment_result["success"]:
-            # Store payment details in session for processing after return
-            session['custom_payment'] = {
-                'payment_id': payment_result["payment_id"],
-                'amount_usd': amount_usd,
-                'credits': total_credits
-            }
-            
-            # Create transaction record
-            transaction = Transaction(
-                user_id=current_user.id,
-                package_id=None,
-                amount_usd=amount_usd,
-                credits=total_credits,
-                payment_method="paypal",
-                payment_id=payment_result["payment_id"],
-                status=PaymentStatus.PENDING.value
-            )
-            db.session.add(transaction)
-            db.session.commit()
-            
-            # Redirect to PayPal approval URL
-            return redirect(payment_result["approval_url"])
-        else:
-            flash(f"Error creating PayPal payment: {payment_result.get('error', 'Unknown error')}", "error")
-            return redirect(url_for('billing.account_management'))
-    
-    except Exception as e:
-        logger.error(f"Error in purchase_custom: {e}")
-        flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('billing.account_management'))
-
-@billing_bp.route('/execute/<int:package_id>', methods=['GET'])
-@login_required
-def execute_purchase(package_id):
-    """
-    Execute a credit package purchase after PayPal approval.
-    
-    Args:
-        package_id: ID of the package being purchased
-    """
-    try:
-        # Get PayPal parameters
-        payment_id = request.args.get('paymentId')
-        payer_id = request.args.get('PayerID')
-        
-        if not payment_id or not payer_id:
-            flash("Invalid payment parameters", "error")
-            return redirect(url_for('billing.account_management'))
-        
-        # Get package
-        package = Package.query.get(package_id)
-        if not package:
-            flash("Invalid package", "error")
-            return redirect(url_for('billing.account_management'))
-        
-        # Get transaction
-        transaction = Transaction.query.filter_by(
-            user_id=current_user.id, 
-            payment_id=payment_id,
-            status=PaymentStatus.PENDING.value
-        ).first()
-        
-        if not transaction:
-            flash("Transaction not found", "error")
-            return redirect(url_for('billing.account_management'))
-        
-        # Execute PayPal payment
-        result = execute_payment(payment_id, payer_id)
-        
-        if result["success"]:
-            # Update transaction status
-            transaction.status = PaymentStatus.COMPLETED.value
-            transaction.updated_at = datetime.utcnow()
-            
-            # Add credits to user account
-            current_user.add_credits(transaction.credits)
-            
-            # Save changes
-            db.session.commit()
-            
-            # Success message
-            flash(f"Purchase successful! {transaction.credits} credits have been added to your account.", "success")
-        else:
-            # Update transaction status
-            transaction.status = PaymentStatus.FAILED.value
-            transaction.updated_at = datetime.utcnow()
-            db.session.commit()
-            
-            # Error message
-            flash(f"Payment execution failed: {result.get('error', 'Unknown error')}", "error")
-        
-        return redirect(url_for('billing.account_management'))
-    
-    except Exception as e:
-        logger.error(f"Error in execute_purchase: {e}")
-        flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('billing.account_management'))
-
-@billing_bp.route('/execute/custom', methods=['GET'])
-@login_required
-def execute_custom_purchase():
-    """
-    Execute a custom amount credit purchase after PayPal approval.
-    """
-    try:
-        # Get PayPal parameters
-        payment_id = request.args.get('paymentId')
-        payer_id = request.args.get('PayerID')
-        
-        if not payment_id or not payer_id:
-            flash("Invalid payment parameters", "error")
-            return redirect(url_for('billing.account_management'))
-        
-        # Get transaction
-        transaction = Transaction.query.filter_by(
-            user_id=current_user.id, 
-            payment_id=payment_id,
-            status=PaymentStatus.PENDING.value
-        ).first()
-        
-        if not transaction:
-            flash("Transaction not found", "error")
-            return redirect(url_for('billing.account_management'))
-        
-        # Execute PayPal payment
-        result = execute_payment(payment_id, payer_id)
-        
-        if result["success"]:
-            # Update transaction status
-            transaction.status = PaymentStatus.COMPLETED.value
-            transaction.updated_at = datetime.utcnow()
-            
-            # Add credits to user account
-            current_user.add_credits(transaction.credits)
-            
-            # Save changes
-            db.session.commit()
-            
-            # Success message
-            flash(f"Purchase successful! {transaction.credits} credits have been added to your account.", "success")
-        else:
-            # Update transaction status
-            transaction.status = PaymentStatus.FAILED.value
-            transaction.updated_at = datetime.utcnow()
-            db.session.commit()
-            
-            # Error message
-            flash(f"Payment execution failed: {result.get('error', 'Unknown error')}", "error")
-        
-        # Clear session data
-        if 'custom_payment' in session:
-            del session['custom_payment']
-        
-        return redirect(url_for('billing.account_management'))
-    
-    except Exception as e:
-        logger.error(f"Error in execute_custom_purchase: {e}")
-        flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('billing.account_management'))
+# Custom amount purchase has been removed in the Stripe integration
 
 @billing_bp.route('/cancel', methods=['GET'])
 @login_required
 def cancel_purchase():
     """
-    Handle cancelled PayPal payments.
+    Handle cancelled payments.
     """
     try:
-        payment_id = request.args.get('paymentId')
-        
-        if payment_id:
-            # Update transaction status
-            transaction = Transaction.query.filter_by(
-                user_id=current_user.id, 
-                payment_id=payment_id,
-                status=PaymentStatus.PENDING.value
-            ).first()
-            
-            if transaction:
-                transaction.status = PaymentStatus.FAILED.value
-                transaction.updated_at = datetime.utcnow()
-                db.session.commit()
-        
-        # Clear session data
-        if 'custom_payment' in session:
-            del session['custom_payment']
-        
-        flash("Payment cancelled", "info")
+        flash("Payment was cancelled", "info")
         return redirect(url_for('billing.account_management'))
     
     except Exception as e:
         logger.error(f"Error in cancel_purchase: {e}")
         flash(f"An error occurred: {str(e)}", "error")
         return redirect(url_for('billing.account_management'))
+
+@billing_bp.route('/payment-success', methods=['GET'])
+@login_required
+def payment_success():
+    """
+    Handle successful Stripe payments.
+    This is just a redirect page after a successful checkout.
+    The actual payment processing happens in the webhook.
+    """
+    try:
+        session_id = request.args.get('session_id')
+        if not session_id:
+            flash("Invalid session ID", "error")
+            return redirect(url_for('billing.account_management'))
+        
+        # Display success message
+        flash("Payment successful! Your credits will be added shortly.", "success")
+        return redirect(url_for('billing.account_management'))
+    
+    except Exception as e:
+        logger.error(f"Error in payment_success: {e}")
+        flash(f"An error occurred: {str(e)}", "error")
+        return redirect(url_for('billing.account_management'))
+
+@billing_bp.route('/stripe-webhook', methods=['POST'])
+def stripe_webhook():
+    """
+    Handle Stripe webhook events.
+    This endpoint receives webhook events from Stripe and processes completed payments.
+    """
+    try:
+        # Get the webhook payload and signature header
+        payload = request.data
+        sig_header = request.headers.get('Stripe-Signature')
+        webhook_secret = os.environ.get('STRIPE_WEBHOOK_SECRET')
+        
+        if not webhook_secret:
+            logger.error("Stripe webhook secret missing")
+            return jsonify({'error': 'Webhook secret missing'}), 500
+        
+        # Verify the webhook signature
+        verification_result = verify_webhook_signature(payload, sig_header, webhook_secret)
+        
+        if not verification_result["success"]:
+            logger.error(f"Webhook signature verification failed: {verification_result.get('error')}")
+            return jsonify({'error': 'Signature verification failed'}), 400
+        
+        # Get the event
+        event = verification_result["event"]
+        
+        # Handle the checkout.session.completed event
+        if event.type == 'checkout.session.completed':
+            session = event.data.object  # checkout session object
+            
+            # Get customer details
+            customer_id = session.client_reference_id
+            if not customer_id:
+                logger.error("No client_reference_id in session")
+                return jsonify({'error': 'No client reference ID'}), 400
+            
+            # Convert customer_id to integer
+            try:
+                user_id = int(customer_id)
+            except ValueError:
+                logger.error(f"Invalid client_reference_id: {customer_id}")
+                return jsonify({'error': 'Invalid client reference ID'}), 400
+            
+            # Find the pending transaction
+            transaction = Transaction.query.filter_by(
+                user_id=user_id,
+                payment_id=session.id,
+                status=PaymentStatus.PENDING.value
+            ).first()
+            
+            if not transaction:
+                logger.error(f"No pending transaction found for session {session.id}")
+                return jsonify({'error': 'Transaction not found'}), 404
+            
+            # Process the payment
+            user = User.query.get(user_id)
+            if not user:
+                logger.error(f"User {user_id} not found")
+                return jsonify({'error': 'User not found'}), 404
+            
+            # Update transaction status and payment intent ID
+            transaction.status = PaymentStatus.COMPLETED.value
+            transaction.stripe_payment_intent = session.payment_intent
+            transaction.updated_at = datetime.utcnow()
+            
+            # Add credits to user account
+            user.add_credits(transaction.credits)
+            
+            # Save changes
+            db.session.commit()
+            
+            logger.info(f"Payment for {transaction.credits} credits processed successfully for user {user.id}")
+            
+        # Return a success response
+        return jsonify({'status': 'success'}), 200
+    
+    except Exception as e:
+        logger.error(f"Error in stripe_webhook: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @billing_bp.route('/usage', methods=['GET'])
 @login_required

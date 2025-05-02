@@ -116,10 +116,12 @@ class Transaction(db.Model):
     """Transaction model for tracking payments and credit purchases"""
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    package_id = db.Column(db.Integer, db.ForeignKey('package.id'), nullable=True)  # Link to package if applicable
     amount_usd = db.Column(db.Float, nullable=False)  # Amount in USD
     credits = db.Column(db.Integer, nullable=False)  # Amount in credits (1 credit = $0.001)
-    payment_method = db.Column(db.String(64), nullable=False, default="paypal")  # Payment method used
-    payment_id = db.Column(db.String(128), nullable=True)  # PayPal payment ID
+    payment_method = db.Column(db.String(64), nullable=False, default="stripe")  # Payment method used
+    payment_id = db.Column(db.String(128), nullable=True)  # Payment ID (PayPal ID or Stripe Session ID)
+    stripe_payment_intent = db.Column(db.String(128), nullable=True)  # Stripe Payment Intent ID
     status = db.Column(db.String(20), nullable=False, default=PaymentStatus.PENDING.value)  # Payment status
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -152,6 +154,7 @@ class Package(db.Model):
     amount_usd = db.Column(db.Float, nullable=False)  # Amount in USD
     credits = db.Column(db.Integer, nullable=False)  # Credits provided
     is_active = db.Column(db.Boolean, default=True)
+    stripe_price_id = db.Column(db.String(128), nullable=True)  # Stripe Price ID
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
