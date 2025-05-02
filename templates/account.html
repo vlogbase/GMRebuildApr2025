@@ -241,9 +241,12 @@
             <!-- Packages -->
             <div class="row">
                 {% for package in packages %}
+                {% set is_starter_package = package.stripe_price_id == 'price_1RKOl0CkgfcNKUGFhI5RljJd' %}
+                {% set has_previous_purchases = recent_transactions|length > 0 %}
+                {% if not (is_starter_package and has_previous_purchases) %}
                 <div class="col-md-3 mb-4">
                     <div class="package-card">
-                        {% if package.stripe_price_id == 'price_1RKNWECkgfcNKUGFdQh7RdkG' %}
+                        {% if is_starter_package %}
                         <div class="package-title">Starter Credit Pack</div>
                         <span class="badge bg-info">First-time purchase only</span>
                         {% elif package.amount_usd == 10 %}
@@ -267,6 +270,7 @@
                         </form>
                     </div>
                 </div>
+                {% endif %}
                 {% endfor %}
             </div>
             

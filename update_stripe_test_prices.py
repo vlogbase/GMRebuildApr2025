@@ -13,64 +13,18 @@ from datetime import datetime
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def create_test_prices():
-    """Create test prices in Stripe and return their IDs."""
-    try:
-        # Initialize Stripe
-        stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
-        
-        if not stripe.api_key:
-            logger.error("Stripe API key not found")
-            return False
-        
-        # Create test prices
-        price_ids = {}
-        
-        # Create product first
-        product = stripe.Product.create(
-            name="Credit Packages",
-            description="Packages of credits for the GloriaMundo Chatbot"
-        )
-        
-        # Create prices
-        price_5 = stripe.Price.create(
-            unit_amount=500,  # $5.00
-            currency="usd",
-            product=product.id,
-            nickname="Starter Credit Pack"
-        )
-        price_ids['price_5'] = price_5.id
-        
-        price_10 = stripe.Price.create(
-            unit_amount=1000,  # $10.00
-            currency="usd",
-            product=product.id,
-            nickname="Small Credit Pack"
-        )
-        price_ids['price_10'] = price_10.id
-        
-        price_25 = stripe.Price.create(
-            unit_amount=2500,  # $25.00
-            currency="usd",
-            product=product.id,
-            nickname="Medium Credit Pack"
-        )
-        price_ids['price_25'] = price_25.id
-        
-        price_100 = stripe.Price.create(
-            unit_amount=10000,  # $100.00
-            currency="usd",
-            product=product.id,
-            nickname="Large Credit Pack"
-        )
-        price_ids['price_100'] = price_100.id
-        
-        logger.info(f"Test prices created: {price_ids}")
-        return price_ids
+def get_test_price_ids():
+    """Return the predefined test price IDs."""
+    # Use the provided test mode price IDs
+    price_ids = {
+        'price_5': 'price_1RKOl0CkgfcNKUGFhI5RljJd',    # Starter Credit Pack ($5.00 USD)
+        'price_10': 'price_1RKPmfCkgfcNKUGF7gGqpbZw',   # Small Credit Pack ($10.00 USD)
+        'price_25': 'price_1RKPnNCkgfcNKUGFEX9QPfeZ',   # Medium Credit Pack ($25.00 USD)
+        'price_100': 'price_1RKPnsCkgfcNKUGFbbHPzUj0',  # Large Credit Pack ($100.00 USD)
+    }
     
-    except Exception as e:
-        logger.error(f"Error creating test prices: {e}")
-        return None
+    logger.info("Using predefined test price IDs")
+    return price_ids
 
 def update_database_prices(price_ids):
     """Update the Package model with test price IDs."""
@@ -105,12 +59,8 @@ def update_database_prices(price_ids):
 def run():
     """Run the script."""
     try:
-        logger.info("Creating test prices in Stripe...")
-        price_ids = create_test_prices()
-        
-        if not price_ids:
-            logger.error("Failed to create test prices")
-            return False
+        logger.info("Getting predefined test price IDs...")
+        price_ids = get_test_price_ids()
         
         logger.info("Updating database with test price IDs...")
         result = update_database_prices(price_ids)
@@ -134,8 +84,8 @@ if __name__ == "__main__":
     success = run()
     
     if success:
-        print("Test prices created and database updated successfully")
+        print("Database updated with test price IDs successfully")
         sys.exit(0)
     else:
-        print("Failed to create test prices or update database")
+        print("Failed to update database with test price IDs")
         sys.exit(1)

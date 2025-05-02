@@ -86,7 +86,7 @@ def purchase_package(package_id):
         ).count() > 0
         
         # Check if this is the Starter Pack ($5) and if the user has previous transactions
-        is_starter_package = package.stripe_price_id == 'price_1RKNWECkgfcNKUGFdQh7RdkG'
+        is_starter_package = package.stripe_price_id == 'price_1RKOl0CkgfcNKUGFhI5RljJd'
         if is_starter_package and has_previous_purchases:
             flash("The Starter Credit Pack is only available for first-time purchases.", "error")
             return redirect(url_for('billing.account_management'))
