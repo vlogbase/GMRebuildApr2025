@@ -1,28 +1,32 @@
-run = ["python", "run.py"]
+run = "python -m flask run --host=0.0.0.0 --port=5000"
 language = "python3"
 entrypoint = "app.py"
-hidden = ["venv", ".config", "**/__pycache__", "**/.pytest_cache", "**/*.pyc"]
-
-# Specifies which ports to expose, using the format "public:private". You can only expose a port if the private port is already listed in a `[ports]` section. Currently, exposed ports are only supported for blank repls.
+hidden = ["venv", ".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
 
 [nix]
-channel = "stable-22_11"
+channel = "stable-23_05"
 
 [env]
-VIRTUAL_ENV = "${REPL_HOME}/venv"
+VIRTUAL_ENV = "/home/runner/${REPL_SLUG}/venv"
 PATH = "${VIRTUAL_ENV}/bin"
-PYTHONPATH = "$PYTHONPATH:${REPL_HOME}"
-REPLIT_POETRY_PYPI_REPOSITORY = "https://package-proxy.replit.com/pypi/"
-MPLBACKEND = "TkAgg"
+PYTHONPATH = "$PYTHONPATH:${VIRTUAL_ENV}/lib/python3.10/site-packages:${REPL_HOME}"
 PYTHONUNBUFFERED = "1"
+DATABASE_URL = "postgres://postgres:postgres@localhost:5432/app"
+
+[gitHubImport]
+requiredFiles = [".replit", "replit.nix", ".replit.workflow"]
 
 [packager]
 language = "python3"
+ignoredPackages = ["unit_tests"]
 
 [packager.features]
-enabledForHosting = false
 packageSearch = true
 guessImports = true
+enabledForHosting = false
+
+[unitTest]
+language = "python3"
 
 [debugger]
 support = true
@@ -53,15 +57,21 @@ supportsVariablePaging = true
 supportsVariableType = true
 
 [debugger.interactive.launchMessage]
-command = "attach"
+command = "launch"
 type = "request"
 
 [debugger.interactive.launchMessage.arguments]
-logging = {}
+console = "externalTerminal"
+cwd = "."
+debugOptions = []
+program = "./main.py"
+request = "launch"
+type = "python"
 
-[unitTest]
-language = "python3"
+[languages]
 
-[auth]
-pageEnabled = true
-buttonEnabled = false
+[languages.python3]
+pattern = "**/*.py"
+
+[languages.python3.languageServer]
+start = "pylsp"

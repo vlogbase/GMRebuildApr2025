@@ -265,7 +265,8 @@
                             <li class="package-feature">✓ Tax calculated at checkout</li>
                             <li class="package-feature">✓ Secure payment via Stripe</li>
                         </ul>
-                        <form action="{{ url_for('billing.purchase_package', package_id=package.id) }}" method="post">
+                        <form id="purchase-form-{{package.id}}" action="{{ url_for('billing.purchase_package', package_id=package.id) }}" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <button type="submit" class="select-button">Buy Now</button>
                         </form>
                     </div>
@@ -721,6 +722,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Stripe integration is complete - custom amount calculator removed
+    
+    // Debug form submission for purchase buttons
+    document.addEventListener('DOMContentLoaded', function() {
+        // Select all purchase forms
+        const purchaseForms = document.querySelectorAll('form[id^="purchase-form-"]');
+        
+        // Add event listeners to each form
+        purchaseForms.forEach(form => {
+            form.addEventListener('submit', function(e) {
+                console.log('Purchase form submitted:', form.id);
+                // Continue with form submission (do not prevent default)
+            });
+            
+            // Add event listeners to the buttons inside forms
+            const button = form.querySelector('button[type="submit"]');
+            if (button) {
+                button.addEventListener('click', function(e) {
+                    console.log('Buy button clicked for form:', form.id);
+                    // Let the normal form submission happen
+                });
+            }
+        });
+    });
     
     // Initialize tabs
     window.openTab = function(tabName) {
