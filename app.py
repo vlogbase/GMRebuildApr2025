@@ -26,6 +26,7 @@ from urllib.parse import urlparse # For URL analysis in image handling
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
+from flask_wtf.csrf import CSRFProtect
 from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure Blob Storage
 from apscheduler.schedulers.background import BackgroundScheduler
 from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
@@ -77,6 +78,9 @@ app.secret_key = os.environ.get("SESSION_SECRET", "developmentsecretkey")
 if not app.secret_key:
      logger.warning("SESSION_SECRET environment variable not set. Using default for development.")
      app.secret_key = "default-dev-secret-key-please-change"
+
+# Initialize CSRF protection
+csrf = CSRFProtect(app)
 
 # Add global template context variables
 @app.context_processor

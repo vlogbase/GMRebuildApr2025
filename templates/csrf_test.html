@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSRF Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        form {
+            margin-top: 20px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 5px;
+            border-radius: 3px;
+        }
+        .warning {
+            color: #856404;
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CSRF Protection Test</h1>
+        <p>This page tests the CSRF protection and Stripe integration.</p>
+        
+        <div class="warning">
+            <strong>Note:</strong> This is a test page. The button below will create a test Stripe checkout session.
+        </div>
+        
+        <h2>Test Form with CSRF Protection</h2>
+        <form action="/test-checkout" method="POST">
+            <!-- CSRF token will be added by Flask-WTF -->
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit">Create Test Checkout Session</button>
+        </form>
+        
+        <h2>Details</h2>
+        <p>This form includes a CSRF token which is required for the form to be submitted successfully.</p>
+        <p>The CSRF token is added using the template variable: <code>{{ "{{ csrf_token() }}" }}</code></p>
+        <p>If CSRF protection is working correctly, submitting this form should create a Stripe checkout session.</p>
+    </div>
+</body>
+</html>
