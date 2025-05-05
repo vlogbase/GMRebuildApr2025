@@ -152,21 +152,9 @@ except Exception as e:
 
 # Register billing blueprint
 try:
-    from billing import billing_bp, stripe_webhook
+    from billing import billing_bp
     app.register_blueprint(billing_bp, url_prefix='/billing')
     logger.info("Billing blueprint registered successfully with prefix /billing")
-    
-    # Add a direct route for Stripe webhooks (without the /billing prefix)
-    @app.route('/stripe-webhook', methods=['POST'])
-    def stripe_webhook_handler():
-        """
-        Direct handler for Stripe webhooks.
-        This route forwards requests to the billing blueprint's webhook handler.
-        """
-        logger.info("Received webhook at /stripe-webhook, forwarding to handler")
-        return stripe_webhook()
-        
-    logger.info("Direct Stripe webhook route registered at /stripe-webhook")
 except Exception as e:
     logger.error(f"Error registering Billing blueprint: {e}")
 

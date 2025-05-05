@@ -37,11 +37,7 @@ def initialize_stripe():
 
 def create_checkout_session(price_id, user_id, success_url, cancel_url, is_first_purchase=False):
     """
-    Create a Stripe Checkout Session with automatic tax calculation.
-    
-    This function enables Stripe Tax for automatic tax calculation, including support for 
-    UK VAT and B2B reverse charge. It requires the customer's billing address and 
-    allows businesses to provide their tax ID (VAT number) during checkout.
+    Create a Stripe Checkout Session.
     
     Args:
         price_id (str): Stripe Price ID
@@ -68,9 +64,6 @@ def create_checkout_session(price_id, user_id, success_url, cancel_url, is_first
             'cancel_url': cancel_url,
             'client_reference_id': str(user_id),
             'allow_promotion_codes': True,
-            'automatic_tax': {'enabled': True},
-            'billing_address_collection': 'required',
-            'tax_id_collection': {'enabled': True},
         }
         
         # Add metadata for first-time purchases
