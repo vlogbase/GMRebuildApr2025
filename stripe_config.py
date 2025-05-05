@@ -64,6 +64,9 @@ def create_checkout_session(price_id, user_id, success_url, cancel_url, is_first
             'cancel_url': cancel_url,
             'client_reference_id': str(user_id),
             'allow_promotion_codes': True,
+            'automatic_tax': {'enabled': True},
+            'billing_address_collection': 'required',
+            'tax_id_collection': {'enabled': True},
         }
         
         # Add metadata for first-time purchases

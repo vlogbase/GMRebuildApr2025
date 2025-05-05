@@ -154,6 +154,8 @@ except Exception as e:
 try:
     from billing import billing_bp
     app.register_blueprint(billing_bp, url_prefix='/billing')
+    # Exempt Stripe webhook from CSRF protection
+    csrf.exempt('billing.stripe_webhook')
     logger.info("Billing blueprint registered successfully with prefix /billing")
 except Exception as e:
     logger.error(f"Error registering Billing blueprint: {e}")
