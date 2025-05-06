@@ -233,7 +233,7 @@ def get_payout_batch_status(batch_id, commission_map=None):
                 if commission_map and sender_item_id in commission_map:
                     commission_id = commission_map[sender_item_id]
                 
-                # Get transaction status
+                # Get transaction status - this is the key field for payment status
                 transaction_status = getattr(item, 'transaction_status', 'UNKNOWN')
                 if not transaction_status and hasattr(item, 'payout_item_response'):
                     transaction_status = getattr(item.payout_item_response, 'transaction_status', 'UNKNOWN')

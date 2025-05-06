@@ -460,9 +460,15 @@ def check_payout_status(batch_id):
                     if commission_id:
                         commission = Commission.query.get(commission_id)
                         if commission:
+                            # Use the transaction_status field from the PayPal API
                             if item['status'] == 'SUCCESS':
                                 commission.status = CommissionStatus.PAID.value
-                            elif item['status'] in ['FAILED', 'RETURNED', 'BLOCKED']:
+                                
+                                # Mark affiliate's PayPal email as verified once they receive a successful payout
+                                affiliate = Affiliate.query.get(commission.affiliate_id)
+                                if affiliate and not affiliate.paypal_email_verified_at:
+                                    affiliate.paypal_email_verified_at = datetime.utcnow()
+                            elif item['status'] in ['FAILED', 'RETURNED', 'BLOCKED', 'UNCLAIMED']:
                                 commission.status = CommissionStatus.PAYOUT_FAILED.value
                             
                             commission.updated_at = datetime.utcnow()
