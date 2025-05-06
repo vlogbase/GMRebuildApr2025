@@ -24,7 +24,7 @@ class User(UserMixin, db.Model):
     is_active = db.Column(db.Boolean, default=True)
     
     # Billing fields
-    credits = db.Column(db.Integer, nullable=False, default=0)  # User's credit balance in credits (1 credit = $0.001)
+    credits = db.Column(db.Integer, nullable=False, default=0)  # User's credit balance in credits (1 credit = $0.00001)
     
     # Relationships
     conversations = db.relationship('Conversation', backref='user', lazy='dynamic', cascade='all, delete-orphan')
@@ -53,7 +53,7 @@ class User(UserMixin, db.Model):
     
     def get_balance_usd(self):
         """Get user's balance in USD format"""
-        return self.credits / 1000  # Convert credits to dollars (1 credit = $0.001)
+        return self.credits / 100000.0  # Convert credits to dollars (1 credit = $0.00001)
     
     def __repr__(self):
         return f'<User {self.username}>'
@@ -118,7 +118,7 @@ class Transaction(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     package_id = db.Column(db.Integer, db.ForeignKey('package.id'), nullable=True)  # Link to package if applicable
     amount_usd = db.Column(db.Float, nullable=False)  # Amount in USD
-    credits = db.Column(db.Integer, nullable=False)  # Amount in credits (1 credit = $0.001)
+    credits = db.Column(db.Integer, nullable=False)  # Amount in credits (1 credit = $0.00001)
     payment_method = db.Column(db.String(64), nullable=False, default="stripe")  # Payment method used
     payment_id = db.Column(db.String(128), nullable=True)  # Payment ID (PayPal ID or Stripe Session ID)
     stripe_payment_intent = db.Column(db.String(128), nullable=True)  # Stripe Payment Intent ID

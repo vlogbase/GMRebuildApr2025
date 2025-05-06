@@ -325,9 +325,9 @@ def calculate_openrouter_credits(prompt_tokens, completion_tokens, model_id):
     # Apply markup (2x)
     user_cost_usd = total_cost_usd * 2
     
-    # Convert to credits (1 credit = $0.001)
-    # $1 = 1,000 credits
-    credits = int(user_cost_usd * 1000)
+    # Convert to credits (1 credit = $0.00001)
+    # $1 = 100,000 credits
+    credits = int(user_cost_usd * 100000)
     
     return credits
 
@@ -347,9 +347,9 @@ def calculate_embedding_credits(token_count):
     # Calculate total cost
     total_cost = token_count * token_cost
     
-    # Convert to credits (1 credit = $0.001)
-    # $1 = 1,000 credits
-    credits = int(total_cost * 1000)
+    # Convert to credits (1 credit = $0.00001)
+    # $1 = 100,000 credits
+    credits = int(total_cost * 100000)
     
     return credits
 
