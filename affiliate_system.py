@@ -231,23 +231,59 @@ def admin():
     # Get all affiliates
     affiliates = Affiliate.query.order_by(Affiliate.created_at.desc()).all()
     
+    # Update held commissions to approved if holding period has ended
+    held_commissions = Commission.query.filter(
+        Commission.status == CommissionStatus.HELD.value,
+        Commission.commission_available_date <= datetime.utcnow()
+    ).all()
+    
+    for commission in held_commissions:
+        commission.status = CommissionStatus.APPROVED.value
+        commission.updated_at = datetime.utcnow()
+    
+    if held_commissions:
+        db.session.commit()
+        logger.info(f"Updated {len(held_commissions)} commissions from HELD to APPROVED status")
+    
     # Get commissions pending approval
     pending_commissions = Commission.query.filter(
         Commission.status == CommissionStatus.APPROVED.value,
-        Commission.commission_available_date <= datetime.utcnow()
     ).order_by(Commission.commission_available_date).all()
     
     # Calculate total pending payout amount
     total_pending = db.session.query(func.sum(Commission.commission_amount)).filter(
         Commission.status == CommissionStatus.APPROVED.value,
-        Commission.commission_available_date <= datetime.utcnow()
     ).scalar() or 0
+    
+    # Get recent payouts
+    recent_payouts = Commission.query.filter(
+        Commission.status.in_([CommissionStatus.PAID.value, CommissionStatus.PAYOUT_FAILED.value])
+    ).order_by(Commission.updated_at.desc()).limit(20).all()
+    
+    # Group recent payouts by batch ID
+    batched_payouts = {}
+    for payout in recent_payouts:
+        if payout.payout_batch_id not in batched_payouts:
+            batched_payouts[payout.payout_batch_id] = {
+                'date': payout.updated_at,
+                'total_amount': 0,
+                'status': 'Mixed' if payout.status == CommissionStatus.PAYOUT_FAILED.value else 'Completed',
+                'commissions': []
+            }
+        
+        batched_payouts[payout.payout_batch_id]['commissions'].append(payout)
+        batched_payouts[payout.payout_batch_id]['total_amount'] += float(payout.commission_amount)
+        
+        # Update batch status if any item failed
+        if payout.status == CommissionStatus.PAYOUT_FAILED.value:
+            batched_payouts[payout.payout_batch_id]['status'] = 'Mixed'
     
     return render_template(
         'affiliate/admin.html',
         affiliates=affiliates,
         pending_commissions=pending_commissions,
-        total_pending=total_pending
+        total_pending=total_pending,
+        batched_payouts=batched_payouts
     )
 
 @affiliate_bp.route('/process-commissions', methods=['POST'])
@@ -264,9 +300,48 @@ def process_commissions():
     # Get selected commissions
     commissions = Commission.query.filter(Commission.id.in_(commission_ids)).all()
     
-    # Group commissions by affiliate for batch processing
-    affiliate_payouts = {}
+    # First, check if any of the selected commissions' triggering transactions have been refunded/disputed
+    # We do this by checking Stripe's API using the triggering_transaction_id
+    import stripe
+    from stripe_config import initialize_stripe
+    
+    # Initialize Stripe if needed
+    initialize_stripe()
+    
+    # Track commissions to be rejected due to refunded/disputed transactions
+    rejected_commissions = []
+    valid_commissions = []
+    
     for commission in commissions:
+        try:
+            # Check the Stripe payment status using the triggering_transaction_id
+            payment_intent = stripe.PaymentIntent.retrieve(commission.triggering_transaction_id)
+            
+            # If payment was refunded or has a dispute, mark the commission as rejected
+            if payment_intent.status != 'succeeded' or getattr(payment_intent, 'amount_refunded', 0) > 0:
+                commission.status = CommissionStatus.REJECTED.value
+                commission.updated_at = datetime.utcnow()
+                rejected_commissions.append(commission.id)
+                logger.info(f"Commission {commission.id} rejected due to refunded/disputed transaction")
+            else:
+                valid_commissions.append(commission)
+        except Exception as e:
+            logger.error(f"Error checking Stripe payment status for commission {commission.id}: {e}")
+            # Continue with other commissions even if there's an error with one
+            valid_commissions.append(commission)
+    
+    # If any commissions were rejected, save those changes
+    if rejected_commissions:
+        db.session.commit()
+        flash(f"{len(rejected_commissions)} commissions were rejected due to refunded/disputed transactions", "warning")
+        
+    # Group valid commissions by affiliate for batch processing
+    affiliate_payouts = {}
+    for commission in valid_commissions:
+        # Skip any commissions that aren't in APPROVED status or commission_available_date hasn't passed
+        if commission.status != CommissionStatus.APPROVED.value or commission.commission_available_date > datetime.utcnow():
+            continue
+            
         affiliate = Affiliate.query.get(commission.affiliate_id)
         if not affiliate or affiliate.status != AffiliateStatus.ACTIVE.value:
             continue
@@ -289,17 +364,31 @@ def process_commissions():
     result = process_payout_batch(affiliate_payouts)
     
     if result['success']:
-        # Update commission statuses
-        for affiliate_id, payout_data in affiliate_payouts.items():
-            for commission_id in payout_data['commission_ids']:
+        batch_id = result['batch_id']
+        commission_map = result.get('commission_map', {})
+        
+        # Get item-level results if available
+        item_results = result.get('item_results', [])
+        
+        # Update commission statuses based on payout batch results
+        for item_result in item_results:
+            commission_id = item_result.get('commission_id')
+            if commission_id:
                 commission = Commission.query.get(commission_id)
                 if commission:
+                    # Initial status is PAID for batch-level success
+                    # Individual items might be updated later through a webhook or status check
                     commission.status = CommissionStatus.PAID.value
-                    commission.payout_batch_id = result['batch_id']
+                    commission.payout_batch_id = batch_id
                     commission.updated_at = datetime.utcnow()
+                    
+                    # Mark affiliate's PayPal email as verified once they receive a successful payout
+                    affiliate = Affiliate.query.get(commission.affiliate_id)
+                    if affiliate and not affiliate.paypal_email_verified_at:
+                        affiliate.paypal_email_verified_at = datetime.utcnow()
         
         db.session.commit()
-        flash(f"Successfully processed {len(result['items_processed'])} payouts", "success")
+        flash(f"Successfully initiated {len(result['items_processed'])} payouts. Batch ID: {batch_id}", "success")
     else:
         flash(f"Error processing payouts: {result['error']}", "error")
     
@@ -341,6 +430,55 @@ def update_paypal():
         logger.error(f"Error updating PayPal email: {e}")
         flash(f"An error occurred: {str(e)}", "error")
         return redirect(url_for('affiliate.dashboard'))
+
+@affiliate_bp.route('/check-payout-status/<string:batch_id>', methods=['GET'])
+@login_required
+@admin_required
+def check_payout_status(batch_id):
+    """Check the status of a payout batch"""
+    try:
+        from paypal_payouts import get_payout_batch_status
+        
+        # Get commissions for this batch to build commission map
+        commissions = Commission.query.filter_by(payout_batch_id=batch_id).all()
+        
+        # Build a map of sender_item_id to commission_id for status matching
+        # We can reconstruct this from our naming convention pattern
+        commission_map = {}
+        for commission in commissions:
+            sender_item_id = f"AFFCOM_{commission.id}_" + commission.updated_at.strftime('%Y%m%d%H%M%S')
+            commission_map[sender_item_id] = commission.id
+        
+        # Get batch status from PayPal
+        batch_status = get_payout_batch_status(batch_id, commission_map)
+        
+        if batch_status['success']:
+            # Update commission statuses based on individual item statuses
+            if 'items' in batch_status:
+                for item in batch_status['items']:
+                    commission_id = item.get('commission_id')
+                    if commission_id:
+                        commission = Commission.query.get(commission_id)
+                        if commission:
+                            if item['status'] == 'SUCCESS':
+                                commission.status = CommissionStatus.PAID.value
+                            elif item['status'] in ['FAILED', 'RETURNED', 'BLOCKED']:
+                                commission.status = CommissionStatus.PAYOUT_FAILED.value
+                            
+                            commission.updated_at = datetime.utcnow()
+                
+                db.session.commit()
+                
+            flash(f"Payout batch status: {batch_status['batch_status']}", "info")
+        else:
+            flash(f"Error checking payout status: {batch_status.get('error')}", "error")
+        
+        return redirect(url_for('affiliate.admin'))
+    
+    except Exception as e:
+        logger.error(f"Error checking payout status: {e}")
+        flash(f"An error occurred: {str(e)}", "error")
+        return redirect(url_for('affiliate.admin'))
 
 @affiliate_bp.route('/toggle-status/<int:affiliate_id>', methods=['GET'])
 @login_required
