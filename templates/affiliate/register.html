@@ -2,106 +2,171 @@
 
 {% block title %}Affiliate Registration{% endblock %}
 
-{% block content %}
-<div class="container my-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-header bg-primary text-white">
-                    <h2 class="mb-0">Affiliate Program Registration</h2>
-                </div>
-                <div class="card-body">
-                    <div class="mb-4">
-                        <h5>Join Our Two-Tier Affiliate Program</h5>
-                        <p>Earn commissions by referring customers to our platform:</p>
-                        <ul>
-                            <li><strong>Level 1 (Direct Referrals):</strong> 10% commission on all purchases made by customers you refer</li>
-                            <li><strong>Level 2 (Indirect Referrals):</strong> 5% commission on purchases made by customers referred by your affiliates</li>
-                        </ul>
-                    </div>
+{% block styles %}
+<style>
+    .register-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 30px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .benefits-list {
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+    }
+    
+    .benefit-item {
+        display: flex;
+        margin-bottom: 15px;
+    }
+    
+    .benefit-icon {
+        font-size: 24px;
+        color: #4e73df;
+        margin-right: 15px;
+    }
+    
+    .benefit-content h5 {
+        margin-top: 0;
+        margin-bottom: 5px;
+    }
+    
+    .how-it-works {
+        margin-top: 40px;
+    }
+</style>
+{% endblock %}
 
-                    <form method="POST" action="{{ url_for('affiliate.register') }}">
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Full Name</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="paypal_email" class="form-label">PayPal Email (for commission payments)</label>
-                            <input type="email" class="form-control" id="paypal_email" name="paypal_email" required>
-                            <div class="form-text">We use PayPal to send your commission payments. Make sure this email is connected to a valid PayPal account.</div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="referring_code" class="form-label">Referral Code (Optional)</label>
-                            <input type="text" class="form-control" id="referring_code" name="referring_code" value="{{ referring_code }}">
-                            <div class="form-text">If another affiliate referred you, enter their code here.</div>
-                        </div>
-                        
-                        <div class="mb-4">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="terms_agree" required>
-                                <label class="form-check-label" for="terms_agree">
-                                    I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Affiliate Terms and Conditions</a>
-                                </label>
-                            </div>
-                        </div>
-                        
-                        <div class="d-grid">
-                            <button type="submit" class="btn btn-primary">Register as Affiliate</button>
-                        </div>
-                    </form>
+{% block content %}
+<div class="container mt-4">
+    <div class="register-container">
+        <h1 class="mb-4">Become an Affiliate</h1>
+        
+        <div class="benefits-list">
+            <h3>Benefits of Our Affiliate Program</h3>
+            
+            <div class="benefit-item">
+                <div class="benefit-icon">
+                    <i class="fas fa-percentage"></i>
+                </div>
+                <div class="benefit-content">
+                    <h5>10% Commission Rate</h5>
+                    <p>Earn 10% commission on all purchases made by users you refer directly.</p>
                 </div>
             </div>
+            
+            <div class="benefit-item">
+                <div class="benefit-icon">
+                    <i class="fas fa-network-wired"></i>
+                </div>
+                <div class="benefit-content">
+                    <h5>Two-Tier Structure</h5>
+                    <p>Earn an additional 5% commission on purchases made by users referred by your affiliates.</p>
+                </div>
+            </div>
+            
+            <div class="benefit-item">
+                <div class="benefit-icon">
+                    <i class="fas fa-money-bill-wave"></i>
+                </div>
+                <div class="benefit-content">
+                    <h5>Seamless PayPal Payouts</h5>
+                    <p>Receive your commission payments directly to your PayPal account.</p>
+                </div>
+            </div>
+            
+            <div class="benefit-item">
+                <div class="benefit-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="benefit-content">
+                    <h5>Detailed Analytics</h5>
+                    <p>Track your referrals, commissions, and earnings in real-time through your dashboard.</p>
+                </div>
+            </div>
+        </div>
+        
+        <form method="POST" action="{{ url_for('affiliate.register') }}">
+            <div class="form-group">
+                <label for="name">Your Name</label>
+                <input type="text" class="form-control" id="name" name="name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="paypal_email">PayPal Email Address</label>
+                <input type="email" class="form-control" id="paypal_email" name="paypal_email" required>
+                <small class="form-text text-muted">We'll send your commission payments to this PayPal email address.</small>
+            </div>
+            
+            <div class="form-group">
+                <label for="referring_code">Referral Code (optional)</label>
+                <input type="text" class="form-control" id="referring_code" name="referring_code" value="{{ referring_code }}">
+                <small class="form-text text-muted">If someone referred you to our affiliate program, enter their referral code here.</small>
+            </div>
+            
+            <div class="form-group form-check">
+                <input type="checkbox" class="form-check-input" id="terms_agreed" required>
+                <label class="form-check-label" for="terms_agreed">I agree to the <a href="#" data-toggle="modal" data-target="#termsModal">Terms & Conditions</a> for the affiliate program.</label>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-lg mt-3">Register as Affiliate</button>
+        </form>
+        
+        <div class="how-it-works">
+            <h3>How It Works</h3>
+            <p>Once you register as an affiliate, you'll receive a unique referral link to share with your audience. When someone clicks on your link and makes a purchase, you'll earn a commission.</p>
+            
+            <ol>
+                <li><strong>Register</strong> - Complete the form above to join our affiliate program.</li>
+                <li><strong>Share</strong> - Share your unique referral link with your audience.</li>
+                <li><strong>Earn</strong> - Earn commissions when people make purchases through your referral link.</li>
+                <li><strong>Get Paid</strong> - Receive your earnings via PayPal after the 30-day holding period.</li>
+            </ol>
         </div>
     </div>
 </div>
 
-<!-- Terms and Conditions Modal -->
-<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+<!-- Terms & Conditions Modal -->
+<div class="modal fade" id="termsModal" tabindex="-1" role="dialog" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="termsModalLabel">Affiliate Program Terms and Conditions</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <h5 class="modal-title" id="termsModalLabel">Affiliate Program Terms & Conditions</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
             </div>
             <div class="modal-body">
-                <h6>1. Eligibility</h6>
-                <p>To be eligible for our Affiliate Program, you must:</p>
+                <h5>1. General Terms</h5>
+                <p>By registering for our affiliate program, you agree to these terms and conditions. We reserve the right to modify these terms at any time.</p>
+                
+                <h5>2. Commission Structure</h5>
+                <p>You'll earn 10% commission on purchases made by users you refer directly (Level 1) and 5% commission on purchases made by users referred by your affiliates (Level 2).</p>
+                
+                <h5>3. Commission Eligibility</h5>
+                <p>Commissions are subject to a 30-day holding period to account for potential refunds or disputes. After this period, they become eligible for payout.</p>
+                
+                <h5>4. Payout Terms</h5>
+                <p>Payouts are processed through PayPal. You must provide a valid PayPal email address. Minimum payout threshold is £20.</p>
+                
+                <h5>5. Prohibited Activities</h5>
                 <ul>
-                    <li>Be at least 18 years of age</li>
-                    <li>Have an active account on our platform</li>
-                    <li>Have a valid PayPal account to receive payments</li>
-                    <li>Comply with all terms of service</li>
+                    <li>Self-referrals or creating multiple accounts</li>
+                    <li>Spamming or sending unsolicited emails</li>
+                    <li>Misleading marketing or false advertising</li>
+                    <li>Any illegal or fraudulent activities</li>
                 </ul>
-
-                <h6>2. Commission Structure</h6>
-                <p>Our two-tier commission structure works as follows:</p>
-                <ul>
-                    <li><strong>Level 1 (Direct Referrals):</strong> You earn 10% commission on all purchases made by customers you directly refer to our platform.</li>
-                    <li><strong>Level 2 (Indirect Referrals):</strong> You earn 5% commission on purchases made by customers who are referred by affiliates you've brought into the program.</li>
-                </ul>
-
-                <h6>3. Commission Payments</h6>
-                <p>Commissions are subject to a 30-day holding period to allow for refunds and chargebacks. After this period, approved commissions will be available for payout. Payouts are processed via PayPal.</p>
-
-                <h6>4. Prohibited Activities</h6>
-                <p>The following activities are strictly prohibited:</p>
-                <ul>
-                    <li>Spamming or any form of unsolicited marketing</li>
-                    <li>Misrepresenting our services or making false claims</li>
-                    <li>Creating fake accounts or using fraudulent methods to generate commissions</li>
-                    <li>Bidding on our brand name or trademarks in search engines</li>
-                </ul>
-
-                <h6>5. Term and Termination</h6>
-                <p>We reserve the right to terminate your affiliate account at any time if we determine that you have violated these terms or engaged in fraudulent activity. Upon termination, any unpaid commissions may be forfeited.</p>
-
-                <h6>6. Changes to Terms</h6>
-                <p>We may update these terms from time to time. Continued participation in the affiliate program after changes are made constitutes acceptance of the new terms.</p>
+                
+                <h5>6. Termination</h5>
+                <p>We reserve the right to terminate your affiliate account if you violate these terms or engage in prohibited activities.</p>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
             </div>
         </div>
     </div>

@@ -84,6 +84,30 @@ def migrate_database():
         # Close the connection
         conn.close()
 
-if __name__ == "__main__":
+def run_all_migrations():
+    """Run all necessary migrations including affiliate system"""
+    logger.info("Running all migrations...")
+    
     with app.app_context():
+        # Run base migrations
         migrate_database()
+        
+        # Run affiliate system migrations
+        try:
+            from migrations_affiliate import run_migrations
+            run_migrations()
+            logger.info("Affiliate system migrations completed")
+        except Exception as e:
+            logger.error(f"Error running affiliate system migrations: {e}")
+        
+        # Run Google auth migrations if needed
+        try:
+            import migrations_google_auth
+            logger.info("Google auth migrations completed")
+        except ImportError:
+            logger.warning("migrations_google_auth not found, skipping")
+        except Exception as e:
+            logger.error(f"Error running Google auth migrations: {e}")
+
+if __name__ == "__main__":
+    run_all_migrations()

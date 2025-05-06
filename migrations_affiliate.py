@@ -1,119 +1,158 @@
 """
-Migrations script for the affiliate system tables.
+Migrations script for Affiliate System
 
-This script creates the necessary tables for the affiliate system if they don't exist.
+This script handles database migrations for the affiliate system models.
 """
 
-import os
 import logging
+import os
 from datetime import datetime
-import enum
 
-from sqlalchemy import Column, Integer, String, Float, DateTime, Boolean, ForeignKey, UniqueConstraint, Enum, Text, Numeric
+# Import SQLAlchemy components
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Float, DateTime, Boolean, ForeignKey, Text, Numeric
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.types import Enum
+
+from app import app
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-Base = declarative_base()
-
-# Define enums
-class AffiliateStatus(enum.Enum):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-
-class CommissionStatus(enum.Enum):
-    HELD = "held"
-    APPROVED = "approved"
-    PAID = "paid"
-    REJECTED = "rejected"
-    PAYOUT_FAILED = "payout_failed"
-
-# Define models
-class Affiliate(Base):
-    __tablename__ = 'affiliate'
-    
-    id = Column(Integer, primary_key=True)
-    name = Column(String(128), nullable=False)
-    email = Column(String(120), unique=True, nullable=False, index=True)
-    paypal_email = Column(String(120), unique=True, nullable=False)
-    paypal_email_verified_at = Column(DateTime, nullable=True)
-    referral_code = Column(String(16), unique=True, nullable=False, index=True)
-    referred_by_affiliate_id = Column(Integer, ForeignKey('affiliate.id', ondelete='SET NULL'), nullable=True)
-    status = Column(String(20), nullable=False, default=AffiliateStatus.ACTIVE.value)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-class CustomerReferral(Base):
-    __tablename__ = 'customer_referral'
-    
-    id = Column(Integer, primary_key=True)
-    customer_user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
-    affiliate_id = Column(Integer, ForeignKey('affiliate.id'), nullable=False)
-    signup_date = Column(DateTime, default=datetime.utcnow)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    
-    __table_args__ = (
-        UniqueConstraint('customer_user_id', name='unique_customer_referral'),
-    )
-
-class Commission(Base):
-    __tablename__ = 'commission'
-    
-    id = Column(Integer, primary_key=True)
-    affiliate_id = Column(Integer, ForeignKey('affiliate.id'), nullable=False)
-    triggering_transaction_id = Column(String(128), nullable=False, index=True)
-    stripe_payment_status = Column(String(20), nullable=False)
-    purchase_amount_base = Column(Numeric(10, 4), nullable=False)  # Base amount for calculation (GBP)
-    commission_rate = Column(Numeric(6, 4), nullable=False)  # Decimal rate (e.g., 0.10 for 10%)
-    commission_amount = Column(Numeric(10, 2), nullable=False)  # Commission amount in GBP
-    commission_level = Column(Integer, nullable=False)  # 1 for L1, 2 for L2
-    status = Column(String(20), nullable=False, default=CommissionStatus.HELD.value)
-    commission_earned_date = Column(DateTime, nullable=False, default=datetime.utcnow)
-    commission_available_date = Column(DateTime, nullable=False)
-    payout_batch_id = Column(String(128), nullable=True)  # PayPal Payout batch ID
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-# Add is_admin field to User model if it doesn't exist
-def add_is_admin_to_user():
-    from sqlalchemy import inspect
-    from app import db
-    from models import User
-    
-    inspector = inspect(db.engine)
-    columns = [column['name'] for column in inspector.get_columns('user')]
-    
-    if 'is_admin' not in columns:
-        logger.info("Adding is_admin column to User model")
-        db.engine.execute('ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT FALSE')
-        logger.info("is_admin column added to User model")
-
 def run_migrations():
-    """Run database migrations for the affiliate system"""
-    logger.info("Running migrations for affiliate system")
+    """Run migrations for affiliate system"""
+    logger.info("Running affiliate system migrations...")
+    
+    # Get database URI from app config
+    database_uri = app.config["SQLALCHEMY_DATABASE_URI"]
+    
+    if not database_uri:
+        logger.error("DATABASE_URL environment variable not set. Aborting migrations.")
+        return False
     
     try:
-        from app import db
+        # Create engine and metadata
+        engine = create_engine(database_uri)
+        metadata = MetaData()
         
-        # Create tables if they don't exist
-        engine = db.engine
-        Base.metadata.create_all(engine, tables=[
-            Affiliate.__table__,
-            CustomerReferral.__table__,
-            Commission.__table__
-        ])
+        # Define tables if they don't exist
         
-        # Add is_admin field to User model if it doesn't exist
-        add_is_admin_to_user()
+        # Create Affiliate table if it doesn't exist
+        if not engine.dialect.has_table(engine, 'affiliate'):
+            logger.info("Creating affiliate table...")
+            affiliate_table = Table(
+                'affiliate',
+                metadata,
+                Column('id', Integer, primary_key=True),
+                Column('name', String(128), nullable=False),
+                Column('email', String(120), unique=True, nullable=False, index=True),
+                Column('paypal_email', String(120), nullable=False),
+                Column('paypal_email_verified_at', DateTime, nullable=True),
+                Column('referral_code', String(16), unique=True, nullable=False, index=True),
+                Column('referred_by_affiliate_id', Integer, ForeignKey('affiliate.id', ondelete='SET NULL'), nullable=True),
+                Column('status', String(20), nullable=False, default='active'),
+                Column('created_at', DateTime, default=datetime.utcnow),
+                Column('updated_at', DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+            )
+            affiliate_table.create(engine)
+            logger.info("Affiliate table created successfully")
+        else:
+            logger.info("Affiliate table already exists")
+        
+        # Create CustomerReferral table if it doesn't exist
+        if not engine.dialect.has_table(engine, 'customer_referral'):
+            logger.info("Creating customer_referral table...")
+            customer_referral_table = Table(
+                'customer_referral',
+                metadata,
+                Column('id', Integer, primary_key=True),
+                Column('customer_user_id', Integer, ForeignKey('user.id'), nullable=False, unique=True),
+                Column('affiliate_id', Integer, ForeignKey('affiliate.id'), nullable=False),
+                Column('signup_date', DateTime, default=datetime.utcnow),
+                Column('created_at', DateTime, default=datetime.utcnow)
+            )
+            customer_referral_table.create(engine)
+            logger.info("CustomerReferral table created successfully")
+        else:
+            logger.info("CustomerReferral table already exists")
+        
+        # Create Commission table if it doesn't exist
+        if not engine.dialect.has_table(engine, 'commission'):
+            logger.info("Creating commission table...")
+            commission_table = Table(
+                'commission',
+                metadata,
+                Column('id', Integer, primary_key=True),
+                Column('affiliate_id', Integer, ForeignKey('affiliate.id'), nullable=False),
+                Column('triggering_transaction_id', String(128), nullable=False, index=True),
+                Column('stripe_payment_status', String(20), nullable=False),
+                Column('purchase_amount_base', Numeric(10, 4), nullable=False),
+                Column('commission_rate', Numeric(6, 4), nullable=False),
+                Column('commission_amount', Numeric(10, 2), nullable=False),
+                Column('commission_level', Integer, nullable=False),
+                Column('status', String(20), nullable=False, default='held'),
+                Column('commission_earned_date', DateTime, nullable=False, default=datetime.utcnow),
+                Column('commission_available_date', DateTime, nullable=False),
+                Column('payout_batch_id', String(128), nullable=True),
+                Column('created_at', DateTime, default=datetime.utcnow),
+                Column('updated_at', DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+            )
+            commission_table.create(engine)
+            logger.info("Commission table created successfully")
+        else:
+            logger.info("Commission table already exists")
+        
+        # Check if we need to add is_admin to User table if it doesn't exist
+        inspector = inspect(engine)
+        columns = inspector.get_columns('user')
+        column_names = [c['name'] for c in columns]
+        
+        if 'is_admin' not in column_names:
+            logger.info("Adding is_admin column to user table...")
+            
+            # Create a temporary connection
+            connection = engine.connect()
+            
+            # Execute ALTER TABLE statement to add the column
+            connection.execute("ALTER TABLE user ADD COLUMN is_admin BOOLEAN DEFAULT FALSE")
+            
+            # Close the connection
+            connection.close()
+            
+            logger.info("Added is_admin column to user table")
+        else:
+            logger.info("is_admin column already exists in user table")
+        
+        # Update a specific admin user
+        if os.environ.get('ADMIN_EMAIL'):
+            admin_email = os.environ.get('ADMIN_EMAIL')
+            logger.info(f"Setting admin privileges for {admin_email}...")
+            
+            # Create session
+            Session = sessionmaker(bind=engine)
+            session = Session()
+            
+            # Update the user
+            admin_update_query = f"UPDATE user SET is_admin = TRUE WHERE email = '{admin_email}'"
+            session.execute(admin_update_query)
+            
+            # Commit and close session
+            session.commit()
+            session.close()
+            
+            logger.info(f"Admin privileges set for {admin_email}")
         
         logger.info("Affiliate system migrations completed successfully")
+        return True
+        
     except Exception as e:
-        logger.error(f"Error running migrations: {e}")
-        raise
+        logger.error(f"Error running affiliate system migrations: {e}")
+        return False
+
+# Add inspector import at the top level to avoid NameError
+from sqlalchemy import inspect
 
 if __name__ == "__main__":
-    run_migrations()
+    with app.app_context():
+        run_migrations()

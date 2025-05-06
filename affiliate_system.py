@@ -12,73 +12,64 @@ It implements a two-tier affiliate structure where:
 - Level 2 (L2) affiliates get 5% commission on purchases from customers referred by their referred affiliates
 """
 
-import os
 import logging
-import random
-import string
+import secrets
 from datetime import datetime, timedelta
-from functools import wraps
+import json
+import os
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, make_response, current_app, session
-from flask_login import current_user, login_required
-from sqlalchemy import desc, func, and_
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, session, make_response
+from flask_login import login_required, current_user
+from sqlalchemy import func
 from werkzeug.exceptions import Forbidden
 
 from app import db
-from models import User
-from paypal_payouts import process_payout_batch
+from models import Affiliate, CustomerReferral, Commission, AffiliateStatus, CommissionStatus, Transaction, User
+
+from paypal_payouts import process_payout_batch, get_payout_batch_status
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Import models here to avoid circular imports
-from migrations_affiliate import Affiliate, CustomerReferral, Commission, AffiliateStatus, CommissionStatus
-
 # Create blueprint
 affiliate_bp = Blueprint('affiliate', __name__, url_prefix='/affiliate')
 
-# Define commission rates
-LEVEL_1_COMMISSION_RATE = 0.10  # 10% for direct referrals
-LEVEL_2_COMMISSION_RATE = 0.05  # 5% for second-tier referrals
-
-# Commission holding period (days)
-COMMISSION_HOLDING_PERIOD = 30  # Days before a commission becomes available for payout
-
-# Set cookie expiration for referrals (30 days)
-REFERRAL_COOKIE_EXPIRATION = 30
+# Configuration
+REFERRAL_COOKIE_NAME = 'referral_code'
+REFERRAL_COOKIE_DAYS = 30  # Cookie lasts for 30 days
+COMMISSION_HOLDING_DAYS = 30  # Hold commissions for 30 days before paying out
+L1_COMMISSION_RATE = 0.10  # 10% for direct referral
+L2_COMMISSION_RATE = 0.05  # 5% for second-tier referral
 
 def admin_required(f):
     """Decorator to require admin access"""
-    @wraps(f)
+    @login_required
     def decorated_function(*args, **kwargs):
-        if not current_user.is_authenticated or not current_user.is_admin:
-            flash("Administrator access required", "error")
+        if not current_user.is_admin:
+            flash('You do not have permission to access this page.', 'danger')
             return redirect(url_for('index'))
         return f(*args, **kwargs)
+    decorated_function.__name__ = f.__name__
     return decorated_function
 
 def generate_referral_code():
     """Generate a unique referral code"""
-    # Generate a random 8-character code
     while True:
-        code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=8))
-        # Check if code already exists
-        existing = Affiliate.query.filter_by(referral_code=code).first()
-        if not existing:
+        code = secrets.token_urlsafe(8)[:8]
+        if not Affiliate.query.filter_by(referral_code=code).first():
             return code
 
 def set_referral_cookie(response, referral_code):
     """Set the referral cookie"""
-    # Set secure cookie that lasts for 30 days
-    expires = datetime.now() + timedelta(days=REFERRAL_COOKIE_EXPIRATION)
+    expires = datetime.utcnow() + timedelta(days=REFERRAL_COOKIE_DAYS)
     response.set_cookie(
-        'referral_code', 
-        referral_code, 
-        expires=expires, 
-        httponly=True, 
-        secure=request.is_secure,
-        samesite='Lax'
+        REFERRAL_COOKIE_NAME, 
+        referral_code,
+        expires=expires,
+        httponly=True,
+        samesite='Lax',
+        secure=request.is_secure
     )
     return response
 
@@ -89,9 +80,9 @@ def get_gbp_amount(usd_amount):
     In a production environment, this would use a currency conversion API.
     For now, we'll use a fixed exchange rate for simplicity.
     """
-    # Fixed exchange rate: 1 USD = 0.78 GBP (example rate)
+    # Fixed exchange rate (1 USD = 0.78 GBP) - this should be dynamically updated in production
     exchange_rate = 0.78
-    return round(usd_amount * exchange_rate, 4)
+    return round(float(usd_amount) * exchange_rate, 2)
 
 @affiliate_bp.route('/register', methods=['GET', 'POST'])
 @login_required
@@ -100,297 +91,222 @@ def register():
     # Check if user is already an affiliate
     existing_affiliate = Affiliate.query.filter_by(email=current_user.email).first()
     if existing_affiliate:
-        flash("You are already registered as an affiliate", "info")
+        flash('You are already registered as an affiliate.', 'info')
         return redirect(url_for('affiliate.dashboard'))
     
+    # Check for referral code
+    referral_code = request.cookies.get(REFERRAL_COOKIE_NAME)
+    referring_affiliate = None
+    
+    if referral_code:
+        referring_affiliate = Affiliate.query.filter_by(referral_code=referral_code).first()
+    
     if request.method == 'POST':
-        name = request.form.get('name')
         paypal_email = request.form.get('paypal_email')
-        referring_code = request.form.get('referring_code')
         
-        # Validate fields
-        if not name or not paypal_email:
-            flash("All fields are required", "error")
-            return render_template('affiliate/register.html')
-        
-        # Check if referring code exists and is valid
-        referred_by_id = None
-        if referring_code:
-            referring_affiliate = Affiliate.query.filter_by(referral_code=referring_code).first()
-            if referring_affiliate:
-                if referring_affiliate.email == current_user.email:
-                    flash("You cannot refer yourself", "error")
-                    return render_template('affiliate/register.html')
-                referred_by_id = referring_affiliate.id
-            else:
-                flash("Invalid referral code", "error")
-                return render_template('affiliate/register.html')
-        
-        # Generate unique referral code
-        referral_code = generate_referral_code()
+        # Simple validation
+        if not paypal_email or '@' not in paypal_email:
+            flash('Please enter a valid PayPal email address.', 'danger')
+            return render_template('affiliate/register.html', referring_affiliate=referring_affiliate)
         
         # Create new affiliate
         new_affiliate = Affiliate(
-            name=name,
+            name=current_user.username,
             email=current_user.email,
             paypal_email=paypal_email,
-            referral_code=referral_code,
-            referred_by_affiliate_id=referred_by_id,
             status=AffiliateStatus.ACTIVE.value
         )
         
-        db.session.add(new_affiliate)
-        db.session.commit()
+        # Generate unique referral code
+        new_affiliate.referral_code = generate_referral_code()
         
-        flash("You have successfully registered as an affiliate", "success")
-        return redirect(url_for('affiliate.dashboard'))
+        # Set referring affiliate if applicable
+        if referring_affiliate:
+            new_affiliate.referred_by_affiliate_id = referring_affiliate.id
+        
+        db.session.add(new_affiliate)
+        
+        try:
+            db.session.commit()
+            flash('You have successfully registered as an affiliate!', 'success')
+            return redirect(url_for('affiliate.dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error registering affiliate: {e}")
+            flash('An error occurred during registration. Please try again.', 'danger')
     
-    # Check if there's a referral code in the cookies
-    referring_code = request.cookies.get('referral_code', '')
-    
-    return render_template('affiliate/register.html', referring_code=referring_code)
+    return render_template('affiliate/register.html', referring_affiliate=referring_affiliate)
 
-@affiliate_bp.route('/dashboard', methods=['GET'])
+@affiliate_bp.route('/dashboard')
 @login_required
 def dashboard():
     """Affiliate dashboard page"""
-    # Get affiliate information
+    # Check if user is an affiliate
     affiliate = Affiliate.query.filter_by(email=current_user.email).first()
-    
     if not affiliate:
-        flash("You need to register as an affiliate first", "info")
+        flash('You are not registered as an affiliate yet.', 'info')
         return redirect(url_for('affiliate.register'))
     
-    # Get commissions
-    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(desc(Commission.created_at)).all()
+    # Get commission data
+    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(Commission.created_at.desc()).all()
     
-    # Calculate statistics
-    total_earned = db.session.query(func.sum(Commission.commission_amount)).filter(
-        Commission.affiliate_id == affiliate.id,
-        Commission.status.in_([CommissionStatus.APPROVED.value, CommissionStatus.PAID.value])
-    ).scalar() or 0
+    # Calculate totals by status
+    pending_amount = sum(float(c.commission_amount) for c in commissions if c.status == CommissionStatus.HELD.value)
+    available_amount = sum(float(c.commission_amount) for c in commissions if c.status == CommissionStatus.APPROVED.value)
+    paid_amount = sum(float(c.commission_amount) for c in commissions if c.status == CommissionStatus.PAID.value)
     
-    pending_payout = db.session.query(func.sum(Commission.commission_amount)).filter(
-        Commission.affiliate_id == affiliate.id,
-        Commission.status == CommissionStatus.APPROVED.value
-    ).scalar() or 0
+    # Get referral data
+    customer_referrals = CustomerReferral.query.filter_by(affiliate_id=affiliate.id).count()
+    referred_affiliates = Affiliate.query.filter_by(referred_by_affiliate_id=affiliate.id).count()
     
-    paid_out = db.session.query(func.sum(Commission.commission_amount)).filter(
-        Commission.affiliate_id == affiliate.id,
-        Commission.status == CommissionStatus.PAID.value
-    ).scalar() or 0
-    
-    on_hold = db.session.query(func.sum(Commission.commission_amount)).filter(
-        Commission.affiliate_id == affiliate.id,
-        Commission.status == CommissionStatus.HELD.value
-    ).scalar() or 0
-    
-    # Get count of direct referrals (L1)
-    direct_referrals = CustomerReferral.query.filter_by(affiliate_id=affiliate.id).count()
-    
-    # Get number of L2 affiliates (affiliates who joined using this affiliate's code)
-    l2_affiliates = Affiliate.query.filter_by(referred_by_affiliate_id=affiliate.id).count()
+    # Get sales data
+    referred_user_ids = [r.customer_user_id for r in CustomerReferral.query.filter_by(affiliate_id=affiliate.id).all()]
+    total_sales = 0
+    if referred_user_ids:
+        total_sales = db.session.query(func.sum(Transaction.amount_usd)).filter(
+            Transaction.user_id.in_(referred_user_ids),
+            Transaction.status == 'completed'
+        ).scalar() or 0
     
     return render_template(
         'affiliate/dashboard.html',
         affiliate=affiliate,
         commissions=commissions,
-        total_earned=total_earned,
-        pending_payout=pending_payout,
-        paid_out=paid_out,
-        on_hold=on_hold,
-        direct_referrals=direct_referrals,
-        l2_affiliates=l2_affiliates
+        pending_amount=pending_amount,
+        available_amount=available_amount,
+        paid_amount=paid_amount,
+        customer_referrals=customer_referrals,
+        referred_affiliates=referred_affiliates,
+        total_sales=total_sales,
+        commission_rate_l1=L1_COMMISSION_RATE * 100,  # Convert to percentage
+        commission_rate_l2=L2_COMMISSION_RATE * 100  # Convert to percentage
     )
 
-@affiliate_bp.route('/referral-link', methods=['GET'])
+@affiliate_bp.route('/referral-link')
 @login_required
 def referral_link():
     """Generate referral link for affiliate"""
+    # Check if user is an affiliate
     affiliate = Affiliate.query.filter_by(email=current_user.email).first()
-    
     if not affiliate:
-        flash("You need to register as an affiliate first", "info")
+        flash('You are not registered as an affiliate yet.', 'info')
         return redirect(url_for('affiliate.register'))
     
-    # Generate full referral URL
+    # Construct base URL (handles both HTTP and HTTPS)
     base_url = request.host_url.rstrip('/')
-    referral_url = f"{base_url}/?ref={affiliate.referral_code}"
     
-    return render_template(
-        'affiliate/referral_link.html',
-        affiliate=affiliate,
-        referral_url=referral_url
-    )
+    # Construct referral URL
+    referral_url = f"{base_url}?ref={affiliate.referral_code}"
+    
+    return render_template('affiliate/referral_link.html', affiliate=affiliate, referral_url=referral_url)
 
-@affiliate_bp.route('/admin', methods=['GET'])
-@login_required
+@affiliate_bp.route('/admin')
 @admin_required
 def admin():
     """Admin dashboard for managing affiliates and commissions"""
     # Get all affiliates
     affiliates = Affiliate.query.order_by(Affiliate.created_at.desc()).all()
     
-    # Update held commissions to approved if holding period has ended
-    held_commissions = Commission.query.filter(
-        Commission.status == CommissionStatus.HELD.value,
-        Commission.commission_available_date <= datetime.utcnow()
-    ).all()
+    # Get commissions eligible for payout (approved status)
+    eligible_commissions = Commission.query.filter_by(status=CommissionStatus.APPROVED.value).all()
     
-    for commission in held_commissions:
-        commission.status = CommissionStatus.APPROVED.value
-        commission.updated_at = datetime.utcnow()
-    
-    if held_commissions:
-        db.session.commit()
-        logger.info(f"Updated {len(held_commissions)} commissions from HELD to APPROVED status")
-    
-    # Get commissions pending approval
-    pending_commissions = Commission.query.filter(
-        Commission.status == CommissionStatus.APPROVED.value,
-    ).order_by(Commission.commission_available_date).all()
-    
-    # Calculate total pending payout amount
-    total_pending = db.session.query(func.sum(Commission.commission_amount)).filter(
-        Commission.status == CommissionStatus.APPROVED.value,
-    ).scalar() or 0
-    
-    # Get recent payouts
-    recent_payouts = Commission.query.filter(
-        Commission.status.in_([CommissionStatus.PAID.value, CommissionStatus.PAYOUT_FAILED.value])
-    ).order_by(Commission.updated_at.desc()).limit(20).all()
-    
-    # Group recent payouts by batch ID
-    batched_payouts = {}
-    for payout in recent_payouts:
-        if payout.payout_batch_id not in batched_payouts:
-            batched_payouts[payout.payout_batch_id] = {
-                'date': payout.updated_at,
-                'total_amount': 0,
-                'status': 'Mixed' if payout.status == CommissionStatus.PAYOUT_FAILED.value else 'Completed',
-                'commissions': []
-            }
-        
-        batched_payouts[payout.payout_batch_id]['commissions'].append(payout)
-        batched_payouts[payout.payout_batch_id]['total_amount'] += float(payout.commission_amount)
-        
-        # Update batch status if any item failed
-        if payout.status == CommissionStatus.PAYOUT_FAILED.value:
-            batched_payouts[payout.payout_batch_id]['status'] = 'Mixed'
-    
-    return render_template(
-        'affiliate/admin.html',
-        affiliates=affiliates,
-        pending_commissions=pending_commissions,
-        total_pending=total_pending,
-        batched_payouts=batched_payouts
-    )
-
-@affiliate_bp.route('/process-commissions', methods=['POST'])
-@login_required
-@admin_required
-def process_commissions():
-    """Process selected commissions for payout"""
-    commission_ids = request.form.getlist('commission_ids')
-    
-    if not commission_ids:
-        flash("No commissions selected", "error")
-        return redirect(url_for('affiliate.admin'))
-    
-    # Get selected commissions
-    commissions = Commission.query.filter(Commission.id.in_(commission_ids)).all()
-    
-    # First, check if any of the selected commissions' triggering transactions have been refunded/disputed
-    # We do this by checking Stripe's API using the triggering_transaction_id
-    import stripe
-    from stripe_config import initialize_stripe
-    
-    # Initialize Stripe if needed
-    initialize_stripe()
-    
-    # Track commissions to be rejected due to refunded/disputed transactions
-    rejected_commissions = []
-    valid_commissions = []
-    
-    for commission in commissions:
-        try:
-            # Check the Stripe payment status using the triggering_transaction_id
-            payment_intent = stripe.PaymentIntent.retrieve(commission.triggering_transaction_id)
-            
-            # If payment was refunded or has a dispute, mark the commission as rejected
-            if payment_intent.status != 'succeeded' or getattr(payment_intent, 'amount_refunded', 0) > 0:
-                commission.status = CommissionStatus.REJECTED.value
-                commission.updated_at = datetime.utcnow()
-                rejected_commissions.append(commission.id)
-                logger.info(f"Commission {commission.id} rejected due to refunded/disputed transaction")
-            else:
-                valid_commissions.append(commission)
-        except Exception as e:
-            logger.error(f"Error checking Stripe payment status for commission {commission.id}: {e}")
-            # Continue with other commissions even if there's an error with one
-            valid_commissions.append(commission)
-    
-    # If any commissions were rejected, save those changes
-    if rejected_commissions:
-        db.session.commit()
-        flash(f"{len(rejected_commissions)} commissions were rejected due to refunded/disputed transactions", "warning")
-        
-    # Group valid commissions by affiliate for batch processing
-    affiliate_payouts = {}
-    for commission in valid_commissions:
-        # Skip any commissions that aren't in APPROVED status or commission_available_date hasn't passed
-        if commission.status != CommissionStatus.APPROVED.value or commission.commission_available_date > datetime.utcnow():
-            continue
-            
-        affiliate = Affiliate.query.get(commission.affiliate_id)
-        if not affiliate or affiliate.status != AffiliateStatus.ACTIVE.value:
-            continue
-            
-        if affiliate.id not in affiliate_payouts:
-            affiliate_payouts[affiliate.id] = {
-                'paypal_email': affiliate.paypal_email,
+    # Group by affiliate for easier processing
+    commissions_by_affiliate = {}
+    for commission in eligible_commissions:
+        if commission.affiliate_id not in commissions_by_affiliate:
+            commissions_by_affiliate[commission.affiliate_id] = {
                 'amount': 0,
                 'commission_ids': []
             }
         
-        affiliate_payouts[affiliate.id]['amount'] += float(commission.commission_amount)
-        affiliate_payouts[affiliate.id]['commission_ids'].append(commission.id)
+        commissions_by_affiliate[commission.affiliate_id]['amount'] += float(commission.commission_amount)
+        commissions_by_affiliate[commission.affiliate_id]['commission_ids'].append(commission.id)
     
-    if not affiliate_payouts:
-        flash("No valid commissions to process", "error")
+    # Get affiliates with their commissions
+    affiliates_with_commissions = []
+    for affiliate in affiliates:
+        commission_data = commissions_by_affiliate.get(affiliate.id, {'amount': 0, 'commission_ids': []})
+        affiliates_with_commissions.append({
+            'affiliate': affiliate,
+            'commissions_amount': commission_data['amount'],
+            'commission_ids': commission_data['commission_ids'],
+            'referral_count': CustomerReferral.query.filter_by(affiliate_id=affiliate.id).count()
+        })
+    
+    return render_template('affiliate/admin.html', affiliates=affiliates_with_commissions)
+
+@affiliate_bp.route('/process-commissions', methods=['POST'])
+@admin_required
+def process_commissions():
+    """Process selected commissions for payout"""
+    # Get selected affiliate IDs
+    selected_affiliate_ids = request.form.getlist('affiliate_id')
+    
+    if not selected_affiliate_ids:
+        flash('No affiliates selected for payout.', 'warning')
         return redirect(url_for('affiliate.admin'))
     
-    # Process payouts
-    result = process_payout_batch(affiliate_payouts)
+    # Prepare payout data
+    payout_data = {}
+    for affiliate_id in selected_affiliate_ids:
+        # Get affiliate and their eligible commissions
+        affiliate = Affiliate.query.get(affiliate_id)
+        if not affiliate:
+            continue
+        
+        # Verify PayPal email
+        if not affiliate.paypal_email:
+            flash(f'Affiliate {affiliate.name} does not have a PayPal email set.', 'danger')
+            continue
+        
+        # Get approved commissions
+        commissions = Commission.query.filter_by(
+            affiliate_id=affiliate.id,
+            status=CommissionStatus.APPROVED.value
+        ).all()
+        
+        if not commissions:
+            continue
+        
+        # Calculate total amount
+        total_amount = sum(float(commission.commission_amount) for commission in commissions)
+        
+        # Add to payout data
+        payout_data[int(affiliate_id)] = {
+            'paypal_email': affiliate.paypal_email,
+            'amount': total_amount,
+            'commission_ids': [commission.id for commission in commissions]
+        }
     
-    if result['success']:
-        batch_id = result['batch_id']
+    if not payout_data:
+        flash('No eligible commissions found for payout.', 'warning')
+        return redirect(url_for('affiliate.admin'))
+    
+    # Process payout with PayPal
+    result = process_payout_batch(payout_data)
+    
+    if result.get('success'):
+        # Update commission statuses
+        batch_id = result.get('batch_id')
         commission_map = result.get('commission_map', {})
-        
-        # Get item-level results if available
-        item_results = result.get('item_results', [])
-        
-        # Update commission statuses based on payout batch results
-        for item_result in item_results:
+        for item_result in result.get('item_results', []):
             commission_id = item_result.get('commission_id')
             if commission_id:
                 commission = Commission.query.get(commission_id)
                 if commission:
-                    # Initial status is PAID for batch-level success
-                    # Individual items might be updated later through a webhook or status check
                     commission.status = CommissionStatus.PAID.value
                     commission.payout_batch_id = batch_id
-                    commission.updated_at = datetime.utcnow()
-                    
-                    # Mark affiliate's PayPal email as verified once they receive a successful payout
-                    affiliate = Affiliate.query.get(commission.affiliate_id)
-                    if affiliate and not affiliate.paypal_email_verified_at:
-                        affiliate.paypal_email_verified_at = datetime.utcnow()
         
-        db.session.commit()
-        flash(f"Successfully initiated {len(result['items_processed'])} payouts. Batch ID: {batch_id}", "success")
+        try:
+            db.session.commit()
+            flash(f'Successfully processed payouts. Batch ID: {batch_id}', 'success')
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error updating commission statuses: {e}")
+            flash('Payouts were processed but there was an error updating commission statuses.', 'warning')
     else:
-        flash(f"Error processing payouts: {result['error']}", "error")
+        error_message = result.get('error', 'Unknown error')
+        flash(f'Error processing payouts: {error_message}', 'danger')
     
     return redirect(url_for('affiliate.admin'))
 
@@ -398,142 +314,127 @@ def process_commissions():
 @login_required
 def update_paypal():
     """Update affiliate PayPal email"""
-    try:
-        # Get the affiliate
-        affiliate = Affiliate.query.filter_by(email=current_user.email).first()
-        
-        if not affiliate:
-            flash("You are not registered as an affiliate", "error")
-            return redirect(url_for('affiliate.register'))
-        
-        # Verify user owns this affiliate account
-        if affiliate.email != current_user.email:
-            flash("You can only update your own PayPal email", "error")
-            return redirect(url_for('affiliate.dashboard'))
-        
-        # Get the new PayPal email
-        new_paypal_email = request.form.get('new_paypal_email')
-        
-        if not new_paypal_email:
-            flash("PayPal email is required", "error")
-            return redirect(url_for('affiliate.dashboard'))
-        
-        # Update the PayPal email
-        affiliate.paypal_email = new_paypal_email
-        affiliate.updated_at = datetime.utcnow()
-        db.session.commit()
-        
-        flash("PayPal email updated successfully", "success")
+    # Check if user is an affiliate
+    affiliate = Affiliate.query.filter_by(email=current_user.email).first()
+    if not affiliate:
+        flash('You are not registered as an affiliate yet.', 'info')
+        return redirect(url_for('affiliate.register'))
+    
+    paypal_email = request.form.get('paypal_email')
+    
+    # Simple validation
+    if not paypal_email or '@' not in paypal_email:
+        flash('Please enter a valid PayPal email address.', 'danger')
         return redirect(url_for('affiliate.dashboard'))
     
+    # Update PayPal email
+    affiliate.paypal_email = paypal_email
+    affiliate.paypal_email_verified_at = None  # Reset verification status
+    
+    try:
+        db.session.commit()
+        flash('Your PayPal email has been updated.', 'success')
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Error updating PayPal email: {e}")
-        flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('affiliate.dashboard'))
+        flash('An error occurred while updating your PayPal email.', 'danger')
+    
+    return redirect(url_for('affiliate.dashboard'))
 
-@affiliate_bp.route('/check-payout-status/<string:batch_id>', methods=['GET'])
-@login_required
+@affiliate_bp.route('/check-payout-status/<batch_id>')
 @admin_required
 def check_payout_status(batch_id):
     """Check the status of a payout batch"""
-    try:
-        from paypal_payouts import get_payout_batch_status
-        
-        # Get commissions for this batch to build commission map
-        commissions = Commission.query.filter_by(payout_batch_id=batch_id).all()
-        
-        # Build a map of sender_item_id to commission_id for status matching
-        # We can reconstruct this from our naming convention pattern
-        commission_map = {}
-        for commission in commissions:
-            sender_item_id = f"AFFCOM_{commission.id}_" + commission.updated_at.strftime('%Y%m%d%H%M%S')
-            commission_map[sender_item_id] = commission.id
-        
-        # Get batch status from PayPal
-        batch_status = get_payout_batch_status(batch_id, commission_map)
-        
-        if batch_status['success']:
-            # Update commission statuses based on individual item statuses
-            if 'items' in batch_status:
-                for item in batch_status['items']:
-                    commission_id = item.get('commission_id')
-                    if commission_id:
-                        commission = Commission.query.get(commission_id)
-                        if commission:
-                            # Use the transaction_status field from the PayPal API
-                            if item['status'] == 'SUCCESS':
-                                commission.status = CommissionStatus.PAID.value
-                                
-                                # Mark affiliate's PayPal email as verified once they receive a successful payout
-                                affiliate = Affiliate.query.get(commission.affiliate_id)
-                                if affiliate and not affiliate.paypal_email_verified_at:
-                                    affiliate.paypal_email_verified_at = datetime.utcnow()
-                            elif item['status'] in ['FAILED', 'RETURNED', 'BLOCKED', 'UNCLAIMED']:
-                                commission.status = CommissionStatus.PAYOUT_FAILED.value
-                            
-                            commission.updated_at = datetime.utcnow()
-                
-                db.session.commit()
-                
-            flash(f"Payout batch status: {batch_status['batch_status']}", "info")
-        else:
-            flash(f"Error checking payout status: {batch_status.get('error')}", "error")
-        
-        return redirect(url_for('affiliate.admin'))
+    # Get commissions for this batch
+    commissions = Commission.query.filter_by(payout_batch_id=batch_id).all()
     
-    except Exception as e:
-        logger.error(f"Error checking payout status: {e}")
-        flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('affiliate.admin'))
+    # Create mapping of PayPal sender_item_id to commission_id
+    commission_map = {}
+    for commission in commissions:
+        # Reconstruct sender_item_id format used in process_payout_batch
+        timestamp = commission.updated_at.strftime('%Y%m%d%H%M%S')
+        sender_item_id = f"AFFCOM_{commission.id}_{timestamp}"
+        commission_map[sender_item_id] = commission.id
+    
+    # Get status from PayPal
+    result = get_payout_batch_status(batch_id, commission_map)
+    
+    if result.get('success'):
+        batch_status = result.get('batch_status')
+        items = result.get('items', [])
+        
+        # Update commission statuses based on item statuses
+        for item in items:
+            commission_id = item.get('commission_id')
+            item_status = item.get('status')
+            
+            if commission_id and item_status:
+                commission = Commission.query.get(commission_id)
+                if commission:
+                    # Map PayPal status to our status
+                    if item_status == 'SUCCESS':
+                        commission.status = CommissionStatus.PAID.value
+                    elif item_status in ['FAILED', 'RETURNED', 'BLOCKED', 'UNCLAIMED']:
+                        commission.status = CommissionStatus.PAYOUT_FAILED.value
+        
+        try:
+            db.session.commit()
+            flash(f'Payout status updated. Batch status: {batch_status}', 'success')
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error updating commission statuses: {e}")
+            flash('There was an error updating commission statuses.', 'danger')
+        
+        return jsonify(result)
+    else:
+        error_message = result.get('error', 'Unknown error')
+        flash(f'Error checking payout status: {error_message}', 'danger')
+        return jsonify(result), 400
 
-@affiliate_bp.route('/toggle-status/<int:affiliate_id>', methods=['GET'])
-@login_required
+@affiliate_bp.route('/toggle-status/<int:affiliate_id>', methods=['POST'])
 @admin_required
 def toggle_status(affiliate_id):
     """Toggle affiliate status between active and inactive"""
-    try:
-        # Get the affiliate
-        affiliate = Affiliate.query.get(affiliate_id)
-        
-        if not affiliate:
-            flash("Affiliate not found", "error")
-            return redirect(url_for('affiliate.admin'))
-        
-        # Toggle the status
-        if affiliate.status == AffiliateStatus.ACTIVE.value:
-            affiliate.status = AffiliateStatus.INACTIVE.value
-            status_message = "deactivated"
-        else:
-            affiliate.status = AffiliateStatus.ACTIVE.value
-            status_message = "activated"
-        
-        affiliate.updated_at = datetime.utcnow()
-        db.session.commit()
-        
-        flash(f"Affiliate {affiliate.name} has been {status_message}", "success")
-        return redirect(url_for('affiliate.admin'))
+    affiliate = Affiliate.query.get_or_404(affiliate_id)
     
+    # Toggle status
+    if affiliate.status == AffiliateStatus.ACTIVE.value:
+        affiliate.status = AffiliateStatus.INACTIVE.value
+        status_message = 'deactivated'
+    else:
+        affiliate.status = AffiliateStatus.ACTIVE.value
+        status_message = 'activated'
+    
+    try:
+        db.session.commit()
+        flash(f'Affiliate {affiliate.name} has been {status_message}.', 'success')
     except Exception as e:
+        db.session.rollback()
         logger.error(f"Error toggling affiliate status: {e}")
-        flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('affiliate.admin'))
+        flash('An error occurred while updating the affiliate status.', 'danger')
+    
+    return redirect(url_for('affiliate.admin'))
 
-@affiliate_bp.route('/track', methods=['GET'])
 def track_referral():
     """Middleware to track referral codes from URL parameters"""
     referral_code = request.args.get('ref')
     
     if not referral_code:
-        return redirect(url_for('index'))
+        return None
     
-    # Verify referral code exists
-    affiliate = Affiliate.query.filter_by(referral_code=referral_code).first()
-    if not affiliate or affiliate.status != AffiliateStatus.ACTIVE.value:
-        return redirect(url_for('index'))
+    # Validate referral code
+    affiliate = Affiliate.query.filter_by(referral_code=referral_code, status=AffiliateStatus.ACTIVE.value).first()
+    if not affiliate:
+        return None
     
-    # Set referral cookie and redirect to homepage
-    response = make_response(redirect(url_for('index')))
-    return set_referral_cookie(response, referral_code)
+    # Set referral cookie
+    response = make_response(redirect(request.path))
+    set_referral_cookie(response, referral_code)
+    
+    # Log referral
+    logger.info(f"Referral tracked: {referral_code}")
+    
+    return response
 
 def handle_affiliate_commission(payment_intent_id, customer_user_id, amount_usd):
     """
@@ -544,70 +445,69 @@ def handle_affiliate_commission(payment_intent_id, customer_user_id, amount_usd)
         customer_user_id (int): User ID of the customer
         amount_usd (float): Payment amount in USD
     """
-    try:
-        # Check if customer has a referral
-        customer_referral = CustomerReferral.query.filter_by(customer_user_id=customer_user_id).first()
-        if not customer_referral:
-            logger.info(f"No referral found for user {customer_user_id}")
-            return
-        
-        # Get the affiliate
-        l1_affiliate = Affiliate.query.get(customer_referral.affiliate_id)
-        if not l1_affiliate or l1_affiliate.status != AffiliateStatus.ACTIVE.value:
-            logger.info(f"Affiliate {customer_referral.affiliate_id} not found or inactive")
-            return
-        
-        # Calculate Level 1 commission
-        base_amount_gbp = get_gbp_amount(amount_usd)
-        l1_commission_amount = round(base_amount_gbp * LEVEL_1_COMMISSION_RATE, 2)
-        
-        # Create Level 1 commission record
-        commission_available_date = datetime.utcnow() + timedelta(days=COMMISSION_HOLDING_PERIOD)
-        
-        l1_commission = Commission(
-            affiliate_id=l1_affiliate.id,
-            triggering_transaction_id=payment_intent_id,
-            stripe_payment_status="succeeded",
-            purchase_amount_base=base_amount_gbp,
-            commission_rate=LEVEL_1_COMMISSION_RATE,
-            commission_amount=l1_commission_amount,
-            commission_level=1,  # Level 1
-            status=CommissionStatus.HELD.value,
-            commission_earned_date=datetime.utcnow(),
-            commission_available_date=commission_available_date
-        )
-        
-        db.session.add(l1_commission)
-        
-        # Check for Level 2 commission (if L1 affiliate was referred by another affiliate)
-        if l1_affiliate.referred_by_affiliate_id:
-            l2_affiliate = Affiliate.query.get(l1_affiliate.referred_by_affiliate_id)
-            if l2_affiliate and l2_affiliate.status == AffiliateStatus.ACTIVE.value:
-                # Calculate Level 2 commission
-                l2_commission_amount = round(base_amount_gbp * LEVEL_2_COMMISSION_RATE, 2)
-                
-                # Create Level 2 commission record
-                l2_commission = Commission(
-                    affiliate_id=l2_affiliate.id,
-                    triggering_transaction_id=payment_intent_id,
-                    stripe_payment_status="succeeded",
-                    purchase_amount_base=base_amount_gbp,
-                    commission_rate=LEVEL_2_COMMISSION_RATE,
-                    commission_amount=l2_commission_amount,
-                    commission_level=2,  # Level 2
-                    status=CommissionStatus.HELD.value,
-                    commission_earned_date=datetime.utcnow(),
-                    commission_available_date=commission_available_date
-                )
-                
-                db.session.add(l2_commission)
-        
-        db.session.commit()
-        logger.info(f"Commission recorded for payment {payment_intent_id}")
+    # Check if customer was referred by an affiliate
+    customer_referral = CustomerReferral.query.filter_by(customer_user_id=customer_user_id).first()
     
+    if not customer_referral:
+        logger.info(f"No affiliate referral for user {customer_user_id}")
+        return
+    
+    # Get the L1 affiliate (direct referrer)
+    l1_affiliate = Affiliate.query.get(customer_referral.affiliate_id)
+    
+    if not l1_affiliate or l1_affiliate.status != AffiliateStatus.ACTIVE.value:
+        logger.info(f"L1 affiliate {customer_referral.affiliate_id} not active")
+        return
+    
+    # Calculate L1 commission
+    l1_commission_amount = get_gbp_amount(amount_usd) * L1_COMMISSION_RATE
+    
+    # Create L1 commission record
+    l1_commission = Commission(
+        affiliate_id=l1_affiliate.id,
+        triggering_transaction_id=payment_intent_id,
+        stripe_payment_status='succeeded',
+        purchase_amount_base=get_gbp_amount(amount_usd),
+        commission_rate=L1_COMMISSION_RATE,
+        commission_amount=l1_commission_amount,
+        commission_level=1,
+        status=CommissionStatus.HELD.value,
+        commission_earned_date=datetime.utcnow(),
+        commission_available_date=datetime.utcnow() + timedelta(days=COMMISSION_HOLDING_DAYS)
+    )
+    
+    db.session.add(l1_commission)
+    
+    # Check for L2 affiliate (if L1 was referred by someone)
+    if l1_affiliate.referred_by_affiliate_id:
+        l2_affiliate = Affiliate.query.get(l1_affiliate.referred_by_affiliate_id)
+        
+        if l2_affiliate and l2_affiliate.status == AffiliateStatus.ACTIVE.value:
+            # Calculate L2 commission
+            l2_commission_amount = get_gbp_amount(amount_usd) * L2_COMMISSION_RATE
+            
+            # Create L2 commission record
+            l2_commission = Commission(
+                affiliate_id=l2_affiliate.id,
+                triggering_transaction_id=payment_intent_id,
+                stripe_payment_status='succeeded',
+                purchase_amount_base=get_gbp_amount(amount_usd),
+                commission_rate=L2_COMMISSION_RATE,
+                commission_amount=l2_commission_amount,
+                commission_level=2,
+                status=CommissionStatus.HELD.value,
+                commission_earned_date=datetime.utcnow(),
+                commission_available_date=datetime.utcnow() + timedelta(days=COMMISSION_HOLDING_DAYS)
+            )
+            
+            db.session.add(l2_commission)
+    
+    try:
+        db.session.commit()
+        logger.info(f"Commission(s) created for payment {payment_intent_id}")
     except Exception as e:
-        logger.error(f"Error handling affiliate commission: {e}")
         db.session.rollback()
+        logger.error(f"Error creating affiliate commission: {e}")
 
 def check_referral_on_auth(user_id):
     """
@@ -616,47 +516,39 @@ def check_referral_on_auth(user_id):
     Args:
         user_id (int): User ID of the authenticated user
     """
-    try:
-        # Check if user already has a referral
-        existing_referral = CustomerReferral.query.filter_by(customer_user_id=user_id).first()
-        if existing_referral:
-            logger.info(f"User {user_id} already has a referral")
-            return
-        
-        # Check for referral cookie
-        referral_code = request.cookies.get('referral_code')
-        if not referral_code:
-            logger.info(f"No referral cookie found for user {user_id}")
-            return
-        
-        # Verify affiliate exists and is active
-        affiliate = Affiliate.query.filter_by(referral_code=referral_code).first()
-        if not affiliate or affiliate.status != AffiliateStatus.ACTIVE.value:
-            logger.info(f"Invalid or inactive affiliate for referral code {referral_code}")
-            return
-        
-        # Get user details
-        user = User.query.get(user_id)
-        if not user:
-            logger.error(f"User {user_id} not found")
-            return
-            
-        # Check that user isn't referring themselves
-        if user.email == affiliate.email:
-            logger.info(f"User {user_id} cannot refer themselves")
-            return
-        
-        # Create customer referral record
-        customer_referral = CustomerReferral(
-            customer_user_id=user_id,
-            affiliate_id=affiliate.id,
-            signup_date=datetime.utcnow()
-        )
-        
-        db.session.add(customer_referral)
-        db.session.commit()
-        logger.info(f"Referral recorded for user {user_id} from affiliate {affiliate.id}")
+    referral_code = request.cookies.get(REFERRAL_COOKIE_NAME)
     
+    if not referral_code:
+        return
+    
+    # Check if this user already has a referral record
+    existing_referral = CustomerReferral.query.filter_by(customer_user_id=user_id).first()
+    if existing_referral:
+        logger.info(f"User {user_id} already has a referral record")
+        return
+    
+    # Find the affiliate by referral code
+    affiliate = Affiliate.query.filter_by(referral_code=referral_code, status=AffiliateStatus.ACTIVE.value).first()
+    if not affiliate:
+        logger.warning(f"Invalid referral code in cookie: {referral_code}")
+        return
+    
+    # Check if user is trying to refer themselves
+    user = User.query.get(user_id)
+    if user and user.email == affiliate.email:
+        logger.warning(f"User {user_id} attempted to refer themselves")
+        return
+    
+    # Create customer referral record
+    new_referral = CustomerReferral(
+        customer_user_id=user_id,
+        affiliate_id=affiliate.id
+    )
+    
+    try:
+        db.session.add(new_referral)
+        db.session.commit()
+        logger.info(f"Created referral record: User {user_id} referred by Affiliate {affiliate.id}")
     except Exception as e:
-        logger.error(f"Error checking referral on auth: {e}")
         db.session.rollback()
+        logger.error(f"Error creating customer referral: {e}")

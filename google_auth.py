@@ -22,7 +22,7 @@ GOOGLE_CLIENT_SECRET = os.environ["GOOGLE_OAUTH_CLIENT_SECRET"]
 GOOGLE_DISCOVERY_URL = "https://accounts.google.com/.well-known/openid-configuration"
 
 # Make sure to use this redirect URL. It has to match the one in the whitelist
-DEV_REDIRECT_URL = f'https://{os.environ["REPLIT_DEV_DOMAIN"]}/google_login/callback'
+DEV_REDIRECT_URL = f'https://{os.environ["REPLIT_DEV_DOMAIN"]}/google_auth/login/callback'
 
 # ALWAYS display setup instructions to the user:
 print(f"""To make Google authentication work:
@@ -39,7 +39,7 @@ client = WebApplicationClient(GOOGLE_CLIENT_ID)
 google_auth = Blueprint("google_auth", __name__)
 
 
-@google_auth.route("/google_login")
+@google_auth.route("/login")
 def login():
     google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()
     authorization_endpoint = google_provider_cfg["authorization_endpoint"]
@@ -54,7 +54,7 @@ def login():
     return redirect(request_uri)
 
 
-@google_auth.route("/google_login/callback")
+@google_auth.route("/login/callback")
 def callback():
     code = request.args.get("code")
     google_provider_cfg = requests.get(GOOGLE_DISCOVERY_URL).json()

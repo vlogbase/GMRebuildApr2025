@@ -145,7 +145,7 @@ login_manager.login_view = 'login'
 # Register blueprints
 try:
     from google_auth import google_auth
-    app.register_blueprint(google_auth)
+    app.register_blueprint(google_auth, url_prefix='/google_auth')
     logger.info("Google Auth blueprint registered successfully")
 except Exception as e:
     logger.error(f"Error registering Google Auth blueprint: {e}")
@@ -2682,4 +2682,5 @@ if __name__ == '__main__':
     logger.info("Started background scheduler for model price updates")
     
     # ensure gevent monkey-patching already happened at import time
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)

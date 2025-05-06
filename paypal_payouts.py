@@ -2,33 +2,24 @@
 PayPal Payouts Module
 
 This module handles PayPal payout functionality for affiliate commissions.
-It uses the PayPal Payouts API to process batch payments to affiliates.
+It uses the PayPal REST SDK to process batch payments to affiliates.
 """
 
-import os
 import logging
-import json
+import os
 from datetime import datetime
-import uuid
-from paypal.payouts import (
-    PayoutsPostRequest,
-    PayoutSenderBatchHeader, 
-    SenderBatchHeader, 
-    PayoutItem, 
-    Amount,
-    PayoutItemDetail
-)
-from paypal.payouts import PayoutsGetRequest
-from paypal_config import get_paypal_client
-from paypal.http import HttpError
+from typing import Dict, List, Any, Optional, Tuple, Union
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Import PayPal configuration
+from paypal_config import is_paypal_initialized, create_payout, get_payout_details
+
 def process_payout_batch(affiliate_payouts):
     """
-    Process a batch of payouts to affiliates using PayPal Payouts API
+    Process a batch of payouts to affiliates using PayPal REST SDK
     
     Args:
         affiliate_payouts (dict): Dictionary of affiliate payouts
@@ -52,137 +43,99 @@ def process_payout_batch(affiliate_payouts):
                 'commission_map': {sender_item_id: commission_id, ...}
             }
     """
+    if not is_paypal_initialized():
+        return {
+            'success': False,
+            'error': 'PayPal is not initialized. Please check your PayPal configuration.'
+        }
+    
     try:
-        # Check if we have payouts to process
-        if not affiliate_payouts:
-            return {
-                'success': False,
-                'error': 'No valid payouts to process'
-            }
+        # Prepare the batch
+        timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+        batch_id = f"AFFBATCH_{timestamp}"
+        email_subject = "You've received a commission payment"
+        email_message = "Thank you for being an affiliate. Your commission has been processed."
         
-        # Get PayPal client
-        client = get_paypal_client()
-        if not client:
-            return {
-                'success': False,
-                'error': 'PayPal client initialization failed'
-            }
+        # Create the payout items
+        items = []
+        commission_map = {}  # Maps sender_item_id to commission_id
+        item_results = []
         
-        # Generate a unique batch ID
-        sender_batch_id = f"AFFPAY_{uuid.uuid4().hex[:10]}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-        
-        # Create sender batch header
-        sender_batch_header = SenderBatchHeader(
-            sender_batch_id=sender_batch_id,
-            email_subject="You received an affiliate commission payment"
-        )
-        
-        # Create payout items array and commission map
-        payout_items = []
-        commission_map = {}  # Map sender_item_id to commission_id for tracking
-        item_info = []  # Store information about created items
-        
-        for affiliate_id, data in affiliate_payouts.items():
-            paypal_email = data['paypal_email']
-            total_amount = data['amount']
-            commission_ids = data['commission_ids']
-            
-            # Skip invalid amounts
-            if total_amount <= 0:
+        for affiliate_id, payout_info in affiliate_payouts.items():
+            try:
+                # Process each commission as a separate payout item
+                for commission_id in payout_info['commission_ids']:
+                    amount_value = payout_info['amount']
+                    recipient_email = payout_info['paypal_email']
+                    sender_item_id = f"AFFCOM_{commission_id}_{timestamp}"
+                    note = f"Commission payment for affiliate ID {affiliate_id}"
+                    
+                    # Map the sender_item_id to commission_id for later status updates
+                    commission_map[sender_item_id] = commission_id
+                    
+                    # Create a payout item
+                    payout_item = {
+                        "recipient_type": "EMAIL",
+                        "amount": {
+                            "value": str(amount_value),
+                            "currency": "GBP"
+                        },
+                        "note": note,
+                        "sender_item_id": sender_item_id,
+                        "receiver": recipient_email
+                    }
+                    
+                    items.append(payout_item)
+                    
+                    # Track the item result for commission status updates
+                    item_results.append({
+                        'commission_id': commission_id,
+                        'status': 'PENDING',
+                        'error': None
+                    })
+            except Exception as e:
+                logger.error(f"Error creating payout item for affiliate {affiliate_id}: {e}")
                 continue
-            
-            # Create a unique sender_item_id for each commission
-            # This is crucial for tracking the success/failure of individual commissions
-            for commission_id in commission_ids:
-                # Calculate amount for this specific commission
-                amount_per_commission = total_amount / len(commission_ids)
-                
-                # Create unique sender_item_id that includes the commission ID for tracking
-                sender_item_id = f"AFFCOM_{commission_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
-                commission_map[sender_item_id] = commission_id
-                
-                # Create amount object
-                amount = Amount(
-                    currency="GBP",
-                    value=f"{amount_per_commission:.2f}"
-                )
-                
-                # Create payout item
-                payout_item = PayoutItem(
-                    receiver=paypal_email,
-                    amount=amount,
-                    sender_item_id=sender_item_id,
-                    recipient_type="EMAIL",
-                    note=f"Affiliate commission payout for commission #{commission_id}"
-                )
-                
-                payout_items.append(payout_item)
-                
-                # Store information for result
-                item_info.append({
-                    'commission_id': commission_id,
-                    'amount': amount_per_commission,
-                    'paypal_email': paypal_email,
-                    'sender_item_id': sender_item_id
-                })
         
-        # Skip if no valid items
-        if not payout_items:
+        if not items:
             return {
                 'success': False,
-                'error': 'No valid payout items to process'
+                'error': 'No valid payout items could be created'
             }
         
-        # Create payout request
-        request = PayoutsPostRequest()
-        request.request_body(
-            sender_batch_header=sender_batch_header,
-            items=payout_items
-        )
+        # Create the payout
+        result = create_payout(sender_batch_id=batch_id, 
+                              email_subject=email_subject, 
+                              email_message=email_message, 
+                              items=items)
         
-        try:
-            # Call API with created request
-            response = client.execute(request)
+        if result.get('success'):
+            batch_id = result.get('batch_id')
+            batch_status = result.get('batch_status')
             
-            # Process response
-            batch_id = response.result.batch_header.payout_batch_id
-            batch_status = response.result.batch_header.batch_status
-            
-            logger.info(f"Payout batch created with ID: {batch_id}, status: {batch_status}")
-            
-            # Prepare item results (all in PENDING state initially since we use async payout)
-            item_results = []
-            for item in item_info:
-                item_results.append({
-                    'commission_id': item['commission_id'],
-                    'sender_item_id': item['sender_item_id'],
-                    'status': 'PENDING',  # Initial status
-                    'error': None
-                })
+            logger.info(f"Payout batch created with ID: {batch_id}, Status: {batch_status}")
             
             return {
                 'success': True,
                 'batch_id': batch_id,
                 'batch_status': batch_status,
-                'items_processed': item_info,
+                'items_processed': items,
                 'item_results': item_results,
                 'commission_map': commission_map
             }
-        
-        except HttpError as http_error:
-            # Handle HTTP errors from PayPal API
-            error_data = http_error.message
-            logger.error(f"PayPal API error: {error_data}")
+        else:
+            error = result.get('error', 'Unknown error')
+            logger.error(f"Error creating payout: {error}")
             return {
                 'success': False,
-                'error': f"PayPal API error: {error_data}"
+                'error': f"PayPal error: {error}"
             }
-        
+    
     except Exception as e:
-        logger.error(f"Error processing payout batch: {e}")
+        logger.error(f"Unexpected error in process_payout_batch: {e}")
         return {
             'success': False,
-            'error': str(e)
+            'error': f"Unexpected error: {str(e)}"
         }
 
 def get_payout_batch_status(batch_id, commission_map=None):
@@ -196,94 +149,60 @@ def get_payout_batch_status(batch_id, commission_map=None):
     Returns:
         dict: Payout batch status with item details
     """
+    if not is_paypal_initialized():
+        return {
+            'success': False,
+            'error': 'PayPal is not initialized. Please check your PayPal configuration.'
+        }
+    
     try:
-        # Get PayPal client
-        client = get_paypal_client()
-        if not client:
-            return {
-                'success': False,
-                'error': 'PayPal client initialization failed'
-            }
+        # Get payout details
+        result = get_payout_details(batch_id)
         
-        # Create request to get payout batch details
-        request = PayoutsGetRequest(batch_id)
-        
-        try:
-            # Call API with created request
-            response = client.execute(request)
+        if result.get('success'):
+            batch_status = result.get('batch_status')
             
-            # Process response
-            batch_header = response.result.batch_header
-            batch_status = batch_header.batch_status
-            time_created = batch_header.time_created
-            time_completed = getattr(batch_header, 'time_completed', None)
+            logger.info(f"Payout batch {batch_id} status: {batch_status}")
             
-            # Extract item details
-            items = response.result.items if hasattr(response.result, 'items') else []
-            item_count = len(items)
-            
-            # Process individual items
-            item_details = []
-            for item in items:
-                sender_item_id = getattr(item, 'payout_item.sender_item_id', None)
-                if not sender_item_id and hasattr(item, 'payout_item'):
-                    sender_item_id = getattr(item.payout_item, 'sender_item_id', None)
+            # Get the item details
+            items = []
+            for item in result.get('items', []):
+                payout_item = item.get('payout_item', {})
+                sender_item_id = payout_item.get('sender_item_id')
                 
-                commission_id = None
-                if commission_map and sender_item_id in commission_map:
-                    commission_id = commission_map[sender_item_id]
-                
-                # Get transaction status - this is the key field for payment status
-                transaction_status = getattr(item, 'transaction_status', 'UNKNOWN')
-                if not transaction_status and hasattr(item, 'payout_item_response'):
-                    transaction_status = getattr(item.payout_item_response, 'transaction_status', 'UNKNOWN')
-                
-                # Get transaction ID
-                transaction_id = getattr(item, 'transaction_id', None)
-                if not transaction_id and hasattr(item, 'payout_item_response'):
-                    transaction_id = getattr(item.payout_item_response, 'transaction_id', None)
-                
-                # Check for errors
-                item_error = None
-                if hasattr(item, 'errors') and item.errors:
-                    error_details = []
-                    for error in item.errors:
-                        error_detail = {
-                            'name': getattr(error, 'name', 'Unknown error'),
-                            'message': getattr(error, 'message', 'No message available')
-                        }
-                        error_details.append(error_detail)
-                    item_error = error_details
-                
-                item_details.append({
-                    'commission_id': commission_id,
+                item_data = {
+                    'transaction_id': item.get('transaction_id'),
+                    'transaction_status': item.get('transaction_status'),
                     'sender_item_id': sender_item_id,
-                    'status': transaction_status,
-                    'transaction_id': transaction_id,
-                    'error': item_error
-                })
+                    'amount': payout_item.get('amount', {}).get('value'),
+                    'currency': payout_item.get('amount', {}).get('currency'),
+                    'receiver': payout_item.get('receiver'),
+                    'status': item.get('transaction_status')
+                }
+                
+                # Map to commission ID if available
+                if commission_map and sender_item_id in commission_map:
+                    item_data['commission_id'] = commission_map[sender_item_id]
+                
+                items.append(item_data)
             
             return {
                 'success': True,
+                'batch_id': batch_id,
                 'batch_status': batch_status,
-                'time_created': time_created,
-                'time_completed': time_completed,
-                'item_count': item_count,
-                'items': item_details
+                'items': items
             }
-        
-        except HttpError as http_error:
-            # Handle HTTP errors from PayPal API
-            error_data = http_error.message
-            logger.error(f"PayPal API error getting batch status: {error_data}")
+        else:
+            error = result.get('error', 'Unknown error')
+            logger.error(f"Error getting payout details: {error}")
             return {
                 'success': False,
-                'error': f"PayPal API error: {error_data}"
+                'error': f"PayPal error: {error}"
             }
-        
+    
     except Exception as e:
-        logger.error(f"Error getting payout batch status: {e}")
+        logger.error(f"Unexpected error in get_payout_batch_status: {e}")
         return {
             'success': False,
-            'error': str(e)
+            'error': f"Unexpected error: {str(e)}"
         }
