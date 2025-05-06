@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}Affiliate Registration{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">Affiliate Program Registration</h2>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Join Our Two-Tier Affiliate Program</h5>
+                        <p>Earn commissions by referring customers to our platform:</p>
+                        <ul>
+                            <li><strong>Level 1 (Direct Referrals):</strong> 10% commission on all purchases made by customers you refer</li>
+                            <li><strong>Level 2 (Indirect Referrals):</strong> 5% commission on purchases made by customers referred by your affiliates</li>
+                        </ul>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('affiliate.register') }}">
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" id="name" name="name" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="paypal_email" class="form-label">PayPal Email (for commission payments)</label>
+                            <input type="email" class="form-control" id="paypal_email" name="paypal_email" required>
+                            <div class="form-text">We use PayPal to send your commission payments. Make sure this email is connected to a valid PayPal account.</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="referring_code" class="form-label">Referral Code (Optional)</label>
+                            <input type="text" class="form-control" id="referring_code" name="referring_code" value="{{ referring_code }}">
+                            <div class="form-text">If another affiliate referred you, enter their code here.</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="terms_agree" required>
+                                <label class="form-check-label" for="terms_agree">
+                                    I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Affiliate Terms and Conditions</a>
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Register as Affiliate</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Terms and Conditions Modal -->
+<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="termsModalLabel">Affiliate Program Terms and Conditions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <h6>1. Eligibility</h6>
+                <p>To be eligible for our Affiliate Program, you must:</p>
+                <ul>
+                    <li>Be at least 18 years of age</li>
+                    <li>Have an active account on our platform</li>
+                    <li>Have a valid PayPal account to receive payments</li>
+                    <li>Comply with all terms of service</li>
+                </ul>
+
+                <h6>2. Commission Structure</h6>
+                <p>Our two-tier commission structure works as follows:</p>
+                <ul>
+                    <li><strong>Level 1 (Direct Referrals):</strong> You earn 10% commission on all purchases made by customers you directly refer to our platform.</li>
+                    <li><strong>Level 2 (Indirect Referrals):</strong> You earn 5% commission on purchases made by customers who are referred by affiliates you've brought into the program.</li>
+                </ul>
+
+                <h6>3. Commission Payments</h6>
+                <p>Commissions are subject to a 30-day holding period to allow for refunds and chargebacks. After this period, approved commissions will be available for payout. Payouts are processed via PayPal.</p>
+
+                <h6>4. Prohibited Activities</h6>
+                <p>The following activities are strictly prohibited:</p>
+                <ul>
+                    <li>Spamming or any form of unsolicited marketing</li>
+                    <li>Misrepresenting our services or making false claims</li>
+                    <li>Creating fake accounts or using fraudulent methods to generate commissions</li>
+                    <li>Bidding on our brand name or trademarks in search engines</li>
+                </ul>
+
+                <h6>5. Term and Termination</h6>
+                <p>We reserve the right to terminate your affiliate account at any time if we determine that you have violated these terms or engaged in fraudulent activity. Upon termination, any unpaid commissions may be forfeited.</p>
+
+                <h6>6. Changes to Terms</h6>
+                <p>We may update these terms from time to time. Continued participation in the affiliate program after changes are made constitutes acceptance of the new terms.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

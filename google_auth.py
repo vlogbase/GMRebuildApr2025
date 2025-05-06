@@ -2,13 +2,20 @@
 
 import json
 import os
+import logging
+from datetime import datetime
 
 import requests
 from app import db
 from flask import Blueprint, redirect, request, url_for, session
-from flask_login import login_required, login_user, logout_user
+from flask_login import login_required, login_user, logout_user, current_user
 from models import User
 from oauthlib.oauth2 import WebApplicationClient
+from affiliate_system import check_referral_on_auth
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 GOOGLE_CLIENT_ID = os.environ["GOOGLE_OAUTH_CLIENT_ID"]
 GOOGLE_CLIENT_SECRET = os.environ["GOOGLE_OAUTH_CLIENT_SECRET"]
@@ -87,7 +94,17 @@ def callback():
         db.session.add(user)
         db.session.commit()
 
+    # Update last login timestamp
+    user.last_login_at = datetime.utcnow()
+    db.session.commit()
+    
     login_user(user)
+    
+    # Check for referral cookie and process affiliate referral
+    try:
+        check_referral_on_auth(user.id)
+    except Exception as e:
+        logger.error(f"Error processing referral for user {user.id}: {e}")
 
     # Get the redirect parameter if it exists in the session
     redirect_to = session.get('login_redirect', 'index')

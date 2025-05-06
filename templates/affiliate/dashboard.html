@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}Affiliate Dashboard{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="mb-0">Affiliate Dashboard</h1>
+            <p class="text-muted">Welcome, {{ affiliate.name }}</p>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('affiliate.referral_link') }}" class="btn btn-primary">Get Referral Link</a>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="card h-100 bg-light">
+                <div class="card-body text-center">
+                    <h3 class="text-primary mb-0">£{{ "%.2f"|format(total_earned) }}</h3>
+                    <p class="mb-0">Total Earned</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card h-100 bg-light">
+                <div class="card-body text-center">
+                    <h3 class="text-success mb-0">£{{ "%.2f"|format(pending_payout) }}</h3>
+                    <p class="mb-0">Ready for Payout</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card h-100 bg-light">
+                <div class="card-body text-center">
+                    <h3 class="text-warning mb-0">£{{ "%.2f"|format(on_hold) }}</h3>
+                    <p class="mb-0">On Hold</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card h-100 bg-light">
+                <div class="card-body text-center">
+                    <h3 class="text-secondary mb-0">£{{ "%.2f"|format(paid_out) }}</h3>
+                    <p class="mb-0">Paid Out</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Referral Stats -->
+    <div class="row mb-4">
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Your Referrals</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <span>Direct Customer Referrals (L1):</span>
+                        <strong>{{ direct_referrals }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Affiliate Referrals (L2):</span>
+                        <strong>{{ l2_affiliates }}</strong>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <small class="text-muted">
+                        You earn 10% on L1 referrals and 5% on L2 referrals
+                    </small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6 mb-3">
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">Payout Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">PayPal Email</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" value="{{ affiliate.paypal_email }}" readonly>
+                            <button class="btn btn-outline-secondary" type="button" data-bs-toggle="modal" data-bs-target="#updatePayPalModal">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mb-0">
+                        <small>Commissions are held for 30 days before becoming available for payout.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Commission History -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Commission History</h5>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Transaction</th>
+                            <th>Level</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Available On</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if commissions %}
+                            {% for commission in commissions %}
+                                <tr>
+                                    <td>{{ commission.commission_earned_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ commission.triggering_transaction_id[:10] }}...</td>
+                                    <td>L{{ commission.commission_level }}</td>
+                                    <td>£{{ "%.2f"|format(commission.commission_amount) }}</td>
+                                    <td>
+                                        {% if commission.status == 'held' %}
+                                            <span class="badge bg-warning">On Hold</span>
+                                        {% elif commission.status == 'approved' %}
+                                            <span class="badge bg-success">Approved</span>
+                                        {% elif commission.status == 'paid' %}
+                                            <span class="badge bg-primary">Paid</span>
+                                        {% elif commission.status == 'rejected' %}
+                                            <span class="badge bg-danger">Rejected</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">{{ commission.status }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ commission.commission_available_date.strftime('%Y-%m-%d') }}</td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center py-3">No commission history yet</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Commission Info -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">How Our Two-Tier Affiliate Program Works</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Level 1 Commissions (10%)</h6>
+                            <p>You earn a 10% commission on all purchases made by users you directly refer to our platform.</p>
+                            <p>Example: If your referral purchases a £50 credit package, you earn £5.</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="mb-3">Level 2 Commissions (5%)</h6>
+                            <p>You also earn a 5% commission on purchases made by users referred by your affiliates.</p>
+                            <p>Example: If an affiliate you referred brings in a customer who purchases a £50 credit package, you earn £2.50.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Update PayPal Email Modal -->
+<div class="modal fade" id="updatePayPalModal" tabindex="-1" aria-labelledby="updatePayPalModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="updatePayPalModalLabel">Update PayPal Email</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('affiliate.update_paypal') }}" method="POST">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="new_paypal_email" class="form-label">New PayPal Email</label>
+                        <input type="email" class="form-control" id="new_paypal_email" name="new_paypal_email" value="{{ affiliate.paypal_email }}" required>
+                        <div class="form-text">This email will be used for all future commission payments. Make sure it's connected to a valid PayPal account.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Update Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

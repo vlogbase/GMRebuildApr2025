@@ -160,6 +160,20 @@ try:
 except Exception as e:
     logger.error(f"Error registering Billing blueprint: {e}")
 
+# Register affiliate blueprint
+try:
+    from affiliate_system import affiliate_bp, track_referral, check_referral_on_auth
+    app.register_blueprint(affiliate_bp)
+    # Add middleware to track affiliate referrals
+    @app.before_request
+    def before_request():
+        referral_response = track_referral()
+        if referral_response:
+            return referral_response
+    logger.info("Affiliate blueprint registered successfully")
+except Exception as e:
+    logger.error(f"Error registering Affiliate blueprint: {e}")
+
 @login_manager.user_loader
 def load_user(user_id):
     from models import User 

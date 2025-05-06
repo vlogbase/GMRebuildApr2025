@@ -21,6 +21,7 @@ from sqlalchemy import desc, func
 from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
 from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature
+from affiliate_system import handle_affiliate_commission
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -245,6 +246,13 @@ def stripe_webhook():
             db.session.commit()
             
             logger.info(f"Payment for {transaction.credits} credits processed successfully for user {user.id}")
+            
+            # Process affiliate commission if applicable
+            handle_affiliate_commission(
+                payment_intent_id=session.payment_intent,
+                customer_user_id=user_id,
+                amount_usd=transaction.amount_usd
+            )
             
         # Return a success response
         return jsonify({'status': 'success'}), 200
