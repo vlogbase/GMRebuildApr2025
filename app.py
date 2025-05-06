@@ -145,7 +145,7 @@ login_manager.login_view = 'login'
 # Register blueprints
 try:
     from google_auth import google_auth
-    app.register_blueprint(google_auth, url_prefix='/google_auth')
+    app.register_blueprint(google_auth)
     logger.info("Google Auth blueprint registered successfully")
 except Exception as e:
     logger.error(f"Error registering Google Auth blueprint: {e}")
@@ -159,20 +159,6 @@ try:
     logger.info("Billing blueprint registered successfully with prefix /billing")
 except Exception as e:
     logger.error(f"Error registering Billing blueprint: {e}")
-
-# Register affiliate blueprint
-try:
-    from affiliate_system import affiliate_bp, track_referral, check_referral_on_auth
-    app.register_blueprint(affiliate_bp)
-    # Add middleware to track affiliate referrals
-    @app.before_request
-    def before_request():
-        referral_response = track_referral()
-        if referral_response:
-            return referral_response
-    logger.info("Affiliate blueprint registered successfully")
-except Exception as e:
-    logger.error(f"Error registering Affiliate blueprint: {e}")
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -2682,5 +2668,4 @@ if __name__ == '__main__':
     logger.info("Started background scheduler for model price updates")
     
     # ensure gevent monkey-patching already happened at import time
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)

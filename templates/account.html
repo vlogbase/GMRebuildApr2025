@@ -231,7 +231,6 @@
         <button class="tab-button" onclick="openTab('history')">Purchase History</button>
         <button class="tab-button" onclick="openTab('usage')">Usage Analytics</button>
         <button class="tab-button" onclick="openTab('pricing')">Pricing</button>
-        <button class="tab-button" onclick="openTab('affiliate')">Affiliate Program</button>
         <button class="tab-button" onclick="openTab('settings')">Account Settings</button>
     </div>
 
@@ -573,107 +572,6 @@
                 <div class="mt-3">
                     <p class="caption text-muted"><i class="fas fa-info-circle"></i> The pricing information is fetched directly from OpenRouter and our internal pricing configuration. Prices may vary based on model updates and availability.</p>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Affiliate Program Tab -->
-        <div id="affiliate" class="tab-pane">
-            <div class="balance-card p-4">
-                <h4 class="mb-3">Affiliate Program</h4>
-                
-                {% set is_affiliate = false %}
-                {% set affiliate = None %}
-                
-                {% if is_affiliate %}
-                    <!-- Affiliate Dashboard for Registered Affiliates -->
-                    <div class="row mb-4">
-                        <div class="col-md-6">
-                            <div class="card bg-dark mb-3">
-                                <div class="card-body">
-                                    <h5 class="card-title">Your Affiliate Statistics</h5>
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span>Total Earned:</span>
-                                        <strong>£{{ "%.2f"|format(0.00) }}</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span>Pending Payout:</span>
-                                        <strong>£{{ "%.2f"|format(0.00) }}</strong>
-                                    </div>
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span>Lifetime Paid:</span>
-                                        <strong>£{{ "%.2f"|format(0.00) }}</strong>
-                                    </div>
-                                </div>
-                                <div class="card-footer">
-                                    <a href="{{ url_for('affiliate.dashboard') }}" class="btn btn-primary btn-sm">Go to Affiliate Dashboard</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card bg-dark mb-3">
-                                <div class="card-body">
-                                    <h5 class="card-title">Your Referral Link</h5>
-                                    <div class="input-group mb-3">
-                                        <input type="text" class="form-control" value="https://example.com/?ref=YOURCODE" readonly id="refLink">
-                                        <button class="btn btn-outline-secondary" type="button" onclick="copyRefLink()">
-                                            <i class="fas fa-copy"></i> Copy
-                                        </button>
-                                    </div>
-                                    <p class="caption">Share this link to earn commissions when people sign up and make purchases.</p>
-                                </div>
-                                <div class="card-footer">
-                                    <a href="{{ url_for('affiliate.referral_link') }}" class="btn btn-primary btn-sm">Get Referral Materials</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% else %}
-                    <!-- Affiliate Program Info for Non-Affiliates -->
-                    <div class="row mb-4">
-                        <div class="col-md-7">
-                            <h5>Earn Money by Referring Friends and Colleagues</h5>
-                            <p>Join our two-tier affiliate program and earn commissions on every purchase made through your referral link:</p>
-                            <ul>
-                                <li><strong>10% commission</strong> on all purchases made by users you refer directly (Level 1)</li>
-                                <li><strong>5% commission</strong> on purchases made by users referred by your affiliates (Level 2)</li>
-                            </ul>
-                            <h6 class="mt-4">How It Works</h6>
-                            <ol>
-                                <li>Sign up for our affiliate program</li>
-                                <li>Share your unique referral link with others</li>
-                                <li>Earn commissions when they make purchases</li>
-                                <li>Get paid via PayPal once your commissions are approved</li>
-                            </ol>
-                            <p class="caption mt-3">Commissions are held for 30 days to allow for refunds and chargebacks before becoming available for payout.</p>
-                            <a href="{{ url_for('affiliate.register') }}" class="btn btn-primary mt-3">Sign Up as an Affiliate</a>
-                        </div>
-                        <div class="col-md-5">
-                            <div class="card bg-dark">
-                                <div class="card-header">
-                                    <h5 class="mb-0">Commission Structure</h5>
-                                </div>
-                                <div class="card-body">
-                                    <div class="mb-3">
-                                        <h6>Level 1 (Direct Referrals)</h6>
-                                        <div class="d-flex justify-content-between">
-                                            <span>Commission Rate:</span>
-                                            <strong>10%</strong>
-                                        </div>
-                                        <p class="caption mt-1">Example: If someone you refer purchases a $100 package, you earn $10</p>
-                                    </div>
-                                    <div>
-                                        <h6>Level 2 (Indirect Referrals)</h6>
-                                        <div class="d-flex justify-content-between">
-                                            <span>Commission Rate:</span>
-                                            <strong>5%</strong>
-                                        </div>
-                                        <p class="caption mt-1">Example: If someone referred by your affiliate purchases a $100 package, you earn $5</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                {% endif %}
             </div>
         </div>
         

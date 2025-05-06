@@ -1,6 +1,4 @@
-from datetime import datetime, timedelta
-import uuid
-import secrets
+from datetime import datetime
 from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
@@ -12,19 +10,6 @@ class PaymentStatus(enum.Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     REFUNDED = "refunded"
-    
-class AffiliateStatus(enum.Enum):
-    """Status for affiliate accounts"""
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    
-class CommissionStatus(enum.Enum):
-    """Status for affiliate commissions"""
-    HELD = "held"
-    APPROVED = "approved"
-    PAID = "paid"
-    REJECTED = "rejected"
-    PAYOUT_FAILED = "payout_failed"
 
 class User(UserMixin, db.Model):
     """User model for authentication and storing user information"""
@@ -37,7 +22,6 @@ class User(UserMixin, db.Model):
     last_login_at = db.Column(db.DateTime, nullable=True)  # Track last login time
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)
-    is_admin = db.Column(db.Boolean, default=False)  # Admin privileges
     
     # Billing fields
     credits = db.Column(db.Integer, nullable=False, default=0)  # User's credit balance in credits (1 credit = $0.00001)
@@ -176,84 +160,3 @@ class Package(db.Model):
     
     def __repr__(self):
         return f'<Package {self.id}: {self.name} (${self.amount_usd})>'
-
-
-class Affiliate(db.Model):
-    """Affiliate model for tracking affiliates and their referrals"""
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False, index=True)
-    paypal_email = db.Column(db.String(120), unique=True, nullable=False)
-    paypal_email_verified_at = db.Column(db.DateTime, nullable=True)
-    referral_code = db.Column(db.String(16), unique=True, nullable=False, index=True)
-    referred_by_affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliate.id', ondelete='SET NULL'), nullable=True)
-    status = db.Column(db.String(20), nullable=False, default=AffiliateStatus.ACTIVE.value)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    # Relationships
-    customer_referrals = db.relationship('CustomerReferral', backref='affiliate', lazy='dynamic')
-    commissions = db.relationship('Commission', backref='affiliate', lazy='dynamic')
-    # Self-referential relationship for two-tier tracking
-    referred_affiliates = db.relationship('Affiliate', backref=db.backref('referred_by', remote_side=[id]), lazy='dynamic')
-    
-    def generate_referral_code(self):
-        """Generate a unique referral code"""
-        while True:
-            code = secrets.token_urlsafe(8)[:8]  # Generate an 8-character unique code
-            if not Affiliate.query.filter_by(referral_code=code).first():
-                self.referral_code = code
-                return code
-                
-    def __repr__(self):
-        return f'<Affiliate {self.id}: {self.name} ({self.referral_code})>'
-
-
-class CustomerReferral(db.Model):
-    """CustomerReferral model for tracking customer referrals from affiliates"""
-    id = db.Column(db.Integer, primary_key=True)
-    customer_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliate.id'), nullable=False)
-    signup_date = db.Column(db.DateTime, default=datetime.utcnow)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    # Relationship with User
-    customer = db.relationship('User', backref='referral', uselist=False)
-    
-    # Unique constraint to ensure a customer can only be referred once
-    __table_args__ = (
-        db.UniqueConstraint('customer_user_id', name='unique_customer_referral'),
-    )
-    
-    def __repr__(self):
-        return f'<CustomerReferral {self.id}: User {self.customer_user_id} referred by Affiliate {self.affiliate_id}>'
-
-
-class Commission(db.Model):
-    """Commission model for tracking affiliate commissions"""
-    id = db.Column(db.Integer, primary_key=True)
-    affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliate.id'), nullable=False)
-    triggering_transaction_id = db.Column(db.String(128), nullable=False, index=True)
-    stripe_payment_status = db.Column(db.String(20), nullable=False)
-    purchase_amount_base = db.Column(db.Numeric(10, 4), nullable=False)  # Base amount in GBP for calculation
-    commission_rate = db.Column(db.Numeric(6, 4), nullable=False)  # Decimal rate (e.g., 0.10 for 10%)
-    commission_amount = db.Column(db.Numeric(10, 2), nullable=False)  # Commission amount in GBP
-    commission_level = db.Column(db.Integer, nullable=False)  # 1 for L1, 2 for L2
-    status = db.Column(db.String(20), nullable=False, default=CommissionStatus.HELD.value)
-    commission_earned_date = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    commission_available_date = db.Column(db.DateTime, nullable=False)
-    payout_batch_id = db.Column(db.String(128), nullable=True)  # PayPal Payout batch ID
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    def __init__(self, **kwargs):
-        """Initialize a new Commission with appropriate dates"""
-        super(Commission, self).__init__(**kwargs)
-        if 'commission_earned_date' not in kwargs:
-            self.commission_earned_date = datetime.utcnow()
-        if 'commission_available_date' not in kwargs:
-            # Default to 30 days after earned date
-            self.commission_available_date = self.commission_earned_date + timedelta(days=30)
-    
-    def __repr__(self):
-        return f'<Commission {self.id}: {self.commission_amount} GBP for Affiliate {self.affiliate_id}>'
