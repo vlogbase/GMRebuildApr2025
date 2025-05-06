@@ -1,225 +1,212 @@
 """
-PayPal Configuration Module
+PayPal Payouts API Configuration for GloriaMundo Affiliate System
 
-This module handles PayPal API initialization and provides functions
-for creating and managing PayPal payments.
+This module contains the PayPal Payouts SDK configuration and helper functions
+for processing affiliate payouts using the PayPal Payouts API.
 """
 
 import os
 import logging
-import json
-import paypalrestsdk
-from paypalrestsdk.exceptions import ResourceNotFound
+import uuid
+from datetime import datetime
+
+# Import the correct PayPal Payouts SDK components
+from paypalhttp import Environment
+from paypalpayoutssdk.core import PayPalHttpClient, SandboxEnvironment, LiveEnvironment
+from paypalpayoutssdk.payouts import PayoutsPostRequest, PayoutsGetRequest
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def initialize_paypal():
+# PayPal API credentials from environment variables
+PAYPAL_CLIENT_ID = os.environ.get('PAYPAL_CLIENT_ID')
+PAYPAL_CLIENT_SECRET = os.environ.get('PAYPAL_CLIENT_SECRET')
+PAYPAL_MODE = os.environ.get('PAYPAL_MODE', 'sandbox')  # 'sandbox' or 'live'
+
+# Initialize the PayPal client
+def get_paypal_client():
     """
-    Initialize PayPal SDK with credentials from environment variables.
+    Initialize and return the PayPal HTTP client with appropriate environment.
     
     Returns:
-        bool: True if initialization was successful, False otherwise
+        PayPalHttpClient: Initialized PayPal client
     """
     try:
-        client_id = os.environ.get('PAYPAL_CLIENT_ID')
-        client_secret = os.environ.get('PAYPAL_CLIENT_SECRET')
+        if not PAYPAL_CLIENT_ID or not PAYPAL_CLIENT_SECRET:
+            logger.error("PayPal API credentials are missing")
+            return None
+            
+        # Create the appropriate environment
+        if PAYPAL_MODE.lower() == 'live':
+            environment = LiveEnvironment(
+                client_id=PAYPAL_CLIENT_ID,
+                client_secret=PAYPAL_CLIENT_SECRET
+            )
+        else:
+            environment = SandboxEnvironment(
+                client_id=PAYPAL_CLIENT_ID,
+                client_secret=PAYPAL_CLIENT_SECRET
+            )
+            
+        # Create the PayPal client
+        client = PayPalHttpClient(environment)
+        logger.info(f"PayPal Payouts SDK client initialized successfully in {PAYPAL_MODE} mode")
+        return client
         
-        if not client_id or not client_secret:
-            logger.error("PayPal credentials missing")
-            return False
+    except Exception as e:
+        logger.error(f"Error initializing PayPal client: {e}")
+        return None
+
+def process_paypal_payout(sender_batch_id, payout_items):
+    """
+    Process a PayPal payout batch using the PayPal Payouts SDK.
+    
+    Args:
+        sender_batch_id (str): Unique identifier for the batch
+        payout_items (list): List of dicts with payout details:
+            [
+                {
+                    'recipient_email': 'affiliate@example.com',
+                    'amount': 12.34,
+                    'currency': 'GBP',
+                    'sender_item_id': '123'
+                },
+                ...
+            ]
+    
+    Returns:
+        dict: Status and details of the payout
+    """
+    try:
+        # Get the PayPal client
+        client = get_paypal_client()
+        if not client:
+            return {
+                'success': False,
+                'error': 'PayPal client initialization failed'
+            }
+            
+        # Create the payout request
+        payout_request = PayoutsPostRequest()
         
-        # Configure the SDK with sandbox credentials
-        paypalrestsdk.configure({
-            "mode": "sandbox",  # Use "live" for production
-            "client_id": client_id,
-            "client_secret": client_secret
+        # Prepare the request body with sender batch header and items
+        payout_request.request_body({
+            "sender_batch_header": {
+                "sender_batch_id": sender_batch_id,
+                "email_subject": "You have received a commission payment",
+                "email_message": "Thank you for being an affiliate. This payment is for your commissions."
+            },
+            "items": [
+                {
+                    "recipient_type": "EMAIL",
+                    "amount": {
+                        "value": str(item['amount']),
+                        "currency": item['currency']
+                    },
+                    "note": "Thank you for your partnership with GloriaMundo",
+                    "sender_item_id": item['sender_item_id'],
+                    "receiver": item['recipient_email']
+                } for item in payout_items
+            ]
         })
         
-        logger.info("PayPal SDK initialized in sandbox mode.")
-        return True
-    
+        # Execute the payout
+        response = client.execute(payout_request)
+        
+        # Process the response
+        result = response.result
+        
+        return {
+            'success': True,
+            'payout_batch_id': result.batch_header.payout_batch_id,
+            'batch_status': result.batch_header.batch_status,
+            'links': [{'href': link.href, 'rel': link.rel} for link in result.links]
+        }
+        
     except Exception as e:
-        logger.error(f"Error initializing PayPal: {e}")
-        return False
+        logger.error(f"Error processing PayPal payout: {e}")
+        return {
+            'success': False,
+            'error': str(e)
+        }
 
-def create_payment(amount_usd, return_url, cancel_url, package_name=None):
+def check_payout_status(payout_batch_id):
     """
-    Create a PayPal payment.
+    Check the status of a PayPal payout batch.
     
     Args:
-        amount_usd (float): Amount in USD
-        return_url (str): URL to redirect to after approval
-        cancel_url (str): URL to redirect to after cancellation
-        package_name (str, optional): Name of the package being purchased
+        payout_batch_id (str): PayPal payout batch ID
     
     Returns:
-        dict: Dictionary with success status, payment ID, and approval URL
+        dict: Status and details of the payout
     """
     try:
-        # Initialize PayPal if not already initialized
-        initialize_paypal()
-        
-        # Format the amount to 2 decimal places
-        formatted_amount = "{:.2f}".format(float(amount_usd))
-        
-        # Create the payment
-        payment = paypalrestsdk.Payment({
-            "intent": "sale",
-            "payer": {
-                "payment_method": "paypal"
-            },
-            "redirect_urls": {
-                "return_url": return_url,
-                "cancel_url": cancel_url
-            },
-            "transactions": [{
-                "item_list": {
-                    "items": [{
-                        "name": package_name or "Credits Purchase",
-                        "sku": "credit-package",
-                        "price": formatted_amount,
-                        "currency": "USD",
-                        "quantity": 1
-                    }]
-                },
-                "amount": {
-                    "total": formatted_amount,
-                    "currency": "USD"
-                },
-                "description": package_name or f"Purchase of ${formatted_amount} in credits"
-            }]
-        })
-        
-        # Create the payment
-        if payment.create():
-            # Extract the approval URL
-            approval_url = None
-            for link in payment.links:
-                if link.rel == "approval_url":
-                    approval_url = link.href
-                    break
+        # Get the PayPal client
+        client = get_paypal_client()
+        if not client:
+            return {
+                'success': False,
+                'error': 'PayPal client initialization failed'
+            }
             
-            if approval_url:
-                return {
-                    "success": True,
-                    "payment_id": payment.id,
-                    "approval_url": approval_url
-                }
-            else:
-                return {
-                    "success": False,
-                    "error": "No approval URL found in payment response"
-                }
-        else:
-            return {
-                "success": False,
-                "error": payment.error
+        # Create the PayoutsGetRequest
+        request = PayoutsGetRequest(payout_batch_id)
+        
+        # Execute the request
+        response = client.execute(request)
+        result = response.result
+        
+        # Parse the items to extract individual payout statuses
+        items_status = []
+        for item in result.items:
+            item_status = {
+                'payout_item_id': item.payout_item_id,
+                'transaction_id': getattr(item, 'transaction_id', None),
+                'transaction_status': getattr(item, 'transaction_status', None),
+                'sender_item_id': item.sender_item_id
             }
-    
-    except Exception as e:
-        logger.error(f"Error creating PayPal payment: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-def execute_payment(payment_id, payer_id):
-    """
-    Execute a PayPal payment after approval.
-    
-    Args:
-        payment_id (str): PayPal payment ID
-        payer_id (str): PayPal payer ID
-    
-    Returns:
-        dict: Dictionary with success status and payment info
-    """
-    try:
-        # Initialize PayPal if not already initialized
-        initialize_paypal()
-        
-        # Fetch the payment
-        payment = paypalrestsdk.Payment.find(payment_id)
-        
-        # Execute the payment
-        if payment.execute({"payer_id": payer_id}):
-            # Extract relevant payment information
-            transactions = payment.transactions[0]
-            amount = transactions.amount.total
-            currency = transactions.amount.currency
             
-            return {
-                "success": True,
-                "payment_id": payment.id,
-                "amount": amount,
-                "currency": currency,
-                "state": payment.state
-            }
-        else:
-            return {
-                "success": False,
-                "error": payment.error
-            }
-    
-    except ResourceNotFound:
-        logger.error(f"Payment {payment_id} not found")
+            # Add receiver if available
+            if hasattr(item, 'payout_item') and hasattr(item.payout_item, 'receiver'):
+                item_status['receiver'] = item.payout_item.receiver
+            
+            # Add amount if available
+            if hasattr(item, 'payout_item') and hasattr(item.payout_item, 'amount'):
+                item_status['amount'] = {
+                    'currency': item.payout_item.amount.currency,
+                    'value': item.payout_item.amount.value
+                }
+            
+            # Add errors if present
+            if hasattr(item, 'errors') and item.errors:
+                item_status['error'] = item.errors
+                
+            items_status.append(item_status)
+            
         return {
-            "success": False,
-            "error": "Payment not found"
+            'success': True,
+            'batch_header': {
+                'payout_batch_id': result.batch_header.payout_batch_id,
+                'batch_status': result.batch_header.batch_status,
+                'time_created': result.batch_header.time_created,
+                'time_completed': getattr(result.batch_header, 'time_completed', None)
+            },
+            'items': items_status
         }
+        
     except Exception as e:
-        logger.error(f"Error executing PayPal payment: {e}")
+        logger.error(f"Error checking PayPal payout status: {e}")
         return {
-            "success": False,
-            "error": str(e)
+            'success': False,
+            'error': str(e)
         }
 
-def get_payment_details(payment_id):
+def generate_sender_batch_id():
     """
-    Get details of a PayPal payment.
-    
-    Args:
-        payment_id (str): PayPal payment ID
+    Generate a unique sender batch ID for PayPal payouts.
     
     Returns:
-        dict: Dictionary with success status and payment details
+        str: Unique sender batch ID
     """
-    try:
-        # Initialize PayPal if not already initialized
-        initialize_paypal()
-        
-        # Fetch the payment
-        payment = paypalrestsdk.Payment.find(payment_id)
-        
-        # Extract relevant payment information
-        transactions = payment.transactions[0]
-        amount = transactions.amount.total
-        currency = transactions.amount.currency
-        
-        return {
-            "success": True,
-            "payment_id": payment.id,
-            "amount": amount,
-            "currency": currency,
-            "state": payment.state
-        }
-    
-    except ResourceNotFound:
-        logger.error(f"Payment {payment_id} not found")
-        return {
-            "success": False,
-            "error": "Payment not found"
-        }
-    except Exception as e:
-        logger.error(f"Error getting PayPal payment details: {e}")
-        return {
-            "success": False,
-            "error": str(e)
-        }
-
-if __name__ == "__main__":
-    # Test PayPal integration
-    success = initialize_paypal()
-    print(f"PayPal initialization: {'Success' if success else 'Failed'}")
+    return f"GloriaMundoPayout-{uuid.uuid4()}"

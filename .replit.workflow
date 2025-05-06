@@ -1,1 +1,3 @@
-run = "python run.py"
+[workflow]
+name = "flask_app"
+shell = "python app.py"

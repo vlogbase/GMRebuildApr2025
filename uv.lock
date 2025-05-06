@@ -890,6 +890,44 @@ wheels = [
 ]
 
 [[package]]
+name = "paypal-checkout-serversdk"
+version = "1.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "paypalhttp" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b7/22/38d5f9b1131404d451eb62083011f146a4eccccd2f35f4e488ae2b761ecd/paypal-checkout-serversdk-1.0.3.tar.gz", hash = "sha256:880c7fab12955d65aff29baeb90c182307307d2676edbd41072f3f540a2934b4", size = 98241 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b1/c2/424bdbbe4440d922618dbddc149f884eba84d46eda317fbc61ae6dba0d7d/paypal_checkout_serversdk-1.0.3-py3-none-any.whl", hash = "sha256:48a00ec6c52450583e2265dbbdf700b025f38f40ddc597b24b6aa4d8f0cb0257", size = 98644 },
+]
+
+[[package]]
+name = "paypal-payouts-sdk"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "paypalhttp" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e0/e8/7e9f9966a53e4fce162e4f6940066e4b8e66f0132300ea57c32610371631/paypal-payouts-sdk-1.0.0.tar.gz", hash = "sha256:c3a2b2d2127eddf8b9a9a525eb8d3027d4173a99afbb07a871c6b71e5f47c2ac", size = 21099 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/31/bc/3786895c74d12b6580a2c087617971502e6f2d497e89dd4a33184b4160df/paypal_payouts_sdk-1.0.0-py2.py3-none-any.whl", hash = "sha256:8b4dd1ec95d796a0f30625232eaff9898375a689db99422a19b48dfb3ec38e63", size = 27376 },
+]
+
+[[package]]
+name = "paypalhttp"
+version = "1.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pyopenssl" },
+    { name = "requests" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ea/d5/beca44a1df90e126a8f075b241c71740a050bb10030d294796abd06a91f8/paypalhttp-1.0.1.tar.gz", hash = "sha256:20e00f95ea052f59145b65bc2baf3b8720f449460c96bf7d32f191c8e293d16d", size = 7580 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9f/ab/8d8253af25859b856b87c22bea88b30867eee94f615027d408db55bfcb19/paypalhttp-1.0.1-py3-none-any.whl", hash = "sha256:251a6e72e2c5140c5372ee6351b64f7af61b5aad9c554618db5782a06205989a", size = 9506 },
+]
+
+[[package]]
 name = "paypalrestsdk"
 version = "1.13.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1364,6 +1402,8 @@ dependencies = [
     { name = "lxml" },
     { name = "oauthlib" },
     { name = "openai" },
+    { name = "paypal-checkout-serversdk" },
+    { name = "paypal-payouts-sdk" },
     { name = "paypalrestsdk" },
     { name = "pillow" },
     { name = "psycopg2-binary" },
@@ -1400,6 +1440,8 @@ requires-dist = [
     { name = "lxml", specifier = ">=5.3.2" },
     { name = "oauthlib", specifier = ">=3.2.2" },
     { name = "openai", specifier = ">=1.74.0" },
+    { name = "paypal-checkout-serversdk", specifier = ">=1.0.3" },
+    { name = "paypal-payouts-sdk", specifier = ">=1.0.0" },
     { name = "paypalrestsdk", specifier = ">=1.13.3" },
     { name = "pillow", specifier = ">=11.2.1" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },

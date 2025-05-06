@@ -6,20 +6,22 @@ It provides endpoints for:
 1. Account management page
 2. Credit purchase through Stripe
 3. Credit usage tracking
+4. Affiliate commission processing
 """
 
 import os
 import logging
 import math
-from datetime import datetime
+from datetime import datetime, timedelta
 from urllib.parse import urlparse
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session, jsonify, g
 from flask_login import current_user, login_required
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, and_
 
 from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
+from models import CustomerReferral, Affiliate, Commission, CommissionStatus
 from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature
 
 # Configure logging
@@ -241,6 +243,9 @@ def stripe_webhook():
             # Add credits to user account
             user.add_credits(transaction.credits)
             
+            # Process affiliate commissions if applicable
+            process_affiliate_commission(user.id, transaction)
+            
             # Save changes
             db.session.commit()
             
@@ -417,4 +422,108 @@ def check_sufficient_credits(user_id, estimated_credits):
     
     except Exception as e:
         logger.error(f"Error checking sufficient credits: {e}")
+        return False
+
+
+def process_affiliate_commission(user_id, transaction):
+    """
+    Process affiliate commissions for a completed transaction.
+    This implements a two-tier affiliate system with:
+    - 10% commission for Level 1 affiliates (direct referrers)
+    - 5% commission for Level 2 affiliates (referrers of direct referrers)
+    
+    Args:
+        user_id (int): The customer's user ID
+        transaction (Transaction): The completed transaction
+    
+    Returns:
+        bool: True if commissions were processed, False otherwise
+    """
+    try:
+        # Step 1: Check if a commission already exists for this transaction to prevent duplicates
+        existing_commission = Commission.query.filter_by(
+            triggering_transaction_id=transaction.stripe_payment_intent
+        ).first()
+        
+        if existing_commission:
+            logger.info(f"Commission already exists for transaction {transaction.stripe_payment_intent}")
+            return False
+        
+        # Step 2: Get the customer's referral information (L1 affiliate)
+        customer_referral = CustomerReferral.query.filter_by(customer_user_id=user_id).first()
+        
+        if not customer_referral:
+            # No referral found for this user
+            logger.info(f"No referral found for user {user_id}")
+            return False
+        
+        # Get the Level 1 (L1) affiliate
+        l1_affiliate = Affiliate.query.get(customer_referral.affiliate_id)
+        
+        if not l1_affiliate or l1_affiliate.status != 'active':
+            # L1 affiliate not found or not active
+            logger.info(f"L1 affiliate {customer_referral.affiliate_id} not found or not active")
+            return False
+        
+        # Step 3: Calculate base amount in GBP
+        # For simplicity, we're using the transaction amount directly
+        # In a real app, you might want to convert from USD to GBP if needed
+        amount_gbp = transaction.amount_usd
+        
+        # Step 4: Calculate and create L1 commission (10%)
+        l1_commission_rate = 0.10  # 10%
+        l1_commission_amount = round(amount_gbp * l1_commission_rate, 2)
+        
+        # Current time for commission dates
+        now = datetime.utcnow()
+        available_date = now + timedelta(days=30)  # Available after 30 days
+        
+        # Create L1 commission record
+        l1_commission = Commission(
+            affiliate_id=l1_affiliate.id,
+            triggering_transaction_id=transaction.stripe_payment_intent,
+            stripe_payment_status='succeeded',
+            purchase_amount_base=amount_gbp,
+            commission_rate=l1_commission_rate,
+            commission_amount=l1_commission_amount,
+            commission_level=1,  # Level 1
+            status=CommissionStatus.HELD.value,
+            commission_earned_date=now,
+            commission_available_date=available_date
+        )
+        
+        db.session.add(l1_commission)
+        logger.info(f"Created L1 commission of £{l1_commission_amount} for affiliate {l1_affiliate.id}")
+        
+        # Step 5: Check if there's a Level 2 (L2) affiliate
+        if l1_affiliate.referred_by_affiliate_id:
+            # Get the L2 affiliate
+            l2_affiliate = Affiliate.query.get(l1_affiliate.referred_by_affiliate_id)
+            
+            if l2_affiliate and l2_affiliate.status == 'active':
+                # Calculate and create L2 commission (5%)
+                l2_commission_rate = 0.05  # 5%
+                l2_commission_amount = round(amount_gbp * l2_commission_rate, 2)
+                
+                # Create L2 commission record
+                l2_commission = Commission(
+                    affiliate_id=l2_affiliate.id,
+                    triggering_transaction_id=transaction.stripe_payment_intent,
+                    stripe_payment_status='succeeded',
+                    purchase_amount_base=amount_gbp,
+                    commission_rate=l2_commission_rate,
+                    commission_amount=l2_commission_amount,
+                    commission_level=2,  # Level 2
+                    status=CommissionStatus.HELD.value,
+                    commission_earned_date=now,
+                    commission_available_date=available_date
+                )
+                
+                db.session.add(l2_commission)
+                logger.info(f"Created L2 commission of £{l2_commission_amount} for affiliate {l2_affiliate.id}")
+        
+        return True
+    
+    except Exception as e:
+        logger.error(f"Error processing affiliate commission: {e}")
         return False

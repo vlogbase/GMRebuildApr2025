@@ -160,6 +160,14 @@ try:
 except Exception as e:
     logger.error(f"Error registering Billing blueprint: {e}")
 
+# Register affiliate blueprint
+try:
+    from affiliate import affiliate_bp
+    app.register_blueprint(affiliate_bp, url_prefix='/affiliate')
+    logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
+except Exception as e:
+    logger.error(f"Error registering Affiliate blueprint: {e}")
+
 @login_manager.user_loader
 def load_user(user_id):
     from models import User 

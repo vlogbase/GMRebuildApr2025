@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+
+{% block title %}My Referral Links{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 mb-4">
+            <div class="list-group">
+                <a href="{{ url_for('affiliate.dashboard') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-chart-line me-2"></i> Dashboard
+                </a>
+                <a href="{{ url_for('affiliate.referral_link') }}" class="list-group-item list-group-item-action active">
+                    <i class="fas fa-link me-2"></i> My Referral Links
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-question-circle me-2"></i> Affiliate FAQ
+                </a>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="h5 mb-0">Referral Code</h3>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <input type="text" class="form-control" value="{{ affiliate.referral_code }}" id="referralCode" readonly>
+                        <button class="btn btn-outline-secondary" type="button" onclick="copyText('referralCode')">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted mt-2 d-block">Your unique affiliate code</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main content -->
+        <div class="col-md-9">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="h5 mb-0">My Referral Links</h3>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">
+                        Use these pre-generated links to promote GloriaMundo Chatbot on different platforms. 
+                        Each link includes your unique referral code, so you'll be credited for any signups or purchases.
+                    </p>
+                    
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Link Type</th>
+                                    <th>URL</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Homepage</td>
+                                    <td id="homepageLink">{{ referral_links.homepage }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick="copyText('homepageLink')">
+                                            <i class="fas fa-copy me-1"></i> Copy
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Registration</td>
+                                    <td id="registrationLink">{{ referral_links.signup }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick="copyText('registrationLink')">
+                                            <i class="fas fa-copy me-1"></i> Copy
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Affiliate Program</td>
+                                    <td id="affiliateLink">{{ referral_links.register }}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-primary" onclick="copyText('affiliateLink')">
+                                            <i class="fas fa-copy me-1"></i> Copy
+                                        </button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Marketing Materials -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h3 class="h5 mb-0">Marketing Templates</h3>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="marketingAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingOne">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
+                                    Social Media Post Template
+                                </button>
+                            </h2>
+                            <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#marketingAccordion">
+                                <div class="accordion-body">
+                                    <div class="alert alert-secondary">
+                                        <p>Supercharge your creativity with AI! 🚀 I've been using GloriaMundo Chat - it's an amazing AI chatbot with access to multiple models like GPT-4, Claude, and more.</p>
+                                        <p>Try it out with my link and get started: {{ referral_links.homepage }}</p>
+                                        <p>#AI #ChatGPT #AITools</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary" id="socialPostBtn" onclick="copyTemplateText('socialPostBtn', 'Supercharge your creativity with AI! 🚀 I\'ve been using GloriaMundo Chat - it\'s an amazing AI chatbot with access to multiple models like GPT-4, Claude, and more.\n\nTry it out with my link and get started: {{ referral_links.homepage }}\n\n#AI #ChatGPT #AITools')">
+                                        <i class="fas fa-copy me-1"></i> Copy Template
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingTwo">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
+                                    Email Newsletter Snippet
+                                </button>
+                            </h2>
+                            <div id="collapseTwo" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#marketingAccordion">
+                                <div class="accordion-body">
+                                    <div class="alert alert-secondary">
+                                        <p><strong>Tool of the Week: GloriaMundo Chatbot</strong></p>
+                                        <p>I recently discovered this powerful AI chatbot that gives you access to multiple AI models in one place, including OpenAI's GPT-4, Anthropic's Claude, and Google's Gemini.</p>
+                                        <p>What makes it special is the ability to switch between different AI models based on your specific needs, all with a simple interface and affordable pricing.</p>
+                                        <p>Check it out here: {{ referral_links.homepage }}</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary" id="emailBtn" onclick="copyTemplateText('emailBtn', 'Tool of the Week: GloriaMundo Chatbot\n\nI recently discovered this powerful AI chatbot that gives you access to multiple AI models in one place, including OpenAI\'s GPT-4, Anthropic\'s Claude, and Google\'s Gemini.\n\nWhat makes it special is the ability to switch between different AI models based on your specific needs, all with a simple interface and affordable pricing.\n\nCheck it out here: {{ referral_links.homepage }}')">
+                                        <i class="fas fa-copy me-1"></i> Copy Template
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingThree">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
+                                    Join as an Affiliate
+                                </button>
+                            </h2>
+                            <div id="collapseThree" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#marketingAccordion">
+                                <div class="accordion-body">
+                                    <div class="alert alert-secondary">
+                                        <p><strong>Earn Money Promoting AI Tools!</strong></p>
+                                        <p>I'm an affiliate for GloriaMundo Chatbot, and you can be one too! Their two-tier affiliate program lets you earn:</p>
+                                        <ul>
+                                            <li>10% commission on all purchases made by users you refer</li>
+                                            <li>5% commission on purchases made by users referred by your referrals</li>
+                                        </ul>
+                                        <p>Join using my link and we both benefit: {{ referral_links.register }}</p>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-primary" id="affiliateBtn" onclick="copyTemplateText('affiliateBtn', 'Earn Money Promoting AI Tools!\n\nI\'m an affiliate for GloriaMundo Chatbot, and you can be one too! Their two-tier affiliate program lets you earn:\n- 10% commission on all purchases made by users you refer\n- 5% commission on purchases made by users referred by your referrals\n\nJoin using my link and we both benefit: {{ referral_links.register }}')">
+                                        <i class="fas fa-copy me-1"></i> Copy Template
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Best Practices -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h3 class="h5 mb-0">Promotion Best Practices</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li class="mb-2">Always clearly disclose your affiliate relationship when promoting GloriaMundo Chatbot</li>
+                        <li class="mb-2">Focus on the genuine benefits of the service rather than making exaggerated claims</li>
+                        <li class="mb-2">Target the right audience – people who would genuinely benefit from AI assistance</li>
+                        <li class="mb-2">Create helpful content showing how to use GloriaMundo effectively for different tasks</li>
+                        <li>Track which referral links perform best and focus your efforts on successful channels</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function copyText(elementId) {
+        var element = document.getElementById(elementId);
+        var textToCopy = element.innerText || element.value;
+        
+        navigator.clipboard.writeText(textToCopy).then(function() {
+            // Success feedback
+            showCopyFeedback(elementId);
+        }, function(err) {
+            // Fallback for older browsers
+            var tempInput = document.createElement("input");
+            tempInput.value = textToCopy;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            showCopyFeedback(elementId);
+        });
+    }
+    
+    function copyTemplateText(buttonId, text) {
+        navigator.clipboard.writeText(text).then(function() {
+            // Success feedback
+            var button = document.getElementById(buttonId);
+            var originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check me-1"></i> Copied!';
+            button.classList.remove('btn-outline-primary');
+            button.classList.add('btn-success');
+            
+            setTimeout(function() {
+                button.innerHTML = originalText;
+                button.classList.remove('btn-success');
+                button.classList.add('btn-outline-primary');
+            }, 2000);
+        }, function(err) {
+            // Fallback
+            var tempInput = document.createElement("input");
+            tempInput.value = text;
+            document.body.appendChild(tempInput);
+            tempInput.select();
+            document.execCommand("copy");
+            document.body.removeChild(tempInput);
+            
+            var button = document.getElementById(buttonId);
+            var originalText = button.innerHTML;
+            button.innerHTML = '<i class="fas fa-check me-1"></i> Copied!';
+            button.classList.remove('btn-outline-primary');
+            button.classList.add('btn-success');
+            
+            setTimeout(function() {
+                button.innerHTML = originalText;
+                button.classList.remove('btn-success');
+                button.classList.add('btn-outline-primary');
+            }, 2000);
+        });
+    }
+    
+    function showCopyFeedback(elementId) {
+        var element = document.getElementById(elementId);
+        
+        // Create and show tooltip or feedback
+        var originalBackground = element.style.backgroundColor;
+        element.style.backgroundColor = "#d4edda";
+        
+        setTimeout(function() {
+            element.style.backgroundColor = originalBackground;
+        }, 1000);
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}Affiliate Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 mb-4">
+            <div class="list-group">
+                <a href="{{ url_for('affiliate.dashboard') }}" class="list-group-item list-group-item-action active">
+                    <i class="fas fa-chart-line me-2"></i> Dashboard
+                </a>
+                <a href="{{ url_for('affiliate.referral_link') }}" class="list-group-item list-group-item-action">
+                    <i class="fas fa-link me-2"></i> My Referral Links
+                </a>
+                <a href="#" class="list-group-item list-group-item-action">
+                    <i class="fas fa-question-circle me-2"></i> Affiliate FAQ
+                </a>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header bg-primary text-white">
+                    <h3 class="h5 mb-0">Referral Code</h3>
+                </div>
+                <div class="card-body">
+                    <div class="input-group">
+                        <input type="text" class="form-control" value="{{ affiliate.referral_code }}" id="referralCode" readonly>
+                        <button class="btn btn-outline-secondary" type="button" onclick="copyReferralCode()">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted mt-2 d-block">Use this code in your referral links</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main content -->
+        <div class="col-md-9">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <!-- Stats overview -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card text-center h-100 border-success">
+                        <div class="card-header bg-success text-white">
+                            <h3 class="h5 mb-0">Total Earned</h3>
+                        </div>
+                        <div class="card-body">
+                            <h4 class="display-6">£{{ "%.2f"|format(total_earned) }}</h4>
+                            <p class="text-muted">Lifetime earnings</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center h-100 border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h3 class="h5 mb-0">Pending</h3>
+                        </div>
+                        <div class="card-body">
+                            <h4 class="display-6">£{{ "%.2f"|format(pending_commissions) }}</h4>
+                            <p class="text-muted">Pending commissions</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card text-center h-100 border-info">
+                        <div class="card-header bg-info text-white">
+                            <h3 class="h5 mb-0">Referrals</h3>
+                        </div>
+                        <div class="card-body">
+                            <h4 class="display-6">{{ direct_referrals + referred_affiliates }}</h4>
+                            <p class="text-muted">
+                                {{ direct_referrals }} customers<br>
+                                {{ referred_affiliates }} affiliates
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Commission history -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h3 class="h5 mb-0">Commission History</h3>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        {% if commissions %}
+                            <table class="table table-hover mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Amount</th>
+                                        <th>Level</th>
+                                        <th>Status</th>
+                                        <th>Available</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for commission in commissions %}
+                                        <tr>
+                                            <td>{{ commission.commission_earned_date.strftime('%Y-%m-%d') }}</td>
+                                            <td>£{{ "%.2f"|format(commission.commission_amount) }}</td>
+                                            <td>
+                                                {% if commission.commission_level == 1 %}
+                                                    <span class="badge bg-success">Level 1</span>
+                                                {% else %}
+                                                    <span class="badge bg-info">Level 2</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if commission.status == 'held' %}
+                                                    <span class="badge bg-warning text-dark">Pending</span>
+                                                {% elif commission.status == 'approved' %}
+                                                    <span class="badge bg-primary">Approved</span>
+                                                {% elif commission.status == 'paid' %}
+                                                    <span class="badge bg-success">Paid</span>
+                                                {% elif commission.status == 'payout_initiated' %}
+                                                    <span class="badge bg-info">Processing</span>
+                                                {% elif commission.status == 'payout_failed' %}
+                                                    <span class="badge bg-danger">Failed</span>
+                                                {% elif commission.status == 'rejected' %}
+                                                    <span class="badge bg-danger">Rejected</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if commission.status == 'held' %}
+                                                    {{ commission.commission_available_date.strftime('%Y-%m-%d') }}
+                                                {% elif commission.status == 'approved' or commission.status == 'paid' %}
+                                                    <i class="fas fa-check text-success"></i>
+                                                {% elif commission.status == 'rejected' %}
+                                                    <i class="fas fa-times text-danger"></i>
+                                                {% else %}
+                                                    -
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        {% else %}
+                            <div class="p-4 text-center">
+                                <p class="mb-0 text-muted">You haven't earned any commissions yet. Start sharing your referral links to earn!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Referral tips -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h3 class="h5 mb-0">Tips for Successful Referrals</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="mb-0">
+                        <li class="mb-2">Share your referral links on social media, your website, or blog</li>
+                        <li class="mb-2">Explain the benefits of GloriaMundo Chatbot to potential users</li>
+                        <li class="mb-2">Consider creating tutorials or videos showcasing GloriaMundo's features</li>
+                        <li class="mb-2">Encourage your referrals to become affiliates themselves to earn Level 2 commissions</li>
+                        <li>Be transparent and follow our program terms and conditions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function copyReferralCode() {
+        var referralCode = document.getElementById("referralCode");
+        referralCode.select();
+        referralCode.setSelectionRange(0, 99999); /* For mobile devices */
+        document.execCommand("copy");
+        
+        // Show a temporary tooltip or notification
+        alert("Referral code copied to clipboard!");
+    }
+</script>
+{% endblock %}
