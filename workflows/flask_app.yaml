@@ -1,0 +1,36 @@
+##############################
+#     Flask Application     #
+##############################
+
+name: flask_app
+description: Flask App Server
+icon: code
+
+command: >-
+  if [ -f "app.py" ]; then
+    echo "Starting Flask app from app.py..."
+    python -m app
+  elif [ -f "run.py" ]; then
+    echo "Starting Flask app from run.py..."
+    python -m run
+  else
+    echo "Error: Could not find app.py or run.py"
+    exit 1
+  fi
+
+environment:
+  # Expose the port to the UI
+  FLASK_PORT: 5000
+  FLASK_APP: app.py
+  FLASK_ENV: development
+  FLASK_DEBUG: 1
+
+ports:
+  - port: 5000
+    visibility: public
+    onOpen: open-preview
+
+# Wait for the server to start
+onStartup:
+  - name: Waiting for server
+    command: until curl -s http://localhost:5000 > /dev/null || [ $SECONDS -gt 60 ]; do echo "Waiting for server to start..."; sleep 2; done
