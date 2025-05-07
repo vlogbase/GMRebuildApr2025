@@ -25,7 +25,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie_consent.css') }}">
     {% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
     {% block content %}{% endblock %}
     
     <!-- Global Footer (only visible in certain pages) -->
