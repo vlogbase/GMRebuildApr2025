@@ -1,5 +1,5 @@
 """
-Script to run the Flask application for testing dark theme UI improvements.
+Simple workflow script to run the Flask application for testing billing UI.
 """
 
 import os
@@ -16,25 +16,28 @@ logger = logging.getLogger(__name__)
 
 def run():
     """
-    Run the Flask application for testing dark theme UI.
+    Run the Flask application in workflow mode.
     """
     try:
-        logger.info("Starting Flask application for dark theme testing...")
+        logger.info("Starting billing UI workflow...")
         
         # Set environment variables
         os.environ['FLASK_ENV'] = 'development'
         os.environ['FLASK_DEBUG'] = '1'
+        os.environ['REPLIT_WORKFLOW_MODE'] = 'true'
         
         # Add root directory to path
         root_dir = Path(__file__).resolve().parent.parent
         sys.path.insert(0, str(root_dir))
         
-        # Import and run the app
+        # Import app
         from app import app
+        
+        # Run the Flask application
         app.run(host='0.0.0.0', port=5000, debug=True)
         
     except Exception as e:
-        logger.error(f"Error running dark theme test app: {str(e)}")
+        logger.error(f"Error starting billing UI workflow: {e}")
         raise
 
 if __name__ == "__main__":

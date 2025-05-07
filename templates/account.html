@@ -1054,11 +1054,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                (model.output_price === '$0.00' || outputPrice === 0 || outputPrice <= 0.001);
             const isEmbedding = model.model_id === 'text-embedding-3-large';
             
-            // Handle model name display with appropriate styling
+            // Handle model name display (no special styling for model names - all will use default color)
             let modelNameClass = '';
-            if (isAutoRouter) modelNameClass = 'text-warning';
-            else if (isEmbedding) modelNameClass = 'text-warning';
-            else if (model.multimodal === 'Yes') modelNameClass = 'text-info';
+            // Removed special styling for models to ensure consistent colors
             
             // Calculate cost band based on pricing data
             let costBand = '';

@@ -80,8 +80,8 @@
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
-    height: 100vh;
-    overflow: hidden;
+    min-height: 100vh;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
 /* Card components */
@@ -347,6 +347,88 @@ select {
     margin-bottom: 0.5rem;
 }
 
+/* Affiliate Dashboard styles */
+.stat-card {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    padding: 1.5rem;
+    height: 100%;
+    box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s;
+    border: 1px solid var(--border-color);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--accent-color);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: var(--secondary-text);
+    font-size: 0.9rem;
+}
+
+.data-table {
+    background-color: var(--card-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+}
+
+.data-table thead {
+    background-color: #2c2f33;
+}
+
+.data-table th, .data-table td {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-color) !important;
+}
+
+.status-badge {
+    padding: 0.3rem 0.6rem;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.pending {
+    background-color: #ffc107;
+    color: #212529;
+}
+
+.approved {
+    background-color: #28a745;
+    color: #fff;
+}
+
+.rejected {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+.paid {
+    background-color: #17a2b8;
+    color: #fff;
+}
+
+.tier-1 {
+    background-color: #007bff;
+    color: #fff;
+}
+
+.tier-2 {
+    background-color: #5cb85c;
+    color: #fff;
+}
+
 .caption {
     font-size: 0.9rem;
     opacity: 0.7;
@@ -532,6 +614,202 @@ body.account-page .container {
 /* Make sure tab panes have minimum height */
 body.account-page .tab-pane {
     min-height: 400px; /* Set a minimum height for tab content */
+}
+
+/* Usage History Page Styles */
+.container.usage-history {
+    max-width: 1000px;
+}
+
+.account-header {
+    margin-bottom: 1.5rem;
+}
+
+.back-button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.back-button:hover {
+    background-color: #138496;
+    color: white;
+}
+
+.card-dark {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.tab-button {
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin-right: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+}
+
+.tab-button:hover {
+    background-color: var(--hover-color);
+}
+
+.tab-button.active {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.stat-title {
+    font-size: 0.9rem;
+    color: var(--secondary-text);
+    margin-bottom: 0.5rem;
+}
+
+.stat-caption {
+    font-size: 0.8rem;
+    color: var(--secondary-text);
+}
+
+.progress-dark {
+    background-color: var(--input-bg);
+    border-radius: 8px;
+    overflow: hidden;
+    height: 10px;
+}
+
+.progress-bar-dark-primary {
+    background-color: var(--accent-color);
+}
+
+.progress-bar-dark-info {
+    background-color: #0e6d98;
+}
+
+.progress-bar-dark-secondary {
+    background-color: #495057;
+}
+
+.badge-dark-primary {
+    background-color: var(--accent-color);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.badge-dark-info {
+    background-color: #0e6d98;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.badge-dark-secondary {
+    background-color: #495057;
+    color: white;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.list-item-dark {
+    background-color: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-color);
+}
+
+.action-button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.action-button:hover {
+    background-color: #138496;
+    color: white;
+}
+
+.pagination-dark .page-link {
+    background-color: var(--input-bg);
+    border-color: var(--border-color);
+    color: var(--text-color);
+}
+
+.pagination-dark .page-item.active .page-link {
+    background-color: var(--accent-color);
+    border-color: var(--accent-color);
+}
+
+/* Pricing table specific styles to resolve color and alignment inconsistencies */
+#pricingTable td {
+    color: var(--text-color) !important; /* Force text color for all cells */
+    vertical-align: middle !important; /* Consistent vertical alignment */
+    padding: 10px 12px !important; /* Consistent padding for all cells */
+}
+
+/* Force model names to use text color instead of custom colors */
+#pricingTable td:first-child {
+    color: var(--text-color) !important; /* Override any custom coloring */
+    text-align: left !important; /* Consistent left alignment */
+}
+
+/* Target all specific text-* classes inside the first column to override the coloring */
+#pricingTable td:first-child .text-info,
+#pricingTable td:first-child .text-warning,
+#pricingTable td:first-child .text-danger,
+#pricingTable td:first-child .text-success,
+#pricingTable td:first-child .text-primary,
+#pricingTable td:first-child .text-secondary,
+#pricingTable td:first-child div span:not(.cost-band-indicator),
+#pricingTable td:first-child .fw-medium,
+#pricingTable .fw-medium,
+#pricingTable div span:not(.cost-band-indicator) {
+    color: var(--text-color) !important; /* Force text color */
+}
+
+/* Only allow cost band indicators to have colored text */
+#pricingTable .cost-band-indicator {
+    /* Allow these to have their special colors */
+    display: inline-block;
+    min-width: 20px;
+    text-align: center;
+}
+
+/* Ensure numeric columns are right-aligned */
+#pricingTable td:nth-child(2),
+#pricingTable td:nth-child(3),
+#pricingTable td:nth-child(4) {
+    text-align: right !important; /* Right align numeric values */
+}
+
+/* Ensure Multimodal and Cost Band columns are centered */
+#pricingTable td:nth-child(5),
+#pricingTable td:nth-child(6) {
+    text-align: center !important; /* Center these columns */
 }
 
 .app-container {

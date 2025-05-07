@@ -1,0 +1,3 @@
+[billing_test]
+run = ["python", "workflows/billing_test.py"]
+language = "python3"
