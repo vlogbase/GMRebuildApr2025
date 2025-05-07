@@ -798,14 +798,11 @@ document.addEventListener('DOMContentLoaded', function() {
             loadPricingData();
         } else if (tabName === 'tellFriend') {
             console.log('Loading Tell a Friend tab content');
-            // Make sure the tab is visible
+            // No need to set inline style - the .active class will handle this
             const tellFriendTab = document.getElementById('tellFriend');
-            if (tellFriendTab) {
-                tellFriendTab.style.display = 'block';
-                // Call the initialization function if it exists
-                if (typeof window.initializeTellFriendTabContent === 'function') {
-                    window.initializeTellFriendTabContent();
-                }
+            if (tellFriendTab && typeof window.initializeTellFriendTabContent === 'function') {
+                // Just call the initialization function
+                window.initializeTellFriendTabContent();
             }
         }
     }
