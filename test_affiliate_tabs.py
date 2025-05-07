@@ -53,17 +53,73 @@ def test_page():
     
     # Test with commission stats
     commission_stats = {
-        'total_earned': '$150.50',
-        'pending': '$25.00',
-        'referrals': 12
+        'total_earned': '150.50',
+        'pending': '25.00',
+        'referrals': 12,
+        'conversion_rate': '15.5'
     }
+    
+    # Mock commissions
+    commissions = [
+        {
+            'id': 1,
+            'created_at': datetime.now(),
+            'amount': '10.50',
+            'tier': 1,
+            'status': 'approved'
+        },
+        {
+            'id': 2,
+            'created_at': datetime.now(),
+            'amount': '5.25',
+            'tier': 2,
+            'status': 'pending'
+        },
+        {
+            'id': 3,
+            'created_at': datetime.now(),
+            'amount': '15.00',
+            'tier': 1,
+            'status': 'paid'
+        }
+    ]
+    
+    # Mock referrals
+    referrals = [
+        {
+            'id': 1,
+            'username': 'user1',
+            'created_at': datetime.now(),
+            'total_purchases': '50.00'
+        },
+        {
+            'id': 2,
+            'username': 'user2',
+            'created_at': datetime.now(),
+            'total_purchases': '75.50'
+        }
+    ]
+    
+    # Mock sub-referrals
+    sub_referrals = [
+        {
+            'id': 1,
+            'username': 'sub_user1',
+            'created_at': datetime.now(),
+            'total_purchases': '25.00'
+        }
+    ]
     
     # For testing template rendering
     return render_template(
         'test_affiliate.html',
         user=user,
         affiliate=affiliate,
-        commission_stats=commission_stats
+        commission_stats=commission_stats,
+        commissions=commissions,
+        referrals=referrals,
+        sub_referrals=sub_referrals,
+        stats=commission_stats  # Alias to match dashboard template
     )
 
 if __name__ == '__main__':

@@ -61,6 +61,10 @@ def account_management():
             
         # Get commission statistics if affiliate exists and is active
         commission_stats = {}
+        commissions = []
+        referrals = []
+        sub_referrals = []
+        
         if affiliate and affiliate.status == AffiliateStatus.ACTIVE.value:
             # Get total earned commissions
             earned_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
@@ -77,11 +81,70 @@ def account_management():
             # Get referral count
             referral_count = CustomerReferral.query.filter_by(affiliate_id=affiliate.id).count()
             
+            # Calculate conversion rate (default to 0% if no referrals)
+            total_clicks = affiliate.click_count or 0
+            conversion_rate = (referral_count / total_clicks * 100) if total_clicks > 0 else 0
+            
             commission_stats = {
-                'total_earned': f'${earned_commissions:.2f}',
-                'pending': f'${pending_commissions:.2f}',
-                'referrals': referral_count
+                'total_earned': f'{earned_commissions:.2f}',
+                'pending': f'{pending_commissions:.2f}',
+                'referrals': referral_count,
+                'conversion_rate': f'{conversion_rate:.1f}'
             }
+            
+            # Get recent commissions for dashboard view
+            commissions = Commission.query.filter_by(affiliate_id=affiliate.id) \
+                .order_by(desc(Commission.created_at)).limit(10).all()
+            
+            # Get referred users (direct referrals)
+            referral_query = db.session.query(
+                User, 
+                func.sum(Transaction.amount).label('total_purchases')
+            ).join(
+                CustomerReferral, CustomerReferral.user_id == User.id
+            ).outerjoin(
+                Transaction, Transaction.user_id == User.id
+            ).filter(
+                CustomerReferral.affiliate_id == affiliate.id
+            ).group_by(
+                User.id
+            ).order_by(
+                desc(User.created_at)
+            ).limit(10)
+            
+            referrals = []
+            for user, total_purchases in referral_query:
+                referrals.append({
+                    'id': user.id,
+                    'username': user.username,
+                    'created_at': user.created_at,
+                    'total_purchases': f'{total_purchases or 0:.2f}'
+                })
+            
+            # Get sub-affiliates (tier 2)
+            sub_affiliate_query = db.session.query(
+                Affiliate,
+                func.sum(Transaction.amount).label('total_purchases')
+            ).join(
+                User, User.email == Affiliate.email
+            ).outerjoin(
+                Transaction, Transaction.user_id == User.id
+            ).filter(
+                Affiliate.referred_by_affiliate_id == affiliate.id
+            ).group_by(
+                Affiliate.id
+            ).order_by(
+                desc(Affiliate.created_at)
+            ).limit(5)
+            
+            sub_referrals = []
+            for sub_affiliate, total_purchases in sub_affiliate_query:
+                sub_referrals.append({
+                    'id': sub_affiliate.id,
+                    'username': sub_affiliate.name,
+                    'created_at': sub_affiliate.created_at,
+                    'total_purchases': f'{total_purchases or 0:.2f}'
+                })
         
         return render_template(
             'account.html',
@@ -90,7 +153,11 @@ def account_management():
             recent_transactions=recent_transactions,
             recent_usage=recent_usage,
             affiliate=affiliate,
-            commission_stats=commission_stats
+            commission_stats=commission_stats,
+            commissions=commissions,
+            referrals=referrals,
+            sub_referrals=sub_referrals,
+            stats=commission_stats  # Alias to match dashboard template
         )
     
     except Exception as e:
