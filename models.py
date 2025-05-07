@@ -291,6 +291,41 @@ class CustomerReferral(db.Model):
         return f'<CustomerReferral {self.id}: User {self.customer_user_id} referred by Affiliate {self.affiliate_id}>'
 
 
+class OpenRouterModel(db.Model):
+    """Model to store OpenRouter model information centrally in the database"""
+    model_id = db.Column(db.String(128), primary_key=True)  # OpenRouter model ID (e.g., "google/gemini-pro")
+    name = db.Column(db.String(128), nullable=True)  # Human-readable name
+    description = db.Column(Text, nullable=True)  # Model description
+    context_length = db.Column(db.Integer, nullable=True)  # Maximum context length
+    input_price_usd_million = db.Column(db.Float, nullable=True)  # Markup price per million input tokens
+    output_price_usd_million = db.Column(db.Float, nullable=True)  # Markup price per million output tokens
+    is_multimodal = db.Column(db.Boolean, default=False)  # Whether model supports images
+    cost_band = db.Column(db.String(8), nullable=True)  # '$', '$$', '$$$', '$$$$' band
+    last_fetched_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Last update time
+    
+    def __repr__(self):
+        return f'<OpenRouterModel {self.model_id}: {self.name}>'
+        
+    @classmethod
+    def get_all_models(cls):
+        """Return all models ordered by name"""
+        return cls.query.order_by(cls.name).all()
+        
+    @classmethod
+    def get_multimodal_models(cls):
+        """Return only multimodal models"""
+        return cls.query.filter_by(is_multimodal=True).order_by(cls.name).all()
+        
+    @classmethod
+    def is_model_multimodal(cls, model_id):
+        """Check if a specific model supports multimodal inputs"""
+        model = cls.query.get(model_id)
+        if model:
+            return model.is_multimodal
+        # Default to False if model not found
+        return False
+
+
 class Commission(db.Model):
     """Commission model for tracking affiliate commissions"""
     id = db.Column(db.Integer, primary_key=True)

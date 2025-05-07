@@ -1,7 +1,8 @@
 """
 Price Updater Module for GloriaMundo Chatbot
 
-This module handles background fetching and caching of OpenRouter model prices.
+This module handles background fetching and caching of OpenRouter model prices,
+ensuring model information is stored in the database for reliability.
 """
 
 import os
@@ -9,13 +10,14 @@ import time
 import logging
 import requests
 from datetime import datetime
+from sqlalchemy.exc import SQLAlchemyError
 
 # Set up logging with more details for debugging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Initialize a cache dict to store model prices
+# Initialize a cache dict to store model prices (kept for backward compatibility)
 model_prices_cache = {
     'prices': {},
     'last_updated': None
@@ -165,11 +167,84 @@ def fetch_and_store_openrouter_prices() -> bool:
             # Add to processed models for OPENROUTER_MODELS_INFO
             processed_models.append(model)
         
-        # Update the cache with the new prices
+        # Update the cache with the new prices (kept for backward compatibility)
         model_prices_cache['prices'] = prices
         model_prices_cache['last_updated'] = datetime.now().isoformat()
         
-        # Update the global OPENROUTER_MODELS_INFO in app.py
+        # Store models in the database (This is the new primary storage method)
+        try:
+            # Import here to avoid circular imports
+            from app import db
+            from models import OpenRouterModel
+            
+            updated_count = 0
+            new_count = 0
+            
+            # Use a single database session for all operations
+            for model_id, model_data in prices.items():
+                try:
+                    # Try to get existing model from the database
+                    db_model = db.session.get(OpenRouterModel, model_id)
+                    
+                    if db_model:
+                        # Update existing model
+                        db_model.name = model_data['model_name']
+                        
+                        # Find the original model object to get description
+                        original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
+                        db_model.description = original_model.get('description', '')
+                        
+                        # Update pricing and other details
+                        db_model.context_length = model_data['context_length'] if isinstance(model_data['context_length'], int) else None
+                        db_model.input_price_usd_million = model_data['input_price']
+                        db_model.output_price_usd_million = model_data['output_price']
+                        db_model.is_multimodal = model_data['is_multimodal']
+                        db_model.cost_band = model_data['cost_band']
+                        db_model.last_fetched_at = datetime.utcnow()
+                        updated_count += 1
+                    else:
+                        # Create new model
+                        original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
+                        context_length = model_data['context_length']
+                        if not isinstance(context_length, int):
+                            try:
+                                context_length = int(context_length)
+                            except (ValueError, TypeError):
+                                context_length = None
+                        
+                        new_model = OpenRouterModel(
+                            model_id=model_id,
+                            name=model_data['model_name'],
+                            description=original_model.get('description', ''),
+                            context_length=context_length,
+                            input_price_usd_million=model_data['input_price'],
+                            output_price_usd_million=model_data['output_price'],
+                            is_multimodal=model_data['is_multimodal'],
+                            cost_band=model_data['cost_band'],
+                            last_fetched_at=datetime.utcnow()
+                        )
+                        db.session.add(new_model)
+                        new_count += 1
+                        
+                except Exception as model_error:
+                    logger.error(f"Error updating model {model_id} in database: {model_error}")
+                    continue
+            
+            # Commit all changes in one transaction
+            db.session.commit()
+            logger.info(f"Database updated: {updated_count} models updated, {new_count} new models added")
+            
+        except ImportError as e:
+            logger.error(f"Failed to import database modules: {e}")
+        except SQLAlchemyError as e:
+            logger.error(f"Database error storing models: {e}")
+            db.session.rollback()
+        except Exception as e:
+            logger.error(f"Unexpected error storing models in database: {e}")
+            if 'db' in locals():
+                db.session.rollback()
+                
+        # For backward compatibility, update the global variables in app.py
         try:
             # Import is done here to avoid circular imports
             import app
@@ -179,15 +254,15 @@ def fetch_and_store_openrouter_prices() -> bool:
             if hasattr(app, 'OPENROUTER_MODELS_CACHE'):
                 app.OPENROUTER_MODELS_CACHE["data"] = {"data": processed_models}
                 app.OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
-                logger.info(f"Updated OPENROUTER_MODELS_CACHE with {len(processed_models)} models")
+                logger.info(f"Updated app.OPENROUTER_MODELS_CACHE with {len(processed_models)} models for backward compatibility")
             
-            logger.info(f"Successfully updated OPENROUTER_MODELS_INFO with {len(processed_models)} models")
+            logger.info(f"Updated app.OPENROUTER_MODELS_INFO with {len(processed_models)} models for backward compatibility")
         except ImportError as e:
-            logger.error(f"Failed to update OPENROUTER_MODELS_INFO: {e}")
+            logger.error(f"Failed to update app.OPENROUTER_MODELS_INFO: {e}")
         
         # Log successful completion
         elapsed_time = time.time() - start_time
-        logger.info(f"Successfully fetched and cached prices for {len(prices)} models in {elapsed_time:.2f} seconds")
+        logger.info(f"Successfully processed {len(prices)} models in {elapsed_time:.2f} seconds")
         logger.info("Scheduled job: fetch_and_store_openrouter_prices completed successfully")
         return True
         
@@ -203,6 +278,7 @@ def fetch_and_store_openrouter_prices() -> bool:
 def get_model_cost(model_id: str) -> dict:
     """
     Get the cost per million tokens and cost band for a specific model.
+    This function now primarily uses the database but falls back to cache and then to defaults.
     
     Args:
         model_id (str): The ID of the model
@@ -210,6 +286,22 @@ def get_model_cost(model_id: str) -> dict:
     Returns:
         dict: Dictionary containing prompt_cost_per_million, completion_cost_per_million, and cost_band
     """
+    try:
+        # Try to get model info from the database first (most reliable)
+        from models import OpenRouterModel
+        
+        db_model = OpenRouterModel.query.get(model_id)
+        if db_model:
+            return {
+                'prompt_cost_per_million': db_model.input_price_usd_million,
+                'completion_cost_per_million': db_model.output_price_usd_million,
+                'cost_band': db_model.cost_band or '',
+                'source': 'database'  # For debugging
+            }
+    except Exception as db_error:
+        logger.warning(f"Failed to get model cost from database: {db_error}")
+    
+    # If database lookup failed, try the cache
     # If the cache is empty, try to fetch prices
     if not model_prices_cache['prices']:
         fetch_and_store_openrouter_prices()
@@ -217,55 +309,56 @@ def get_model_cost(model_id: str) -> dict:
     # Get the model data from the cache
     model_data = model_prices_cache['prices'].get(model_id, {})
     
-    # If we don't have data for this specific model, use fallback logic
-    if not model_data:
-        # Approximate fallback costs based on model name
-        model_name = model_id.lower()
-        
-        # Define prompt and completion costs with fallback values
-        prompt_cost = 0.0
-        completion_cost = 0.0
-        
-        if "gpt-4" in model_name:
-            prompt_cost = 60.0
-            completion_cost = 120.0
-            cost_band = "$$$$"
-        elif "claude-3" in model_name and "opus" in model_name:
-            prompt_cost = 45.0
-            completion_cost = 90.0
-            cost_band = "$$$$"
-        elif "claude-3" in model_name and "sonnet" in model_name:
-            prompt_cost = 15.0
-            completion_cost = 30.0
-            cost_band = "$$$"
-        elif "claude-3" in model_name and "haiku" in model_name:
-            prompt_cost = 3.0
-            completion_cost = 6.0
-            cost_band = "$$"
-        elif "gemini-1.5" in model_name and "pro" in model_name:
-            prompt_cost = 10.0
-            completion_cost = 20.0
-            cost_band = "$$$"
-        elif "gpt-3.5" in model_name:
-            prompt_cost = 1.0
-            completion_cost = 2.0
-            cost_band = "$$"
-        else:
-            # Default fallback for unknown models
-            prompt_cost = 10.0
-            completion_cost = 20.0
-            cost_band = "$$$"
-            
-        # Return the fallback data with cost band
+    if model_data:
         return {
-            'prompt_cost_per_million': prompt_cost,
-            'completion_cost_per_million': completion_cost,
-            'cost_band': cost_band
+            'prompt_cost_per_million': model_data['input_price'],
+            'completion_cost_per_million': model_data['output_price'],
+            'cost_band': model_data.get('cost_band', ''),
+            'source': 'cache'  # For debugging
         }
     
-    # Prices are already stored per million tokens
+    # If we still don't have data, use fallback logic
+    # Approximate fallback costs based on model name
+    model_name = model_id.lower()
+    
+    # Define prompt and completion costs with fallback values
+    prompt_cost = 0.0
+    completion_cost = 0.0
+    
+    if "gpt-4" in model_name:
+        prompt_cost = 60.0
+        completion_cost = 120.0
+        cost_band = "$$$$"
+    elif "claude-3" in model_name and "opus" in model_name:
+        prompt_cost = 45.0
+        completion_cost = 90.0
+        cost_band = "$$$$"
+    elif "claude-3" in model_name and "sonnet" in model_name:
+        prompt_cost = 15.0
+        completion_cost = 30.0
+        cost_band = "$$$"
+    elif "claude-3" in model_name and "haiku" in model_name:
+        prompt_cost = 3.0
+        completion_cost = 6.0
+        cost_band = "$$"
+    elif "gemini-1.5" in model_name and "pro" in model_name:
+        prompt_cost = 10.0
+        completion_cost = 20.0
+        cost_band = "$$$"
+    elif "gpt-3.5" in model_name:
+        prompt_cost = 1.0
+        completion_cost = 2.0
+        cost_band = "$$"
+    else:
+        # Default fallback for unknown models
+        prompt_cost = 10.0
+        completion_cost = 20.0
+        cost_band = "$$$"
+        
+    # Return the fallback data with cost band
     return {
-        'prompt_cost_per_million': model_data['input_price'],
-        'completion_cost_per_million': model_data['output_price'],
-        'cost_band': model_data.get('cost_band', '')
+        'prompt_cost_per_million': prompt_cost,
+        'completion_cost_per_million': completion_cost,
+        'cost_band': cost_band,
+        'source': 'fallback'  # For debugging
     }
