@@ -949,10 +949,32 @@ def chat(): # Synchronous function
     Endpoint to handle chat messages and stream responses from OpenRouter (SYNC Version)
     """
     try:
-        # --- Get request data ---
-        data = request.get_json()
+        # Enhanced request logging for diagnosing 400 errors
+        logger.info(f"chat: Request Content-Type: {request.content_type}")
+        logger.info(f"chat: Request headers: {dict(request.headers)}")
+        
+        # Try different methods of getting JSON data
+        data = None
+        request_data = request.get_data(as_text=True)
+        logger.info(f"chat: Raw request data: {request_data[:500]}...")  # Limit log size
+        
+        if request.is_json:
+            data = request.get_json(silent=True)
+            logger.info(f"chat: JSON data obtained: {data is not None}")
+            if data:
+                logger.info(f"chat: Data keys: {list(data.keys())}")
+        else:
+            logger.warning("chat: Request not identified as JSON")
+            try:
+                # Attempt to parse manually
+                import json
+                data = json.loads(request_data)
+                logger.info(f"chat: Manually parsed JSON, keys: {list(data.keys())}")
+            except json.JSONDecodeError as e:
+                logger.error(f"chat: JSON parse error: {e}")
+                
         if not data:
-            logger.error("Request body is not JSON or is empty")
+            logger.error("chat: Failed to extract JSON data from request")
             abort(400, description="Invalid request body. JSON expected.")
 
         # --- Get user input from structured 'messages' array (OpenAI-compatible format) ---
@@ -1450,9 +1472,69 @@ def chat(): # Synchronous function
                 logger.error(f"Error incorporating RAG context: {e}")
 
         # --- Prepare Payload ---
+        # Before creating payload, ensure we have correct content format for each model type
+        # OpenRouter expects different message content formats for multimodal vs non-multimodal models
+        
+        # Check if model supports multimodal content
+        model_supports_multimodal = False
+        for pattern in MULTIMODAL_MODELS:
+            if pattern.lower() in openrouter_model.lower():
+                model_supports_multimodal = True
+                logger.info(f"Model {openrouter_model} supports multimodal content matching pattern {pattern}")
+                break
+        
+        # Transform messages if needed to match model capabilities
+        processed_messages = []
+        for msg in messages:
+            role = msg.get('role', '')
+            content = msg.get('content', '')
+            
+            # Only user and assistant messages need content format adaptation
+            if role in ['user', 'assistant']:
+                # Handle array content for multimodal messages
+                if isinstance(content, list):
+                    if model_supports_multimodal:
+                        # Keep multimodal format for models that support it
+                        processed_messages.append(msg)
+                        logger.info(f"Keeping multimodal content format for {role} message with model {openrouter_model}")
+                    else:
+                        # For non-multimodal models, extract just the text content
+                        text_content = None
+                        for item in content:
+                            if item.get('type') == 'text':
+                                text_content = item.get('text', '')
+                                break
+                        
+                        if text_content:
+                            # Create a text-only message
+                            processed_messages.append({
+                                'role': role,
+                                'content': text_content  # Plain string content
+                            })
+                            logger.info(f"Converted multimodal content to text-only for {role} message with non-multimodal model {openrouter_model}")
+                        else:
+                            # Fallback if no text content found
+                            logger.warning(f"No text content found in multimodal message, using empty string")
+                            processed_messages.append({
+                                'role': role,
+                                'content': ""
+                            })
+                else:
+                    # Regular text message, no conversion needed
+                    processed_messages.append(msg)
+            else:
+                # System messages and others pass through unchanged
+                processed_messages.append(msg)
+        
+        # Log the transformation summary
+        logger.info(f"Message format adaptation: {len(messages)} original messages → {len(processed_messages)} processed messages")
+        if len(messages) != len(processed_messages):
+            logger.warning(f"Message count changed during format adaptation! Original: {len(messages)}, Processed: {len(processed_messages)}")
+        
+        # Create payload with the processed messages
         payload = {
             'model': openrouter_model,
-            'messages': messages,
+            'messages': processed_messages,
             'stream': True,
             'include_reasoning': True  # Enable reasoning tokens for all models that support it
         }
@@ -1460,15 +1542,17 @@ def chat(): # Synchronous function
         # Note: We don't need to add image_url separately as it's now included in the messages content
         # for multimodal models when an image is provided
         
+        logger.info(f"Payload prepared for OpenRouter with model: {openrouter_model}, multimodal support: {model_supports_multimodal}")
+        
         # --- ADD DETAILED LOGGING FOR TROUBLESHOOTING MULTIMODAL IMAGES ---
         try:
-            # Check if there's a multimodal message in the history
+            # Check if there's a multimodal message in the processed_messages that will be sent to OpenRouter
             has_multimodal_message = False
-            for msg in messages:
+            for msg in payload['messages']:  # Important: check the processed_messages in the payload!
                 if isinstance(msg.get('content'), list):
                     has_multimodal_message = True
                     # Log the structure of the multimodal message
-                    logger.info("Found multimodal message in payload:")
+                    logger.info("Found multimodal message in FINAL payload:")
                     for i, content_item in enumerate(msg.get('content', [])):
                         item_type = content_item.get('type', 'unknown')
                         if item_type == 'text':
@@ -1485,25 +1569,33 @@ def chat(): # Synchronous function
                             else:
                                 logger.info(f"  Content item {i}: type=image_url, url={url[:50]}...")
             
-            if image_url and not has_multimodal_message:
-                logger.warning("WARNING: image_url is provided but no multimodal message was found in the payload!")
+            # Now compare what was in the original vs what's in the processed payload
+            original_has_multimodal = any(isinstance(msg.get('content'), list) for msg in messages)
+            if original_has_multimodal != has_multimodal_message:
+                if original_has_multimodal and not has_multimodal_message:
+                    logger.info("✅ Successfully converted multimodal content to text-only for non-multimodal model")
+                elif not original_has_multimodal and has_multimodal_message:
+                    logger.warning("⚠️ Unexpected conversion: text-only content became multimodal!")
             
-            # Check if we're sending an image to a non-multimodal model
-            if image_url and has_multimodal_message:
-                model_supports_images = False
-                selected_model = payload.get('model', '')
-                
-                # Check if the model name contains any multimodal indicator
-                for multimodal_indicator in MULTIMODAL_MODELS:
-                    if multimodal_indicator.lower() in selected_model.lower():
-                        model_supports_images = True
-                        break
-                
-                if not model_supports_images:
-                    logger.warning(f"⚠️ Sending image to model '{selected_model}' that may not support multimodal input!")
-                    logger.warning(f"This model isn't in the MULTIMODAL_MODELS list. The image might be ignored.")
-                else:
-                    logger.info(f"✅ Model '{selected_model}' supports multimodal content.")
+            if image_url and not has_multimodal_message:
+                logger.info("ℹ️ image_url was provided but no multimodal message in final payload - correctly converted for non-multimodal model")
+            
+            # Check final model and multimodal status match
+            selected_model = payload.get('model', '')
+            model_supports_multimodal = False
+            for indicator in MULTIMODAL_MODELS:
+                if indicator.lower() in selected_model.lower():
+                    model_supports_multimodal = True
+                    break
+            
+            # Verify content format matches model capabilities
+            if model_supports_multimodal != has_multimodal_message:
+                if model_supports_multimodal and not has_multimodal_message:
+                    logger.warning("⚠️ Model supports multimodal content but we're sending text-only!")
+                elif not model_supports_multimodal and has_multimodal_message:
+                    logger.warning("⚠️ Model does NOT support multimodal but we're still sending multimodal content!")
+            else:
+                logger.info(f"✅ Content format correctly matched to model capabilities: multimodal={model_supports_multimodal}")
             
             # Create a safe copy of the payload for logging (to avoid credentials leaks)
             log_payload = payload.copy()
@@ -2222,15 +2314,41 @@ def get_models():
 def save_preference():
     """ Save user model preference """
     try:
-        data = request.get_json()
+        # Enhanced request logging
+        logger.info(f"save_preference: Request Content-Type: {request.content_type}")
+        logger.info(f"save_preference: Request headers: {dict(request.headers)}")
+        
+        # Try different methods of getting JSON data
+        data = None
+        request_data = request.get_data(as_text=True)
+        logger.info(f"save_preference: Raw request data: {request_data}")
+        
+        if request.is_json:
+            data = request.get_json(silent=True)
+            logger.info(f"save_preference: JSON data from request.get_json(): {data}")
+        else:
+            logger.warning("save_preference: Request not identified as JSON")
+            try:
+                # Attempt to parse manually
+                import json
+                data = json.loads(request_data)
+                logger.info(f"save_preference: Manually parsed JSON: {data}")
+            except json.JSONDecodeError as e:
+                logger.error(f"save_preference: JSON parse error: {e}")
+        
         if not data: abort(400, description="Invalid request body. JSON expected.")
+        
         preset_id = data.get('preset_id')
         model_id = data.get('model_id')
+        logger.info(f"save_preference: Extracted preset_id: {preset_id}, model_id: {model_id}")
+        
         if not preset_id or not model_id: abort(400, description="Missing preset_id or model_id")
         try:
             preset_id = int(preset_id)
             if not 1 <= preset_id <= 6: abort(400, description="preset_id must be between 1 and 6")
-        except ValueError: abort(400, description="preset_id must be a number")
+        except ValueError: 
+            logger.error(f"save_preference: Invalid preset_id format: {preset_id}")
+            abort(400, description="preset_id must be a number")
 
         user_identifier = get_user_identifier()
         from models import UserPreference 

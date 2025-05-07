@@ -1,0 +1,17 @@
+{
+  "name": "app_test_workflow",
+  "tasks": [
+    {
+      "task": "packager.installForAll"
+    },
+    {
+      "task": "shell.exec", 
+      "args": ["python", "app_workflow.py"],
+      "waitForPort": 3000
+    }
+  ],
+  "metadata": {
+    "agentRequireRestartOnSave": false,
+    "visibleForAll": true
+  }
+}
