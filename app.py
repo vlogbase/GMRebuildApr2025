@@ -1006,9 +1006,10 @@ def chat(): # Synchronous function
         
         # For non-authenticated users, force the free model
         if not current_user.is_authenticated:
-            # Check if the requested model is marked as free
-            requested_model_info = next((model for model in OPENROUTER_MODELS_INFO if model.get('id') == model_id), None)
-            if not requested_model_info or not requested_model_info.get('is_free', False):
+            # Simply force the free model for non-authenticated users
+            # We'll skip the model info check as it might not be available
+            is_free_model = ':free' in model_id.lower()
+            if not is_free_model:
                 # If not a free model, override with a default free model
                 model_id = DEFAULT_PRESET_MODELS.get('6', 'google/gemini-2.0-flash-exp:free')
                 logger.info(f"Non-authenticated user restricted to free model: {model_id}")
