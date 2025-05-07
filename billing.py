@@ -81,15 +81,13 @@ def account_management():
             # Get referral count
             referral_count = CustomerReferral.query.filter_by(affiliate_id=affiliate.id).count()
             
-            # Calculate conversion rate (default to 0% if no referrals)
-            total_clicks = affiliate.click_count or 0
-            conversion_rate = (referral_count / total_clicks * 100) if total_clicks > 0 else 0
-            
+            # Calculate conversion rate - set as N/A since click tracking isn't implemented
+            # Note: click_count attribute doesn't exist in the Affiliate model yet
             commission_stats = {
                 'total_earned': f'{earned_commissions:.2f}',
                 'pending': f'{pending_commissions:.2f}',
                 'referrals': referral_count,
-                'conversion_rate': f'{conversion_rate:.1f}'
+                'conversion_rate': 'N/A'  # Use N/A until click tracking is implemented
             }
             
             # Get recent commissions for dashboard view
@@ -99,9 +97,9 @@ def account_management():
             # Get referred users (direct referrals)
             referral_query = db.session.query(
                 User, 
-                func.sum(Transaction.amount).label('total_purchases')
+                func.sum(Transaction.amount_usd).label('total_purchases')
             ).join(
-                CustomerReferral, CustomerReferral.user_id == User.id
+                CustomerReferral, CustomerReferral.customer_user_id == User.id
             ).outerjoin(
                 Transaction, Transaction.user_id == User.id
             ).filter(
@@ -124,7 +122,7 @@ def account_management():
             # Get sub-affiliates (tier 2)
             sub_affiliate_query = db.session.query(
                 Affiliate,
-                func.sum(Transaction.amount).label('total_purchases')
+                func.sum(Transaction.amount_usd).label('total_purchases')
             ).join(
                 User, User.email == Affiliate.email
             ).outerjoin(

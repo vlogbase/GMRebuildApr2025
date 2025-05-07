@@ -213,7 +213,7 @@
                     <td>{{ commission.created_at.strftime('%b %d, %Y') }}</td>
                     <td>{{ commission.referral_display }}</td>
                     <td>
-                        {% if commission.tier == 1 %}
+                        {% if commission.commission_level == 1 %}
                         <span class="tier-badge tier-1">Tier 1</span>
                         {% else %}
                         <span class="tier-badge tier-2">Tier 2</span>

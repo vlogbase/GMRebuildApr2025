@@ -153,7 +153,7 @@
                             </div>
                             <div class="col-md-3 mb-3">
                                 <div class="stat-card">
-                                    <div class="stat-value">{{ (commission_stats.conversion_rate | default('0')) }}%</div>
+                                    <div class="stat-value">{{ (commission_stats.conversion_rate | string == 'N/A') ? 'N/A' : (commission_stats.conversion_rate | default('0')) ~ '%' }}</div>
                                     <div class="stat-label">Conversion Rate</div>
                                 </div>
                             </div>
@@ -178,10 +178,10 @@
                                     {% for commission in commissions %}
                                     <tr>
                                         <td>{{ commission.created_at.strftime('%b %d, %Y') }}</td>
-                                        <td>${{ commission.amount }}</td>
+                                        <td>${{ commission.commission_amount }}</td>
                                         <td>
-                                            <span class="status-badge tier-{{ commission.tier }}">
-                                                Tier {{ commission.tier }}
+                                            <span class="status-badge tier-{{ commission.commission_level }}">
+                                                Tier {{ commission.commission_level }}
                                             </span>
                                         </td>
                                         <td>
