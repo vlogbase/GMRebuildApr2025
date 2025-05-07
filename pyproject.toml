@@ -38,4 +38,6 @@ dependencies = [
     "stripe>=12.1.0",
     "paypal-checkout-serversdk>=1.0.3",
     "paypal-payouts-sdk>=1.0.0",
+    "paypalhttp>=1.0.1",
+    "wtforms>=3.2.1",
 ]
