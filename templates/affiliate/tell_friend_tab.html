@@ -52,6 +52,7 @@
             <div class="mb-4">
                 <h5 class="mb-3">PayPal Email for Payouts</h5>
                 <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <input type="email" class="form-control custom-amount-input" name="paypal_email" 
                                placeholder="your-email@example.com" value="{{ affiliate.paypal_email or '' }}" required>
@@ -89,6 +90,7 @@
             <div class="mb-4">
                 <h5 class="mb-3">Activate Your Affiliate Status</h5>
                 <form action="{{ url_for('affiliate.agree_to_terms') }}" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label for="paypal_email" class="form-label">Your PayPal Email for Payouts (Optional)</label>
                         <input type="email" class="form-control custom-amount-input" id="paypal_email" name="paypal_email" 
