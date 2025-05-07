@@ -29,7 +29,7 @@ from flask_login import LoginManager, current_user, login_required, login_user, 
 from flask_wtf.csrf import CSRFProtect
 from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure Blob Storage
 from apscheduler.schedulers.background import BackgroundScheduler
-from price_updater import fetch_and_store_openrouter_prices, model_prices_cache  # Imports the singleton instance
+from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
 
 # Check if we should enable advanced memory features
 ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
@@ -1981,30 +1981,17 @@ def _generate_fallback_model_data():
 def refresh_model_prices():
     """ Manually refresh model prices from OpenRouter API """
     try:
-        logger.info("Model price refresh requested manually via endpoint")
-        
-        # Check cache status before refresh
-        cache_size_before = len(model_prices_cache.get('prices', {}))
-        logger.info(f"Cache before refresh: {cache_size_before} models")
-        
         # Call the function to fetch and store prices
         success = fetch_and_store_openrouter_prices()
         
-        # Get updated cache size
-        cache_size_after = len(model_prices_cache.get('prices', {}))
-        logger.info(f"Cache after refresh: {cache_size_after} models")
-        
         if success:
-            logger.info(f"Price refresh successful: {cache_size_after} models available")
-            # Use .get() method instead of dictionary access to prevent KeyError
             return jsonify({
                 'success': True,
-                'prices': model_prices_cache.get('prices', {}),
-                'last_updated': model_prices_cache.get('last_updated'),
-                'message': f'Model prices refreshed successfully. Found {cache_size_after} models.'
+                'prices': model_prices_cache['prices'],
+                'last_updated': model_prices_cache['last_updated'],
+                'message': 'Model prices refreshed successfully'
             })
         else:
-            logger.error("Price refresh failed")
             return jsonify({
                 'success': False,
                 'error': 'Failed to refresh model prices from OpenRouter API'
@@ -2021,11 +2008,10 @@ def refresh_model_prices():
 def get_model_pricing():
     """ Fetch model pricing information """
     try:
-        # Import singleton instance - we use the same instance as imported at the top of the file
-        # This is just for clarity and to explicitly show we're using the singleton pattern
+        from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
         
         # If cache is empty, fetch prices from OpenRouter
-        if not model_prices_cache.get('prices', {}):
+        if not model_prices_cache['prices']:
             logger.info("Model prices cache is empty, fetching from OpenRouter API...")
             success = fetch_and_store_openrouter_prices()
             
@@ -2053,15 +2039,14 @@ def get_model_pricing():
                 return "No data"
         
         # Process the models to extract pricing information
-        prices = model_prices_cache.get('prices', {})
-        for model_id, model_data in prices.items():
+        for model_id, model_data in model_prices_cache['prices'].items():
             # Get model name (format from ID if not available)
             model_name = model_id.split('/')[-1].replace('-', ' ').title()
             is_autorouter = "router" in model_id.lower() or "openrouter" in model_id.lower()
             
             # Extract pricing information
-            input_price_per_token = model_data.get('input_price', 0) / 1000000  # Convert from per million tokens
-            output_price_per_token = model_data.get('output_price', 0) / 1000000  # Convert from per million tokens
+            input_price_per_token = model_data['input_price'] / 1000000  # Convert from per million tokens
+            output_price_per_token = model_data['output_price'] / 1000000  # Convert from per million tokens
             
             # Handle free models
             is_free_model = (input_price_per_token == 0 and output_price_per_token == 0)
@@ -2117,7 +2102,7 @@ def get_model_pricing():
         
         return jsonify({
             "data": pricing_data, 
-            "last_updated": model_prices_cache.get('last_updated')
+            "last_updated": model_prices_cache['last_updated']
         })
             
     except Exception as e:

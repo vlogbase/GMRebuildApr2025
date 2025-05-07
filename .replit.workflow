@@ -1,1 +1,1 @@
-run = ["python", "app_workflow.py"]
+run = ["python", "workflows/billing_test.py"]

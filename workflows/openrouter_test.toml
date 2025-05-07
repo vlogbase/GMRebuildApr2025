@@ -1,2 +1,0 @@
-[commands]
-start = ["python app_workflow.py"]

@@ -1,2 +1,0 @@
-[commands]
-start = ["python", "test_pricing_buttons.py"]
