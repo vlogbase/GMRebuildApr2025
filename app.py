@@ -2573,18 +2573,50 @@ def _generate_fallback_model_data():
 
 @app.route('/api/refresh_model_prices', methods=['POST'])
 def refresh_model_prices():
-    """ Manually refresh model prices from OpenRouter API """
+    """ 
+    Manually refresh model prices from OpenRouter API 
+    Updates both the database and the legacy cache
+    """
     try:
-        # Call the function to fetch and store prices
+        # Call the function to fetch and store prices in both database and cache
         success = fetch_and_store_openrouter_prices()
         
         if success:
-            return jsonify({
-                'success': True,
-                'prices': model_prices_cache['prices'],
-                'last_updated': model_prices_cache['last_updated'],
-                'message': 'Model prices refreshed successfully'
-            })
+            # Get prices from the database, which is our new primary source
+            from models import OpenRouterModel
+            db_models = OpenRouterModel.query.all()
+            
+            if db_models:
+                # Convert database models to the expected format
+                prices = {}
+                for db_model in db_models:
+                    prices[db_model.model_id] = {
+                        'input_price': db_model.input_price_usd_million,
+                        'output_price': db_model.output_price_usd_million,
+                        'context_length': db_model.context_length,
+                        'is_multimodal': db_model.is_multimodal,
+                        'model_name': db_model.name,
+                        'cost_band': db_model.cost_band
+                    }
+                
+                # Get the most recent update timestamp
+                latest_model = OpenRouterModel.query.order_by(OpenRouterModel.last_fetched_at.desc()).first()
+                last_updated = latest_model.last_fetched_at.isoformat() if latest_model else None
+                
+                return jsonify({
+                    'success': True,
+                    'prices': prices,
+                    'last_updated': last_updated,
+                    'message': f'Model prices refreshed successfully - {len(prices)} models updated'
+                })
+            else:
+                # Fall back to the cache if database is empty
+                return jsonify({
+                    'success': True,
+                    'prices': model_prices_cache['prices'],
+                    'last_updated': model_prices_cache['last_updated'],
+                    'message': 'Model prices refreshed successfully (using cache fallback)'
+                })
         else:
             return jsonify({
                 'success': False,
@@ -2592,7 +2624,7 @@ def refresh_model_prices():
             }), 500
             
     except Exception as e:
-        logger.error(f"Error refreshing model prices: {e}")
+        logger.exception(f"Error refreshing model prices: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -2600,19 +2632,31 @@ def refresh_model_prices():
 
 @app.route('/api/model-pricing', methods=['GET'])
 def get_model_pricing():
-    """ Fetch model pricing information """
+    """ 
+    Fetch model pricing information from the database
+    This is an updated implementation that uses the database as the primary source
+    """
     try:
-        from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
+        from models import OpenRouterModel
         
-        # If cache is empty, fetch prices from OpenRouter
-        if not model_prices_cache['prices']:
-            logger.info("Model prices cache is empty, fetching from OpenRouter API...")
+        # First try to get model data from database
+        db_models = OpenRouterModel.query.all()
+        
+        # If database is empty, attempt to populate it
+        if not db_models:
+            logger.warning("No models found in database, attempting to fetch from API...")
+            from price_updater import fetch_and_store_openrouter_prices
             success = fetch_and_store_openrouter_prices()
             
-            if not success:
-                logger.error("Failed to fetch prices from OpenRouter API")
+            if success:
+                # Try to get models from database again
+                db_models = OpenRouterModel.query.all()
+            
+            # If still no models in database after fetch attempt
+            if not db_models:
+                logger.error("Failed to fetch models from API and database is empty")
                 return jsonify({
-                    "error": "Unable to connect to OpenRouter API",
+                    "error": "Unable to retrieve model information",
                     "message": "Please try again later or contact support if the problem persists.",
                     "data": []
                 }), 200  # Return 200 so the error can be handled gracefully in the UI
@@ -2620,8 +2664,8 @@ def get_model_pricing():
         # Process models to create pricing data
         pricing_data = []
         
-        # Define our internal price mapping (multiply OpenRouter prices by markup factor)
-        markup_factor = 2.0
+        # Define our internal price mapping (markup factor is now applied at storage time)
+        markup_factor = 1.0  # No additional markup as it's already in the database
         
         # Fallback for throughput estimates based on model type
         def get_throughput_estimate(model_id):
@@ -2632,22 +2676,23 @@ def get_model_pricing():
             else:
                 return "No data"
         
-        # Process the models to extract pricing information
-        for model_id, model_data in model_prices_cache['prices'].items():
-            # Get model name (format from ID if not available)
-            model_name = model_id.split('/')[-1].replace('-', ' ').title()
+        # Process database models to extract pricing information
+        for db_model in db_models:
+            # Get model ID and name
+            model_id = db_model.model_id
+            model_name = db_model.name or model_id.split('/')[-1].replace('-', ' ').title()
             is_autorouter = "router" in model_id.lower() or "openrouter" in model_id.lower()
             
-            # Extract pricing information
-            input_price_per_token = model_data['input_price'] / 1000000  # Convert from per million tokens
-            output_price_per_token = model_data['output_price'] / 1000000  # Convert from per million tokens
+            # Extract pricing information (convert from per million tokens to per token)
+            input_price_per_token = db_model.input_price_usd_million / 1000000
+            output_price_per_token = db_model.output_price_usd_million / 1000000
             
             # Handle free models
             is_free_model = (input_price_per_token == 0 and output_price_per_token == 0)
             
-            # Apply markup to prices
-            our_input_price = float(input_price_per_token) * markup_factor if input_price_per_token else 0
-            our_output_price = float(output_price_per_token) * markup_factor if output_price_per_token else 0
+            # Prices are already marked up in the database, so we use them directly
+            our_input_price = float(input_price_per_token)
+            our_output_price = float(output_price_per_token)
             
             # Format prices for display (per million tokens)
             if is_autorouter:
@@ -2664,8 +2709,8 @@ def get_model_pricing():
                 output_price_display = f"${our_output_price * 1000000:.2f}" if our_output_price else "$0.00"
             
             # Get context length and multimodal support
-            context_length = model_data.get('context_length', 'N/A')
-            is_multimodal = model_data.get('is_multimodal', False)
+            context_length = db_model.context_length or 'N/A'
+            is_multimodal = db_model.is_multimodal
             
             # Get throughput estimate
             throughput_estimate = get_throughput_estimate(model_id)
@@ -2694,9 +2739,13 @@ def get_model_pricing():
         # Sort models alphabetically for consistent display
         pricing_data.sort(key=lambda x: x['model_name'].lower())
         
+        # Use the timestamp from the database or fall back to cache
+        latest_model = OpenRouterModel.query.order_by(OpenRouterModel.last_fetched_at.desc()).first()
+        last_updated = latest_model.last_fetched_at.isoformat() if latest_model else model_prices_cache.get('last_updated')
+        
         return jsonify({
             "data": pricing_data, 
-            "last_updated": model_prices_cache['last_updated']
+            "last_updated": last_updated
         })
             
     except Exception as e:
