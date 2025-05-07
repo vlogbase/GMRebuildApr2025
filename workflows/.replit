@@ -1,3 +1,11 @@
 [billing_test]
 run = ["python", "workflows/billing_test.py"]
 language = "python3"
+
+[openrouter_tests]
+run = ["python", "workflows/openrouter_tests.py"]
+language = "python3"
+
+[fixed_app]
+run = ["python", "workflows/fixed_app_workflow.py"]
+language = "python3"

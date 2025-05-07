@@ -1,6 +1,6 @@
-run = "python run_fixed_app.py"
+run = "python run.py"
 language = "python3"
-entrypoint = "run_fixed_app.py"
+entrypoint = "run.py"
 onBoot = "echo Starting Flask application with HTTP 400 error fixes..."
 modules = ["python-3.11:v8-20240522-e750bb7"]
 

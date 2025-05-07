@@ -1,0 +1,13 @@
+workflows:
+  diagnostic_tests:
+    name: Diagnostic Tests
+    on:
+      workflow_dispatch: {}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Run Diagnostic Tests
+        run: |
+          echo "Running diagnostics for HTTP 400 error fixes..."
+          python run_capability_tests.py

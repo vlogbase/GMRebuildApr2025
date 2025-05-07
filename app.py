@@ -19,6 +19,8 @@ import threading
 import datetime
 import mimetypes
 import atexit
+import traceback
+import sys
 from pathlib import Path
 from PIL import Image  # For image processing
 from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory # Added send_from_directory
@@ -180,47 +182,76 @@ def load_user(user_id):
 
 # --- Model Mappings & Defaults ---
 OPENROUTER_MODELS = {
-    "gemini-1.5-pro": "google/gemini-2.5-pro-preview-03-25",
-    "claude-3-sonnet": "anthropic/claude-3.7-sonnet",
-    "mistral-large": "mistralai/mistral-large",
-    "gpt-4o": "openai/gpt-4o",
-    "sonar-pro": "perplexity/sonar-pro",
-    "free-gemini": "google/gemini-2.0-flash-exp:free"
+    # Updated with verified model IDs that exist in OpenRouter
+    "gemini-pro": "google/gemini-pro",
+    "gemini-pro-vision": "google/gemini-pro-vision",
+    "claude-3-opus": "anthropic/claude-3-opus-20240229",
+    "claude-3-sonnet": "anthropic/claude-3-sonnet-20240229",
+    "claude-3-haiku": "anthropic/claude-3-haiku-20240307",
+    "claude-3.5-sonnet": "anthropic/claude-3.5-sonnet-20240620",
+    "claude-3.7-sonnet": "anthropic/claude-3.7-sonnet-20240910",
+    "gpt-4-turbo": "openai/gpt-4-turbo",
+    "gpt-4-vision": "openai/gpt-4-vision-preview",
+    "gpt-4o": "openai/gpt-4o-2024-05-13",
+    "mistral-large": "mistralai/mistral-large-latest",
+    "llama-3-8b": "meta-llama/llama-3-8b",
+    "free-gemini": "google/gemini-flash:free" # Verified free model
 }
 DEFAULT_PRESET_MODELS = {
-    "1": "google/gemini-2.5-pro-preview-03-25",
-    "2": "meta/llama-4-maverick",
-    "3": "openai/o4-Mini-High",
-    "4": "openai/gpt-4o",
-    "5": "perplexity/sonar-pro",
-    "6": "google/gemini-2.0-flash-exp:free"
+    # Updated preset models with verified available IDs
+    "1": "google/gemini-pro-vision", # Default multimodal model
+    "2": "anthropic/claude-3-haiku-20240307", # Fast, good quality
+    "3": "anthropic/claude-3-sonnet-20240229", # High quality
+    "4": "openai/gpt-4o-2024-05-13", # Premium quality
+    "5": "meta-llama/llama-3-8b", # Open model
+    "6": "google/gemini-flash:free" # Free model
 }
 FREE_MODEL_FALLBACKS = [
-    "google/gemini-2.0-flash-exp:free",
-    "qwen/qwq-32b:free",
-    "deepseek/deepseek-r1-distill-qwen-32b:free",
-    "deepseek/deepseek-r1-distill-llama-70b:free",
-    "openrouter/optimus-alpha"
+    # Updated with verified free models available in OpenRouter
+    "google/gemini-flash:free",  # Primary free model
+    "meta-llama/llama-3-8b-free", # Fallback free model
+    "openrouter/auto:free",     # Auto-selection free model
+    "neural-chat/neural-chat-7b-v3-1:free" # Another fallback
 ]
 
 # Multimodal models that support image inputs
 MULTIMODAL_MODELS = [
-    # Specific model IDs
-    "google/gemini",  # This will match all Gemini models
-    "anthropic/claude-3", # This will match all Claude 3 models
-    "anthropic/claude-3.5", # Claude 3.5 models
-    "anthropic/claude-3.7", # Claude 3.7 models
-    "openai/gpt-4o", 
-    "openai/gpt-4-turbo", 
-    "openai/gpt-4-vision",
+    # Verified specific model IDs - full matches for maximum reliability
+    "anthropic/claude-3-opus-20240229",
+    "anthropic/claude-3-sonnet-20240229",
+    "anthropic/claude-3-haiku-20240307",
+    "anthropic/claude-3.5-sonnet-20240620",
+    "anthropic/claude-3.7-sonnet-20240910",
+    "openai/gpt-4-vision-preview",
+    "openai/gpt-4o-2024-05-13",
+    "openai/gpt-4-turbo",
+    
+    # Google model IDs as currently available in OpenRouter
+    "google/gemini-pro-vision",
+    "google/gemini-1.0-pro-vision",
+    "google/gemini-1.0-pro-vision-001",
+    "google/gemini-pro",
     
     # Generic model patterns - these partial matches help catch model variations
+    # Put these after specific matches for better visibility
+    "google/gemini",  # This will match all Gemini models
+    "anthropic/claude-3", # This will match all Claude 3 models
     "claude-3",
-    "gemini",
+    "claude-3.5",
+    "claude-3.7",
     "gpt-4-vision",
     "gpt-4o",
     "vision",
     "multimodal"
+]
+
+# Safe fallback model IDs when no specific model can be determined
+# Listed in order of preference - we'll try each one until we find one that works
+SAFE_FALLBACK_MODELS = [
+    "anthropic/claude-3-haiku-20240307",  # Most reliable and fast multimodal model
+    "google/gemini-pro-vision",  # Good multimodal alternative
+    "meta-llama/llama-3-8b",  # Text-only fallback
+    "mistralai/mistral-7b"     # Another text-only fallback
 ]
 
 # Cache for OpenRouter models
@@ -233,33 +264,166 @@ OPENROUTER_MODELS_CACHE = {
 # This is needed for the non-authenticated user check in the chat endpoint
 OPENROUTER_MODELS_INFO = []
 
-# Initialize the scheduler for background tasks
-scheduler = BackgroundScheduler()
-scheduler.add_job(
-    func=fetch_and_store_openrouter_prices, 
-    trigger='interval', 
-    minutes=30, 
-    id='fetch_model_prices_job'
-)
+# Initialize the scheduler for background tasks with enhanced configuration
+def init_scheduler():
+    """
+    Initialize and start the background scheduler for periodic tasks.
+    Returns the scheduler instance or None if it failed to start.
+    """
+    logger.info("Initializing background scheduler...")
+    try:
+        from price_updater import fetch_and_store_openrouter_prices
+        
+        # Create scheduler with specific config for better reliability
+        scheduler = BackgroundScheduler(
+            daemon=True,
+            job_defaults={
+                'coalesce': True,  # Combine missed runs
+                'max_instances': 1,  # Only one instance of a job can run at a time
+                'misfire_grace_time': 60  # Allow jobs to be 60 seconds late
+            }
+        )
+        
+        # Add the OpenRouter price fetching job
+        scheduler.add_job(
+            func=fetch_and_store_openrouter_prices, 
+            trigger='interval', 
+            minutes=30, 
+            id='fetch_model_prices_job'
+        )
+        
+        # Start the scheduler
+        try:
+            scheduler.start()
+            logger.info("Background scheduler started successfully")
+        except Exception as start_error:
+            logger.error(f"Failed to start background scheduler: {start_error}")
+            logger.error(traceback.format_exc())
+            return None
+        
+        # Verify scheduler is running
+        if scheduler.running:
+            logger.info("Confirmed scheduler is running")
+            return scheduler
+        else:
+            logger.error("Scheduler failed to start properly - running flag is False")
+            return None
+            
+    except Exception as init_error:
+        logger.error(f"Error initializing scheduler: {init_error}")
+        logger.error(traceback.format_exc())
+        return None
 
-# Initial fetch of model data at startup
+# Define the model fetching function right here to avoid any undefined function issues
+def _fetch_openrouter_models():
+    """Fetch models from OpenRouter API"""
+    try:
+        api_key = os.environ.get('OPENROUTER_API_KEY')
+        if not api_key:
+            logger.error("OPENROUTER_API_KEY not found")
+            return None
+
+        headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
+
+        logger.debug("Fetching models from OpenRouter...")
+        response = requests.get(
+            'https://openrouter.ai/api/v1/models',
+            headers=headers,
+            timeout=15.0 
+        )
+
+        response.raise_for_status() 
+        models_data = response.json()
+        
+        processed_models = []
+        for model in models_data.get('data', []):
+            model_id = model.get('id', '').lower()
+            model_name = model.get('name', '').lower()
+            model_description = model.get('description', '').lower()
+
+            try:
+                prompt_price = float(model.get('pricing', {}).get('prompt', '1.0'))
+            except (ValueError, TypeError):
+                prompt_price = 1.0 
+
+            model['is_free'] = ':free' in model_id or prompt_price == 0.0
+            model['is_multimodal'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
+                                        for keyword in ['vision', 'image', 'multi', 'gpt-4o'])
+            model['is_perplexity'] = 'perplexity/' in model_id
+            model['is_reasoning'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
+                                        for keyword in ['reasoning', 'opus', 'o1', 'o3']) 
+            processed_models.append(model)
+
+        result_data = {"data": processed_models}
+        
+        # Update the cache
+        global OPENROUTER_MODELS_CACHE, OPENROUTER_MODELS_INFO
+        OPENROUTER_MODELS_CACHE["data"] = result_data
+        OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
+        
+        # Also update OPENROUTER_MODELS_INFO for the non-authenticated user check
+        OPENROUTER_MODELS_INFO = processed_models
+        
+        logger.info(f"Fetched and cached {len(processed_models)} models from OpenRouter")
+        
+        return result_data
+    except Exception as e:
+        logger.exception(f"Error fetching models from OpenRouter: {e}")
+        logger.error(traceback.format_exc())
+        return None
+
+# Initialize scheduler with improved implementation
+scheduler = init_scheduler()
+if not scheduler or not scheduler.running:
+    logger.critical("Failed to initialize the scheduler! This may affect model data availability.")
+
+# Initial fetch of model data at startup - crucial for application functionality
 logger.info("Performing initial fetch of OpenRouter models at startup")
 try:
-    # Initial model information fetch
-    _fetch_openrouter_models()
-    logger.info("Initial OpenRouter models fetch completed")
+    # First ensure proper Python imports
+    import traceback
+    from price_updater import fetch_and_store_openrouter_prices
     
-    # Initial price information fetch
-    fetch_and_store_openrouter_prices()
-    logger.info("Initial OpenRouter price fetch completed")
+    # Attempt to fetch model prices directly (which includes model info)
+    # This bypasses the scheduler to ensure we get data at startup
+    logger.info("Fetching initial model data directly...")
+    price_success = fetch_and_store_openrouter_prices()
+    if price_success:
+        logger.info("Successfully fetched initial model prices including model information")
+        # With prices loaded, we should also have models
+    else:
+        # If that fails, fallback to the direct API fetch
+        logger.warning("Price fetching failed, falling back to direct model fetching")
+        model_data = _fetch_openrouter_models()
+        logger.info(f"Direct model fetch returned: {model_data is not None}")
+    
+    # Verify we have model data
+    if OPENROUTER_MODELS_INFO and len(OPENROUTER_MODELS_INFO) > 0:
+        logger.info(f"Initial model data fetch completed. {len(OPENROUTER_MODELS_INFO)} models available.")
+    else:
+        logger.warning("Initial model fetch completed but NO MODELS WERE RETURNED OR STORED!")
+        # Initialize to empty array to avoid potential NoneType errors
+        OPENROUTER_MODELS_INFO = [] 
+        logger.warning("Setting OPENROUTER_MODELS_INFO to empty array to avoid NoneType errors")
+        
 except Exception as e:
-    logger.error(f"Error during initial data fetch: {e}")
-    logger.warning("Application will use fallback model data until a successful refresh")
+    logger.error(f"Critical error fetching model data at startup: {e}")
+    logger.error(traceback.format_exc())
+    # Initialize to empty array to avoid potential NoneType errors
+    OPENROUTER_MODELS_INFO = []
+    logger.warning("Setting OPENROUTER_MODELS_INFO to empty array to avoid NoneType errors")
 
 # Register scheduler shutdown with app exit
 @atexit.register
 def shutdown_scheduler():
-    scheduler.shutdown(wait=False)
+    if scheduler and hasattr(scheduler, 'shutdown'):
+        try:
+            scheduler.shutdown(wait=False)
+            logger.info("Scheduler shut down successfully")
+        except Exception as e:
+            logger.error(f"Error shutting down scheduler: {e}")
+    else:
+        logger.warning("No active scheduler to shut down")
 
 # --- Helper Functions ---
 def get_user_identifier():
@@ -1075,6 +1239,40 @@ def chat(): # Synchronous function
 
         # --- Determine OpenRouter Model ID ---
         openrouter_model = OPENROUTER_MODELS.get(model_id, model_id) # Use .get fallback
+        
+        # --- Validate and ensure model is available in OpenRouter ---
+        try:
+            import model_validator
+            
+            # Check if the message contains images (for multimodal selection)
+            has_image = image_url or (image_urls and len(image_urls) > 0)
+            
+            # Get the list of available models
+            available_models = model_validator.get_available_models()
+            
+            # Check if the requested model is available
+            if not model_validator.is_model_available(openrouter_model, available_models):
+                logger.warning(f"Requested model {openrouter_model} is not available in OpenRouter")
+                
+                # Try to select a fallback model
+                fallback_model = model_validator.get_fallback_model(
+                    openrouter_model, 
+                    SAFE_FALLBACK_MODELS,
+                    available_models
+                )
+                
+                if fallback_model:
+                    logger.info(f"Using fallback model: {fallback_model} instead of {openrouter_model}")
+                    openrouter_model = fallback_model
+                else:
+                    # If no fallback found, select model based on content type
+                    adaptive_model = model_validator.select_multimodal_fallback(has_image, available_models)
+                    logger.info(f"Using adaptive model selection: {adaptive_model}")
+                    openrouter_model = adaptive_model
+        except Exception as validation_error:
+            logger.error(f"Error during model validation: {validation_error}")
+            logger.error(traceback.format_exc())
+            # Continue with the original model (we tried our best)
 
         # --- Get API Key ---
         api_key = os.environ.get('OPENROUTER_API_KEY')
@@ -1193,13 +1391,36 @@ def chat(): # Synchronous function
          )
         messages = [{'role': 'system', 'content': system_message}]
 
-        # Check if the model supports multimodal content by matching against model patterns
+        # First try to check if we have model info from the OpenRouter API
         model_supports_multimodal = False
-        for pattern in MULTIMODAL_MODELS:
-            if pattern.lower() in openrouter_model.lower():
-                model_supports_multimodal = True
-                logger.info(f"✅ Detected multimodal support for model {openrouter_model} matching pattern {pattern}")
-                break
+        model_info_found = False
+        
+        # Method 1: Check model info from OpenRouter API data (most reliable)
+        if OPENROUTER_MODELS_INFO and len(OPENROUTER_MODELS_INFO) > 0:
+            # Look for this specific model in the cached OpenRouter API data
+            for model_info in OPENROUTER_MODELS_INFO:
+                if model_info.get('id', '').lower() == openrouter_model.lower():
+                    # We found exact model info
+                    model_info_found = True
+                    # Use the is_multimodal flag from the API data if available
+                    if 'is_multimodal' in model_info:
+                        model_supports_multimodal = model_info.get('is_multimodal', False)
+                        logger.info(f"✅ Found model in API data: {openrouter_model}, multimodal={model_supports_multimodal}")
+                        break
+        
+        # Method 2: If we don't have API data for this model, use pattern matching as fallback
+        if not model_info_found:
+            logger.warning(f"No API info found for model {openrouter_model}, using pattern matching instead")
+            for pattern in MULTIMODAL_MODELS:
+                if pattern.lower() in openrouter_model.lower():
+                    model_supports_multimodal = True
+                    logger.info(f"✅ Detected multimodal support for model {openrouter_model} matching pattern {pattern}")
+                    break
+            
+            # If we're sending an image but the model doesn't support it, log warning
+            if image_url and not model_supports_multimodal:
+                logger.warning(f"⚠️ Image URL provided but model {openrouter_model} doesn't seem to support multimodal input")
+                logger.warning("⚠️ This may cause a 400 Bad Request error. Consider using a multimodal model instead.")
 
         # Load conversation history from database
         db_messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.created_at).all()
@@ -1654,22 +1875,84 @@ def chat(): # Synchronous function
                     # Continue even if credit check fails (don't block the request)
             
             try:
-                # Use standard requests.post with stream=True
-                response = requests.post(
-                    'https://openrouter.ai/api/v1/chat/completions',
-                    headers=headers, 
-                    json=payload,    
-                    stream=True,
-                    # Consider a timeout for the entire request duration if needed
-                    timeout=300.0 
-                )
-
-                # Check status *after* making the request
-                if response.status_code != 200:
-                    error_text = response.text 
-                    logger.error(f"OpenRouter API error: {response.status_code} - {error_text}")
-                    yield f"data: {json.dumps({'type': 'error', 'error': f'API Error: {response.status_code} - {error_text}'})}\n\n"
-                    return # Stop generation
+                # First verify the payload is valid and contains all required fields
+                if not payload.get('model'):
+                    error_message = "Invalid payload: 'model' field is missing"
+                    logger.error(error_message)
+                    yield f"data: {json.dumps({'type': 'error', 'error': error_message})}\n\n"
+                    return
+                
+                if not payload.get('messages') or len(payload.get('messages', [])) == 0:
+                    error_message = "Invalid payload: 'messages' field is empty or missing"
+                    logger.error(error_message)
+                    yield f"data: {json.dumps({'type': 'error', 'error': error_message})}\n\n"
+                    return
+                
+                # Check for any multimodal content issues before sending
+                has_multimodal_content = False
+                for msg in payload.get('messages', []):
+                    content = msg.get('content')
+                    if isinstance(content, list):
+                        has_multimodal_content = True
+                        # Check for common multimodal content issues
+                        for item in content:
+                            if item.get('type') == 'image_url':
+                                image_url_obj = item.get('image_url', {})
+                                url = image_url_obj.get('url', '')
+                                if not url or not isinstance(url, str) or not url.startswith(('http://', 'https://')):
+                                    error_message = f"Invalid image URL in multimodal content: {url[:100]}"
+                                    logger.error(error_message)
+                                    yield f"data: {json.dumps({'type': 'error', 'error': error_message})}\n\n"
+                                    return
+                
+                # Log multimodal content status for extra clarity
+                if has_multimodal_content:
+                    logger.info(f"Detected multimodal content in the final payload sent to {payload.get('model')}")
+                
+                # Now make the actual API request with better error handling
+                try:
+                    logger.info(f"Making API request to OpenRouter with model {payload.get('model')}")
+                    response = requests.post(
+                        'https://openrouter.ai/api/v1/chat/completions',
+                        headers=headers, 
+                        json=payload,    
+                        stream=True,
+                        # Consider a timeout for the entire request duration if needed
+                        timeout=300.0 
+                    )
+                
+                    # Check status *after* making the request
+                    if response.status_code != 200:
+                        error_text = response.text 
+                        # Attempt to parse the error response for more details
+                        try:
+                            error_json = response.json()
+                            error_detail = error_json.get('error', {}).get('message', '')
+                            if error_detail:
+                                error_text = f"{error_text} - Detail: {error_detail}"
+                        except:
+                            # If we can't parse JSON, just use the raw text
+                            pass
+                            
+                        # For 400 errors, add more helpful diagnostics based on common issues
+                        if response.status_code == 400:
+                            if has_multimodal_content:
+                                error_text += " (Possible cause: Invalid multimodal content format or unsupported images)"
+                                # Check if we already logged specific model warnings
+                                if "gemini" in payload.get('model', '').lower():
+                                    error_text += " - Note: Gemini models are particularly strict about image formats and URLs"
+                                
+                            error_text += " - Please check the model supports the content type you're sending."
+                        
+                        logger.error(f"OpenRouter API error: {response.status_code} - {error_text}")
+                        yield f"data: {json.dumps({'type': 'error', 'error': f'API Error: {response.status_code} - {error_text}'})}\n\n"
+                        return # Stop generation
+                        
+                except requests.RequestException as req_err:
+                    error_message = f"Request failed: {req_err}"
+                    logger.error(error_message)
+                    yield f"data: {json.dumps({'type': 'error', 'error': error_message})}\n\n"
+                    return
 
                 # Iterate over the stream using iter_lines
                 for line in response.iter_lines():

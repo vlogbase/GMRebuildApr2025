@@ -1,0 +1,13 @@
+workflows:
+  fixed_app:
+    name: Fixed App
+    on:
+      workflow_dispatch: {}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Run Fixed Application
+        run: |
+          echo "Starting Flask application with HTTP 400 error fixes..."
+          python run_fixed_app.py

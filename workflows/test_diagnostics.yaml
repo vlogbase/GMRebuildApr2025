@@ -1,0 +1,18 @@
+workflows:
+  test_diagnostics:
+    name: Run Diagnostic Tests
+    on:
+      workflow_dispatch: {}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Run Model Capabilities Test
+        run: |
+          echo "Running model capability detection and content adaptation tests"
+          python test_model_capabilities.py
+          
+      - name: Run OpenRouter API Test
+        run: |
+          echo "Running OpenRouter API integration tests"
+          python test_openrouter_api.py

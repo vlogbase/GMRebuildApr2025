@@ -1,0 +1,290 @@
+[
+  {
+    "model_id": "google/gemini-1.5-pro",
+    "multimodal_support_detected": true,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      }
+    ]
+  },
+  {
+    "model_id": "anthropic/claude-3-opus",
+    "multimodal_support_detected": true,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      }
+    ]
+  },
+  {
+    "model_id": "openai/gpt-4o",
+    "multimodal_support_detected": true,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      }
+    ]
+  },
+  {
+    "model_id": "google/gemma-2-2b",
+    "multimodal_support_detected": false,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      }
+    ]
+  },
+  {
+    "model_id": "cohere/command-r",
+    "multimodal_support_detected": false,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      }
+    ]
+  },
+  {
+    "model_id": "meta-llama/llama-3-8b",
+    "multimodal_support_detected": false,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      }
+    ]
+  },
+  {
+    "model_id": "google/gemini-2.0-flash-exp:free",
+    "multimodal_support_detected": true,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      }
+    ]
+  },
+  {
+    "model_id": "anthropic/claude-3-plus",
+    "multimodal_support_detected": true,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      }
+    ]
+  },
+  {
+    "model_id": "mistralai/mistral-7b",
+    "multimodal_support_detected": false,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      }
+    ]
+  },
+  {
+    "model_id": "nonexistent/model",
+    "multimodal_support_detected": false,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      }
+    ]
+  },
+  {
+    "model_id": "custom/claude-like",
+    "multimodal_support_detected": false,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "text",
+        "format_matches_capability": true
+      }
+    ]
+  },
+  {
+    "model_id": "test/gemini-variant",
+    "multimodal_support_detected": true,
+    "test_cases": [
+      {
+        "test_case": 1,
+        "original_format": "text",
+        "processed_format": "text",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 2,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      },
+      {
+        "test_case": 3,
+        "original_format": "multimodal",
+        "processed_format": "multimodal",
+        "format_matches_capability": true
+      }
+    ]
+  }
+]
