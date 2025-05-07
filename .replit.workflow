@@ -1,6 +1,5 @@
-[
-    {
-        "name": "TellFriendTest",
-        "run": "python tell_friend_test_workflow.py"
-    }
-]
+[billing_workflow]
+run = "python billing_workflow.py"
+
+[app_workflow]
+run = "python app_workflow.py"

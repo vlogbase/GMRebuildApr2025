@@ -1,60 +1,111 @@
 <!-- Tell a Friend Tab Content -->
-<div class="balance-card p-4">
-    <h4 class="mb-4">Tell a Friend</h4>
-    
-    {% if affiliate and affiliate.status == 'active' %}
-        <!-- For active affiliates who have agreed to terms -->
-        <div class="mb-4">
-            <h5 class="mb-3">Your Referral Link</h5>
-            <div class="input-group mb-2">
-                <input type="text" class="form-control custom-amount-input" id="referralLink" 
-                       value="{{ request.host_url }}?ref={{ affiliate.referral_code }}" readonly>
-                <button class="btn btn-outline-secondary" type="button" id="copyReferralLink">
-                    <i class="fas fa-copy"></i> Copy
-                </button>
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Tell a Friend</h5>
             </div>
-            <p class="text-muted small">Share this link to earn commissions on your friends' purchases.</p>
-        </div>
-        
-        <div class="mb-4 p-3 border rounded" style="background-color: #1e2124; border-color: #3f4246 !important;">
-            <h6><i class="fas fa-lightbulb text-warning"></i> Quick Tip</h6>
-            <p class="small mb-0">Want to share a specific page or chat? Just add <code>?ref={{ affiliate.referral_code }}</code> to the end of any GloriaMundo URL!</p>
-        </div>
-        
-        <div class="mb-4">
-            <h5 class="mb-3">Commission Summary</h5>
-            <div class="row mb-3 text-center">
-                <div class="col">
-                    <div class="p-3 border rounded" style="background-color: #1e2124; border-color: #3f4246 !important;">
-                        <h2 class="text-primary mb-1">{{ commission_stats.total_earned | default('$0.00') }}</h2>
-                        <p class="text-muted mb-0 small">Total Earned</p>
+            <div class="card-body">
+                {% if affiliate and affiliate.status == 'active' %}
+                    <!-- For active affiliates who have agreed to terms -->
+                    <div class="row mb-4">
+                        <div class="col-md-8">
+                            <div class="mb-4">
+                                <h5 class="mb-3">Your Referral Link</h5>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="referralLink" 
+                                           value="{{ request.host_url }}?ref={{ affiliate.referral_code }}" readonly>
+                                    <button class="btn btn-outline-primary" type="button" id="copyReferralLink">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <p class="form-text mt-2">Share this link to earn commissions on your friends' purchases.</p>
+                            </div>
+                            
+                            <div class="alert alert-info mb-4">
+                                <div class="d-flex">
+                                    <div class="me-3">
+                                        <i class="fas fa-lightbulb fa-2x text-warning"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="alert-heading">Quick Tip</h5>
+                                        <p class="mb-0">Want to share a specific page or chat? Just add <code>?ref={{ affiliate.referral_code }}</code> to the end of any GloriaMundo URL!</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <!-- QR Code for Mobile Sharing -->
+                            <div class="card h-100 border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <h5 class="mb-0">Share via QR Code</h5>
+                                </div>
+                                <div class="card-body text-center">
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ request.host_url|urlencode }}?ref={{ affiliate.referral_code }}" 
+                                         alt="Your Referral QR Code" class="img-fluid mb-2">
+                                    <p class="mb-0 small">Scan with a smartphone camera to quickly share your link</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="col">
-                    <div class="p-3 border rounded" style="background-color: #1e2124; border-color: #3f4246 !important;">
-                        <h2 class="text-primary mb-1">{{ commission_stats.pending | default('$0.00') }}</h2>
-                        <p class="text-muted mb-0 small">Pending</p>
+                    
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="mb-3">Commission Summary</h5>
+                            <div class="row text-center">
+                                <div class="col-md-4 mb-3">
+                                    <div class="card bg-dark h-100">
+                                        <div class="card-body">
+                                            <i class="fas fa-money-bill-wave fa-2x mb-3 text-success"></i>
+                                            <h2 class="text-light">{{ commission_stats.total_earned | default('$0.00') }}</h2>
+                                            <p class="text-muted">Total Earned</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card bg-dark h-100">
+                                        <div class="card-body">
+                                            <i class="fas fa-clock fa-2x mb-3 text-warning"></i>
+                                            <h2 class="text-light">{{ commission_stats.pending | default('$0.00') }}</h2>
+                                            <p class="text-muted">Pending</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <div class="card bg-dark h-100">
+                                        <div class="card-body">
+                                            <i class="fas fa-users fa-2x mb-3 text-info"></i>
+                                            <h2 class="text-light">{{ commission_stats.referrals | default('0') }}</h2>
+                                            <p class="text-muted">Referrals</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div class="col">
-                    <div class="p-3 border rounded" style="background-color: #1e2124; border-color: #3f4246 !important;">
-                        <h2 class="text-primary mb-1">{{ commission_stats.referrals | default('0') }}</h2>
-                        <p class="text-muted mb-0 small">Referrals</p>
+                    
+                    {% if commissions and commissions|length > 0 or referrals and referrals|length > 0 %}
+                    <!-- Only show the button if there are commissions or referrals to display -->
+                    <div class="text-center mb-4">
+                        <button class="btn btn-primary btn-lg" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardDetails" aria-expanded="false" aria-controls="dashboardDetails">
+                            <i class="fas fa-chart-line me-2"></i> View Full Dashboard
+                        </button>
                     </div>
-                </div>
-            </div>
-            
-            {% if commissions and commissions|length > 0 or referrals and referrals|length > 0 %}
-            <!-- Only show the button if there are commissions or referrals to display -->
-            <button class="btn btn-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardDetails" aria-expanded="false" aria-controls="dashboardDetails">
-                <i class="fas fa-chart-line me-2"></i> View Full Dashboard
-            </button>
-            {% else %}
-            <!-- Show instructional message instead of button when there's no data -->
-            <div class="alert alert-info mb-2">
-                <i class="fas fa-info-circle me-2"></i> Start sharing your referral link to see detailed commission data and referral statistics here.
-            </div>
-            {% endif %}
+                    {% else %}
+                    <!-- Show instructional message instead of button when there's no data -->
+                    <div class="alert alert-info mb-4">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <i class="fas fa-info-circle fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="alert-heading">No Referrals Yet</h5>
+                                <p class="mb-0">Start sharing your referral link to see detailed commission data and referral statistics here.</p>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
             
             <!-- Collapsible Dashboard Content -->
             <div class="collapse mt-3" id="dashboardDetails">
@@ -276,70 +327,125 @@
         </div>
 
         <div class="mb-4">
-            <h5 class="mb-3">PayPal Email for Payouts</h5>
-            <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="mb-3">
-                    <input type="email" class="form-control custom-amount-input" name="paypal_email" 
-                           placeholder="your-email@example.com" value="{{ affiliate.paypal_email or '' }}" required>
-                    <div class="form-text">We'll send your commission payments to this PayPal email address.</div>
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">PayPal Email for Payouts</h5>
                 </div>
-                <button type="submit" class="btn btn-primary">
-                    {% if affiliate.paypal_email %}Update{% else %}Save{% endif %} PayPal Email
-                </button>
-            </form>
+                <div class="card-body">
+                    <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label for="paypalEmail" class="form-label">Email Address</label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="fab fa-paypal text-primary"></i>
+                                </span>
+                                <input type="email" class="form-control" id="paypalEmail" name="paypal_email" 
+                                       placeholder="your-email@example.com" value="{{ affiliate.paypal_email or '' }}" required>
+                            </div>
+                            <div class="form-text">We'll send your commission payments to this PayPal email address.</div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save me-2"></i>{% if affiliate.paypal_email %}Update{% else %}Save{% endif %} PayPal Email
+                        </button>
+                    </form>
+                </div>
+            </div>
         </div>
         
     {% else %}
         <!-- For new affiliates who haven't agreed to terms yet -->
-        <div class="mb-4">
-            <h5 class="mb-3">Welcome to the Affiliate Program!</h5>
-            <p>Share GloriaMundo with your friends, followers, or audience and earn commission on their purchases.</p>
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i> Your referral code is ready, but you need to agree to our Terms &amp; Conditions first.
-            </div>
-        </div>
-        
-        <div class="mb-4">
-            <h5 class="mb-3">Referral Code Preview</h5>
-            <div class="input-group mb-3">
-                <input type="text" class="form-control custom-amount-input" disabled
-                       value="{{ affiliate.referral_code if affiliate else 'Your referral code will appear here' }}" 
-                       style="color: #aaa; background-color: #2c2f33;">
-                <button class="btn btn-outline-secondary" type="button" disabled>
-                    <i class="fas fa-copy"></i> Copy
-                </button>
-            </div>
-            <p class="text-muted small">This will be activated once you agree to the Terms &amp; Conditions.</p>
-        </div>
-        
-        <div class="mb-4">
-            <h5 class="mb-3">Activate Your Affiliate Status</h5>
-            <form action="{{ url_for('affiliate.agree_to_terms') }}" method="post">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="mb-3">
-                    <label for="paypal_email" class="form-label">Your PayPal Email for Payouts (Optional)</label>
-                    <input type="email" class="form-control custom-amount-input" id="paypal_email" name="paypal_email" 
-                           placeholder="your-email@example.com">
-                    <div class="form-text">We'll send your commission payments to this PayPal email. You can also add this later.</div>
-                </div>
-                
-                <div class="mb-3">
-                    <a href="{{ url_for('affiliate.terms') }}" target="_blank" class="d-block mb-2">
-                        Read our Affiliate Terms &amp; Conditions
-                    </a>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="agreeToTerms" name="agree_to_terms" required>
-                        <label class="form-check-label" for="agreeToTerms">
-                            I have read and agree to the Affiliate Terms &amp; Conditions
-                        </label>
+        <div class="card mb-4 border-primary">
+            <div class="card-body text-center py-5">
+                <i class="fas fa-users fa-3x text-primary mb-3"></i>
+                <h3 class="card-title mb-3">Welcome to the Affiliate Program!</h3>
+                <p class="lead mb-4">Share GloriaMundo with your friends, followers, or audience and earn commission on their purchases.</p>
+                <div class="alert alert-info">
+                    <div class="d-flex">
+                        <div class="me-3">
+                            <i class="fas fa-info-circle fa-2x"></i>
+                        </div>
+                        <div class="text-start">
+                            <h5 class="alert-heading">Almost Ready!</h5>
+                            <p class="mb-0">Your referral code is ready, but you need to agree to our Terms &amp; Conditions first to activate it.</p>
+                        </div>
                     </div>
                 </div>
-                
-                <button type="submit" class="btn btn-primary" id="activateReferralBtn" disabled>
-                    Activate My Referral Code
-                </button>
-            </form>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-dark">
+                        <h5 class="mb-0">Referral Code Preview</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control disabled" disabled
+                                   value="{{ affiliate.referral_code if affiliate else 'Your referral code will appear here' }}">
+                            <button class="btn btn-outline-secondary" type="button" disabled>
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <p class="form-text">This code will be activated after you agree to the Terms &amp; Conditions.</p>
+                        
+                        <div class="mt-4">
+                            <h6 class="fw-bold">How It Works</h6>
+                            <div class="card bg-dark">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item bg-transparent text-light">
+                                        <i class="fas fa-check-circle text-success me-2"></i>Earn 10% on direct referrals
+                                    </li>
+                                    <li class="list-group-item bg-transparent text-light">
+                                        <i class="fas fa-check-circle text-success me-2"></i>Earn 5% from sub-affiliate referrals
+                                    </li>
+                                    <li class="list-group-item bg-transparent text-light">
+                                        <i class="fas fa-check-circle text-success me-2"></i>Get paid via PayPal monthly
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Activate Your Account</h5>
+                    </div>
+                    <div class="card-body">
+                        <form action="{{ url_for('affiliate.agree_to_terms') }}" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="mb-4">
+                                <div class="form-floating">
+                                    <input type="email" class="form-control" id="paypal_email" name="paypal_email" 
+                                           placeholder="your-email@example.com">
+                                    <label for="paypal_email">PayPal Email (Optional)</label>
+                                </div>
+                                <div class="form-text">You can add or update this later after activation.</div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <a href="{{ url_for('affiliate.terms') }}" target="_blank" class="btn btn-outline-secondary mb-3 w-100">
+                                    <i class="fas fa-file-contract me-2"></i>Read Terms &amp; Conditions
+                                </a>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="agreeToTerms" name="agree_to_terms" required>
+                                    <label class="form-check-label" for="agreeToTerms">
+                                        I have read and agree to the Affiliate Terms &amp; Conditions
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary w-100" id="activateReferralBtn" disabled>
+                                <i class="fas fa-check-circle me-2"></i> Activate Referral Program
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     {% endif %}
 
@@ -439,7 +545,8 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired in tell_friend_tab.html');
     
     // Only initialize when this tab is actually visible
-    if (document.getElementById('tellFriend').classList.contains('active')) {
+    if (document.getElementById('tellFriend').classList.contains('active') || 
+        document.getElementById('tellFriend').classList.contains('show')) {
         initializeTellFriendTab();
     }
     

@@ -13,27 +13,86 @@
         overflow-y: auto;
     }
     
-    .container {
-        max-width: 1000px;
-        margin: 0 auto; /* Center content */
+    /* Bootstrap Dark Theme Overrides */
+    .card {
+        background-color: #1e2124;
+        border-color: #2c2f33;
     }
     
-    .account-header {
-        margin-bottom: 1.5rem;
-        text-align: center; /* Center the header */
+    .nav-tabs .nav-link {
+        color: #e4e6eb;
+        border-color: transparent;
     }
     
-    .account-header .d-flex {
-        justify-content: space-between;
-        align-items: center;
+    .nav-tabs .nav-link:hover {
+        border-color: transparent;
+        background-color: rgba(255, 255, 255, 0.05);
     }
     
+    .nav-tabs .nav-link.active {
+        color: var(--accent-color, #17a2b8);
+        background-color: #1e2124;
+        border-color: #2c2f33 #2c2f33 #1e2124;
+        border-bottom: 2px solid var(--accent-color, #17a2b8);
+    }
+    
+    .table {
+        color: #e4e6eb;
+    }
+    
+    .table-dark {
+        background-color: #1e2124;
+    }
+    
+    .form-control, .form-select {
+        background-color: #2c2f33;
+        border: 1px solid #3f4246;
+        color: #e4e6eb;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        background-color: #2c2f33;
+        border-color: var(--accent-color, #17a2b8);
+        color: #e4e6eb;
+        box-shadow: 0 0 0 0.25rem rgba(23, 162, 184, 0.25);
+    }
+    
+    .form-control::placeholder {
+        color: #a0a0a0;
+    }
+    
+    .form-text {
+        color: #a0a0a0;
+    }
+    
+    .btn-primary {
+        background-color: var(--accent-color, #17a2b8);
+        border-color: var(--accent-color, #17a2b8);
+    }
+    
+    .btn-primary:hover {
+        background-color: #138496;
+        border-color: #117a8b;
+    }
+    
+    .btn-outline-secondary {
+        color: #e4e6eb;
+        border-color: #3f4246;
+    }
+    
+    .btn-outline-secondary:hover {
+        color: #e4e6eb;
+        background-color: #2a2d31;
+        border-color: #3f4246;
+    }
+    
+    /* Balance Card */
     .balance-card {
         background-color: #1e2124;
-        border: none;
+        border: 1px solid #2c2f33;
         border-radius: 8px;
         margin-bottom: 2rem;
-        text-align: center; /* Center balance display */
+        text-align: center;
     }
     
     .balance-amount {
@@ -48,45 +107,18 @@
         opacity: 0.7;
     }
     
-    .tab-navigation {
-        display: flex;
-        justify-content: center; /* Center the tab buttons */
-        margin-bottom: 1.5rem;
-    }
-    
-    .tab-button {
-        background-color: #1e2124;
-        color: #e4e6eb;
-        border: none;
-        border-radius: 6px;
-        padding: 8px 16px;
-        margin-right: 8px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-    }
-    
-    .tab-button:hover {
-        background-color: #2a2d31;
-    }
-    
-    .tab-button.active {
-        background-color: #17a2b8;
-        color: white;
-    }
-    
+    /* Package Cards */
     .package-card {
         background-color: #1e2124;
         border: 1px solid #2c2f33;
         border-radius: 8px;
-        padding: 1.5rem;
         height: 100%;
         transition: all 0.3s ease;
     }
     
     .package-card:hover {
-        /* More subtle hover effect instead of jumping/lifting */
         background-color: #23262a;
-        border-color: #17a2b8;
+        border-color: var(--accent-color, #17a2b8);
         box-shadow: 0 0 8px rgba(23, 162, 184, 0.3);
     }
     
@@ -107,349 +139,442 @@
         opacity: 0.7;
         margin-bottom: 0.5rem;
     }
-    
-    .select-button {
-        background-color: #17a2b8;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 8px 0;
-        width: 100%;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        margin-top: 1rem;
-    }
-    
-    .select-button:hover {
-        background-color: #138496;
-    }
-    
-    .custom-amount-card {
-        background-color: #1e2124;
-        border: 1px solid #2c2f33;
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-top: 2rem;
-    }
-    
-    .custom-amount-title {
-        font-size: 1.2rem;
-        margin-bottom: 1rem;
-    }
-    
-    .custom-amount-input {
-        background-color: #2c2f33;
-        border: 1px solid #3f4246;
-        color: white;
-        border-radius: 6px;
-    }
-    
-    .custom-amount-input::placeholder {
-        color: #a0a0a0;
-    }
-    
-    .total-row {
-        display: flex;
-        justify-content: space-between;
-        padding: 0.5rem 0;
-        border-top: 1px solid #2c2f33;
-    }
-    
-    .back-to-chat {
-        background-color: #17a2b8;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 8px 16px;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        text-decoration: none;
-        display: inline-block;
-    }
-    
-    .back-to-chat:hover {
-        background-color: #138496;
-        color: white;
-    }
-    
-    .tab-content {
-        margin-top: 1.5rem;
-    }
-    
-    .tab-pane {
-        display: none;
-    }
-    
-    .tab-pane.active {
-        display: block;
-    }
-    
-    .purchase-button {
-        background-color: #17a2b8;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        padding: 10px 0;
-        width: 100%;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: block;
-        margin-top: 1rem;
-    }
-    
-    .purchase-button:hover {
-        background-color: #138496;
-    }
-    
-    .purchase-button:disabled {
-        background-color: #3f4246;
-        cursor: not-allowed;
-    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container mt-4">
-    <div class="account-header d-flex justify-content-between align-items-center">
-        <div>
-            <h1>Account Management</h1>
-            <p class="caption">Manage your account, add funds, and view your usage history</p>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h1 class="card-title mb-1">Account Management</h1>
+                            <p class="text-muted">Manage your account, add funds, and view your usage history</p>
+                        </div>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to Chat
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
-        <a href="{{ url_for('index') }}" class="back-to-chat">Back to Chat</a>
     </div>
 
     <!-- Balance Display -->
-    <div class="balance-card p-4">
-        <h5>Available Balance</h5>
-        <div class="balance-amount">${{ "%.2f"|format(user.get_balance_usd()) }}</div>
-        <p class="caption"><i class="fas fa-info-circle"></i> Funds are used for AI model access. Different models have different pricing based on their capabilities and token usage.</p>
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-4">
+                    <h5 class="card-title">Available Balance</h5>
+                    <div class="balance-amount">${{ "%.2f"|format(user.get_balance_usd()) }}</div>
+                    <p class="text-muted">
+                        <i class="fas fa-info-circle"></i> Funds are used for AI model access. Different models have different pricing based on their capabilities and token usage.
+                    </p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Tab Navigation -->
-    <div class="tab-navigation">
-        <button class="tab-button active" onclick="openTab('funds', event)">Add Funds</button>
-        <button class="tab-button" onclick="openTab('history', event)">Purchase History</button>
-        <button class="tab-button" onclick="openTab('usage', event)">Usage Analytics</button>
-        <button class="tab-button" onclick="openTab('pricing', event)">Pricing</button>
-        <button class="tab-button" onclick="openTab('settings', event)">Account Settings</button>
-        <button class="tab-button" id="tellFriendTabBtn">Tell a Friend</button>
+    <div class="row">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="accountTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="funds-tab" data-bs-toggle="tab" data-bs-target="#funds" 
+                            type="button" role="tab" aria-controls="funds" aria-selected="true">
+                        <i class="fas fa-credit-card me-2"></i>Add Credits
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" 
+                            type="button" role="tab" aria-controls="history" aria-selected="false">
+                        <i class="fas fa-receipt me-2"></i>Purchase History
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="usage-tab" data-bs-toggle="tab" data-bs-target="#usage" 
+                            type="button" role="tab" aria-controls="usage" aria-selected="false">
+                        <i class="fas fa-chart-line me-2"></i>Usage Analytics
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pricing-tab" data-bs-toggle="tab" data-bs-target="#pricing" 
+                            type="button" role="tab" aria-controls="pricing" aria-selected="false">
+                        <i class="fas fa-tag me-2"></i>Pricing
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" 
+                            type="button" role="tab" aria-controls="settings" aria-selected="false">
+                        <i class="fas fa-cog me-2"></i>Account Settings
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tellFriend-tab" data-bs-toggle="tab" data-bs-target="#tellFriend" 
+                            type="button" role="tab" aria-controls="tellFriend" aria-selected="false">
+                        <i class="fas fa-users me-2"></i>Tell a Friend
+                    </button>
+                </li>
+            </ul>
+        </div>
     </div>
 
     <!-- Tab Content -->
-    <div class="tab-content">
+    <div class="tab-content pt-4">
         <!-- Add Funds Tab -->
-        <div id="funds" class="tab-pane active">
-            <!-- Packages -->
-            <div class="row">
-                {% for package in packages %}
-                {% set is_starter_package = package.stripe_price_id == 'price_1RKOl0CkgfcNKUGFhI5RljJd' %}
-                {% set has_previous_purchases = recent_transactions|length > 0 %}
-                {% if not (is_starter_package and has_previous_purchases) %}
-                <div class="col-md-3 mb-4">
-                    <div class="package-card">
-                        {% if is_starter_package %}
-                        <div class="package-title">Starter Credit Pack</div>
-                        <span class="badge bg-info">First-time purchase only</span>
-                        {% elif package.amount_usd == 10 %}
-                        <div class="package-title">Small Credit Pack</div>
-                        {% elif package.amount_usd == 25 %}
-                        <div class="package-title">Medium Credit Pack</div>
-                        {% elif package.amount_usd == 100 %}
-                        <div class="package-title">Large Credit Pack</div>
-                        {% else %}
-                        <div class="package-title">{{ "$%.2f"|format(package.amount_usd) }} Credit Pack</div>
-                        {% endif %}
-                        <div class="package-price">${{ "%.2f"|format(package.amount_usd) }}</div>
-                        <p class="package-feature">{{ package.credits // 1000 }} credits (${{"%.2f"|format(package.amount_usd)}} value)</p>
-                        <ul class="list-unstyled">
-                            <li class="package-feature">✓ Access premium models</li>
-                            <li class="package-feature">✓ Tax calculated at checkout</li>
-                            <li class="package-feature">✓ Secure payment via Stripe</li>
-                        </ul>
-                        <form id="purchase-form-{{package.id}}" action="{{ url_for('billing.purchase_package', package_id=package.id) }}" method="post">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <button type="submit" class="select-button">Buy Now</button>
-                        </form>
+        <div id="funds" class="tab-pane fade show active" role="tabpanel" aria-labelledby="funds-tab">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Select Credit Package</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Packages Grid -->
+                            <div class="row">
+                                {% for package in packages %}
+                                {% set is_starter_package = package.stripe_price_id == 'price_1RKOl0CkgfcNKUGFhI5RljJd' %}
+                                {% set has_previous_purchases = recent_transactions|length > 0 %}
+                                {% if not (is_starter_package and has_previous_purchases) %}
+                                <div class="col-md-3 mb-4">
+                                    <div class="card h-100">
+                                        <div class="card-header">
+                                            {% if is_starter_package %}
+                                            <h5 class="mb-0">Starter Credit Pack</h5>
+                                            <span class="badge bg-info">First-time purchase only</span>
+                                            {% elif package.amount_usd == 10 %}
+                                            <h5 class="mb-0">Small Credit Pack</h5>
+                                            {% elif package.amount_usd == 25 %}
+                                            <h5 class="mb-0">Medium Credit Pack</h5>
+                                            {% elif package.amount_usd == 100 %}
+                                            <h5 class="mb-0">Large Credit Pack</h5>
+                                            {% else %}
+                                            <h5 class="mb-0">{{ "$%.2f"|format(package.amount_usd) }} Credit Pack</h5>
+                                            {% endif %}
+                                        </div>
+                                        <div class="card-body d-flex flex-column">
+                                            <div class="text-center mb-3">
+                                                <span class="display-6">${{ "%.2f"|format(package.amount_usd) }}</span>
+                                            </div>
+                                            <p class="text-center">{{ package.credits // 1000 }} credits</p>
+                                            <div class="mt-auto">
+                                                <ul class="list-group list-group-flush mb-3">
+                                                    <li class="list-group-item bg-transparent text-light"><i class="fas fa-check-circle text-success me-2"></i>Access premium models</li>
+                                                    <li class="list-group-item bg-transparent text-light"><i class="fas fa-check-circle text-success me-2"></i>Tax calculated at checkout</li>
+                                                    <li class="list-group-item bg-transparent text-light"><i class="fas fa-check-circle text-success me-2"></i>Secure payment via Stripe</li>
+                                                </ul>
+                                                <form id="purchase-form-{{package.id}}" action="{{ url_for('billing.purchase_package', package_id=package.id) }}" method="post">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-primary w-100">Buy Now</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            
+                            <div class="alert alert-info mt-3">
+                                <div class="d-flex">
+                                    <div class="me-3">
+                                        <i class="fas fa-info-circle fa-2x"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="alert-heading">Secure Payments</h5>
+                                        <p class="mb-0">Payments are processed securely by Stripe. All prices are in USD and taxes will be calculated at checkout based on your location.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                {% endif %}
-                {% endfor %}
-            </div>
-            
-            <div class="alert alert-info mt-4">
-                <i class="fas fa-info-circle"></i> Payments are processed securely by Stripe. All prices are in USD and taxes will be calculated at checkout based on your location.
             </div>
         </div>
         
         <!-- Purchase History Tab -->
-        <div id="history" class="tab-pane">
-            <div class="balance-card p-4">
-                <h4 class="mb-3">Purchase History</h4>
-                
-                {% if recent_transactions %}
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Amount</th>
-                                <th>Payment Method</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for transaction in recent_transactions %}
-                            <tr>
-                                <td>{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
-                                <td>${{ "%.2f"|format(transaction.amount_usd) }}</td>
-                                <td>{{ transaction.payment_method|capitalize }}</td>
-                                <td>
-                                    {% if transaction.status == 'completed' %}
-                                        <span class="badge bg-success">Completed</span>
-                                    {% elif transaction.status == 'pending' %}
-                                        <span class="badge bg-warning text-dark">Pending</span>
-                                    {% else %}
-                                        <span class="badge bg-danger">Failed</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="text-center py-5">
-                    <div class="mb-3">
-                        <i class="fas fa-receipt fa-3x text-muted"></i>
+        <div id="history" class="tab-pane fade" role="tabpanel" aria-labelledby="history-tab">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Purchase History</h5>
+                            <button class="btn btn-sm btn-outline-secondary">
+                                <i class="fas fa-download me-2"></i>Export CSV
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            {% if recent_transactions %}
+                            <div class="table-responsive">
+                                <table class="table table-striped table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Amount</th>
+                                            <th>Payment Method</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for transaction in recent_transactions %}
+                                        <tr>
+                                            <td>{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
+                                            <td>${{ "%.2f"|format(transaction.amount_usd) }}</td>
+                                            <td>
+                                                <span class="d-flex align-items-center">
+                                                    {% if transaction.payment_method == 'stripe' %}
+                                                    <i class="fab fa-cc-stripe me-2 text-primary"></i>
+                                                    {% else %}
+                                                    <i class="fas fa-credit-card me-2"></i>
+                                                    {% endif %}
+                                                    {{ transaction.payment_method|capitalize }}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if transaction.status == 'completed' %}
+                                                    <span class="badge bg-success">Completed</span>
+                                                {% elif transaction.status == 'pending' %}
+                                                    <span class="badge bg-warning text-dark">Pending</span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">Failed</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" data-bs-placement="top" title="View Receipt">
+                                                    <i class="fas fa-receipt"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-5">
+                                <div class="mb-3">
+                                    <i class="fas fa-receipt fa-3x text-muted"></i>
+                                </div>
+                                <h5>No Purchase History</h5>
+                                <p class="text-muted mb-4">You haven't made any purchases yet.</p>
+                                <a href="#funds" class="btn btn-primary" data-bs-toggle="tab" data-bs-target="#funds" type="button" role="tab" aria-controls="funds" aria-selected="false">
+                                    <i class="fas fa-credit-card me-2"></i>Add Credits
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
-                    <h5>No Purchase History</h5>
-                    <p class="caption">You haven't made any purchases yet.</p>
                 </div>
-                {% endif %}
             </div>
         </div>
         
         <!-- Usage Analytics Tab -->
-        <div id="usage" class="tab-pane">
-            <div class="balance-card p-4">
-                <div class="d-flex justify-content-between align-items-center mb-4">
-                    <h4 class="mb-0">Usage Analytics</h4>
-                    <div>
-                        <button class="tab-button usage-tab-button active btn-sm" data-tab="summary">Summary</button>
-                        <button class="tab-button usage-tab-button btn-sm" data-tab="detailed">Detailed</button>
-                        <button class="tab-button btn-sm" id="exportCsvBtn">
-                            <i class="fas fa-download"></i> Export CSV
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <h6>Date Range</h6>
-                    <div>
-                        <button class="tab-button date-range-btn btn-sm" data-range="30">Last 30 Days</button>
-                        <button class="tab-button date-range-btn btn-sm" data-range="7">Last 7 Days</button>
-                        <button class="tab-button date-range-btn active btn-sm" data-range="month">This Month</button>
-                    </div>
-                </div>
-                
-                <div id="usage-summary-tab" class="usage-sub-tab active">
-                {% if recent_usage %}
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover">
-                        <thead>
-                            <tr>
-                                <th style="min-width: 110px;">Date</th>
-                                <th style="min-width: 80px;">Type</th>
-                                <th style="min-width: 180px;">Model</th>
-                                <th style="min-width: 80px;">Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for usage in recent_usage %}
-                            <tr>
-                                <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
-                                <td>{{ usage.usage_type }}</td>
-                                <td>{{ usage.model_id }}</td>
-                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="text-center py-5">
-                    <div class="mb-3">
-                        <i class="fas fa-chart-line fa-3x text-muted"></i>
-                    </div>
-                    <h5>No Usage Data</h5>
-                    <p class="caption">No usage data available for the selected time period.</p>
-                    <p class="caption">Try a different date range or start using the AI models to generate usage data.</p>
-                    <a href="{{ url_for('index') }}" class="select-button mt-2 w-auto d-inline-block px-4">Try Using Models</a>
-                </div>
-                {% endif %}
-                </div>
-
-                <div id="usage-detailed-tab" class="usage-sub-tab" style="display: none;">
-                {% if recent_usage %}
-                <div class="table-responsive">
-                    <table class="table table-dark table-hover">
-                        <thead>
-                            <tr>
-                                <th style="min-width: 110px;">Date</th>
-                                <th style="min-width: 180px;">Model</th>
-                                <th style="min-width: 100px;">Input Tokens</th>
-                                <th style="min-width: 100px;">Input Cost</th>
-                                <th style="min-width: 100px;">Output Tokens</th>
-                                <th style="min-width: 100px;">Output Cost</th>
-                                <th style="min-width: 100px;">Total Cost</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for usage in recent_usage %}
-                            <tr>
-                                <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                <td>{{ usage.model_id }}</td>
-                                <td>{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
-                                <td>
-                                    {% if usage.prompt_tokens and usage.model_id %}
-                                        {% set input_cost = ((usage.credits_used / 1000) * 0.7)|float %}
-                                        ${{ "%.4f"|format(input_cost) }}
+        <div id="usage" class="tab-pane fade" role="tabpanel" aria-labelledby="usage-tab">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0">Usage Analytics</h5>
+                                <div>
+                                    <div class="btn-group me-2">
+                                        <button class="btn btn-sm btn-outline-secondary active" id="summaryViewBtn" data-bs-toggle="tab" data-bs-target="#usage-summary-tab">
+                                            <i class="fas fa-chart-pie me-1"></i>Summary
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" id="detailedViewBtn" data-bs-toggle="tab" data-bs-target="#usage-detailed-tab">
+                                            <i class="fas fa-table me-1"></i>Detailed
+                                        </button>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary" id="exportCsvBtn">
+                                        <i class="fas fa-download me-1"></i> Export CSV
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-body">
+                            <!-- Date Range Selector -->
+                            <div class="mb-4">
+                                <h6>Date Range</h6>
+                                <div class="btn-group">
+                                    <button class="btn btn-sm btn-outline-secondary" data-range="30">Last 30 Days</button>
+                                    <button class="btn btn-sm btn-outline-secondary" data-range="7">Last 7 Days</button>
+                                    <button class="btn btn-sm btn-outline-secondary active" data-range="month">This Month</button>
+                                </div>
+                            </div>
+                            
+                            <!-- Usage Analytics Content -->
+                            <div class="tab-content">
+                                <!-- Summary View -->
+                                <div id="usage-summary-tab" class="tab-pane fade show active" role="tabpanel" aria-labelledby="summaryViewBtn">
+                                    {% if recent_usage %}
+                                    <!-- Usage Statistics Cards -->
+                                    <div class="row mb-4">
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card bg-dark h-100">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-calculator fa-2x mb-3 text-primary"></i>
+                                                    <h2 class="text-light">
+                                                        {% set total_spent = namespace(value=0) %}
+                                                        {% for usage in recent_usage %}
+                                                            {% set total_spent.value = total_spent.value + (usage.credits_used / 1000) %}
+                                                        {% endfor %}
+                                                        ${{ "%.2f"|format(total_spent.value) }}
+                                                    </h2>
+                                                    <p class="text-muted">Total Spent</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card bg-dark h-100">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-tag fa-2x mb-3 text-success"></i>
+                                                    <h2 class="text-light">
+                                                        {% set total_tokens = namespace(value=0) %}
+                                                        {% for usage in recent_usage %}
+                                                            {% if usage.prompt_tokens %}
+                                                                {% set total_tokens.value = total_tokens.value + usage.prompt_tokens %}
+                                                            {% endif %}
+                                                            {% if usage.completion_tokens %}
+                                                                {% set total_tokens.value = total_tokens.value + usage.completion_tokens %}
+                                                            {% endif %}
+                                                        {% endfor %}
+                                                        {{ total_tokens.value }}
+                                                    </h2>
+                                                    <p class="text-muted">Total Tokens</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4 mb-3">
+                                            <div class="card bg-dark h-100">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-bolt fa-2x mb-3 text-warning"></i>
+                                                    <h2 class="text-light">{{ recent_usage|length }}</h2>
+                                                    <p class="text-muted">API Requests</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th style="min-width: 110px;">Date</th>
+                                                    <th style="min-width: 80px;">Type</th>
+                                                    <th style="min-width: 180px;">Model</th>
+                                                    <th style="min-width: 80px;">Cost</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for usage in recent_usage %}
+                                                <tr>
+                                                    <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
+                                                    <td>
+                                                        <span class="badge {% if usage.usage_type == 'chat' %}bg-info{% elif usage.usage_type == 'embedding' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
+                                                            {{ usage.usage_type|capitalize }}
+                                                        </span>
+                                                    </td>
+                                                    <td>{{ usage.model_id }}</td>
+                                                    <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                     {% else %}
-                                        N/A
+                                    <div class="text-center py-5">
+                                        <div class="mb-3">
+                                            <i class="fas fa-chart-line fa-3x text-muted"></i>
+                                        </div>
+                                        <h5>No Usage Data</h5>
+                                        <p class="text-muted mb-4">No usage data available for the selected time period.</p>
+                                        <div class="d-flex justify-content-center gap-3">
+                                            <button class="btn btn-outline-secondary">
+                                                <i class="fas fa-calendar-alt me-2"></i>Change Date Range
+                                            </button>
+                                            <a href="{{ url_for('index') }}" class="btn btn-primary">
+                                                <i class="fas fa-robot me-2"></i>Try Using Models
+                                            </a>
+                                        </div>
+                                    </div>
                                     {% endif %}
-                                </td>
-                                <td>{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
-                                <td>
-                                    {% if usage.completion_tokens and usage.model_id %}
-                                        {% set output_cost = ((usage.credits_used / 1000) * 0.3)|float %}
-                                        ${{ "%.4f"|format(output_cost) }}
+                                </div>
+                                
+                                <!-- Detailed View -->
+                                <div id="usage-detailed-tab" class="tab-pane fade" role="tabpanel" aria-labelledby="detailedViewBtn">
+                                    {% if recent_usage %}
+                                    <div class="table-responsive">
+                                        <table class="table table-striped table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th style="min-width: 110px;">Date</th>
+                                                    <th style="min-width: 180px;">Model</th>
+                                                    <th style="min-width: 100px;">Input Tokens</th>
+                                                    <th style="min-width: 100px;">Input Cost</th>
+                                                    <th style="min-width: 100px;">Output Tokens</th>
+                                                    <th style="min-width: 100px;">Output Cost</th>
+                                                    <th style="min-width: 100px;">Total Cost</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for usage in recent_usage %}
+                                                <tr>
+                                                    <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                                    <td>{{ usage.model_id }}</td>
+                                                    <td>{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
+                                                    <td>
+                                                        {% if usage.prompt_tokens and usage.model_id %}
+                                                            {% set input_cost = ((usage.credits_used / 1000) * 0.7)|float %}
+                                                            ${{ "%.4f"|format(input_cost) }}
+                                                        {% else %}
+                                                            N/A
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
+                                                    <td>
+                                                        {% if usage.completion_tokens and usage.model_id %}
+                                                            {% set output_cost = ((usage.credits_used / 1000) * 0.3)|float %}
+                                                            ${{ "%.4f"|format(output_cost) }}
+                                                        {% else %}
+                                                            N/A
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
                                     {% else %}
-                                        N/A
+                                    <div class="text-center py-5">
+                                        <div class="mb-3">
+                                            <i class="fas fa-chart-line fa-3x text-muted"></i>
+                                        </div>
+                                        <h5>No Usage Data</h5>
+                                        <p class="text-muted mb-4">No usage data available for the selected time period.</p>
+                                        <div class="d-flex justify-content-center gap-3">
+                                            <button class="btn btn-outline-secondary">
+                                                <i class="fas fa-calendar-alt me-2"></i>Change Date Range
+                                            </button>
+                                            <a href="{{ url_for('index') }}" class="btn btn-primary">
+                                                <i class="fas fa-robot me-2"></i>Try Using Models
+                                            </a>
+                                        </div>
+                                    </div>
                                     {% endif %}
-                                </td>
-                                <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="text-center py-5">
-                    <div class="mb-3">
-                        <i class="fas fa-chart-line fa-3x text-muted"></i>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <h5>No Usage Data</h5>
-                    <p class="caption">No usage data available for the selected time period.</p>
-                    <p class="caption">Try a different date range or start using the AI models to generate usage data.</p>
-                    <a href="{{ url_for('index') }}" class="select-button mt-2 w-auto d-inline-block px-4">Try Using Models</a>
-                </div>
-                {% endif %}
                 </div>
             </div>
         </div>
         
         <!-- Pricing Tab -->
-        <div id="pricing" class="tab-pane">
+        <div id="pricing" class="tab-pane fade" role="tabpanel" aria-labelledby="pricing-tab">
             <div class="balance-card p-4">
                 <h4 class="mb-3">Model Pricing</h4>
                 <p class="caption mb-4">Pricing information for all available AI models. Click on any column header to sort by that attribute.</p>
@@ -577,7 +702,7 @@
         </div>
         
         <!-- Account Settings Tab -->
-        <div id="settings" class="tab-pane">
+        <div id="settings" class="tab-pane fade" role="tabpanel" aria-labelledby="settings-tab">
             <div class="balance-card p-4">
                 <h4 class="mb-4">Account Settings</h4>
                 
@@ -619,7 +744,7 @@
         </div>
         
         <!-- Tell a Friend Tab -->
-        <div id="tellFriend" class="tab-pane">
+        <div id="tellFriend" class="tab-pane fade" role="tabpanel" aria-labelledby="tellFriend-tab">
             {% include 'affiliate/tell_friend_tab.html' %}
         </div>
     </div>
@@ -627,49 +752,55 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOMContentLoaded event fired - Initializing Tell a Friend tab functions');
+    console.log('DOMContentLoaded event fired - Initializing account page functions');
     
-    // Special handling for tellFriend tab button
-    const tellFriendTabBtn = document.getElementById('tellFriendTabBtn');
-    if (tellFriendTabBtn) {
-        console.log('Found Tell a Friend tab button, adding click handler');
-        tellFriendTabBtn.addEventListener('click', function(event) {
-            event.preventDefault();  // Prevent default anchor behavior
-            console.log('Tell a Friend tab button clicked');
+    // Initialize Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+    
+    // Usage Analytics sub-tab functionality
+    const summaryViewBtn = document.getElementById('summaryViewBtn');
+    const detailedViewBtn = document.getElementById('detailedViewBtn');
+    const summaryTab = document.getElementById('usage-summary-tab');
+    const detailedTab = document.getElementById('usage-detailed-tab');
+    
+    if (summaryViewBtn && detailedViewBtn && summaryTab && detailedTab) {
+        summaryViewBtn.addEventListener('click', function() {
+            summaryViewBtn.classList.add('active');
+            detailedViewBtn.classList.remove('active');
             
-            // Use the main tab switching function for consistency
-            openTab('tellFriend', event);
-            return;
-            
-            // REMOVED: Custom tab handling - now using openTab function instead
-            const tabPanes = document.querySelectorAll('.tab-pane');
-            tabPanes.forEach(pane => {
-                pane.classList.remove('active');
-                console.log(`Removed active class from tab: ${pane.id}`);
-            });
-            
-            // Deactivate all tab buttons
-            const tabButtons = document.querySelectorAll('.tab-navigation .tab-button');
-            tabButtons.forEach(button => {
-                button.classList.remove('active');
-            });
-            
-            // Activate the Tell a Friend tab
-            const tellFriendTab = document.getElementById('tellFriend');
-            if (tellFriendTab) {
-                console.log('Found Tell a Friend tab, activating it');
-                tellFriendTab.classList.add('active');
-                tellFriendTab.style.display = 'block';
-            } else {
-                console.error('Tell a Friend tab element not found');
-            }
-            
-            // Activate this button
-            this.classList.add('active');
+            summaryTab.classList.add('show', 'active');
+            detailedTab.classList.remove('show', 'active');
         });
-    } else {
-        console.warn('Tell a Friend tab button not found');
+        
+        detailedViewBtn.addEventListener('click', function() {
+            detailedViewBtn.classList.add('active');
+            summaryViewBtn.classList.remove('active');
+            
+            detailedTab.classList.add('show', 'active');
+            summaryTab.classList.remove('show', 'active');
+        });
     }
+            
+    // Initialize date range selection buttons
+    const dateRangeButtons = document.querySelectorAll('.btn-group .btn[data-range]');
+    
+    dateRangeButtons.forEach(function(button) {
+        button.addEventListener('click', function() {
+            // Remove active class from all buttons
+            dateRangeButtons.forEach(function(btn) {
+                btn.classList.remove('active');
+            });
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            // TODO: Add actual date range filtering functionality
+            console.log(`Selected date range: ${this.getAttribute('data-range')}`);
+        });
+    });
     
     // Enable/disable activation button based on checkbox
     const agreeCheckbox = document.getElementById('agreeToTerms');
@@ -757,40 +888,37 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Initialize tabs
-    window.openTab = function(tabName, clickEvent) {
-        console.log(`Opening tab: ${tabName}`);
-        
-        // Hide all tab panes
-        const tabPanes = document.querySelectorAll('.tab-pane');
-        tabPanes.forEach(pane => {
-            pane.classList.remove('active');
-        });
-        
-        // Deactivate all tab buttons
-        const tabButtons = document.querySelectorAll('.tab-navigation .tab-button');
-        tabButtons.forEach(button => {
-            button.classList.remove('active');
-        });
-        
-        // Activate the selected tab pane
-        const selectedPane = document.getElementById(tabName);
-        if (selectedPane) {
-            console.log(`Found tab pane: #${tabName}`);
-            selectedPane.classList.add('active');
-        } else {
-            console.error(`Tab pane not found: #${tabName}`);
-        }
-        
-        // Activate the clicked button - only if we have a click event
-        if (clickEvent && clickEvent.currentTarget) {
-            clickEvent.currentTarget.classList.add('active');
-        } else {
-            // If no event is provided, find and activate the button by its tab name
-            const tabButton = document.querySelector(`.tab-button[onclick*="openTab('${tabName}')"]`);
-            if (tabButton) {
-                tabButton.classList.add('active');
+    // Initialize Bootstrap tab functionality
+    var triggerTabList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tab"]'));
+    triggerTabList.forEach(function (triggerEl) {
+        triggerEl.addEventListener('shown.bs.tab', function (event) {
+            console.log(`Tab shown: ${event.target.getAttribute('data-bs-target')}`);
+            
+            // Get the tab name from data-bs-target attribute (removing the # symbol)
+            const tabName = event.target.getAttribute('data-bs-target').substring(1);
+            
+            // Tab-specific logic
+            if (tabName === 'pricing') {
+                loadPricingData();
+            } else if (tabName === 'tellFriend' && typeof window.initializeTellFriendTabContent === 'function') {
+                window.initializeTellFriendTabContent();
             }
+        });
+    });
+    
+    // Legacy openTab function for backward compatibility
+    window.openTab = function(tabName, clickEvent) {
+        console.log(`Opening tab with Bootstrap 5: ${tabName}`);
+        
+        // Find the corresponding tab trigger element
+        const tabTrigger = document.querySelector(`[data-bs-target="#${tabName}"]`);
+        
+        if (tabTrigger) {
+            // Use Bootstrap's tab API to show the tab
+            const bsTab = new bootstrap.Tab(tabTrigger);
+            bsTab.show();
+        } else {
+            console.error(`Tab trigger not found for: #${tabName}`);
         }
         
         // Tab-specific logic
