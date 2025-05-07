@@ -97,52 +97,108 @@ body {
 
 /* Table styles */
 .table {
-    color: var(--text-color);
+    color: var(--text-color) !important;
+}
+
+/* Target all cells in tables directly */
+table tbody tr td, 
+table thead tr th,
+.table tbody tr td,
+.table thead tr th {
+    color: var(--text-color) !important;
+}
+
+/* Force text color in all table rows */
+tr, tr td, tr th {
+    color: var(--text-color) !important;
 }
 
 .table-striped > tbody > tr:nth-of-type(odd) {
     background-color: var(--table-stripe-bg);
 }
 
+.table-striped > tbody > tr:nth-of-type(even) {
+    background-color: var(--card-bg);
+}
+
 .table th, .table td {
     border-color: var(--border-color);
-    color: var(--text-color);
 }
 
 .table-dark {
     background-color: var(--card-bg);
-    color: var(--text-color);
+    color: var(--text-color) !important;
 }
 
 .table-dark th, .table-dark td {
     border-color: var(--border-color);
 }
 
+/* Force color for all td and th elements, using higher specificity */
+.card .table td, 
+.card .table th,
+div.table-responsive table td,
+div.table-responsive table th {
+    color: var(--text-color) !important;
+}
+
 /* Form elements */
 .form-control, .form-select {
-    background-color: var(--input-bg);
-    color: var(--text-color);
-    border-color: var(--border-color);
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+}
+
+/* Force color for input types */
+input[type="text"], 
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="search"],
+input[type="tel"],
+input[type="url"],
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"],
+input[type="week"],
+input[type="color"],
+textarea,
+select {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
 }
 
 .form-control:focus, .form-select:focus {
-    background-color: var(--input-bg);
-    border-color: var(--accent-color);
-    color: var(--text-color);
-    box-shadow: 0 0 0 0.25rem rgba(36, 185, 189, 0.25);
+    background-color: var(--input-bg) !important;
+    border-color: var(--accent-color) !important;
+    color: var(--text-color) !important;
+    box-shadow: 0 0 0 0.25rem rgba(36, 185, 189, 0.25) !important;
 }
 
 .form-control::placeholder {
-    color: var(--secondary-text);
+    color: var(--secondary-text) !important;
     opacity: 0.7;
 }
 
 .form-label, .form-text, .form-check-label {
-    color: var(--text-color);
+    color: var(--text-color) !important;
 }
 
 .form-text {
-    color: var(--secondary-text);
+    color: var(--secondary-text) !important;
+}
+
+/* Checkbox styling */
+.form-check-input {
+    background-color: var(--input-bg) !important;
+    border-color: var(--border-color) !important;
+}
+
+.form-check-input:checked {
+    background-color: var(--accent-color) !important;
+    border-color: var(--accent-color) !important;
 }
 
 /* Navigation tabs */
@@ -327,6 +383,82 @@ body {
     font-size: 0.9rem;
     opacity: 0.7;
     margin-bottom: 0.5rem;
+}
+
+/* List group styles - used in account settings & usage analytics */
+.list-group-item {
+    background-color: var(--card-bg) !important;
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+}
+
+.list-group-item-action {
+    color: var(--text-color) !important;
+}
+
+.list-group-item-action:hover {
+    background-color: var(--hover-color) !important;
+}
+
+.list-group-item.bg-transparent {
+    background-color: transparent !important;
+}
+
+/* Usage Analytics specific styles */
+.usage-stat {
+    color: var(--text-color) !important;
+}
+
+.usage-stat-value {
+    color: var(--text-color) !important;
+    font-weight: bold;
+}
+
+.usage-stat-label {
+    color: var(--secondary-text) !important;
+}
+
+/* Button group fixes */
+.btn-group .btn {
+    color: var(--text-color) !important;
+    border-color: var(--border-color) !important;
+}
+
+.btn-group .btn.active {
+    background-color: var(--accent-color) !important;
+    border-color: var(--accent-color) !important;
+    color: white !important;
+}
+
+/* Account settings specific overrides */
+#settings .form-control[readonly] {
+    background-color: rgba(0, 0, 0, 0.2) !important;
+    color: var(--text-color) !important;
+}
+
+/* Custom select buttons */
+.select-button {
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+}
+
+.select-button:hover {
+    background-color: var(--hover-color);
+}
+
+.select-button.bg-danger {
+    background-color: #dc3545 !important;
+    color: white !important;
+}
+
+/* Footer link separator */
+hr {
+    border-color: var(--border-color) !important;
+    opacity: 0.5;
 }
 
 /* Pricing table styles */
