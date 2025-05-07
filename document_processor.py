@@ -511,6 +511,52 @@ class DocumentProcessor:
             _log_rag(f"Error in diagnostic fetch: {e}", level='error')
             return {"error": str(e)}
 
+    def user_has_documents(self, user_id: Union[str, int]) -> bool:
+        """
+        Check if a user has any documents in the database.
+        
+        Args:
+            user_id: The ID of the user
+            
+        Returns:
+            bool: True if the user has documents, False otherwise
+        """
+        if not self.db_initialized:
+            _log_rag("MongoDB not available for document checking", level='warning')
+            return False
+        
+        try:
+            # Convert user_id to string for consistency
+            user_id_str = str(user_id)
+            
+            # Check documents collection
+            doc_count = self.documents_collection.count_documents({
+                "$or": [
+                    {"user_id": user_id_str},
+                    {"userId": user_id_str}  # For backward compatibility
+                ]
+            })
+            
+            # Check chunks collection if no documents found
+            if doc_count == 0:
+                chunk_count = self.chunks_collection.count_documents({
+                    "$or": [
+                        {"user_id": user_id_str},
+                        {"userId": user_id_str}  # For backward compatibility
+                    ]
+                })
+                has_documents = chunk_count > 0
+            else:
+                has_documents = True
+                
+            _log_rag(f"User {user_id} has documents: {has_documents} (docs: {doc_count})", level='info')
+            return has_documents
+            
+        except Exception as e:
+            _log_rag(f"Error checking if user has documents: {e}", level='error')
+            # Default to false if there's an error
+            return False
+            
     def retrieve_relevant_chunks(self, query_text: str, user_id: Union[str, int], limit: int = 5) -> List[Dict[str, Any]]:
         """
         Retrieve text chunks relevant to a query using MongoDB Atlas Vector Search.

@@ -1,5 +1,5 @@
 """
-Simple workflow file to run the Flask application with our fixed JSON handling
+Script to run the Flask application with fixed RAG document handling
 """
 
 import sys
@@ -11,7 +11,7 @@ from pathlib import Path
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s [%(levelname)s] %(name)s: %(message)s',
-    filename='fixed_app_workflow_output.log',
+    filename='rag_fixed_app_output.log',
     filemode='w'
 )
 console = logging.StreamHandler()
@@ -23,11 +23,11 @@ logger = logging.getLogger(__name__)
 
 def run():
     """
-    Run the Flask application with our fixed JSON handling
+    Run the Flask application with our fixed RAG document handling
     """
     try:
         # Log startup
-        logger.info("Starting Flask application with fixed JSON handling (workflow version)...")
+        logger.info("Starting Flask application with fixed RAG document handling...")
         
         # Import the Flask app
         from app import app

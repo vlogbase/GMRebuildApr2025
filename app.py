@@ -1181,6 +1181,9 @@ def chat(): # Synchronous function
     """
     Endpoint to handle chat messages and stream responses from OpenRouter (SYNC Version)
     """
+    # Declare global variables at the beginning of the function
+    global document_processor
+    
     try:
         # Enhanced request logging for diagnosing 400 errors
         logger.info(f"chat: Request Content-Type: {request.content_type}")
@@ -1316,12 +1319,50 @@ def chat(): # Synchronous function
             # Check if the message contains images (for multimodal selection)
             has_image = image_url or (image_urls and len(image_urls) > 0)
             
+            # Initialize RAG content flag
+            has_rag_content = False
+            relevant_chunks = []
+            
+            # Global document_processor is already declared at the function start
+            
+            # Only check for RAG content if RAG is enabled and there's a user message
+            if ENABLE_RAG and user_message and len(user_message.strip()) > 0:
+                # Get user ID for retrieving documents
+                rag_user_id = str(current_user.id) if current_user and current_user.is_authenticated else get_user_identifier()
+                logger.info(f"RAG: Pre-checking for document availability for user_id: {rag_user_id}")
+                
+                # Check if the user has any documents before attempting retrieval
+                try:
+                    # Import document processor on demand to avoid circular imports
+                    if 'document_processor' not in globals() or document_processor is None:
+                        from document_processor import DocumentProcessor
+                        document_processor = DocumentProcessor()
+                    
+                    # Check if Azure OpenAI credentials are available
+                    azure_key = os.environ.get('AZURE_OPENAI_API_KEY')
+                    azure_endpoint = os.environ.get('AZURE_OPENAI_ENDPOINT')
+                    azure_deployment = os.environ.get('AZURE_OPENAI_DEPLOYMENT')
+                    
+                    if not (azure_key and azure_endpoint and azure_deployment):
+                        logger.error("RAG: Azure OpenAI credentials are missing or incomplete.")
+                        # Skip RAG retrieval when credentials are missing
+                    else:
+                        # Do a preliminary check to see if the user has any documents
+                        has_documents = document_processor.user_has_documents(rag_user_id)
+                        if has_documents:
+                            has_rag_content = True
+                            logger.info("Detected RAG usage - user has documents - marking as requiring advanced model")
+                        else:
+                            logger.info("No documents found for user - not marking as RAG content")
+                except Exception as e:
+                    logger.error(f"Error checking for user documents: {e}")
+                    # If we can't determine, assume no RAG to avoid using expensive models unnecessarily
+            
             # Get the list of available models
             available_models = model_validator.get_available_models()
             
             # Check if the requested model is available
-            if not model_validator.is_model_available(openrouter_model, available_models):
-                logger.warning(f"Requested model {openrouter_model} is not available in OpenRouter")
+            if not model_validator.is_model_available(openrouter_model, available_models) or has_rag_content:
                 
                 # Try to select a fallback model
                 fallback_model = model_validator.get_fallback_model(
@@ -1335,8 +1376,12 @@ def chat(): # Synchronous function
                     openrouter_model = fallback_model
                 else:
                     # If no fallback found, select model based on content type
-                    adaptive_model = model_validator.select_multimodal_fallback(has_image, available_models)
-                    logger.info(f"Using adaptive model selection: {adaptive_model}")
+                    adaptive_model = model_validator.select_multimodal_fallback(
+                        has_image_content=has_image, 
+                        available_models=available_models,
+                        has_rag_content=has_rag_content
+                    )
+                    logger.info(f"Using adaptive model selection: {adaptive_model} (image content: {has_image}, RAG content: {has_rag_content})")
                     openrouter_model = adaptive_model
         except Exception as validation_error:
             logger.error(f"Error during model validation: {validation_error}")
@@ -1658,9 +1703,14 @@ def chat(): # Synchronous function
         # --- Incorporate document context from RAG system ---
         if ENABLE_RAG:
             try:
+                # We already did the pre-check for has_rag_content flag when selecting the model
+                # Now do the actual document retrieval if needed
+                
                 # Get user ID for retrieving documents
                 rag_user_id = str(current_user.id) if current_user and current_user.is_authenticated else get_user_identifier()
                 logger.info(f"RAG: Attempting retrieval for user_id: {rag_user_id}, Query: '{user_message[:50]}...'")
+                
+                # Global document_processor is already declared at the function start
                 
                 # Retrieve relevant document chunks with better error handling
                 try:
@@ -1675,12 +1725,26 @@ def chat(): # Synchronous function
                         # Skip RAG retrieval when credentials are missing 
                         relevant_chunks = []
                     else:
-                        relevant_chunks = document_processor.retrieve_relevant_chunks(
-                            query_text=user_message,
-                            user_id=rag_user_id,
-                            limit=5  # Retrieve top 5 most relevant chunks
-                        )
-                        logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks using Azure embeddings.")
+                        # Only attempt retrieval if we know the user has documents
+                        # This should match the check we did earlier when setting has_rag_content
+                        # Import document processor on demand to avoid circular imports
+                        if 'document_processor' not in globals() or document_processor is None:
+                            from document_processor import DocumentProcessor
+                            document_processor = DocumentProcessor()
+                            
+                        # Double-check if the user has documents (should be true if has_rag_content was set)
+                        if document_processor.user_has_documents(rag_user_id):
+                            # User has documents, proceed with retrieval
+                            relevant_chunks = document_processor.retrieve_relevant_chunks(
+                                query_text=user_message,
+                                user_id=rag_user_id,
+                                limit=5  # Retrieve top 5 most relevant chunks
+                            )
+                            logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks using Azure embeddings.")
+                        else:
+                            # User doesn't have documents, skip retrieval
+                            logger.info("RAG: User has no documents, skipping retrieval")
+                            relevant_chunks = []
                 except Exception as retrieval_error:
                     logger.error(f"RAG: Error retrieving document chunks: {retrieval_error}")
                     
@@ -1918,8 +1982,8 @@ def chat(): # Synchronous function
 
         # --- Define the SYNC Generator using requests ---
         def generate():
-            # Use the global json module to avoid reimport issues
-            # import json - removed reimport to avoid potential conflicts
+            # Make json module accessible in this scope (required for json.loads, json.dumps)
+            import json
             
             assistant_response_content = [] 
             final_prompt_tokens = None
@@ -2993,6 +3057,9 @@ def rag_diagnostics():
     Diagnostic endpoint to check the state of RAG functionality.
     This helps identify issues with document storage and retrieval.
     """
+    # Declare global document_processor at the beginning of the function
+    global document_processor
+    
     if not ENABLE_RAG:
         return jsonify({"error": "RAG functionality is not enabled"}), 400
         
@@ -3002,6 +3069,11 @@ def rag_diagnostics():
             user_id = str(current_user.id)
         else:
             user_id = get_user_identifier()
+            
+        # Make sure document_processor is initialized
+        if 'document_processor' not in globals() or document_processor is None:
+            from document_processor import DocumentProcessor
+            document_processor = DocumentProcessor()
             
         # Run diagnostic checks
         diagnostics = document_processor.diagnostic_fetch_chunks(user_id)
@@ -3211,6 +3283,9 @@ def upload_documents():
     Route to handle document uploads for RAG functionality.
     Processes and stores documents in MongoDB for later retrieval.
     """
+    # Declare global document_processor at the beginning of the function
+    global document_processor
+    
     if not ENABLE_RAG:
         return jsonify({"error": "RAG functionality is not enabled"}), 400
         
@@ -3220,6 +3295,11 @@ def upload_documents():
             user_id = str(current_user.id)
         else:
             user_id = get_user_identifier()
+            
+        # Make sure document_processor is initialized
+        if 'document_processor' not in globals() or document_processor is None:
+            from document_processor import DocumentProcessor
+            document_processor = DocumentProcessor()
             
         # Check if files were uploaded
         if 'files[]' not in request.files:

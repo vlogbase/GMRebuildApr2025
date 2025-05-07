@@ -150,17 +150,18 @@ def get_fallback_model(requested_model, fallback_models, available_models=None):
     logger.error("No models are available!")
     return None
 
-def select_multimodal_fallback(has_image_content, available_models=None):
+def select_multimodal_fallback(has_image_content, available_models=None, has_rag_content=False):
     """
-    Select an appropriate multimodal fallback model for image content.
+    Select an appropriate model based on content type (images, documents, etc).
     Tries to use database query first for efficiency, then falls back to list filtering.
     
     Args:
         has_image_content (bool): Whether the message contains image content
         available_models (list, optional): List of available models (if already fetched)
+        has_rag_content (bool, optional): Whether the message contains RAG document context
         
     Returns:
-        str: The best available multimodal model ID or text model if no multimodal models are available
+        str: The best available model ID appropriate for the content type
     """
     try:
         # First try to get models directly from the database by capability
@@ -174,15 +175,15 @@ def select_multimodal_fallback(has_image_content, available_models=None):
             if has_image_content:
                 model_query = model_query.filter(OpenRouterModel.is_multimodal == True)
             
-            # Add reasoning preference if getting text models
-            if not has_image_content:
-                # Try to get reasoning models first
+            # Add reasoning preference for text or RAG models
+            if not has_image_content or has_rag_content:
+                # Try to get reasoning models first - these are better for RAG content and complex text
                 reasoning_models = model_query.filter(OpenRouterModel.supports_reasoning == True).order_by(
                     OpenRouterModel.output_price_usd_million.desc()).limit(5).all()
                 
                 if reasoning_models:
                     model_id = reasoning_models[0].model_id
-                    logger.info(f"Selected reasoning model from database: {model_id}")
+                    logger.info(f"Selected reasoning model from database: {model_id} (RAG content: {has_rag_content})")
                     return model_id
             
             # Get the most powerful models first (assuming higher price = more powerful)
@@ -221,7 +222,24 @@ def select_multimodal_fallback(has_image_content, available_models=None):
         "meta-llama/llama-3-8b"
     ]
     
-    priority_list = multimodal_priority if has_image_content else text_priority
+    # Priority list for RAG/document content (need models with larger context windows)
+    rag_priority = [
+        "anthropic/claude-3-opus-20240229",  # Largest context window
+        "anthropic/claude-3-sonnet-20240229", # Large context window
+        "openai/gpt-4o-2024-05-13",          # Good context and reasoning
+        "anthropic/claude-3-haiku-20240307",  # Smaller but still good for RAG
+        "openai/gpt-4-turbo-preview",
+        "google/gemini-pro"
+    ]
+    
+    # Select the right priority list based on content
+    if has_image_content:
+        priority_list = multimodal_priority
+    elif has_rag_content:
+        priority_list = rag_priority
+        logger.info("Using RAG-optimized model priority list")
+    else:
+        priority_list = text_priority
     
     # Check each model in order of priority
     for model_id in priority_list:
