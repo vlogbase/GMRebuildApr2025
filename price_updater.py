@@ -24,10 +24,16 @@ model_prices_cache = {
 def fetch_and_store_openrouter_prices() -> bool:
     """
     Fetch current model prices from OpenRouter API and store them in the cache.
+    This function also updates the global OPENROUTER_MODELS_INFO variable
+    to ensure consistent model data across the application.
     
     Returns:
         bool: True if successful, False otherwise
     """
+    # Mark the start time for performance tracking
+    start_time = time.time()
+    logger.info("Scheduled job: fetch_and_store_openrouter_prices started")
+    
     try:
         api_key = os.environ.get('OPENROUTER_API_KEY')
         if not api_key:
@@ -70,6 +76,9 @@ def fetch_and_store_openrouter_prices() -> bool:
         # Process model data to extract pricing
         prices = {}
         markup_factor = 2.0  # Our markup for pricing
+        
+        # Process models for OPENROUTER_MODELS_INFO and populate it
+        processed_models = []
         
         for model in models_data.get('data', []):
             model_id = model.get('id', '')
@@ -139,19 +148,56 @@ def fetch_and_store_openrouter_prices() -> bool:
                 'model_name': model.get('name', model_id.split('/')[-1]),
                 'cost_band': cost_band  # Add cost band indicator
             }
+            
+            # Also add the specific properties needed for OPENROUTER_MODELS_INFO
+            model_name = model.get('name', '').lower()
+            model_description = model.get('description', '').lower()
+            model_id_lower = model_id.lower()
+            
+            # Add the classification properties needed by app.py
+            model['is_free'] = ':free' in model_id_lower or input_price == 0.0
+            model['is_multimodal'] = is_multimodal or any(keyword in model_id_lower or keyword in model_name or keyword in model_description 
+                                    for keyword in ['vision', 'image', 'multi', 'gpt-4o'])
+            model['is_perplexity'] = 'perplexity/' in model_id_lower
+            model['is_reasoning'] = any(keyword in model_id_lower or keyword in model_name or keyword in model_description 
+                                    for keyword in ['reasoning', 'opus', 'o1', 'o3'])
+            
+            # Add to processed models for OPENROUTER_MODELS_INFO
+            processed_models.append(model)
         
         # Update the cache with the new prices
         model_prices_cache['prices'] = prices
         model_prices_cache['last_updated'] = datetime.now().isoformat()
         
-        logger.info(f"Successfully fetched and cached prices for {len(prices)} models")
+        # Update the global OPENROUTER_MODELS_INFO in app.py
+        try:
+            # Import is done here to avoid circular imports
+            import app
+            app.OPENROUTER_MODELS_INFO = processed_models
+            
+            # Also update the cache dictionary in app.py
+            if hasattr(app, 'OPENROUTER_MODELS_CACHE'):
+                app.OPENROUTER_MODELS_CACHE["data"] = {"data": processed_models}
+                app.OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
+                logger.info(f"Updated OPENROUTER_MODELS_CACHE with {len(processed_models)} models")
+            
+            logger.info(f"Successfully updated OPENROUTER_MODELS_INFO with {len(processed_models)} models")
+        except ImportError as e:
+            logger.error(f"Failed to update OPENROUTER_MODELS_INFO: {e}")
+        
+        # Log successful completion
+        elapsed_time = time.time() - start_time
+        logger.info(f"Successfully fetched and cached prices for {len(prices)} models in {elapsed_time:.2f} seconds")
+        logger.info("Scheduled job: fetch_and_store_openrouter_prices completed successfully")
         return True
         
     except requests.exceptions.RequestException as e:
         logger.error(f"Request error fetching model prices: {e}")
+        logger.info("Scheduled job: fetch_and_store_openrouter_prices failed")
         return False
     except Exception as e:
         logger.error(f"Error fetching or processing model prices: {e}")
+        logger.info("Scheduled job: fetch_and_store_openrouter_prices failed")
         return False
 
 def get_model_cost(model_id: str) -> dict:

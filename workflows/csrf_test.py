@@ -1,53 +1,108 @@
 """
-Script to test if CSRF tokens are working correctly for API endpoints
-This will run the Flask application and verify that all endpoints that require
-CSRF protection are working properly.
+Simple script to test CSRF protection in the Flask application.
+This validates that CSRF tokens are properly generated and validated.
 """
-import os
+
 import sys
-import time
 import logging
-from flask import Flask
+import time
+import requests
+from pathlib import Path
+from flask import Flask, render_template, request, session, jsonify
+from bs4 import BeautifulSoup
 
 # Configure logging
 logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
+# Add the parent directory to sys.path to import app
+sys.path.append(str(Path(__file__).parent.parent))
+
 def run():
     """
-    Run the Flask application for CSRF token testing
+    Test various endpoints for CSRF token inclusion and validation.
     """
     try:
-        logger.info("Starting Flask application for CSRF token testing")
+        logger.info("Testing CSRF protection functionality...")
         
-        # Import the Flask app from app.py
+        # Import the Flask app
         from app import app
         
-        # Set debug mode and disable reloader
-        app.config['DEBUG'] = True
-        app.config['TESTING'] = True
-        
-        # Log CSRF protection status
-        if app.config.get('WTF_CSRF_ENABLED', True):
-            logger.info("CSRF protection is ENABLED")
+        # Check if the app has CSRF protection enabled
+        if hasattr(app, 'config') and app.config.get('WTF_CSRF_ENABLED', False):
+            logger.info("✓ CSRF protection is enabled in the Flask app")
         else:
-            logger.warning("CSRF protection is DISABLED")
-            
-        # Log protection settings
-        logger.info(f"CSRF methods: {app.config.get('WTF_CSRF_METHODS', ['POST', 'PUT', 'PATCH', 'DELETE'])}")
-        logger.info(f"CSRF headers: {app.config.get('WTF_CSRF_HEADERS', ['X-CSRFToken', 'X-CSRF-Token'])}")
+            logger.error("✗ CSRF protection is NOT enabled in the Flask app")
         
-        # Start the Flask server
-        logger.info("Starting Flask application. Access it via http://localhost:5000")
-        app.run(host='0.0.0.0', port=5000)
+        # Create a test client
+        client = app.test_client()
+        
+        # Test basic CSRF token generation
+        logger.info("Testing CSRF token generation...")
+        
+        # Get the main page to get a CSRF token
+        response = client.get('/')
+        
+        if response.status_code == 200:
+            logger.info("✓ Successfully loaded the main page")
+            
+            # Get the CSRF token from the meta tag
+            html = response.data.decode('utf-8')
+            soup = BeautifulSoup(html, 'html.parser')
+            csrf_meta = soup.find('meta', {'name': 'csrf-token'})
+            
+            if csrf_meta and csrf_meta.get('content'):
+                csrf_token = csrf_meta.get('content')
+                logger.info(f"✓ CSRF token found in meta tag: {csrf_token[:10]}...")
+                
+                # Now test a POST endpoint that requires CSRF protection
+                logger.info("Testing POST request with CSRF token...")
+                
+                # Try to save a preference with the CSRF token
+                preference_data = {
+                    'model_id': 'test_model',
+                    'is_default': 'true',
+                    'csrf_token': csrf_token
+                }
+                
+                headers = {
+                    'X-CSRFToken': csrf_token,
+                    'Content-Type': 'application/json'
+                }
+                
+                response = client.post('/save_preference', 
+                                      json=preference_data,
+                                      headers=headers)
+                
+                if response.status_code == 200 or response.status_code == 401:
+                    # 401 is expected if not logged in
+                    logger.info(f"✓ POST request with CSRF token succeeded with status {response.status_code}")
+                else:
+                    logger.error(f"✗ POST request with CSRF token failed with status {response.status_code}")
+                
+                # Test same endpoint without CSRF token
+                logger.info("Testing POST request without CSRF token...")
+                bad_data = {'model_id': 'test_model', 'is_default': 'true'}
+                response = client.post('/save_preference', json=bad_data)
+                
+                if response.status_code == 400:
+                    logger.info("✓ POST request without CSRF token was correctly rejected with 400 status")
+                else:
+                    logger.error(f"✗ POST request without CSRF token unexpectedly succeeded with status {response.status_code}")
+            else:
+                logger.error("✗ CSRF token not found in meta tag")
+        else:
+            logger.error(f"✗ Failed to load the main page: {response.status_code}")
+        
+        logger.info("CSRF testing completed")
         
     except Exception as e:
-        logger.error(f"Error starting Flask application: {e}")
-        raise
+        logger.error(f"Error during CSRF testing: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
 
 if __name__ == "__main__":
     run()

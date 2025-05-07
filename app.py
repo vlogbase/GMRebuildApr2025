@@ -269,108 +269,134 @@ def init_scheduler():
     """
     Initialize and start the background scheduler for periodic tasks.
     Returns the scheduler instance or None if it failed to start.
+    
+    This improved implementation ensures that:
+    1. The scheduler is configured for maximum reliability in a web environment
+    2. Jobs are properly registered and tracked
+    3. The scheduler is actually running before returning
+    4. Failed jobs can be retried
     """
     logger.info("Initializing background scheduler...")
+    import traceback  # Import here to ensure availability
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
+    
     try:
+        # Import the price updater function
         from price_updater import fetch_and_store_openrouter_prices
         
-        # Create scheduler with specific config for better reliability
+        # Create scheduler with enhanced config for better reliability in web environments
         scheduler = BackgroundScheduler(
             daemon=True,
             job_defaults={
                 'coalesce': True,  # Combine missed runs
                 'max_instances': 1,  # Only one instance of a job can run at a time
-                'misfire_grace_time': 60  # Allow jobs to be 60 seconds late
-            }
+                'misfire_grace_time': 300,  # Allow jobs to be 5 minutes late
+                'max_runs': None,  # No limit on number of runs
+            },
+            timezone='UTC'  # Explicitly set timezone to avoid system timezone issues
         )
         
-        # Add the OpenRouter price fetching job
+        # Add the OpenRouter price fetching job with enhanced configuration
         scheduler.add_job(
             func=fetch_and_store_openrouter_prices, 
             trigger='interval', 
-            minutes=30, 
-            id='fetch_model_prices_job'
+            minutes=30,  
+            id='fetch_model_prices_job',
+            replace_existing=True,  # Replace if job already exists
+            max_instances=1,  # Ensure only one instance runs
+            jitter=120  # Add random jitter (in seconds) to avoid thundering herd
         )
         
-        # Start the scheduler
+        # Run the price fetching job immediately at scheduler startup to ensure we have fresh data
+        scheduler.add_job(
+            func=fetch_and_store_openrouter_prices,
+            trigger='date',  # Run once at a specific time
+            run_date=datetime.datetime.now() + datetime.timedelta(seconds=15),  # Run 15 seconds after startup
+            id='initial_fetch_model_prices_job',
+            replace_existing=True,
+            max_instances=1
+        )
+        
+        # Add scheduler event listeners to better track job execution
+        def job_executed_event(event):
+            job_id = event.job_id
+            logger.info(f"Scheduler job {job_id} executed successfully")
+            
+        def job_error_event(event):
+            job_id = event.job_id
+            exception = event.exception
+            traceback_str = event.traceback
+            logger.error(f"Scheduler job {job_id} failed with error: {exception}")
+            logger.error(f"Job error traceback: {traceback_str}")
+            
+            # For critical jobs like model price fetching, we can add automatic retry logic here
+            if job_id == 'fetch_model_prices_job':
+                logger.info(f"Scheduling retry for failed job {job_id} in 5 minutes")
+                scheduler.add_job(
+                    func=fetch_and_store_openrouter_prices,
+                    trigger='date',
+                    run_date=datetime.datetime.now() + datetime.timedelta(minutes=5),
+                    id='retry_fetch_model_prices_job',
+                    replace_existing=True
+                )
+        
+        # Add the listeners to the scheduler
+        scheduler.add_listener(job_executed_event, EVENT_JOB_EXECUTED)
+        scheduler.add_listener(job_error_event, EVENT_JOB_ERROR)
+        
+        # Start the scheduler with enhanced error handling
         try:
             scheduler.start()
             logger.info("Background scheduler started successfully")
+            
+            # Wait a short time to verify the scheduler has started properly
+            time.sleep(0.5)
+            
+            # Verify scheduler is running and has jobs
+            if scheduler.running:
+                all_jobs = scheduler.get_jobs()
+                job_ids = [job.id for job in all_jobs]
+                logger.info(f"Confirmed scheduler is running with jobs: {job_ids}")
+                
+                # Run a check on the job state
+                job = scheduler.get_job('fetch_model_prices_job')
+                if job:
+                    logger.info(f"Model price fetch job scheduled, next run at: {job.next_run_time}")
+                else:
+                    logger.warning("Model price fetch job not found in scheduler!")
+                    # Attempt to re-add the job if it's missing
+                    scheduler.add_job(
+                        func=fetch_and_store_openrouter_prices, 
+                        trigger='interval', 
+                        minutes=30, 
+                        id='fetch_model_prices_job',
+                        replace_existing=True
+                    )
+                
+                return scheduler
+            else:
+                logger.error("Scheduler failed to start properly - running flag is False")
+                return None
+                
         except Exception as start_error:
             logger.error(f"Failed to start background scheduler: {start_error}")
             logger.error(traceback.format_exc())
             return None
-        
-        # Verify scheduler is running
-        if scheduler.running:
-            logger.info("Confirmed scheduler is running")
-            return scheduler
-        else:
-            logger.error("Scheduler failed to start properly - running flag is False")
-            return None
             
-    except Exception as init_error:
-        logger.error(f"Error initializing scheduler: {init_error}")
+    except ImportError as import_error:
+        logger.error(f"Failed to import required modules for scheduler: {import_error}")
         logger.error(traceback.format_exc())
         return None
-
-# Define the model fetching function right here to avoid any undefined function issues
-def _fetch_openrouter_models():
-    """Fetch models from OpenRouter API"""
-    try:
-        api_key = os.environ.get('OPENROUTER_API_KEY')
-        if not api_key:
-            logger.error("OPENROUTER_API_KEY not found")
-            return None
-
-        headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
-
-        logger.debug("Fetching models from OpenRouter...")
-        response = requests.get(
-            'https://openrouter.ai/api/v1/models',
-            headers=headers,
-            timeout=15.0 
-        )
-
-        response.raise_for_status() 
-        models_data = response.json()
         
-        processed_models = []
-        for model in models_data.get('data', []):
-            model_id = model.get('id', '').lower()
-            model_name = model.get('name', '').lower()
-            model_description = model.get('description', '').lower()
-
-            try:
-                prompt_price = float(model.get('pricing', {}).get('prompt', '1.0'))
-            except (ValueError, TypeError):
-                prompt_price = 1.0 
-
-            model['is_free'] = ':free' in model_id or prompt_price == 0.0
-            model['is_multimodal'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
-                                        for keyword in ['vision', 'image', 'multi', 'gpt-4o'])
-            model['is_perplexity'] = 'perplexity/' in model_id
-            model['is_reasoning'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
-                                        for keyword in ['reasoning', 'opus', 'o1', 'o3']) 
-            processed_models.append(model)
-
-        result_data = {"data": processed_models}
-        
-        # Update the cache
-        global OPENROUTER_MODELS_CACHE, OPENROUTER_MODELS_INFO
-        OPENROUTER_MODELS_CACHE["data"] = result_data
-        OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
-        
-        # Also update OPENROUTER_MODELS_INFO for the non-authenticated user check
-        OPENROUTER_MODELS_INFO = processed_models
-        
-        logger.info(f"Fetched and cached {len(processed_models)} models from OpenRouter")
-        
-        return result_data
     except Exception as e:
-        logger.exception(f"Error fetching models from OpenRouter: {e}")
+        logger.error(f"Unexpected error initializing scheduler: {e}")
         logger.error(traceback.format_exc())
         return None
+
+# We don't need to define our own model fetching function here anymore
+# Replaced by the consolidated fetch_and_store_openrouter_prices function from price_updater.py
+# which now handles both pricing and model data in one place
 
 # Initialize scheduler with improved implementation
 scheduler = init_scheduler()
@@ -392,11 +418,11 @@ try:
         logger.info("Successfully fetched initial model prices including model information")
         # With prices loaded, we should also have models
     else:
-        # If that fails, fallback to the direct API fetch
-        logger.warning("Price fetching failed, falling back to direct model fetching")
-        model_data = _fetch_openrouter_models()
-        logger.info(f"Direct model fetch returned: {model_data is not None}")
-    
+        # If that fails, log a warning - we'll rely on the scheduler to retry soon
+        logger.warning("Initial price fetching failed. The scheduler will retry shortly.")
+        # Create a fallback model list for minimal functionality
+        fallback_models = _generate_fallback_model_data()
+        
     # Verify we have model data
     if OPENROUTER_MODELS_INFO and len(OPENROUTER_MODELS_INFO) > 0:
         logger.info(f"Initial model data fetch completed. {len(OPENROUTER_MODELS_INFO)} models available.")
@@ -596,6 +622,96 @@ def generate_summary(conversation_id):
             db.session.rollback()
         except:
             pass
+
+def _generate_fallback_model_data():
+    """
+    Generate fallback model data when OpenRouter API is unavailable.
+    This ensures the frontend can still function with essential models.
+    """
+    logger.warning("Generating fallback model data with minimal functional models")
+    
+    # Create a minimal set of models to ensure the UI functions
+    fallback_models = [
+        {
+            "id": "anthropic/claude-3-haiku",
+            "name": "Claude 3 Haiku",
+            "description": "Fast and efficient for everyday tasks, providing impressive reasoning capabilities at an affordable price.",
+            "context_length": 200000,
+            "pricing": {"prompt": 0.25, "completion": 1.25},
+            "is_free": False,
+            "is_multimodal": True,
+            "is_reasoning": True,
+            "is_perplexity": False
+        },
+        {
+            "id": "anthropic/claude-3-opus",
+            "name": "Claude 3 Opus",
+            "description": "Most powerful Claude model for complex tasks requiring deep analysis, comprehension, coding, and reasoning.",
+            "context_length": 200000,
+            "pricing": {"prompt": 15.00, "completion": 75.00},
+            "is_free": False,
+            "is_multimodal": True,
+            "is_reasoning": True,
+            "is_perplexity": False
+        },
+        {
+            "id": "google/gemini-1.5-pro",
+            "name": "Gemini 1.5 Pro",
+            "description": "Enhanced Google model with strong reasoning, comprehension, and code generation.",
+            "context_length": 1000000,
+            "pricing": {"prompt": 3.50, "completion": 10.00},
+            "is_free": False,
+            "is_multimodal": True,
+            "is_reasoning": True,
+            "is_perplexity": False
+        },
+        {
+            "id": "google/gemini-2.0-flash-exp:free",
+            "name": "Gemini 2.0 Flash (Free)",
+            "description": "Very fast Google model with efficient processing for everyday tasks.",
+            "context_length": 128000,
+            "pricing": {"prompt": 0.00, "completion": 0.00},
+            "is_free": True,
+            "is_multimodal": True,
+            "is_reasoning": False,
+            "is_perplexity": False
+        },
+        {
+            "id": "openai/gpt-4-turbo",
+            "name": "GPT-4 Turbo",
+            "description": "Optimized GPT-4 model for faster performance and balanced between speed and capability.",
+            "context_length": 128000,
+            "pricing": {"prompt": 10.00, "completion": 30.00},
+            "is_free": False,
+            "is_multimodal": False,
+            "is_reasoning": True,
+            "is_perplexity": False
+        },
+        {
+            "id": "perplexity/sonar-small",
+            "name": "Perplexity Sonar Small",
+            "description": "Fast perplexity model good for tasks that require current information and web comprehension.",
+            "context_length": 12000,
+            "pricing": {"prompt": 1.00, "completion": 5.00},
+            "is_free": False,
+            "is_multimodal": False,
+            "is_reasoning": False,
+            "is_perplexity": True
+        }
+    ]
+    
+    # Update the global model info with these fallback models
+    global OPENROUTER_MODELS_INFO
+    OPENROUTER_MODELS_INFO = fallback_models
+    
+    # Also update the model cache for completeness
+    result_data = {"data": fallback_models}
+    if 'OPENROUTER_MODELS_CACHE' in globals():
+        OPENROUTER_MODELS_CACHE["data"] = result_data
+        OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
+    
+    logger.info(f"Initialized with {len(fallback_models)} fallback models")
+    return fallback_models
 
 def generate_share_id(length=12):
     random_bytes = secrets.token_bytes(length)
@@ -1831,6 +1947,9 @@ def chat(): # Synchronous function
 
         # --- Define the SYNC Generator using requests ---
         def generate():
+            # Import json module inside the function scope to avoid NameError
+            import json
+            
             assistant_response_content = [] 
             final_prompt_tokens = None
             final_completion_tokens = None

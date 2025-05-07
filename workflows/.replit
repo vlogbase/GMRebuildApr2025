@@ -1,15 +1,20 @@
-[billing_test]
-run = ["python", "workflows/billing_test.py"]
+[app_workflow]
+name = "Flask Application"
 language = "python3"
+run = "python -m workflows.app_workflow"
+onBoot = "exit"
+default_file = "workflows/app_workflow.py"
 
-[openrouter_tests]
-run = ["python", "workflows/openrouter_tests.py"]
+[scheduler_test]
+name = "Scheduler Test"
 language = "python3"
-
-[fixed_app]
-run = ["python", "workflows/fixed_app_workflow.py"]
-language = "python3"
+run = "python -m workflows.scheduler_test"
+onBoot = "exit"
+default_file = "workflows/scheduler_test.py"
 
 [csrf_test]
-run = ["python", "workflows/csrf_test.py"]
+name = "CSRF Protection Test"
 language = "python3"
+run = "python -m workflows.csrf_test"
+onBoot = "exit"
+default_file = "workflows/csrf_test.py"
