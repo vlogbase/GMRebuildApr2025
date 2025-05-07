@@ -23,6 +23,13 @@ class CommissionStatus(enum.Enum):
     PAYOUT_FAILED = "payout_failed"
     PAYOUT_INITIATED = "payout_initiated"
 
+class AffiliateStatus(enum.Enum):
+    """Status for affiliate accounts"""
+    PENDING_TERMS = "pending_terms"
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    SUSPENDED = "suspended"
+
 class User(UserMixin, db.Model):
     """User model for authentication and storing user information"""
     id = db.Column(db.Integer, primary_key=True)
