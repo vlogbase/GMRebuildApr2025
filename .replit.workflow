@@ -1,15 +1,14 @@
-[app]
-run = ["python", "app_workflow.py"]
-language = "python3"
-
-[fix_schema]
-run = ["python", "fix_affiliate_schema.py"]
-language = "python3"
-
-[flask_app]
-run = ["python", "app.py"]
-language = "python3"
-
-[run_openrouter_migrations]
-run = ["python", "run_openrouter_migrations.py"]
-language = "python3"
+{
+  "workflows": {
+    "start": {
+      "sections": [
+        {
+          "name": "Start Application",
+          "tasks": {
+            "run": "python run_app_workflow.py"
+          }
+        }
+      ]
+    }
+  }
+}

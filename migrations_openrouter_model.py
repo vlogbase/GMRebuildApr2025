@@ -12,6 +12,7 @@ import logging
 import requests
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import text
 from contextlib import contextmanager
 
 # Set up logging
@@ -36,7 +37,7 @@ def check_table_exists():
     """Check if the OpenRouterModel table exists in the database"""
     with app_context() as db:
         try:
-            result = db.session.execute("SELECT to_regclass('public.open_router_model');").scalar()
+            result = db.session.execute(text("SELECT to_regclass('public.open_router_model');")).scalar()
             return result is not None
         except Exception as e:
             logger.error(f"Error checking if table exists: {e}")
@@ -282,11 +283,11 @@ def update_schema():
             for column, alter_statement in columns_to_check.items():
                 try:
                     # Check if column exists
-                    result = db.session.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name='open_router_model' AND column_name='{column}'").fetchone()
+                    result = db.session.execute(text(f"SELECT column_name FROM information_schema.columns WHERE table_name='open_router_model' AND column_name='{column}'")).fetchone()
                     
                     if not result:
                         logger.info(f"Adding column {column} to open_router_model table")
-                        db.session.execute(alter_statement)
+                        db.session.execute(text(alter_statement))
                         db.session.commit()
                         logger.info(f"Column {column} added successfully")
                     else:
@@ -318,11 +319,8 @@ def run_migrations():
     if not schema_updated:
         logger.warning("Schema update had issues, continuing with caution")
     
-    # Then fetch and populate models
-    models_populated = fetch_and_populate_models()
-    if not models_populated:
-        logger.warning("Failed to populate models from API, table exists but may be empty")
-        # Continue anyway, as this is not a critical error
+    # Note: We've removed the model population from migrations
+    # This is now handled by the application when needed
     
     logger.info("OpenRouter model database migrations completed successfully")
     return True
