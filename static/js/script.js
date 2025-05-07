@@ -941,12 +941,10 @@ document.addEventListener('DOMContentLoaded', function() {
         sendButton.addEventListener('click', sendMessage);
     }
     
-    // Initialize model data
-    fetchUserPreferences();
-    
-    // Only initialize model selector related code if the model selector exists on this page
+    // Initialize model data only if on the chat page
     if (modelSelector) {
         console.log('Model selector found, initializing selector functionality');
+        fetchUserPreferences();
         
         // Model preset button click handlers
         if (modelPresetButtons && modelPresetButtons.length > 0) {
