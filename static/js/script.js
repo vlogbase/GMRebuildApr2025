@@ -8,6 +8,11 @@ function debounce(func, wait) {
     };
 }
 
+// Function to get CSRF token from meta tag
+function getCSRFToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
@@ -119,6 +124,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 fetch(uploadUrl, {
                     method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCSRFToken()
+                    },
                     body: formData
                 })
                 .then(response => response.json())
@@ -649,6 +657,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Upload to server
             const response = await fetch('/upload_image', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             });
             
@@ -1321,6 +1332,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return fetch('/api/refresh_model_prices', {
             method: 'POST',
             headers: {
+                'X-CSRFToken': getCSRFToken(),
                 'Content-Type': 'application/json'
             }
         })
@@ -1902,7 +1914,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/reset_preferences', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify(requestData)
         })
@@ -1970,7 +1983,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/save_preference', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({
                 preset_id: presetId,
@@ -2642,7 +2656,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/chat', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify(payload)
         }).then(response => {
@@ -3010,7 +3025,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (currentConversationId) {
             // Use fetch to get a shareable link from the server
             fetch(`/conversation/${currentConversationId}/share`, {
-                method: 'POST'
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                }
             })
             .then(response => response.json())
             .then(data => {
@@ -3060,7 +3078,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch(`/message/${messageId}/rate`, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({
                 rating: rating
@@ -3303,6 +3322,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Send the files to the server
             fetch('/upload', {
                 method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
                 body: formData
             })
             .then(response => response.json())

@@ -3028,6 +3028,26 @@ def memory_diagnostics():
         logger.exception(f"Error in memory diagnostics: {e}")
         return jsonify({"error": str(e)}), 500
 
+@app.route('/csrf_test', methods=['GET'])
+def csrf_test_page():
+    """
+    Test page for CSRF token handling
+    """
+    return render_template('csrf_test.html')
+
+@app.route('/api/test_csrf', methods=['POST'])
+def test_csrf():
+    """
+    Test endpoint for CSRF token verification
+    """
+    # If we get here, CSRF protection passed
+    data = request.get_json() or request.form.to_dict() or {}
+    return jsonify({
+        'success': True,
+        'message': 'CSRF token verification successful',
+        'received_data': data
+    })
+
 @app.route('/upload', methods=['POST'])
 def upload_documents():
     """

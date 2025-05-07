@@ -9,3 +9,7 @@ language = "python3"
 [fixed_app]
 run = ["python", "workflows/fixed_app_workflow.py"]
 language = "python3"
+
+[csrf_test]
+run = ["python", "workflows/csrf_test.py"]
+language = "python3"

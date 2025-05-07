@@ -1,80 +1,186 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSRF Test Page</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        form {
-            margin-top: 20px;
-        }
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px 15px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 16px;
-            margin-top: 10px;
-        }
-        button:hover {
-            background-color: #45a049;
-        }
-        code {
-            background: #f4f4f4;
-            padding: 2px 5px;
-            border-radius: 3px;
-        }
-        .warning {
-            color: #856404;
-            background-color: #fff3cd;
-            border: 1px solid #ffeeba;
-            padding: 10px;
-            border-radius: 4px;
-            margin: 20px 0;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>CSRF Protection Test</h1>
-        <p>This page tests the CSRF protection and Stripe integration.</p>
-        
-        <div class="warning">
-            <strong>Note:</strong> This is a test page. The button below will create a test Stripe checkout session.
-        </div>
-        
-        <h2>Test Form with CSRF Protection</h2>
-        <form action="/test-checkout" method="POST">
-            <!-- CSRF token will be added by Flask-WTF -->
+{% extends "base.html" %}
+
+{% block title %}CSRF Test Page{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <h1>CSRF Token Testing</h1>
+    <hr>
+    
+    <section class="mb-5">
+        <h2>1. Manual Form Submission (with CSRF token)</h2>
+        <form action="/api/test_csrf" method="POST">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <button type="submit">Create Test Checkout Session</button>
+            <div class="mb-3">
+                <label for="test-input" class="form-label">Test input</label>
+                <input type="text" class="form-control" id="test-input" name="test_input" value="Test data">
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Form</button>
         </form>
+        <p class="mt-3">The CSRF token is added using the template variable: <code>{{ "{{ csrf_token() }}" }}</code></p>
+    </section>
+    
+    <section class="mb-5">
+        <h2>2. JavaScript fetch API (with CSRF token)</h2>
+        <button id="test-fetch-csrf" class="btn btn-primary">Test fetch with CSRF</button>
+        <button id="test-fetch-no-csrf" class="btn btn-danger">Test fetch without CSRF</button>
+        <div id="fetch-result" class="mt-3 p-3 bg-light rounded"></div>
+    </section>
+    
+    <section class="mb-5">
+        <h2>3. Current CSRF Token Value</h2>
+        <div class="bg-light p-3 rounded">
+            <p>Current CSRF token: <code id="current-token"></code></p>
+        </div>
+    </section>
+    
+    <section class="mb-5">
+        <h2>4. Test Selected Endpoints</h2>
+        <button id="test-chat" class="btn btn-primary">Test /chat endpoint</button>
+        <button id="test-save-preference" class="btn btn-primary">Test /save_preference endpoint</button>
+        <button id="test-reset-preferences" class="btn btn-primary">Test /reset_preferences endpoint</button>
+        <button id="test-upload" class="btn btn-primary">Test /upload_image endpoint</button>
+        <div id="endpoint-result" class="mt-3 p-3 bg-light rounded"></div>
+    </section>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Display current token
+    const currentToken = document.querySelector('meta[name="csrf-token"]')?.content || 'Not found';
+    document.getElementById('current-token').textContent = currentToken;
+    
+    // Test fetch with CSRF
+    document.getElementById('test-fetch-csrf').addEventListener('click', function() {
+        fetch('/api/test_csrf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': currentToken
+            },
+            body: JSON.stringify({ test: 'data' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('fetch-result').innerHTML = 
+                `<div class="text-success">Success with CSRF token: ${JSON.stringify(data)}</div>`;
+        })
+        .catch(error => {
+            document.getElementById('fetch-result').innerHTML = 
+                `<div class="text-danger">Error with CSRF token: ${error}</div>`;
+        });
+    });
+    
+    // Test fetch without CSRF
+    document.getElementById('test-fetch-no-csrf').addEventListener('click', function() {
+        fetch('/api/test_csrf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ test: 'data' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('fetch-result').innerHTML = 
+                `<div class="text-success">Success without CSRF token: ${JSON.stringify(data)}</div>`;
+        })
+        .catch(error => {
+            document.getElementById('fetch-result').innerHTML = 
+                `<div class="text-danger">Error without CSRF token: ${error}</div>`;
+        });
+    });
+    
+    // Test specific endpoints
+    document.getElementById('test-chat').addEventListener('click', function() {
+        fetch('/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': currentToken
+            },
+            body: JSON.stringify({ 
+                message: 'Test message',
+                model_id: 'google/gemini-2.0-flash-exp:free',
+                conversation_id: null
+            })
+        })
+        .then(response => {
+            document.getElementById('endpoint-result').innerHTML = 
+                `<div class="text-success">Chat endpoint response status: ${response.status}</div>`;
+        })
+        .catch(error => {
+            document.getElementById('endpoint-result').innerHTML = 
+                `<div class="text-danger">Chat endpoint error: ${error}</div>`;
+        });
+    });
+    
+    document.getElementById('test-save-preference').addEventListener('click', function() {
+        fetch('/save_preference', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': currentToken
+            },
+            body: JSON.stringify({ 
+                preset_id: '1',
+                model_id: 'google/gemini-2.0-flash-exp:free'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('endpoint-result').innerHTML = 
+                `<div class="text-success">Save preference response: ${JSON.stringify(data)}</div>`;
+        })
+        .catch(error => {
+            document.getElementById('endpoint-result').innerHTML = 
+                `<div class="text-danger">Save preference error: ${error}</div>`;
+        });
+    });
+    
+    document.getElementById('test-reset-preferences').addEventListener('click', function() {
+        fetch('/reset_preferences', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': currentToken
+            },
+            body: JSON.stringify({ preset_id: '1' })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('endpoint-result').innerHTML = 
+                `<div class="text-success">Reset preferences response: ${JSON.stringify(data)}</div>`;
+        })
+        .catch(error => {
+            document.getElementById('endpoint-result').innerHTML = 
+                `<div class="text-danger">Reset preferences error: ${error}</div>`;
+        });
+    });
+    
+    document.getElementById('test-upload').addEventListener('click', function() {
+        // Create a small blob to simulate an image
+        const blob = new Blob(['test image data'], { type: 'image/png' });
+        const formData = new FormData();
+        formData.append('file', blob, 'test-image.png');
         
-        <h2>Details</h2>
-        <p>This form includes a CSRF token which is required for the form to be submitted successfully.</p>
-        <p>The CSRF token is added using the template variable: <code>{{ "{{ csrf_token() }}" }}</code></p>
-        <p>If CSRF protection is working correctly, submitting this form should create a Stripe checkout session.</p>
-    </div>
-</body>
-</html>
+        fetch('/upload_image', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': currentToken
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('endpoint-result').innerHTML = 
+                `<div class="text-success">Upload response: ${JSON.stringify(data)}</div>`;
+        })
+        .catch(error => {
+            document.getElementById('endpoint-result').innerHTML = 
+                `<div class="text-danger">Upload error: ${error}</div>`;
+        });
+    });
+});
+</script>
+{% endblock %}

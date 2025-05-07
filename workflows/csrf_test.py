@@ -1,10 +1,13 @@
 """
-Simple script to run the Flask application for testing in the Replit environment.
-This is a wrapper script to start the app.py Flask application.
+Script to test if CSRF tokens are working correctly for API endpoints
+This will run the Flask application and verify that all endpoints that require
+CSRF protection are working properly.
 """
 import os
 import sys
+import time
 import logging
+from flask import Flask
 
 # Configure logging
 logging.basicConfig(
@@ -16,16 +19,17 @@ logger = logging.getLogger(__name__)
 
 def run():
     """
-    Run the Flask application with error handling and logging.
+    Run the Flask application for CSRF token testing
     """
     try:
-        logger.info("Starting Flask application for testing")
+        logger.info("Starting Flask application for CSRF token testing")
         
         # Import the Flask app from app.py
         from app import app
         
-        # Set debug mode
+        # Set debug mode and disable reloader
         app.config['DEBUG'] = True
+        app.config['TESTING'] = True
         
         # Log CSRF protection status
         if app.config.get('WTF_CSRF_ENABLED', True):

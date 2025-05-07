@@ -1,0 +1,3 @@
+[csrf_test]
+run = "python csrf_test_workflow.py"
+persistent = true
