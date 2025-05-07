@@ -196,9 +196,29 @@ def fetch_and_populate_models():
                         db_model.output_price_usd_million = marked_up_output
                         db_model.is_multimodal = is_multimodal
                         db_model.cost_band = cost_band
+                        
+                        # Update the new fields
+                        db_model.is_free = marked_up_input < 0.01 or ':free' in model_id.lower()
+                        
+                        model_name_lower = model_name.lower() if model_name else ''
+                        description_lower = description.lower() if description else ''
+                        db_model.supports_reasoning = any(keyword in model_id.lower() or keyword in model_name_lower or keyword in description_lower 
+                                                     for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
+                        
+                        # Update timestamps
+                        db_model.updated_at = datetime.utcnow()
                         db_model.last_fetched_at = datetime.utcnow()
                         updated_count += 1
                     else:
+                        # Check for free models based on price or special tags
+                        is_free = marked_up_input < 0.01 or ':free' in model_id.lower()
+                        
+                        # Check for reasoning support based on model ID
+                        model_name_lower = model_name.lower() if model_name else ''
+                        description_lower = description.lower() if description else ''
+                        supports_reasoning = any(keyword in model_id.lower() or keyword in model_name_lower or keyword in description_lower 
+                                            for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
+                        
                         # Create new model
                         new_model = OpenRouterModel(
                             model_id=model_id,
@@ -208,7 +228,11 @@ def fetch_and_populate_models():
                             input_price_usd_million=marked_up_input,
                             output_price_usd_million=marked_up_output,
                             is_multimodal=is_multimodal,
+                            is_free=is_free,
+                            supports_reasoning=supports_reasoning,
                             cost_band=cost_band,
+                            created_at=datetime.utcnow(),
+                            updated_at=datetime.utcnow(),
                             last_fetched_at=datetime.utcnow()
                         )
                         db.session.add(new_model)
@@ -235,15 +259,64 @@ def fetch_and_populate_models():
         logger.error(f"Error fetching or processing model prices: {e}")
         return False
 
+def update_schema():
+    """Update the OpenRouterModel table schema to add new fields"""
+    with app_context() as db:
+        try:
+            from models import OpenRouterModel
+            
+            # Check if the table exists
+            if not check_table_exists():
+                logger.info("Table doesn't exist yet, skipping schema update")
+                return True
+                
+            # Check for missing columns
+            columns_to_check = {
+                'is_free': "ALTER TABLE open_router_model ADD COLUMN is_free BOOLEAN DEFAULT FALSE",
+                'supports_reasoning': "ALTER TABLE open_router_model ADD COLUMN supports_reasoning BOOLEAN DEFAULT FALSE",
+                'created_at': "ALTER TABLE open_router_model ADD COLUMN created_at TIMESTAMP DEFAULT NOW()",
+                'updated_at': "ALTER TABLE open_router_model ADD COLUMN updated_at TIMESTAMP DEFAULT NOW()"
+            }
+            
+            # Execute each ALTER TABLE statement if the column doesn't exist
+            for column, alter_statement in columns_to_check.items():
+                try:
+                    # Check if column exists
+                    result = db.session.execute(f"SELECT column_name FROM information_schema.columns WHERE table_name='open_router_model' AND column_name='{column}'").fetchone()
+                    
+                    if not result:
+                        logger.info(f"Adding column {column} to open_router_model table")
+                        db.session.execute(alter_statement)
+                        db.session.commit()
+                        logger.info(f"Column {column} added successfully")
+                    else:
+                        logger.info(f"Column {column} already exists")
+                        
+                except Exception as column_error:
+                    logger.error(f"Error adding column {column}: {column_error}")
+                    db.session.rollback()
+                    # Continue with other columns even if one fails
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"Error updating schema: {e}")
+            return False
+
 def run_migrations():
     """Run all migrations for OpenRouter model persistence"""
     logger.info("Starting OpenRouter model database migrations...")
     
-    # First create the tables
+    # First create the tables if they don't exist
     tables_created = create_tables()
     if not tables_created:
         logger.error("Failed to create tables, aborting migrations")
         return False
+    
+    # Update schema to add new columns if needed
+    schema_updated = update_schema()
+    if not schema_updated:
+        logger.warning("Schema update had issues, continuing with caution")
     
     # Then fetch and populate models
     models_populated = fetch_and_populate_models()

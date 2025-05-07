@@ -15,12 +15,35 @@ logger = logging.getLogger(__name__)
 
 def get_available_models():
     """
-    Get a list of all available model IDs from OpenRouter.
+    Get a list of all available model IDs from the database (primary source)
+    or fallback to OpenRouter API if the database is empty.
     
     Returns:
-        list: List of model IDs available in OpenRouter API
+        list: List of model IDs available
     """
     try:
+        # First try to get models from database (most reliable source)
+        try:
+            from app import app
+            from models import OpenRouterModel
+            
+            with app.app_context():
+                db_models = OpenRouterModel.query.all()
+                if db_models:
+                    model_ids = [model.model_id for model in db_models]
+                    logger.info(f"Found {len(model_ids)} models in database")
+                    
+                    # Still update the cache file for backward compatibility
+                    with open('available_models.json', 'w') as f:
+                        json.dump(model_ids, f, indent=2)
+                        
+                    return model_ids
+                else:
+                    logger.warning("No models found in database, will try API")
+        except Exception as db_error:
+            logger.error(f"Error accessing database models: {db_error}")
+        
+        # If database access failed, try direct API call
         api_key = os.environ.get('OPENROUTER_API_KEY')
         if not api_key:
             logger.error("OPENROUTER_API_KEY not found")
@@ -31,7 +54,7 @@ def get_available_models():
             'Content-Type': 'application/json'
         }
         
-        logger.info("Fetching models from OpenRouter for validation...")
+        logger.info("Fetching models from OpenRouter API for validation...")
         response = requests.get(
             'https://openrouter.ai/api/v1/models',
             headers=headers,
@@ -44,11 +67,19 @@ def get_available_models():
             
         data = response.json()
         models = [model['id'] for model in data.get('data', [])]
-        logger.info(f"Found {len(models)} available models")
+        logger.info(f"Found {len(models)} available models via API")
         
         # Cache the results to a file for offline reference
         with open('available_models.json', 'w') as f:
             json.dump(models, f, indent=2)
+            
+        # Try to update the database with these models for future use
+        try:
+            from migrations_openrouter_model import fetch_and_populate_models
+            fetch_and_populate_models()
+            logger.info("Updated database with models from API")
+        except Exception as migration_error:
+            logger.error(f"Failed to update database with API models: {migration_error}")
             
         return models
     except Exception as e:
@@ -60,7 +91,7 @@ def get_available_models():
             if os.path.exists('available_models.json'):
                 with open('available_models.json', 'r') as f:
                     models = json.load(f)
-                logger.info(f"Loaded {len(models)} models from cache")
+                logger.info(f"Loaded {len(models)} models from cache file")
                 return models
         except Exception as cache_error:
             logger.error(f"Error loading cached models: {cache_error}")
@@ -122,6 +153,7 @@ def get_fallback_model(requested_model, fallback_models, available_models=None):
 def select_multimodal_fallback(has_image_content, available_models=None):
     """
     Select an appropriate multimodal fallback model for image content.
+    Tries to use database query first for efficiency, then falls back to list filtering.
     
     Args:
         has_image_content (bool): Whether the message contains image content
@@ -130,6 +162,41 @@ def select_multimodal_fallback(has_image_content, available_models=None):
     Returns:
         str: The best available multimodal model ID or text model if no multimodal models are available
     """
+    try:
+        # First try to get models directly from the database by capability
+        from app import app
+        from models import OpenRouterModel
+        
+        with app.app_context():
+            model_query = OpenRouterModel.query
+            
+            # Filter by capability
+            if has_image_content:
+                model_query = model_query.filter(OpenRouterModel.is_multimodal == True)
+            
+            # Add reasoning preference if getting text models
+            if not has_image_content:
+                # Try to get reasoning models first
+                reasoning_models = model_query.filter(OpenRouterModel.supports_reasoning == True).order_by(
+                    OpenRouterModel.output_price_usd_million.desc()).limit(5).all()
+                
+                if reasoning_models:
+                    model_id = reasoning_models[0].model_id
+                    logger.info(f"Selected reasoning model from database: {model_id}")
+                    return model_id
+            
+            # Get the most powerful models first (assuming higher price = more powerful)
+            # For image models, we need multimodal capability
+            candidate_models = model_query.order_by(OpenRouterModel.output_price_usd_million.desc()).limit(5).all()
+            
+            if candidate_models:
+                model_id = candidate_models[0].model_id
+                logger.info(f"Selected {'multimodal' if has_image_content else 'text'} model from database: {model_id}")
+                return model_id
+    except Exception as db_error:
+        logger.error(f"Error selecting model from database: {db_error}")
+    
+    # Fallback to list-based selection if database query failed
     if available_models is None:
         available_models = get_available_models()
     

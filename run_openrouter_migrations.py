@@ -1,32 +1,36 @@
 #!/usr/bin/env python3
 """
-Run the OpenRouter model database migrations.
+Run OpenRouter migrations utility script
 
-This script is intended to be run from the command line to create and 
-populate the OpenRouterModel table in the database.
+This script runs the OpenRouter model migrations to ensure the database
+is updated with the latest model data.
 """
 
-import logging
 import sys
-from migrations_openrouter_model import run_migrations
+import os
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def main():
+    try:
+        from migrations_openrouter_model import run_migrations
+        
+        logger.info("Running OpenRouter model migrations...")
+        success = run_migrations()
+        
+        if success:
+            logger.info("OpenRouter model migrations completed successfully")
+            return 0
+        else:
+            logger.error("OpenRouter model migrations failed")
+            return 1
+    except Exception as e:
+        logger.error(f"Error running migrations: {e}")
+        return 1
 
 if __name__ == "__main__":
-    # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-    logger = logging.getLogger(__name__)
-    
-    logger.info("Running OpenRouter model database migrations...")
-    success = run_migrations()
-    
-    if success:
-        logger.info("OpenRouter model database migrations completed successfully")
-        sys.exit(0)
-    else:
-        logger.error("OpenRouter model database migrations failed")
-        sys.exit(1)
+    exit_code = main()
+    sys.exit(exit_code)

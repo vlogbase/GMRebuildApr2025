@@ -300,8 +300,12 @@ class OpenRouterModel(db.Model):
     input_price_usd_million = db.Column(db.Float, nullable=True)  # Markup price per million input tokens
     output_price_usd_million = db.Column(db.Float, nullable=True)  # Markup price per million output tokens
     is_multimodal = db.Column(db.Boolean, default=False)  # Whether model supports images
+    is_free = db.Column(db.Boolean, default=False)  # Free models
+    supports_reasoning = db.Column(db.Boolean, default=False)  # Models with strong reasoning capabilities
     cost_band = db.Column(db.String(8), nullable=True)  # '$', '$$', '$$$', '$$$$' band
-    last_fetched_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Last update time
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)  # When this model record was created
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Last model data update
+    last_fetched_at = db.Column(db.DateTime, default=datetime.utcnow)  # Last API fetch time
     
     def __repr__(self):
         return f'<OpenRouterModel {self.model_id}: {self.name}>'
@@ -324,6 +328,37 @@ class OpenRouterModel(db.Model):
             return model.is_multimodal
         # Default to False if model not found
         return False
+        
+    @classmethod
+    def get_models_by_cost_band(cls, max_cost_band='$$$$'):
+        """
+        Return models filtered by maximum cost band
+        Cost bands are ordered as: '' (free), '$', '$$', '$$$', '$$$$'
+        """
+        # Map cost bands to numeric values for comparison
+        band_values = {
+            '': 0,
+            '$': 1,
+            '$$': 2,
+            '$$$': 3,
+            '$$$$': 4
+        }
+        
+        max_band_value = band_values.get(max_cost_band, 4)  # Default to highest if invalid
+        
+        # Get all models
+        all_models = cls.query.all()
+        
+        # Filter based on band value
+        filtered_models = []
+        for model in all_models:
+            model_band = model.cost_band or ''
+            model_band_value = band_values.get(model_band, 0)
+            
+            if model_band_value <= max_band_value:
+                filtered_models.append(model)
+                
+        return filtered_models
 
 
 class Commission(db.Model):

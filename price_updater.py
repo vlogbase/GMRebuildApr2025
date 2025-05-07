@@ -204,7 +204,20 @@ def fetch_and_store_openrouter_prices() -> bool:
                         db_model.output_price_usd_million = model_data['output_price']
                         db_model.is_multimodal = model_data['is_multimodal']
                         db_model.cost_band = model_data['cost_band']
+                        
+                        # Update additional fields
+                        # Check for free models based on price or special tags
+                        db_model.is_free = model_data['input_price'] < 0.01 or ':free' in model_id.lower()
+                        
+                        # Check for reasoning support based on model ID and description
+                        model_name = original_model.get('name', '').lower()
+                        model_description = original_model.get('description', '').lower()
+                        db_model.supports_reasoning = any(keyword in model_id.lower() or keyword in model_name or keyword in model_description 
+                                                     for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
+                        
+                        # Update timestamps
                         db_model.last_fetched_at = datetime.utcnow()
+                        db_model.updated_at = datetime.utcnow()
                         updated_count += 1
                     else:
                         # Create new model
@@ -216,6 +229,15 @@ def fetch_and_store_openrouter_prices() -> bool:
                             except (ValueError, TypeError):
                                 context_length = None
                         
+                        # Check for free models based on price or special tags
+                        is_free = model_data['input_price'] < 0.01 or ':free' in model_id.lower()
+                        
+                        # Check for reasoning support based on model ID and description
+                        model_name = original_model.get('name', '').lower()
+                        model_description = original_model.get('description', '').lower()
+                        supports_reasoning = any(keyword in model_id.lower() or keyword in model_name or keyword in model_description 
+                                            for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
+                        
                         new_model = OpenRouterModel(
                             model_id=model_id,
                             name=model_data['model_name'],
@@ -224,7 +246,11 @@ def fetch_and_store_openrouter_prices() -> bool:
                             input_price_usd_million=model_data['input_price'],
                             output_price_usd_million=model_data['output_price'],
                             is_multimodal=model_data['is_multimodal'],
+                            is_free=is_free,
+                            supports_reasoning=supports_reasoning,
                             cost_band=model_data['cost_band'],
+                            created_at=datetime.utcnow(),
+                            updated_at=datetime.utcnow(),
                             last_fetched_at=datetime.utcnow()
                         )
                         db.session.add(new_model)
@@ -248,21 +274,7 @@ def fetch_and_store_openrouter_prices() -> bool:
             if 'db' in locals():
                 db.session.rollback()
                 
-        # For backward compatibility, update the global variables in app.py
-        try:
-            # Import is done here to avoid circular imports
-            import app
-            app.OPENROUTER_MODELS_INFO = processed_models
-            
-            # Also update the cache dictionary in app.py
-            if hasattr(app, 'OPENROUTER_MODELS_CACHE'):
-                app.OPENROUTER_MODELS_CACHE["data"] = {"data": processed_models}
-                app.OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
-                logger.info(f"Updated app.OPENROUTER_MODELS_CACHE with {len(processed_models)} models for backward compatibility")
-            
-            logger.info(f"Updated app.OPENROUTER_MODELS_INFO with {len(processed_models)} models for backward compatibility")
-        except ImportError as e:
-            logger.error(f"Failed to update app.OPENROUTER_MODELS_INFO: {e}")
+        # Database is now the single source of truth, no need to update global caches
         
         # Log successful completion
         elapsed_time = time.time() - start_time
@@ -305,21 +317,22 @@ def get_model_cost(model_id: str) -> dict:
     except Exception as db_error:
         logger.warning(f"Failed to get model cost from database: {db_error}")
     
-    # If database lookup failed, try the cache
-    # If the cache is empty, try to fetch prices
-    if not model_prices_cache['prices']:
+    # If database lookup failed, try to fetch fresh data from API
+    try:
+        # Attempt to update the database with fresh data from the API
         fetch_and_store_openrouter_prices()
-    
-    # Get the model data from the cache
-    model_data = model_prices_cache['prices'].get(model_id, {})
-    
-    if model_data:
-        return {
-            'prompt_cost_per_million': model_data['input_price'],
-            'completion_cost_per_million': model_data['output_price'],
-            'cost_band': model_data.get('cost_band', ''),
-            'source': 'cache'  # For debugging
-        }
+        
+        # Try database lookup again after the fresh fetch
+        db_model = OpenRouterModel.query.get(model_id)
+        if db_model:
+            return {
+                'prompt_cost_per_million': db_model.input_price_usd_million,
+                'completion_cost_per_million': db_model.output_price_usd_million,
+                'cost_band': db_model.cost_band or '',
+                'source': 'database_refresh'  # For debugging
+            }
+    except Exception as refresh_error:
+        logger.warning(f"Failed to refresh model data from API: {refresh_error}")
     
     # If we still don't have data, use fallback logic
     # Approximate fallback costs based on model name

@@ -393,35 +393,40 @@ try:
     # First ensure proper Python imports
     import traceback
     from price_updater import fetch_and_store_openrouter_prices
+    from models import OpenRouterModel
     
-    # Attempt to fetch model prices directly (which includes model info)
-    # This bypasses the scheduler to ensure we get data at startup
-    logger.info("Fetching initial model data directly...")
-    price_success = fetch_and_store_openrouter_prices()
-    if price_success:
-        logger.info("Successfully fetched initial model prices including model information")
-        # With prices loaded, we should also have models
+    # Check if we have models in the database
+    model_count = OpenRouterModel.query.count()
+    
+    if model_count > 0:
+        logger.info(f"Found {model_count} OpenRouter models in database at startup")
     else:
-        # If that fails, log a warning - we'll rely on the scheduler to retry soon
-        logger.warning("Initial price fetching failed. The scheduler will retry shortly.")
-        # Create a fallback model list for minimal functionality
-        fallback_models = _generate_fallback_model_data()
+        logger.info("No OpenRouter models found in database, fetching from API...")
         
-    # Verify we have model data
-    if OPENROUTER_MODELS_INFO and len(OPENROUTER_MODELS_INFO) > 0:
-        logger.info(f"Initial model data fetch completed. {len(OPENROUTER_MODELS_INFO)} models available.")
+        # Attempt to fetch model prices directly (which includes model info)
+        # This bypasses the scheduler to ensure we get data at startup
+        logger.info("Fetching initial model data directly...")
+        price_success = fetch_and_store_openrouter_prices()
+        
+        if price_success:
+            # Check if models were stored in the database
+            model_count = OpenRouterModel.query.count()
+            logger.info(f"Successfully fetched and stored {model_count} OpenRouter models in database")
+        else:
+            # If that fails, log a warning - we'll rely on the scheduler to retry soon
+            logger.warning("Initial model fetching failed. The scheduler will retry shortly.")
+    
+    # Final verification of database state
+    model_count = OpenRouterModel.query.count()
+    if model_count > 0:
+        logger.info(f"OpenRouter model database initialized with {model_count} models")
     else:
-        logger.warning("Initial model fetch completed but NO MODELS WERE RETURNED OR STORED!")
-        # Initialize to empty array to avoid potential NoneType errors
-        OPENROUTER_MODELS_INFO = [] 
-        logger.warning("Setting OPENROUTER_MODELS_INFO to empty array to avoid NoneType errors")
+        logger.warning("No models available in the database. Application may have limited functionality.")
         
 except Exception as e:
     logger.error(f"Critical error fetching model data at startup: {e}")
     logger.error(traceback.format_exc())
-    # Initialize to empty array to avoid potential NoneType errors
-    OPENROUTER_MODELS_INFO = []
-    logger.warning("Setting OPENROUTER_MODELS_INFO to empty array to avoid NoneType errors")
+    logger.warning("Application may have limited functionality until models are fetched.")
 
 # Register scheduler shutdown with app exit
 @atexit.register
@@ -607,95 +612,7 @@ def generate_summary(conversation_id):
         except:
             pass
 
-def _generate_fallback_model_data():
-    """
-    Generate fallback model data when OpenRouter API is unavailable.
-    This ensures the frontend can still function with essential models.
-    """
-    logger.warning("Generating fallback model data with minimal functional models")
-    
-    # Create a minimal set of models to ensure the UI functions
-    fallback_models = [
-        {
-            "id": "anthropic/claude-3-haiku",
-            "name": "Claude 3 Haiku",
-            "description": "Fast and efficient for everyday tasks, providing impressive reasoning capabilities at an affordable price.",
-            "context_length": 200000,
-            "pricing": {"prompt": 0.25, "completion": 1.25},
-            "is_free": False,
-            "is_multimodal": True,
-            "is_reasoning": True,
-            "is_perplexity": False
-        },
-        {
-            "id": "anthropic/claude-3-opus",
-            "name": "Claude 3 Opus",
-            "description": "Most powerful Claude model for complex tasks requiring deep analysis, comprehension, coding, and reasoning.",
-            "context_length": 200000,
-            "pricing": {"prompt": 15.00, "completion": 75.00},
-            "is_free": False,
-            "is_multimodal": True,
-            "is_reasoning": True,
-            "is_perplexity": False
-        },
-        {
-            "id": "google/gemini-1.5-pro",
-            "name": "Gemini 1.5 Pro",
-            "description": "Enhanced Google model with strong reasoning, comprehension, and code generation.",
-            "context_length": 1000000,
-            "pricing": {"prompt": 3.50, "completion": 10.00},
-            "is_free": False,
-            "is_multimodal": True,
-            "is_reasoning": True,
-            "is_perplexity": False
-        },
-        {
-            "id": "google/gemini-2.0-flash-exp:free",
-            "name": "Gemini 2.0 Flash (Free)",
-            "description": "Very fast Google model with efficient processing for everyday tasks.",
-            "context_length": 128000,
-            "pricing": {"prompt": 0.00, "completion": 0.00},
-            "is_free": True,
-            "is_multimodal": True,
-            "is_reasoning": False,
-            "is_perplexity": False
-        },
-        {
-            "id": "openai/gpt-4-turbo",
-            "name": "GPT-4 Turbo",
-            "description": "Optimized GPT-4 model for faster performance and balanced between speed and capability.",
-            "context_length": 128000,
-            "pricing": {"prompt": 10.00, "completion": 30.00},
-            "is_free": False,
-            "is_multimodal": False,
-            "is_reasoning": True,
-            "is_perplexity": False
-        },
-        {
-            "id": "perplexity/sonar-small",
-            "name": "Perplexity Sonar Small",
-            "description": "Fast perplexity model good for tasks that require current information and web comprehension.",
-            "context_length": 12000,
-            "pricing": {"prompt": 1.00, "completion": 5.00},
-            "is_free": False,
-            "is_multimodal": False,
-            "is_reasoning": False,
-            "is_perplexity": True
-        }
-    ]
-    
-    # Update the global model info with these fallback models
-    global OPENROUTER_MODELS_INFO
-    OPENROUTER_MODELS_INFO = fallback_models
-    
-    # Also update the model cache for completeness
-    result_data = {"data": fallback_models}
-    if 'OPENROUTER_MODELS_CACHE' in globals():
-        OPENROUTER_MODELS_CACHE["data"] = result_data
-        OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
-    
-    logger.info(f"Initialized with {len(fallback_models)} fallback models")
-    return fallback_models
+
 
 def generate_share_id(length=12):
     random_bytes = secrets.token_bytes(length)
@@ -1491,31 +1408,26 @@ def chat(): # Synchronous function
          )
         messages = [{'role': 'system', 'content': system_message}]
 
-        # First try to check if we have model info from the OpenRouter API
+        # Check if model supports multimodal input by querying the database
         model_supports_multimodal = False
-        model_info_found = False
         
-        # Method 1: Check model info from OpenRouter API data (most reliable)
-        if OPENROUTER_MODELS_INFO and len(OPENROUTER_MODELS_INFO) > 0:
-            # Look for this specific model in the cached OpenRouter API data
-            for model_info in OPENROUTER_MODELS_INFO:
-                if model_info.get('id', '').lower() == openrouter_model.lower():
-                    # We found exact model info
-                    model_info_found = True
-                    # Use the is_multimodal flag from the API data if available
-                    if 'is_multimodal' in model_info:
-                        model_supports_multimodal = model_info.get('is_multimodal', False)
-                        logger.info(f"✅ Found model in API data: {openrouter_model}, multimodal={model_supports_multimodal}")
-                        break
+        # Import OpenRouterModel class
+        from models import OpenRouterModel
         
-        # Method 2: If we don't have API data for this model, use pattern matching as fallback
-        if not model_info_found:
-            logger.warning(f"No API info found for model {openrouter_model}, using pattern matching instead")
-            for pattern in MULTIMODAL_MODELS:
-                if pattern.lower() in openrouter_model.lower():
-                    model_supports_multimodal = True
-                    logger.info(f"✅ Detected multimodal support for model {openrouter_model} matching pattern {pattern}")
-                    break
+        # Query the database for this specific model
+        db_model = OpenRouterModel.query.filter_by(model_id=openrouter_model).first()
+        
+        if db_model:
+            # Use the is_multimodal flag from the database
+            model_supports_multimodal = db_model.is_multimodal
+            logger.info(f"✅ Found model in database: {openrouter_model}, multimodal={model_supports_multimodal}")
+        else:
+            # Model not found in database - default to False for safety
+            logger.warning(f"No database entry found for model {openrouter_model}, assuming non-multimodal support")
+            # For critical anthropic/claude and vision models, use a basic heuristic as fallback
+            if any(pattern in openrouter_model.lower() for pattern in ["claude-3", "claude-3.5", "claude-3.7", "gpt-4-vision", "gpt-4o", "gemini"]):
+                model_supports_multimodal = True
+                logger.info(f"⚠️ Assuming multimodal support for {openrouter_model} based on model ID pattern matching")
             
             # If we're sending an image but the model doesn't support it, log warning
             if image_url and not model_supports_multimodal:
@@ -1796,13 +1708,25 @@ def chat(): # Synchronous function
         # Before creating payload, ensure we have correct content format for each model type
         # OpenRouter expects different message content formats for multimodal vs non-multimodal models
         
-        # Check if model supports multimodal content
+        # Check if model supports multimodal content using database
         model_supports_multimodal = False
-        for pattern in MULTIMODAL_MODELS:
-            if pattern.lower() in openrouter_model.lower():
-                model_supports_multimodal = True
-                logger.info(f"Model {openrouter_model} supports multimodal content matching pattern {pattern}")
-                break
+        from models import OpenRouterModel
+        
+        # Query the database for this specific model
+        db_model = OpenRouterModel.query.filter_by(model_id=openrouter_model).first()
+        
+        if db_model:
+            # Use the is_multimodal flag from the database
+            model_supports_multimodal = db_model.is_multimodal
+            logger.info(f"Model {openrouter_model} supports multimodal content: {model_supports_multimodal}")
+        else:
+            # Model not found in database - use a basic heuristic as fallback
+            multimodal_indicators = ["claude-3", "claude-3.5", "claude-3.7", "gpt-4-vision", "gpt-4o", "gemini", "vision", "multimodal"]
+            for indicator in multimodal_indicators:
+                if indicator.lower() in openrouter_model.lower():
+                    model_supports_multimodal = True
+                    logger.info(f"Model {openrouter_model} assumed to support multimodal content (pattern: {indicator})")
+                    break
         
         # Transform messages if needed to match model capabilities
         processed_messages = []
@@ -1901,13 +1825,24 @@ def chat(): # Synchronous function
             if image_url and not has_multimodal_message:
                 logger.info("ℹ️ image_url was provided but no multimodal message in final payload - correctly converted for non-multimodal model")
             
-            # Check final model and multimodal status match
+            # Check final model and multimodal status match with the database
             selected_model = payload.get('model', '')
             model_supports_multimodal = False
-            for indicator in MULTIMODAL_MODELS:
-                if indicator.lower() in selected_model.lower():
-                    model_supports_multimodal = True
-                    break
+            
+            # Query the database for this specific model
+            from models import OpenRouterModel
+            db_model = OpenRouterModel.query.filter_by(model_id=selected_model).first()
+            
+            if db_model:
+                # Use the is_multimodal flag from the database
+                model_supports_multimodal = db_model.is_multimodal
+            else:
+                # Fall back to a basic heuristic if the model isn't in the database
+                multimodal_indicators = ["claude-3", "claude-3.5", "claude-3.7", "gpt-4-vision", "gpt-4o", "gemini", "vision", "multimodal"]
+                for indicator in multimodal_indicators:
+                    if indicator.lower() in selected_model.lower():
+                        model_supports_multimodal = True
+                        break
             
             # Verify content format matches model capabilities
             if model_supports_multimodal != has_multimodal_message:
@@ -2273,61 +2208,92 @@ def chat(): # Synchronous function
 
 
 # --- Other Synchronous Routes (Keep As Is) ---
-# Helper function to fetch models from OpenRouter
+# Helper function to fetch models from OpenRouter and/or database
 def _fetch_openrouter_models():
-    """Fetch models from OpenRouter API"""
+    """
+    Fetch models from the database (primary) or OpenRouter API (fallback)
+    """
     try:
-        api_key = os.environ.get('OPENROUTER_API_KEY')
-        if not api_key:
-            logger.error("OPENROUTER_API_KEY not found")
-            return None
-
-        headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
-
-        logger.debug("Fetching models from OpenRouter...")
-        response = requests.get(
-            'https://openrouter.ai/api/v1/models',
-            headers=headers,
-            timeout=15.0 
-        )
-
-        response.raise_for_status() 
-        models_data = response.json()
+        # Import the model class
+        from models import OpenRouterModel
         
-        processed_models = []
-        for model in models_data.get('data', []):
-            model_id = model.get('id', '').lower()
-            model_name = model.get('name', '').lower()
-            model_description = model.get('description', '').lower()
-
-            try:
-                prompt_price = float(model.get('pricing', {}).get('prompt', '1.0'))
-            except (ValueError, TypeError):
-                prompt_price = 1.0 
-
-            model['is_free'] = ':free' in model_id or prompt_price == 0.0
-            model['is_multimodal'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
-                                        for keyword in ['vision', 'image', 'multi', 'gpt-4o'])
-            model['is_perplexity'] = 'perplexity/' in model_id
-            model['is_reasoning'] = any(keyword in model_id or keyword in model_name or keyword in model_description 
-                                        for keyword in ['reasoning', 'opus', 'o1', 'o3']) 
-            processed_models.append(model)
-
-        result_data = {"data": processed_models}
+        # Get models from the database first (primary source of truth)
+        db_models = OpenRouterModel.query.all()
         
-        # Update the cache
-        OPENROUTER_MODELS_CACHE["data"] = result_data
-        OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
+        # If we have models in the database, use them
+        if db_models and len(db_models) > 0:
+            logger.info(f"Using {len(db_models)} models from database")
+            
+            # Transform database models to API-compatible format
+            processed_models = []
+            for model in db_models:
+                processed_model = {
+                    'id': model.model_id,
+                    'name': model.name,
+                    'description': model.description,
+                    'context_length': model.context_length,
+                    'pricing': {
+                        'prompt': model.input_price_usd_million / 1000000,  # Convert from per-million to per-token
+                        'completion': model.output_price_usd_million / 1000000  # Convert from per-million to per-token
+                    },
+                    'is_free': model.is_free,
+                    'is_multimodal': model.is_multimodal,
+                    'is_perplexity': 'perplexity/' in model.model_id.lower(),
+                    'is_reasoning': model.supports_reasoning,
+                    'created_at': model.created_at.isoformat() if model.created_at else None,
+                    'updated_at': model.updated_at.isoformat() if model.updated_at else None
+                }
+                processed_models.append(processed_model)
+            
+            # Return API-compatible format
+            return {"data": processed_models}
         
-        # Also update OPENROUTER_MODELS_INFO for the non-authenticated user check
-        global OPENROUTER_MODELS_INFO
-        OPENROUTER_MODELS_INFO = processed_models
+        # Fallback to API if database is empty
+        # Try to update the database using price_updater
+        logger.warning("No models found in database, attempting to fetch from OpenRouter API")
+        from price_updater import fetch_and_store_openrouter_prices
         
-        logger.info(f"Fetched and cached {len(processed_models)} models from OpenRouter")
+        # Try to fetch and store prices
+        success = fetch_and_store_openrouter_prices()
         
-        return result_data
+        if success:
+            # Try again with database after successful update
+            db_models = OpenRouterModel.query.all()
+            if db_models and len(db_models) > 0:
+                logger.info(f"Successfully populated database with {len(db_models)} models from API")
+                
+                # Transform database models to API-compatible format (same as above)
+                processed_models = []
+                for model in db_models:
+                    processed_model = {
+                        'id': model.model_id,
+                        'name': model.name,
+                        'description': model.description,
+                        'context_length': model.context_length,
+                        'pricing': {
+                            'prompt': model.input_price_usd_million / 1000000,
+                            'completion': model.output_price_usd_million / 1000000
+                        },
+                        'is_free': model.is_free,
+                        'is_multimodal': model.is_multimodal,
+                        'is_perplexity': 'perplexity/' in model.model_id.lower(),
+                        'is_reasoning': model.supports_reasoning,
+                        'created_at': model.created_at.isoformat() if model.created_at else None,
+                        'updated_at': model.updated_at.isoformat() if model.updated_at else None
+                    }
+                    processed_models.append(processed_model)
+                
+                return {"data": processed_models}
+            else:
+                logger.error("Failed to populate database after API fetch")
+                return {"data": []}
+        else:
+            logger.error("Failed to fetch models from OpenRouter API")
+            return {"data": []}
+            
     except Exception as e:
-        logger.exception("Error fetching models from OpenRouter")
+        logger.exception(f"Error fetching models: {e}")
+        return {"data": []}
         return None
 
 @app.route('/api/get_model_prices', methods=['GET'])
@@ -2382,47 +2348,54 @@ def get_model_prices():
                     # Call this function again to return the database results
                     return get_model_prices()
             
-            # If no models in database and fetch failed, fall back to the old cache
-            logger.warning("Database is still empty, falling back to cache...")
-            prices = model_prices_cache.get('prices', {})
+            # If no models in database and fetch failed, we need a minimal fallback
+            logger.warning("Database is still empty and API fetch failed, providing minimal data")
             
-            # If cache is also empty, try to fetch directly (old method)
-            if not prices:
-                logger.warning("Cache is also empty, attempting direct API fetch...")
-                success = fetch_and_store_openrouter_prices()
-                prices = model_prices_cache.get('prices', {})
+            # Use a minimal set of default models
+            import datetime
+            prices = {}
             
-            # If still no prices, use the fallback data as a last resort
-            if not prices:
-                logger.warning("All data sources failed, using fallback data...")
-                prices = _generate_fallback_model_data()
+            # Add a few critical default models
+            # This is a fallback mechanism, not serving as primary data
+            # Claude 3.5 Sonnet
+            prices['anthropic/claude-3.5-sonnet'] = {
+                'input_price': 3.0,
+                'output_price': 15.0,
+                'context_length': 200000,
+                'is_multimodal': True,
+                'model_name': 'Claude 3.5 Sonnet',
+                'cost_band': '$$$',
+                'source': 'fallback'
+            }
             
-            # Ensure all models have cost bands
-            for model_id, model_data in prices.items():
-                if 'cost_band' not in model_data:
-                    # Calculate the cost band if not present
-                    input_price = model_data.get('input_price', 0) or 0
-                    output_price = model_data.get('output_price', 0) or 0
-                    max_cost = max(input_price, output_price)
-                    
-                    if max_cost >= 100.0:
-                        cost_band = '$$$$'
-                    elif max_cost >= 10.0:
-                        cost_band = '$$$'
-                    elif max_cost >= 1.0:
-                        cost_band = '$$'
-                    elif max_cost >= 0.01:
-                        cost_band = '$'
-                    else:
-                        cost_band = '' # Free
-                        
-                    model_data['cost_band'] = cost_band
+            # GPT-3.5 Turbo
+            prices['openai/gpt-3.5-turbo'] = {
+                'input_price': 0.5,
+                'output_price': 1.5,
+                'context_length': 16000,
+                'is_multimodal': False,
+                'model_name': 'GPT-3.5 Turbo',
+                'cost_band': '$',
+                'source': 'fallback'
+            }
             
-            # Return the modified prices dictionary and the last_updated timestamp
+            # Gemini Flash (free)
+            prices['google/gemini-2.0-flash-exp:free'] = {
+                'input_price': 0.0,
+                'output_price': 0.0,
+                'context_length': 8000,
+                'is_multimodal': False,
+                'model_name': 'Gemini 2.0 Flash (FREE)',
+                'cost_band': '',
+                'source': 'fallback'
+            }
+            
+            # Return the minimal fallback data with current timestamp
             return jsonify({
                 'success': True,
                 'prices': prices,
-                'last_updated': model_prices_cache.get('last_updated')
+                'last_updated': datetime.datetime.utcnow().isoformat(),
+                'source': 'fallback'
             })
             
     except Exception as e:
@@ -2431,129 +2404,6 @@ def get_model_prices():
             'success': False,
             'error': str(e)
         }), 500
-
-def _generate_fallback_model_data():
-    """
-    Generate fallback model data when OpenRouter API is unavailable.
-    This ensures the frontend can still function with essential models.
-    """
-    # Get current timestamp for the fallback data
-    current_time = datetime.now().isoformat()
-    
-    # Define fallback models with their properties
-    fallback_models = {
-        # GPT-4 Series
-        'openai/gpt-4o': {
-            'input_price': 10.0,
-            'output_price': 30.0,
-            'raw_input_price': 5.0,
-            'raw_output_price': 15.0,
-            'context_length': 128000,
-            'is_multimodal': True,
-            'model_name': 'GPT-4o',
-            'is_reasoning': True,
-            'cost_band': '$$$'
-        },
-        'openai/o4-Mini-High': {
-            'input_price': 2.0,
-            'output_price': 6.0,
-            'raw_input_price': 1.0,
-            'raw_output_price': 3.0,
-            'context_length': 128000,
-            'is_multimodal': False,
-            'model_name': 'GPT-4o Mini High',
-            'is_reasoning': True,
-            'cost_band': '$$'
-        },
-        # Claude Models
-        'anthropic/claude-3.7-sonnet': {
-            'input_price': 15.0,
-            'output_price': 60.0,
-            'raw_input_price': 7.5,
-            'raw_output_price': 30.0,
-            'context_length': 200000,
-            'is_multimodal': False,
-            'model_name': 'Claude 3.7 Sonnet',
-            'is_reasoning': True,
-            'cost_band': '$$$$'
-        },
-        'anthropic/claude-3.5-sonnet': {
-            'input_price': 3.0,
-            'output_price': 15.0,
-            'raw_input_price': 1.5,
-            'raw_output_price': 7.5,
-            'context_length': 200000,
-            'is_multimodal': True,
-            'model_name': 'Claude 3.5 Sonnet Vision',
-            'is_reasoning': True,
-            'cost_band': '$$$'
-        },
-        # Gemini Models
-        'google/gemini-2.5-pro-preview-03-25': {
-            'input_price': 14.0,
-            'output_price': 42.0,
-            'raw_input_price': 7.0,
-            'raw_output_price': 21.0,
-            'context_length': 100000,
-            'is_multimodal': True,
-            'model_name': 'Gemini 2.5 Pro Preview',
-            'is_reasoning': True,
-            'cost_band': '$$$$'
-        },
-        # Perplexity Models
-        'perplexity/sonar-pro': {
-            'input_price': 1.0,
-            'output_price': 6.0,
-            'raw_input_price': 0.5,
-            'raw_output_price': 3.0,
-            'context_length': 24000,
-            'is_multimodal': False,
-            'model_name': 'Perplexity Sonar Pro',
-            'is_perplexity': True,
-            'cost_band': '$$'
-        },
-        # Free Models
-        'google/gemini-2.0-flash-exp:free': {
-            'input_price': 0.0,
-            'output_price': 0.0,
-            'raw_input_price': 0.0,
-            'raw_output_price': 0.0,
-            'context_length': 8000,
-            'is_multimodal': False,
-            'model_name': 'Gemini 2.0 Flash (FREE)',
-            'is_free': True,
-            'cost_band': ''  # Empty cost band for free models
-        }
-    }
-    
-    # Model properties are now directly usable by frontend filtering
-    # Log that we're using fallback data
-    logger.warning(f"Using fallback data for {len(fallback_models)} essential models")
-    
-    # Also update OPENROUTER_MODELS_INFO for the non-authenticated user check
-    # Create a list of model info objects in the expected format
-    global OPENROUTER_MODELS_INFO
-    OPENROUTER_MODELS_INFO = []
-    
-    for model_id, model_data in fallback_models.items():
-        # Convert the fallback data format to match what would come from the API
-        model_info = {
-            'id': model_id,
-            'name': model_data.get('model_name', ''),
-            'description': '',
-            'pricing': {
-                'prompt': str(model_data.get('raw_input_price', 0) / 1000000),  # Convert back to per-token price
-                'completion': str(model_data.get('raw_output_price', 0) / 1000000)  # Convert back to per-token price
-            },
-            'context_length': model_data.get('context_length', 0),
-            'is_free': model_data.get('is_free', False),
-            'is_multimodal': model_data.get('is_multimodal', False)
-        }
-        OPENROUTER_MODELS_INFO.append(model_info)
-    
-    logger.info(f"Updated OPENROUTER_MODELS_INFO with {len(OPENROUTER_MODELS_INFO)} fallback models")
-    
-    return fallback_models
 
 @app.route('/api/refresh_model_prices', methods=['POST'])
 def refresh_model_prices():
@@ -2594,12 +2444,26 @@ def refresh_model_prices():
                     'message': f'Model prices refreshed successfully - {len(prices)} models updated'
                 })
             else:
-                # Fall back to the cache if database is empty
+                # No models in database despite successful fetch - provide minimal fallback
+                import datetime
+                # Create minimal fallback data
+                fallback_prices = {
+                    'google/gemini-2.0-flash-exp:free': {
+                        'input_price': 0.0,
+                        'output_price': 0.0,
+                        'context_length': 8000,
+                        'is_multimodal': False,
+                        'model_name': 'Gemini 2.0 Flash (FREE)',
+                        'cost_band': '',
+                        'source': 'fallback'
+                    }
+                }
                 return jsonify({
                     'success': True,
-                    'prices': model_prices_cache['prices'],
-                    'last_updated': model_prices_cache['last_updated'],
-                    'message': 'Model prices refreshed successfully (using cache fallback)'
+                    'prices': fallback_prices,
+                    'last_updated': datetime.datetime.utcnow().isoformat(),
+                    'message': 'Failed to store models in database, using minimal fallback',
+                    'source': 'fallback'
                 })
         else:
             return jsonify({
@@ -2723,9 +2587,11 @@ def get_model_pricing():
         # Sort models alphabetically for consistent display
         pricing_data.sort(key=lambda x: x['model_name'].lower())
         
-        # Use the timestamp from the database or fall back to cache
+        # Use the timestamp from the database or fall back to current time
         latest_model = OpenRouterModel.query.order_by(OpenRouterModel.last_fetched_at.desc()).first()
-        last_updated = latest_model.last_fetched_at.isoformat() if latest_model else model_prices_cache.get('last_updated')
+        
+        import datetime
+        last_updated = latest_model.last_fetched_at.isoformat() if latest_model else datetime.datetime.utcnow().isoformat()
         
         return jsonify({
             "data": pricing_data, 
@@ -2779,14 +2645,6 @@ def get_models():
                 
             # Create the response in the same format as the original API
             result_data = {"data": processed_models}
-            
-            # For backward compatibility, still update the cache
-            if 'OPENROUTER_MODELS_CACHE' in globals():
-                OPENROUTER_MODELS_CACHE["data"] = result_data
-                OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
-                
-            if 'OPENROUTER_MODELS_INFO' in globals():
-                OPENROUTER_MODELS_INFO = processed_models
                 
             logger.info(f"Retrieved {len(processed_models)} models from database")
             return jsonify(result_data)
@@ -2805,18 +2663,13 @@ def get_models():
                     # Recursively call this function to format and return the results
                     return get_models()
             
-            # If database is still empty after fetching, fall back to the old cache/API method
-            logger.warning("Database is still empty after fetch attempt, falling back to old method")
+            # If database is still empty after fetching, try one more API fetch as final resort
+            logger.warning("Database is still empty after fetch attempt, trying direct API fetch as final resort")
             
-            # Check cache first
-            if 'OPENROUTER_MODELS_CACHE' in globals() and OPENROUTER_MODELS_CACHE["data"] is not None:
-                logger.info("Using cached models as database fallback")
-                return jsonify(OPENROUTER_MODELS_CACHE["data"])
-                
-            # Last resort: try direct API fetch (old method)
-            logger.info("Attempting direct API fetch as final fallback")
+            # Use the _fetch_openrouter_models function directly (which now also attempts to store in DB)
             result_data = _fetch_openrouter_models()
-            if result_data:
+            if result_data and result_data.get("data"):
+                logger.info(f"Successfully fetched {len(result_data.get('data', []))} models via direct API fetch")
                 return jsonify(result_data)
             
             # If all else failed
@@ -2829,12 +2682,7 @@ def get_models():
     except Exception as e:
         logger.exception(f"Error in get_models: {e}")
         
-        # Try to return cached data if available during exception
-        if 'OPENROUTER_MODELS_CACHE' in globals() and OPENROUTER_MODELS_CACHE.get("data") is not None:
-            logger.info("Using cached data during exception handling")
-            return jsonify(OPENROUTER_MODELS_CACHE["data"])
-            
-        # If all else fails, return a friendly error
+        # Return a friendly error
         return jsonify({
             "error": "Failed to retrieve models",
             "message": "Please try refreshing the page or contact support if the problem persists."
