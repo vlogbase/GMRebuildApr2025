@@ -139,6 +139,31 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 # Initialize SQLAlchemy with the app
 db.init_app(app)
 
+# Create or update database tables for models
+with app.app_context():
+    db.create_all()
+    
+    # Run OpenRouter model migrations if needed
+    try:
+        logger.info("Checking if OpenRouter model migrations are needed...")
+        # Check if the OpenRouterModel table exists
+        from sqlalchemy import inspect
+        inspector = inspect(db.engine)
+        if not inspector.has_table('open_router_model'):
+            logger.info("OpenRouterModel table not found, running migrations...")
+            # Import and run the migrations
+            from migrations_openrouter_model import run_migrations
+            success = run_migrations()
+            if success:
+                logger.info("OpenRouter model migrations completed successfully")
+            else:
+                logger.warning("OpenRouter model migrations failed, model data may not be available")
+        else:
+            logger.info("OpenRouterModel table already exists, skipping migrations")
+    except Exception as e:
+        logger.exception(f"Error checking or running OpenRouter migrations: {e}")
+        # Continue anyway as this is not critical for application startup
+
 # Initialize LoginManager
 login_manager = LoginManager()
 login_manager.init_app(app)

@@ -25,9 +25,13 @@ model_prices_cache = {
 
 def fetch_and_store_openrouter_prices() -> bool:
     """
-    Fetch current model prices from OpenRouter API and store them in the cache.
-    This function also updates the global OPENROUTER_MODELS_INFO variable
-    to ensure consistent model data across the application.
+    Fetch current model prices from OpenRouter API and store them in the database.
+    
+    This function now:
+    1. Fetches models from the OpenRouter API
+    2. Stores them in the database using the OpenRouterModel model
+    3. Also updates the legacy cache for backward compatibility
+    4. Updates the global OPENROUTER_MODELS_INFO variable for consistency
     
     Returns:
         bool: True if successful, False otherwise
