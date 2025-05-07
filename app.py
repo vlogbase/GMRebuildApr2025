@@ -2348,65 +2348,101 @@ def _fetch_openrouter_models():
 
 @app.route('/api/get_model_prices', methods=['GET'])
 def get_model_prices():
-    """ Get the current model prices from our dynamic pricing system """
+    """ 
+    Get the current model prices from the database
+    This is an updated implementation that uses the database as the primary source
+    """
     try:
-        # Get the cached prices
-        prices = model_prices_cache.get('prices', {})
+        # First try to get the model prices from the database
+        from models import OpenRouterModel
         
-        # Log the state of the prices cache
-        logger.debug(f"get_model_prices called. Cache has {len(prices)} models.")
+        # Query all models from the database
+        db_models = OpenRouterModel.query.all()
         
-        # If prices is empty, try to fetch them immediately
-        if not prices:
-            logger.warning("Prices cache is empty, attempting to fetch from OpenRouter API...")
+        if db_models:
+            # Convert database models to the expected format
+            prices = {}
+            for db_model in db_models:
+                prices[db_model.model_id] = {
+                    'input_price': db_model.input_price_usd_million,
+                    'output_price': db_model.output_price_usd_million,
+                    'context_length': db_model.context_length,
+                    'is_multimodal': db_model.is_multimodal,
+                    'model_name': db_model.name,
+                    'cost_band': db_model.cost_band,
+                    'source': 'database'
+                }
+            
+            # Use the timestamp of the most recently updated model
+            latest_model = OpenRouterModel.query.order_by(OpenRouterModel.last_fetched_at.desc()).first()
+            last_updated = latest_model.last_fetched_at.isoformat() if latest_model else None
+            
+            logger.info(f"Retrieved prices for {len(prices)} models from database")
+            
+            # Return the model prices from the database
+            return jsonify({
+                'success': True,
+                'prices': prices,
+                'last_updated': last_updated
+            })
+            
+        else:
+            # If no models in the database, try to fetch them
+            logger.warning("No models found in database, fetching from API...")
             success = fetch_and_store_openrouter_prices()
             
-            # Get the updated prices
+            if success:
+                # Check if models were added to the database
+                db_models = OpenRouterModel.query.all()
+                if db_models:
+                    # Call this function again to return the database results
+                    return get_model_prices()
+            
+            # If no models in database and fetch failed, fall back to the old cache
+            logger.warning("Database is still empty, falling back to cache...")
             prices = model_prices_cache.get('prices', {})
             
-            # Log the result of the fetch attempt
-            if success:
-                logger.info(f"Successfully fetched prices for {len(prices)} models.")
-            else:
-                logger.error("Failed to fetch prices from OpenRouter API.")
-            
-            # If still empty after fetch attempt, use fallback data for essential models
+            # If cache is also empty, try to fetch directly (old method)
             if not prices:
-                logger.warning("Using fallback model data since API fetch failed.")
+                logger.warning("Cache is also empty, attempting direct API fetch...")
+                success = fetch_and_store_openrouter_prices()
+                prices = model_prices_cache.get('prices', {})
+            
+            # If still no prices, use the fallback data as a last resort
+            if not prices:
+                logger.warning("All data sources failed, using fallback data...")
                 prices = _generate_fallback_model_data()
-        
-        # Iterate through the prices dictionary to add cost bands
-        for model_id, model_data in prices.items():
-            # Safely get the markup-adjusted input and output costs (per million tokens), defaulting to 0
-            input_price = model_data.get('input_price', 0) or 0
-            output_price = model_data.get('output_price', 0) or 0
             
-            # Calculate the maximum cost
-            max_cost = max(input_price, output_price)
+            # Ensure all models have cost bands
+            for model_id, model_data in prices.items():
+                if 'cost_band' not in model_data:
+                    # Calculate the cost band if not present
+                    input_price = model_data.get('input_price', 0) or 0
+                    output_price = model_data.get('output_price', 0) or 0
+                    max_cost = max(input_price, output_price)
+                    
+                    if max_cost >= 100.0:
+                        cost_band = '$$$$'
+                    elif max_cost >= 10.0:
+                        cost_band = '$$$'
+                    elif max_cost >= 1.0:
+                        cost_band = '$$'
+                    elif max_cost >= 0.01:
+                        cost_band = '$'
+                    else:
+                        cost_band = '' # Free
+                        
+                    model_data['cost_band'] = cost_band
             
-            # Determine the cost_band string based on thresholds
-            if max_cost >= 100.0:
-                cost_band = '$$$$'
-            elif max_cost >= 10.0:
-                cost_band = '$$$'
-            elif max_cost >= 1.0:
-                cost_band = '$$'
-            elif max_cost >= 0.01:
-                cost_band = '$'
-            else:
-                cost_band = '' # Free
-                
-            # Add the calculated band to the model's data
-            model_data['cost_band'] = cost_band
-        
-        # Return the modified prices dictionary and the last_updated timestamp
-        return jsonify({
-            'success': True,
-            'prices': prices,
-            'last_updated': model_prices_cache.get('last_updated')
-        })
+            # Return the modified prices dictionary and the last_updated timestamp
+            return jsonify({
+                'success': True,
+                'prices': prices,
+                'last_updated': model_prices_cache.get('last_updated')
+            })
+            
     except Exception as e:
-        logger.error(f"Error getting model prices: {e}")
+        logger.exception(f"Error getting model prices: {e}")
         return jsonify({
             'success': False,
             'error': str(e)
@@ -2673,43 +2709,103 @@ def get_model_pricing():
 
 @app.route('/models', methods=['GET'])
 def get_models():
-    """ Fetch available models """
+    """ 
+    Fetch available models from the database
+    This is an updated implementation that uses the database as the primary source
+    """
     try:
-        # Check for existing cached data regardless of expiry
-        has_cached_data = OPENROUTER_MODELS_CACHE["data"] is not None
+        from models import OpenRouterModel
         
-        # Check if we should use cached data (not expired)
-        current_time = time.time()
-        cache_fresh = has_cached_data and (current_time - OPENROUTER_MODELS_CACHE["timestamp"]) < OPENROUTER_MODELS_CACHE["expiry"]
+        # Query all models from the database
+        db_models = OpenRouterModel.query.order_by(OpenRouterModel.name).all()
         
-        if cache_fresh:
-            # Use fresh cached data
-            logger.debug("Returning cached models (still fresh)")
-            return jsonify(OPENROUTER_MODELS_CACHE["data"])
-        
-        # Fetch fresh data from OpenRouter
-        logger.info("Fetching fresh models data from OpenRouter")
-        result_data = _fetch_openrouter_models()
-        
-        # If the API call failed but we have cached data, use it as fallback
-        if not result_data and has_cached_data:
-            logger.info("API request failed, using older cached models data as fallback")
-            return jsonify(OPENROUTER_MODELS_CACHE["data"])
-        
-        # If no data at all (no cache, API failed)
-        if not result_data:
-            logger.error("Failed to fetch models from OpenRouter API and no cache available")
-            abort(500, description="Failed to fetch models from OpenRouter")
+        if db_models:
+            # Convert SQLAlchemy models to the format expected by the frontend
+            processed_models = []
+            for db_model in db_models:
+                # Create a model data dict in the format expected by the frontend
+                model_data = {
+                    'id': db_model.model_id,
+                    'name': db_model.name,
+                    'description': db_model.description or '',
+                    'context_length': db_model.context_length,
+                    'pricing': {
+                        # Convert back to per-token pricing from per-million
+                        'prompt': str(db_model.input_price_usd_million / 1000000),
+                        'completion': str(db_model.output_price_usd_million / 1000000)
+                    },
+                    'is_multimodal': db_model.is_multimodal,
+                    'is_free': db_model.input_price_usd_million == 0 and db_model.output_price_usd_million == 0,
+                    'is_perplexity': 'perplexity/' in db_model.model_id.lower(),
+                    'is_reasoning': any(keyword in db_model.model_id.lower() or 
+                                       (db_model.name and keyword in db_model.name.lower()) or 
+                                       (db_model.description and keyword in db_model.description.lower())
+                                       for keyword in ['reasoning', 'opus', 'o1', 'o3'])
+                }
+                processed_models.append(model_data)
+                
+            # Create the response in the same format as the original API
+            result_data = {"data": processed_models}
             
-        return jsonify(result_data)
+            # For backward compatibility, still update the cache
+            if 'OPENROUTER_MODELS_CACHE' in globals():
+                OPENROUTER_MODELS_CACHE["data"] = result_data
+                OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
+                
+            if 'OPENROUTER_MODELS_INFO' in globals():
+                OPENROUTER_MODELS_INFO = processed_models
+                
+            logger.info(f"Retrieved {len(processed_models)} models from database")
+            return jsonify(result_data)
+            
+        else:
+            # If no models in database, trigger a fetch from the API
+            logger.warning("No models found in database, fetching from API...")
+            from price_updater import fetch_and_store_openrouter_prices
+            success = fetch_and_store_openrouter_prices()
+            
+            if success:
+                # Try to fetch from database again
+                db_models = OpenRouterModel.query.order_by(OpenRouterModel.name).all()
+                if db_models:
+                    logger.info(f"Successfully fetched and stored {len(db_models)} models")
+                    # Recursively call this function to format and return the results
+                    return get_models()
+            
+            # If database is still empty after fetching, fall back to the old cache/API method
+            logger.warning("Database is still empty after fetch attempt, falling back to old method")
+            
+            # Check cache first
+            if 'OPENROUTER_MODELS_CACHE' in globals() and OPENROUTER_MODELS_CACHE["data"] is not None:
+                logger.info("Using cached models as database fallback")
+                return jsonify(OPENROUTER_MODELS_CACHE["data"])
+                
+            # Last resort: try direct API fetch (old method)
+            logger.info("Attempting direct API fetch as final fallback")
+            result_data = _fetch_openrouter_models()
+            if result_data:
+                return jsonify(result_data)
+            
+            # If all else failed
+            logger.error("All methods failed to retrieve model data")
+            return jsonify({
+                "error": "Failed to retrieve models",
+                "message": "We're experiencing temporary issues. Please try again in a few minutes."
+            }), 200  # Using 200 so frontend can handle gracefully
 
     except Exception as e:
-        logger.exception("Error in get_models")
+        logger.exception(f"Error in get_models: {e}")
+        
         # Try to return cached data if available during exception
-        if OPENROUTER_MODELS_CACHE["data"] is not None:
-            logger.info("Using cached data during exception handling for models endpoint")
+        if 'OPENROUTER_MODELS_CACHE' in globals() and OPENROUTER_MODELS_CACHE.get("data") is not None:
+            logger.info("Using cached data during exception handling")
             return jsonify(OPENROUTER_MODELS_CACHE["data"])
-        abort(500, description=f"Server error processing models: {e}")
+            
+        # If all else fails, return a friendly error
+        return jsonify({
+            "error": "Failed to retrieve models",
+            "message": "Please try refreshing the page or contact support if the problem persists."
+        }), 200  # Using 200 so frontend can handle gracefully
 
 
 @app.route('/save_preference', methods=['POST'])
