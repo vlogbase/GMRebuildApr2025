@@ -434,37 +434,24 @@
     }
 }
 
-// Run on DOMContentLoaded and whenever the tab becomes visible
+// Run only when the Tell a Friend tab is active
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired in tell_friend_tab.html');
     
-    // Run once on page load
-    initializeTellFriendTab();
-    
-    // Also run when tab is activated
-    const tellFriendTabBtn = document.getElementById('tellFriendTabBtn');
-    if (tellFriendTabBtn) {
-        console.log('Found Tell a Friend tab button, adding additional click handler');
-        tellFriendTabBtn.addEventListener('click', function() {
-            console.log('Tell a Friend tab clicked, reinitializing tab functions');
-            // Wait a bit for the DOM to update before reinitializing
-            setTimeout(initializeTellFriendTab, 100);
-        });
+    // Only initialize when this tab is actually visible
+    if (document.getElementById('tellFriend').classList.contains('active')) {
+        initializeTellFriendTab();
     }
     
-    // Handle openTab function in the global scope of account.html
-    if (typeof window.openTab === 'function') {
-        const originalOpenTab = window.openTab;
-        window.openTab = function(tabName, event) {
-            originalOpenTab(tabName, event);
-            
-            // If switching to the Tell a Friend tab, initialize it
-            if (tabName === 'tellFriend') {
-                console.log('openTab function switched to tellFriend, reinitializing');
-                setTimeout(initializeTellFriendTab, 100);
-            }
-        };
-    }
+    // Don't attach event listeners to elements outside this tab's scope
+    // Instead, we'll rely on the global tab switching in account.html
+    
+    // Define a global function to initialize this tab content
+    // This can be called from account.html when the tab is activated
+    window.initializeTellFriendTabContent = function() {
+        console.log('Tell a Friend tab activated, initializing content');
+        initializeTellFriendTab();
+    };
 });
 </script>
 </div>

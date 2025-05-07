@@ -637,7 +637,11 @@ document.addEventListener('DOMContentLoaded', function() {
             event.preventDefault();  // Prevent default anchor behavior
             console.log('Tell a Friend tab button clicked');
             
-            // Hide all tab panes
+            // Use the main tab switching function for consistency
+            openTab('tellFriend', event);
+            return;
+            
+            // REMOVED: Custom tab handling - now using openTab function instead
             const tabPanes = document.querySelectorAll('.tab-pane');
             tabPanes.forEach(pane => {
                 pane.classList.remove('active');
@@ -798,6 +802,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const tellFriendTab = document.getElementById('tellFriend');
             if (tellFriendTab) {
                 tellFriendTab.style.display = 'block';
+                // Call the initialization function if it exists
+                if (typeof window.initializeTellFriendTabContent === 'function') {
+                    window.initializeTellFriendTabContent();
+                }
             }
         }
     }
