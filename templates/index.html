@@ -40,7 +40,7 @@
                         <div class="user-name">{{ current_user.username }}</div>
                         <div class="user-email">{{ current_user.email }}</div>
                         <div class="user-actions">
-                            <a href="/billing/account" class="account-link">
+                            <a href="{{ url_for('billing.account_management') }}" class="account-link">
                                 <i class="fa-solid fa-credit-card"></i> Credits: ${{ current_user.get_balance_usd()|round(2) }}
                             </a>
                         </div>

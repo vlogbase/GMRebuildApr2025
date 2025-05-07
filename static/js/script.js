@@ -282,14 +282,14 @@ document.addEventListener('DOMContentLoaded', function() {
         '6': (model) => model.is_free === true || model.id.includes(':free') // Include all free models, check model ID for :free suffix too
     };
     
-    // Default model IDs for each preset button
+    // Default model IDs for each preset button - must match DEFAULT_PRESET_MODELS in app.py
     const defaultModels = {
-        '1': 'google/gemini-2.5-pro-preview-03-25',
-        '2': 'meta/llama-4-maverick',
-        '3': 'openai/o4-Mini-High',
-        '4': 'openai/gpt-4o', // Vision model for multimodal capabilities
-        '5': 'perplexity/sonar-pro',
-        '6': 'google/gemini-2.0-flash-exp:free'
+        '1': 'google/gemini-pro-vision', // Default multimodal model
+        '2': 'anthropic/claude-3-haiku-20240307', // Fast, good quality
+        '3': 'anthropic/claude-3-sonnet-20240229', // High quality
+        '4': 'openai/gpt-4o-2024-05-13', // Premium quality
+        '5': 'meta-llama/llama-3-8b', // Open model
+        '6': 'google/gemini-flash:free' // Free model
     };
     
     // Free model fallbacks (in order of preference)

@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import uuid
 import secrets
 import string
+import logging
 from app import db
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import UserMixin
