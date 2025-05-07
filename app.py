@@ -230,6 +230,9 @@ OPENROUTER_MODELS_CACHE = {
     "expiry": 86400  # Cache expiry in seconds (24 hours)
 }
 
+# This is needed for the non-authenticated user check in the chat endpoint
+OPENROUTER_MODELS_INFO = []
+
 # Initialize the scheduler for background tasks
 scheduler = BackgroundScheduler()
 scheduler.add_job(
@@ -238,6 +241,20 @@ scheduler.add_job(
     minutes=30, 
     id='fetch_model_prices_job'
 )
+
+# Initial fetch of model data at startup
+logger.info("Performing initial fetch of OpenRouter models at startup")
+try:
+    # Initial model information fetch
+    _fetch_openrouter_models()
+    logger.info("Initial OpenRouter models fetch completed")
+    
+    # Initial price information fetch
+    fetch_and_store_openrouter_prices()
+    logger.info("Initial OpenRouter price fetch completed")
+except Exception as e:
+    logger.error(f"Error during initial data fetch: {e}")
+    logger.warning("Application will use fallback model data until a successful refresh")
 
 # Register scheduler shutdown with app exit
 @atexit.register
@@ -1006,13 +1023,31 @@ def chat(): # Synchronous function
         
         # For non-authenticated users, force the free model
         if not current_user.is_authenticated:
-            # Check if the model ID contains the ':free' suffix, which indicates it's a free model
-            is_free_model = ':free' in model_id.lower()
-            # Also check our known list of free models
-            if not is_free_model and model_id not in FREE_MODEL_FALLBACKS:
-                # If not a free model, override with a default free model
+            is_free_model = False
+            
+            # First check: If the model ID contains the ':free' suffix
+            if ':free' in model_id.lower():
+                is_free_model = True
+                logger.debug(f"Model {model_id} identified as free by suffix")
+                
+            # Second check: If the model is in our known free models list
+            elif model_id in FREE_MODEL_FALLBACKS:
+                is_free_model = True
+                logger.debug(f"Model {model_id} identified as free from FREE_MODEL_FALLBACKS")
+                
+            # Third check: Check against OpenRouter's model info (if available)
+            elif OPENROUTER_MODELS_INFO:
+                # Look for this model in the OpenRouter data
+                model_info = next((model for model in OPENROUTER_MODELS_INFO if model.get('id') == model_id), None)
+                if model_info and model_info.get('is_free', False):
+                    is_free_model = True
+                    logger.debug(f"Model {model_id} identified as free from OpenRouter API data")
+
+            # If it's not a free model, override with the default free model
+            if not is_free_model:
+                old_model = model_id  # Save for logging
                 model_id = DEFAULT_PRESET_MODELS.get('6', 'google/gemini-2.0-flash-exp:free')
-                logger.info(f"Non-authenticated user restricted to free model: {model_id}")
+                logger.info(f"Non-authenticated user restricted to free model: {model_id} (was: {old_model})")
 
         from models import Conversation, Message # Ensure models are imported
 
@@ -1805,6 +1840,11 @@ def _fetch_openrouter_models():
         # Update the cache
         OPENROUTER_MODELS_CACHE["data"] = result_data
         OPENROUTER_MODELS_CACHE["timestamp"] = time.time()
+        
+        # Also update OPENROUTER_MODELS_INFO for the non-authenticated user check
+        global OPENROUTER_MODELS_INFO
+        OPENROUTER_MODELS_INFO = processed_models
+        
         logger.info(f"Fetched and cached {len(processed_models)} models from OpenRouter")
         
         return result_data
@@ -1975,6 +2015,29 @@ def _generate_fallback_model_data():
     # Model properties are now directly usable by frontend filtering
     # Log that we're using fallback data
     logger.warning(f"Using fallback data for {len(fallback_models)} essential models")
+    
+    # Also update OPENROUTER_MODELS_INFO for the non-authenticated user check
+    # Create a list of model info objects in the expected format
+    global OPENROUTER_MODELS_INFO
+    OPENROUTER_MODELS_INFO = []
+    
+    for model_id, model_data in fallback_models.items():
+        # Convert the fallback data format to match what would come from the API
+        model_info = {
+            'id': model_id,
+            'name': model_data.get('model_name', ''),
+            'description': '',
+            'pricing': {
+                'prompt': str(model_data.get('raw_input_price', 0) / 1000000),  # Convert back to per-token price
+                'completion': str(model_data.get('raw_output_price', 0) / 1000000)  # Convert back to per-token price
+            },
+            'context_length': model_data.get('context_length', 0),
+            'is_free': model_data.get('is_free', False),
+            'is_multimodal': model_data.get('is_multimodal', False)
+        }
+        OPENROUTER_MODELS_INFO.append(model_info)
+    
+    logger.info(f"Updated OPENROUTER_MODELS_INFO with {len(OPENROUTER_MODELS_INFO)} fallback models")
     
     return fallback_models
 
