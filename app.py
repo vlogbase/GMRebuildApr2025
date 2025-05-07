@@ -463,6 +463,10 @@ def generate_summary(conversation_id, retry_attempt=0, max_retries=2):
         retry_attempt: Current retry attempt number (default 0)
         max_retries: Maximum number of retries (default 2)
     """
+    # Import necessary modules here to avoid potential conflicts
+    # Note: Using global json module instead of reimporting
+    import traceback
+    
     print(f"[SUMMARIZE {conversation_id}] Function called. Retry attempt: {retry_attempt}/{max_retries}") # Enhanced logging
     print(f"DEBUG: generate_summary - ENTERED with conv_id: {conversation_id}")
     logger.info(f"DEBUG: generate_summary - ENTERED with conv_id: {conversation_id}")
@@ -1914,8 +1918,8 @@ def chat(): # Synchronous function
 
         # --- Define the SYNC Generator using requests ---
         def generate():
-            # Import json module inside the function scope to avoid NameError
-            import json
+            # Use the global json module to avoid reimport issues
+            # import json - removed reimport to avoid potential conflicts
             
             assistant_response_content = [] 
             final_prompt_tokens = None
@@ -2098,12 +2102,16 @@ def chat(): # Synchronous function
                                     if content_chunk:
                                         assistant_response_content.append(content_chunk)
                                         # Yield content chunk to the client
-                                        yield f"data: {json.dumps({'type': 'content', 'content': content_chunk, 'conversation_id': current_conv_id})}\n\n"
+                                        content_payload = {'type': 'content', 'content': content_chunk, 'conversation_id': current_conv_id}
+                                        content_json_str = json.dumps(content_payload)
+                                        yield f"data: {content_json_str}\n\n"
                                     
                                     # Handle reasoning chunk
                                     if reasoning_chunk:
                                         # Yield reasoning chunk to the client
-                                        yield f"data: {json.dumps({'type': 'reasoning', 'reasoning': reasoning_chunk, 'conversation_id': current_conv_id})}\n\n"
+                                        reasoning_payload = {'type': 'reasoning', 'reasoning': reasoning_chunk, 'conversation_id': current_conv_id}
+                                        reasoning_json_str = json.dumps(reasoning_payload)
+                                        yield f"data: {reasoning_json_str}\n\n"
 
                                     # --- Extract Usage/Model ---
                                     if 'usage' in json_data and json_data['usage']: 
@@ -2127,7 +2135,9 @@ def chat(): # Synchronous function
                                         continue
                                     
                                     # Otherwise, treat it as a real error
-                                    yield f"data: {json.dumps({'type': 'error', 'error': 'JSON parsing error'})}\n\n"
+                                    error_payload = {'type': 'error', 'error': 'JSON parsing error'}
+                                    error_json_str = json.dumps(error_payload)
+                                    yield f"data: {error_json_str}\n\n"
                                     return # Stop generation on genuine parsing error
 
                 # --- Stream processing finished ---
