@@ -7,46 +7,66 @@
             <!-- For active affiliates who have agreed to terms -->
             <div class="mb-4">
                 <h5 class="mb-3">Your Referral Link</h5>
-                <div class="input-group mb-3">
-                    <input type="text" class="form-control custom-amount-input" id="referralLink" 
+                <div class="input-group mb-2">
+                    <input type="text" class="custom-amount-input" id="referralLink" 
                            value="{{ request.host_url }}?ref={{ affiliate.referral_code }}" readonly>
-                    <button class="btn btn-outline-secondary" type="button" id="copyReferralLink">
+                    <button class="btn" type="button" id="copyReferralLink" style="background-color: var(--accent-color); color: var(--text-color); border: none;">
                         <i class="fas fa-copy"></i> Copy
                     </button>
                 </div>
-                <p class="text-muted small">Share this link to earn commissions on your friends' purchases.</p>
+                <p style="color: var(--secondary-text); font-size: 0.85rem;">Share this link to earn commissions on your friends' purchases.</p>
             </div>
             
-            <div class="mb-4 p-3 border rounded bg-light">
-                <h6><i class="fas fa-lightbulb text-warning"></i> Quick Tip</h6>
-                <p class="small mb-0">Want to share a specific page or chat? Just add <code>?ref={{ affiliate.referral_code }}</code> to the end of any GloriaMundo URL!</p>
+            <div class="mb-4" style="background-color: rgba(36, 185, 189, 0.1); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem;">
+                <h6 style="display: flex; align-items: center; color: var(--text-color);">
+                    <i class="fas fa-lightbulb text-warning me-2"></i> Quick Tip
+                </h6>
+                <p style="color: var(--secondary-text); font-size: 0.85rem; margin-bottom: 0;">
+                    Want to share a specific page or chat? Just add <code style="background-color: var(--input-bg); color: var(--accent-color); padding: 2px 4px; border-radius: 4px;">?ref={{ affiliate.referral_code }}</code> to the end of any GloriaMundo URL!
+                </p>
             </div>
             
             <div class="mb-4">
                 <h5 class="mb-3">Commission Summary</h5>
-                <div class="row mb-3 text-center">
-                    <div class="col">
-                        <div class="p-3 border rounded bg-light">
-                            <h2 class="text-primary mb-1">{{ commission_stats.total_earned | default('$0.00') }}</h2>
-                            <p class="text-muted mb-0 small">Total Earned</p>
+                <div class="row mb-3">
+                    <!-- Total Earned Stat Card -->
+                    <div class="col-md-4 mb-3">
+                        <div style="background-color: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; text-align: center; height: 100%;">
+                            <h6 style="color: var(--secondary-text); font-size: 0.85rem; margin-bottom: 0.5rem;">Total Earned</h6>
+                            <div style="font-size: 1.5rem; font-weight: 600; color: var(--accent-color);">
+                                {{ commission_stats.total_earned | default('$0.00') }}
+                            </div>
                         </div>
                     </div>
-                    <div class="col">
-                        <div class="p-3 border rounded bg-light">
-                            <h2 class="text-primary mb-1">{{ commission_stats.pending | default('$0.00') }}</h2>
-                            <p class="text-muted mb-0 small">Pending</p>
+                    
+                    <!-- Pending Commissions Stat Card -->
+                    <div class="col-md-4 mb-3">
+                        <div style="background-color: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; text-align: center; height: 100%;">
+                            <h6 style="color: var(--secondary-text); font-size: 0.85rem; margin-bottom: 0.5rem;">Pending</h6>
+                            <div style="font-size: 1.5rem; font-weight: 600; color: var(--accent-color);">
+                                {{ commission_stats.pending | default('$0.00') }}
+                            </div>
                         </div>
                     </div>
-                    <div class="col">
-                        <div class="p-3 border rounded bg-light">
-                            <h2 class="text-primary mb-1">{{ commission_stats.referrals | default('0') }}</h2>
-                            <p class="text-muted mb-0 small">Referrals</p>
+                    
+                    <!-- Referrals Stat Card -->
+                    <div class="col-md-4 mb-3">
+                        <div style="background-color: var(--input-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; text-align: center; height: 100%;">
+                            <h6 style="color: var(--secondary-text); font-size: 0.85rem; margin-bottom: 0.5rem;">Referrals</h6>
+                            <div style="font-size: 1.5rem; font-weight: 600; color: var(--accent-color);">
+                                {{ commission_stats.referrals | default('0') }}
+                            </div>
                         </div>
                     </div>
                 </div>
-                <a href="{{ url_for('affiliate.dashboard') }}" class="btn btn-outline-primary w-100 mb-2">
-                    <i class="fas fa-chart-line me-2"></i> View Full Dashboard
-                </a>
+                
+                <!-- Dashboard Button -->
+                <div class="text-center">
+                    <a href="{{ url_for('affiliate.dashboard') }}" 
+                       style="display: inline-block; background-color: transparent; color: var(--accent-color); border: 1px solid var(--accent-color); border-radius: 4px; padding: 0.5rem 1.5rem; text-decoration: none; transition: background-color 0.2s;">
+                        <i class="fas fa-chart-line me-2"></i> View Full Dashboard
+                    </a>
+                </div>
             </div>
 
             <div class="mb-4">
@@ -54,11 +74,13 @@
                 <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
-                        <input type="email" class="form-control custom-amount-input" name="paypal_email" 
+                        <input type="email" class="custom-amount-input" name="paypal_email" 
                                placeholder="your-email@example.com" value="{{ affiliate.paypal_email or '' }}" required>
-                        <div class="form-text">We'll send your commission payments to this PayPal email address.</div>
+                        <div style="color: var(--secondary-text); font-size: 0.85rem; margin-top: 0.5rem;">
+                            We'll send your commission payments to this PayPal email address.
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" style="background-color: var(--accent-color); color: var(--text-color); border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer; transition: background-color 0.2s;">
                         {% if affiliate.paypal_email %}Update{% else %}Save{% endif %} PayPal Email
                     </button>
                 </form>
@@ -68,49 +90,62 @@
             <!-- For new affiliates who haven't agreed to terms yet -->
             <div class="mb-4">
                 <h5 class="mb-3">Welcome to the Affiliate Program!</h5>
-                <p>Share GloriaMundo with your friends, followers, or audience and earn commission on their purchases.</p>
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i> Your referral code is ready, but you need to agree to our Terms &amp; Conditions first.
+                <p style="color: var(--secondary-text); line-height: 1.5;">
+                    Share GloriaMundo with your friends, followers, or audience and earn commission on their purchases.
+                </p>
+                <div style="background-color: rgba(36, 185, 189, 0.1); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; display: flex; align-items: flex-start;">
+                    <i class="fas fa-info-circle me-2" style="color: var(--accent-color); margin-top: 0.25rem;"></i>
+                    <div>Your referral code is ready, but you need to agree to our Terms &amp; Conditions first.</div>
                 </div>
             </div>
             
             <div class="mb-4">
                 <h5 class="mb-3">Referral Code Preview</h5>
-                <div class="input-group mb-3">
-                    <input type="text" class="form-control custom-amount-input" disabled
+                <div class="input-group mb-2" style="opacity: 0.7;">
+                    <input type="text" class="custom-amount-input" disabled
                            value="{{ affiliate.referral_code if affiliate else 'Your referral code will appear here' }}" 
-                           style="color: #aaa; background-color: #f5f5f5;">
-                    <button class="btn btn-outline-secondary" type="button" disabled>
+                           style="filter: blur(1px);">
+                    <button class="btn" type="button" disabled
+                            style="background-color: var(--button-bg); color: var(--secondary-text); border: 1px solid var(--border-color);">
                         <i class="fas fa-copy"></i> Copy
                     </button>
                 </div>
-                <p class="text-muted small">This will be activated once you agree to the Terms &amp; Conditions.</p>
+                <p style="color: var(--secondary-text); font-size: 0.85rem;">
+                    This will be activated once you agree to the Terms &amp; Conditions.
+                </p>
             </div>
             
-            <div class="mb-4">
+            <div class="mb-4" style="background-color: rgba(36, 185, 189, 0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 1.5rem;">
                 <h5 class="mb-3">Activate Your Affiliate Status</h5>
                 <form action="{{ url_for('affiliate.agree_to_terms') }}" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
-                        <label for="paypal_email" class="form-label">Your PayPal Email for Payouts (Optional)</label>
-                        <input type="email" class="form-control custom-amount-input" id="paypal_email" name="paypal_email" 
+                        <label for="paypal_email" class="form-label" style="display: block; margin-bottom: 0.5rem; color: var(--text-color);">
+                            Your PayPal Email for Payouts (Optional)
+                        </label>
+                        <input type="email" class="custom-amount-input" id="paypal_email" name="paypal_email" 
                                placeholder="your-email@example.com">
-                        <div class="form-text">We'll send your commission payments to this PayPal email. You can also add this later.</div>
+                        <div style="color: var(--secondary-text); font-size: 0.85rem; margin-top: 0.5rem;">
+                            We'll send your commission payments to this PayPal email. You can also add this later.
+                        </div>
                     </div>
                     
                     <div class="mb-3">
-                        <a href="{{ url_for('affiliate.terms') }}" target="_blank" class="d-block mb-2">
+                        <a href="{{ url_for('affiliate.terms') }}" target="_blank" 
+                           style="color: var(--accent-color); text-decoration: none; display: inline-block; margin-bottom: 0.75rem;">
                             Read our Affiliate Terms &amp; Conditions
                         </a>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="agreeToTerms" name="agree_to_terms" required>
-                            <label class="form-check-label" for="agreeToTerms">
+                        <div style="display: flex; align-items: flex-start; margin-top: 0.5rem;">
+                            <input type="checkbox" id="agreeToTerms" name="agree_to_terms" required
+                                   style="margin-right: 0.5rem; margin-top: 0.25rem;">
+                            <label for="agreeToTerms" style="color: var(--text-color); font-size: 0.9rem;">
                                 I have read and agree to the Affiliate Terms &amp; Conditions
                             </label>
                         </div>
                     </div>
                     
-                    <button type="submit" class="btn btn-primary" id="activateReferralBtn" disabled>
+                    <button type="submit" id="activateReferralBtn" disabled
+                            style="background-color: var(--accent-color); color: var(--text-color); border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer; transition: background-color 0.2s; opacity: 0.7;">
                         Activate My Referral Code
                     </button>
                 </form>
@@ -128,6 +163,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (agreeCheckbox && activateButton) {
         agreeCheckbox.addEventListener('change', function() {
             activateButton.disabled = !this.checked;
+            activateButton.style.opacity = this.checked ? '1' : '0.7';
         });
     }
     
