@@ -453,32 +453,34 @@ def get_user_identifier():
 
     return session['user_identifier']
 
-def generate_summary(conversation_id):
+def generate_summary(conversation_id, retry_attempt=0, max_retries=2):
     """
     Generate a short, descriptive title for a conversation using OpenRouter LLM.
     This function runs non-blocking under gevent to avoid blocking the server.
     
     Args:
         conversation_id: The ID of the conversation to summarize
+        retry_attempt: Current retry attempt number (default 0)
+        max_retries: Maximum number of retries (default 2)
     """
-    print(f"[SUMMARIZE {conversation_id}] Function called.") # ADDED
+    print(f"[SUMMARIZE {conversation_id}] Function called. Retry attempt: {retry_attempt}/{max_retries}") # Enhanced logging
     try:
-        logger.info(f"Generating summary for conversation {conversation_id}")
+        logger.info(f"Generating summary for conversation {conversation_id} (attempt {retry_attempt+1})")
         from models import Conversation, Message
         
         # Check if title is already customized (not the default)
         conversation = db.session.get(Conversation, conversation_id)
         if not conversation:
-            print(f"[SUMMARIZE {conversation_id}] Conversation not found in database.") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] Conversation not found in database.") 
             logger.warning(f"Conversation {conversation_id} not found when generating summary")
             return
             
         if conversation.title != "New Conversation":
-            print(f"[SUMMARIZE {conversation_id}] Already has title: {conversation.title}") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] Already has title: {conversation.title}") 
             logger.info(f"Conversation {conversation_id} already has a custom title: '{conversation.title}'. Skipping.")
             return
         else:
-            print(f"[SUMMARIZE {conversation_id}] No existing summary found, proceeding.") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] No existing summary found, proceeding.") 
             
         # Get all messages, ordered by creation time
         messages = Message.query.filter_by(conversation_id=conversation_id)\
@@ -486,11 +488,11 @@ def generate_summary(conversation_id):
             .all()
             
         if len(messages) < 2:
-            print(f"[SUMMARIZE {conversation_id}] Not enough messages ({len(messages)}) to summarize.") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] Not enough messages ({len(messages)}) to summarize.") 
             logger.warning(f"Not enough messages in conversation {conversation_id} to generate summary")
             return
         else:
-            print(f"[SUMMARIZE {conversation_id}] Found {len(messages)} total messages.") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] Found {len(messages)} total messages.") 
             
         # Find the first user message and its corresponding assistant response
         user_message = None
@@ -502,23 +504,29 @@ def generate_summary(conversation_id):
                 if i + 1 < len(messages) and messages[i + 1].role == 'assistant':
                     user_message = message.content
                     assistant_message = messages[i + 1].content
-                    print(f"[SUMMARIZE {conversation_id}] Found user-assistant pair at positions {i} and {i+1}") # ADDED
+                    print(f"[SUMMARIZE {conversation_id}] Found user-assistant pair at positions {i} and {i+1}") 
                     break  # Found a user-assistant pair, we can stop searching
         
         if not user_message or not assistant_message:
-            print(f"[SUMMARIZE {conversation_id}] Missing user or assistant message.") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] Missing user or assistant message.") 
             logger.warning(f"Missing user or assistant message in conversation {conversation_id}")
             return
             
         # Get API Key
         api_key = os.environ.get('OPENROUTER_API_KEY')
         if not api_key:
-            print(f"[SUMMARIZE {conversation_id}] OPENROUTER_API_KEY not found.") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] OPENROUTER_API_KEY not found.") 
             logger.error("OPENROUTER_API_KEY not found while generating summary")
             return
             
-        # Use the free model for summarization
-        model_id = DEFAULT_PRESET_MODELS.get('6', 'google/gemini-2.0-flash-exp:free')
+        # Try the primary free model first, then fall back to other free models if needed
+        if retry_attempt == 0:
+            model_id = DEFAULT_PRESET_MODELS.get('6', 'google/gemini-flash:free')
+        else:
+            # On retry attempts, try alternative free models
+            model_id = FREE_MODEL_FALLBACKS[min(retry_attempt, len(FREE_MODEL_FALLBACKS)-1)]
+            
+        print(f"[SUMMARIZE {conversation_id}] Using model: {model_id} for attempt {retry_attempt+1}")
         
         # Prepare the prompt for summarization
         summary_prompt = [
@@ -536,7 +544,7 @@ def generate_summary(conversation_id):
         headers = {
             'Authorization': f'Bearer {api_key}',
             'Content-Type': 'application/json',
-            'HTTP-Referer': 'http://localhost:5000'  # Adjust if needed
+            'HTTP-Referer': 'https://gloriamundo.com'  # Updated referrer to look more legitimate
         }
         
         # Prepare payload - use a lower max_tokens since we only need a short title
@@ -549,10 +557,8 @@ def generate_summary(conversation_id):
         }
         
         # Make the API request
-        print(f"[SUMMARIZE {conversation_id}] Prompt constructed. About to call API with model {model_id}.") # ADDED
+        print(f"[SUMMARIZE {conversation_id}] Prompt constructed. About to call API with model {model_id}.") 
         print(f"[SUMMARIZE {conversation_id}] API Key: {'VALID' if api_key else 'MISSING'}")
-        print(f"[SUMMARIZE {conversation_id}] Headers: {headers}")
-        print(f"[SUMMARIZE {conversation_id}] Payload: {payload}")
         logger.info(f"Sending title generation request to OpenRouter with model: {model_id}")
         
         try:
@@ -560,29 +566,49 @@ def generate_summary(conversation_id):
                 'https://openrouter.ai/api/v1/chat/completions',
                 headers=headers,
                 json=payload,
-                timeout=20.0  # Increased timeout for more reliability
+                timeout=30.0  # Increased timeout for more reliability
             )
         except requests.exceptions.Timeout:
-            print(f"[SUMMARIZE {conversation_id}] API request timed out after 20 seconds")
+            print(f"[SUMMARIZE {conversation_id}] API request timed out after 30 seconds")
             logger.error(f"OpenRouter API timeout during title generation for conversation {conversation_id}")
+            
+            # Retry on timeout if we haven't exceeded max retries
+            if retry_attempt < max_retries:
+                print(f"[SUMMARIZE {conversation_id}] Scheduling retry {retry_attempt+1}/{max_retries}")
+                # Use threading for retry to avoid blocking
+                import threading
+                threading.Timer(2.0, lambda: generate_summary(conversation_id, retry_attempt+1, max_retries)).start()
             return
+            
         except requests.exceptions.RequestException as e:
             print(f"[SUMMARIZE {conversation_id}] API request error: {e}")
             logger.error(f"OpenRouter API error during title generation: {e}")
+            
+            # Retry on request exception if we haven't exceeded max retries
+            if retry_attempt < max_retries:
+                print(f"[SUMMARIZE {conversation_id}] Scheduling retry {retry_attempt+1}/{max_retries}")
+                import threading
+                threading.Timer(2.0, lambda: generate_summary(conversation_id, retry_attempt+1, max_retries)).start()
             return
         
-        print(f"[SUMMARIZE {conversation_id}] API call finished. Status: {response.status_code}") # ADDED
+        print(f"[SUMMARIZE {conversation_id}] API call finished. Status: {response.status_code}") 
         
         if response.status_code != 200:
-            print(f"[SUMMARIZE {conversation_id}] API error: {response.status_code} - {response.text[:100]}") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] API error: {response.status_code} - {response.text[:300]}") 
             logger.error(f"OpenRouter API error while generating title: {response.status_code} - {response.text}")
+            
+            # Retry on non-200 response if we haven't exceeded max retries
+            if retry_attempt < max_retries:
+                print(f"[SUMMARIZE {conversation_id}] Scheduling retry {retry_attempt+1}/{max_retries}")
+                import threading
+                threading.Timer(3.0, lambda: generate_summary(conversation_id, retry_attempt+1, max_retries)).start()
             return
             
         # Process the response
         response_data = response.json()
         if 'choices' in response_data and len(response_data['choices']) > 0:
             title_text = response_data['choices'][0]['message']['content'].strip()
-            print(f"[SUMMARIZE {conversation_id}] Summary extracted: {title_text}") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] Summary extracted: {title_text}") 
             
             # Clean up the title (remove quotes, etc.)
             title_text = title_text.strip('"\'')
@@ -593,24 +619,36 @@ def generate_summary(conversation_id):
             from datetime import datetime 
             conversation.title = title_text
             conversation.updated_at = datetime.utcnow()  # Explicitly update the timestamp
-            print(f"[SUMMARIZE {conversation_id}] Updating DB title with fresh timestamp") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] Updating DB title with fresh timestamp") 
             db.session.commit()
-            print(f"[SUMMARIZE {conversation_id}] DB commit successful.") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] DB commit successful.") 
             logger.info(f"Updated conversation {conversation_id} title to: '{title_text}' with new timestamp")
         else:
-            print(f"[SUMMARIZE {conversation_id}] Failed to extract title from API response: {response_data}") # ADDED
+            print(f"[SUMMARIZE {conversation_id}] Failed to extract title from API response: {response_data}") 
             logger.warning(f"Failed to extract title from API response: {response_data}")
+            
+            # Retry if we couldn't extract a title and haven't exceeded max retries
+            if retry_attempt < max_retries:
+                print(f"[SUMMARIZE {conversation_id}] Scheduling retry {retry_attempt+1}/{max_retries}")
+                import threading
+                threading.Timer(2.0, lambda: generate_summary(conversation_id, retry_attempt+1, max_retries)).start()
             
     except Exception as e:
         # Use traceback for more detailed error information
         import traceback
-        print(f"[SUMMARIZE {conversation_id}] Error during summarization:") # ADDED
-        traceback.print_exc() # ADDED for detailed error
+        print(f"[SUMMARIZE {conversation_id}] Error during summarization:") 
+        traceback.print_exc() 
         logger.exception(f"Error generating summary for conversation {conversation_id}: {e}")
         try:
             db.session.rollback()
         except:
             pass
+            
+        # Retry on exception if we haven't exceeded max retries
+        if retry_attempt < max_retries:
+            print(f"[SUMMARIZE {conversation_id}] Scheduling retry {retry_attempt+1}/{max_retries} after error")
+            import threading
+            threading.Timer(3.0, lambda: generate_summary(conversation_id, retry_attempt+1, max_retries)).start()
 
 
 
