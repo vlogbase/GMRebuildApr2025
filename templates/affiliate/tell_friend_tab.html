@@ -43,9 +43,18 @@
                     </div>
                 </div>
             </div>
+            
+            {% if commissions and commissions|length > 0 or referrals and referrals|length > 0 %}
+            <!-- Only show the button if there are commissions or referrals to display -->
             <button class="btn btn-primary w-100 mb-2" type="button" data-bs-toggle="collapse" data-bs-target="#dashboardDetails" aria-expanded="false" aria-controls="dashboardDetails">
                 <i class="fas fa-chart-line me-2"></i> View Full Dashboard
             </button>
+            {% else %}
+            <!-- Show instructional message instead of button when there's no data -->
+            <div class="alert alert-info mb-2">
+                <i class="fas fa-info-circle me-2"></i> Start sharing your referral link to see detailed commission data and referral statistics here.
+            </div>
+            {% endif %}
             
             <!-- Collapsible Dashboard Content -->
             <div class="collapse mt-3" id="dashboardDetails">
@@ -333,15 +342,18 @@
             </form>
         </div>
     {% endif %}
-</div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function() {
+    <!-- Script section moved inside the content div to prevent it from affecting other tabs -->
+    <script>
+    function initializeTellFriendTab() {
+        console.log('Initializing Tell a Friend tab functions');
+    
     // Enable/disable activation button based on checkbox
     const agreeCheckbox = document.getElementById('agreeToTerms');
     const activateButton = document.getElementById('activateReferralBtn');
     
     if (agreeCheckbox && activateButton) {
+        console.log('Found agree checkbox and activate button');
         agreeCheckbox.addEventListener('change', function() {
             activateButton.disabled = !this.checked;
         });
@@ -358,6 +370,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const referralLinkInput = document.getElementById(item.inputId);
         
         if (copyBtn && referralLinkInput) {
+            console.log(`Found copy button: ${item.btnId}`);
             copyBtn.addEventListener('click', function() {
                 referralLinkInput.select();
                 document.execCommand('copy');
@@ -373,25 +386,85 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     
-    // Initialize Bootstrap collapsible
-    const dashboardToggle = document.querySelector('[data-bs-toggle="collapse"]');
-    if (dashboardToggle) {
-        dashboardToggle.addEventListener('click', function() {
-            const expanded = this.getAttribute('aria-expanded') === 'true';
-            this.innerHTML = expanded ? 
-                '<i class="fas fa-chart-line me-2"></i> View Full Dashboard' : 
-                '<i class="fas fa-times me-2"></i> Close Dashboard';
+    // Handle dashboard toggle with Bootstrap 5 collapse - only if there's data to show
+    console.log('Setting up dashboard toggle button');
+    const dashboardToggleBtn = document.querySelector('[data-bs-toggle="collapse"][data-bs-target="#dashboardDetails"]');
+    const dashboardDetails = document.getElementById('dashboardDetails');
+    
+    if (dashboardToggleBtn && dashboardDetails) {
+        console.log('Found dashboard toggle button and details section');
+        
+        // Add manual event handling for the toggle button to update text
+        dashboardToggleBtn.addEventListener('click', function() {
+            console.log('Dashboard toggle button clicked');
             
-            // Animate scroll to dashboard details when expanding
-            if (!expanded) {
-                setTimeout(function() {
-                    const dashboardDetails = document.getElementById('dashboardDetails');
-                    if (dashboardDetails) {
-                        dashboardDetails.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }
-                }, 350); // Wait for the collapse animation to begin
-            }
+            // Use timeout to ensure the collapse class change happens before we check
+            setTimeout(function() {
+                const isExpanded = dashboardDetails.classList.contains('show');
+                console.log('Dashboard expanded state:', isExpanded);
+                
+                if (isExpanded) {
+                    // The dashboard is now expanded
+                    dashboardToggleBtn.innerHTML = '<i class="fas fa-times me-2"></i> Close Dashboard';
+                    
+                    // Scroll to the dashboard details section
+                    dashboardDetails.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    // The dashboard is now collapsed
+                    dashboardToggleBtn.innerHTML = '<i class="fas fa-chart-line me-2"></i> View Full Dashboard';
+                }
+            }, 150); // Short delay to let Bootstrap collapse take effect
         });
+    } else {
+        // Only log a warning if the button should exist (we hide it when there's no data)
+        // Check for the info alert that appears when there's no data
+        const noDataAlerts = document.querySelectorAll('.alert.alert-info');
+        const hasNoDataMessage = Array.from(noDataAlerts).some(alert => 
+            alert.textContent.includes('Start sharing your referral link'));
+        
+        if (!hasNoDataMessage) {
+            // We have data, so the button should exist
+            console.warn('Dashboard toggle button or details section not found');
+            if (!dashboardToggleBtn) console.warn('dashboardToggleBtn not found');
+            if (!dashboardDetails) console.warn('dashboardDetails not found');
+        } else {
+            // No data, so the button is correctly hidden
+            console.log('Dashboard toggle button not found - expected because there is no data to display');
+        }
+    }
+}
+
+// Run on DOMContentLoaded and whenever the tab becomes visible
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded event fired in tell_friend_tab.html');
+    
+    // Run once on page load
+    initializeTellFriendTab();
+    
+    // Also run when tab is activated
+    const tellFriendTabBtn = document.getElementById('tellFriendTabBtn');
+    if (tellFriendTabBtn) {
+        console.log('Found Tell a Friend tab button, adding additional click handler');
+        tellFriendTabBtn.addEventListener('click', function() {
+            console.log('Tell a Friend tab clicked, reinitializing tab functions');
+            // Wait a bit for the DOM to update before reinitializing
+            setTimeout(initializeTellFriendTab, 100);
+        });
+    }
+    
+    // Handle openTab function in the global scope of account.html
+    if (typeof window.openTab === 'function') {
+        const originalOpenTab = window.openTab;
+        window.openTab = function(tabName, event) {
+            originalOpenTab(tabName, event);
+            
+            // If switching to the Tell a Friend tab, initialize it
+            if (tabName === 'tellFriend') {
+                console.log('openTab function switched to tellFriend, reinitializing');
+                setTimeout(initializeTellFriendTab, 100);
+            }
+        };
     }
 });
 </script>
+</div>
