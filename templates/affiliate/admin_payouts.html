@@ -1,234 +1,344 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
-{% block title %}Admin - Affiliate Payout History{% endblock %}
+{% block title %}Affiliate Payout Management - GloriaMundo Chat{% endblock %}
+
+{% block head %}
+<style>
+    .admin-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .stats-card {
+        background-color: #1e2124;
+        border-radius: 8px;
+        padding: 1.5rem;
+        height: 100%;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .stats-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #5865f2;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stats-label {
+        color: #8e9297;
+        font-size: 0.9rem;
+    }
+    
+    .admin-table {
+        background-color: #1e2124;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .admin-table thead {
+        background-color: #2c2f33;
+    }
+    
+    .admin-table th, .admin-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #3f4246;
+        vertical-align: middle;
+    }
+    
+    .payout-details {
+        background-color: #2c2f33;
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+    }
+    
+    .payout-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+    }
+    
+    .payout-id {
+        font-size: 0.9rem;
+        color: #8e9297;
+    }
+    
+    .payout-row {
+        border-bottom: 1px solid #3f4246;
+        padding: 1rem 0;
+    }
+    
+    .payout-row:last-child {
+        border-bottom: none;
+    }
+    
+    .recipient-email {
+        font-size: 0.9rem;
+        color: #8e9297;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row">
-        <!-- Sidebar -->
-        <div class="col-md-3 mb-4">
-            <div class="list-group">
-                <a href="{{ url_for('affiliate.admin_commissions') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-money-bill-wave me-2"></i> Pending Commissions
-                </a>
-                <a href="{{ url_for('affiliate.admin_payouts') }}" class="list-group-item list-group-item-action active">
-                    <i class="fas fa-history me-2"></i> Payout History
-                </a>
-                <a href="#" class="list-group-item list-group-item-action">
-                    <i class="fas fa-users me-2"></i> Affiliate Directory
-                </a>
-            </div>
-            
-            <div class="card mt-4">
-                <div class="card-header bg-info text-white">
-                    <h3 class="h5 mb-0">Admin Controls</h3>
-                </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('billing.account_management') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-credit-card me-2"></i> Billing Dashboard
-                        </a>
-                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-home me-2"></i> Main Site
-                        </a>
-                    </div>
-                </div>
+<div class="container mt-4 mb-5 admin-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Payout Batch Details</h1>
+            <p class="text-muted">Batch ID: <code>{{ payout_batch.batch_id }}</code></p>
+        </div>
+        <a href="{{ url_for('affiliate.admin_commissions') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Back to Commission Management
+        </a>
+    </div>
+    
+    <!-- Status Overview -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-value">${{ "%.2f"|format(payout_batch.total_amount) }}</div>
+                <div class="stats-label">Total Amount</div>
             </div>
         </div>
-        
-        <!-- Main content -->
-        <div class="col-md-9">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h3 class="h5 mb-0">Payout History</h3>
-                </div>
-                <div class="card-body">
-                    <p class="card-text">
-                        View the history of all PayPal payouts processed for affiliates. You can check the status of each payout batch.
-                    </p>
-                    
-                    {% if grouped_payouts %}
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Payout Date</th>
-                                        <th>Batch ID</th>
-                                        <th>Affiliates</th>
-                                        <th>Total Amount</th>
-                                        <th>Status</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {% for batch_id, data in grouped_payouts.items() %}
-                                        <tr>
-                                            <td>{{ data.created_at.strftime('%Y-%m-%d') }}</td>
-                                            <td>{{ batch_id[:10] }}...</td>
-                                            <td>{{ data.affiliates|length }}</td>
-                                            <td>£{{ "%.2f"|format(data.total_amount) }}</td>
-                                            <td>
-                                                {% if data.latest_status == 'payout_initiated' %}
-                                                    <span class="badge bg-warning text-dark">Processing</span>
-                                                {% elif data.latest_status == 'paid' %}
-                                                    <span class="badge bg-success">Completed</span>
-                                                {% elif data.latest_status == 'payout_failed' %}
-                                                    <span class="badge bg-danger">Failed</span>
-                                                {% else %}
-                                                    <span class="badge bg-secondary">Unknown</span>
-                                                {% endif %}
-                                            </td>
-                                            <td>
-                                                <div class="btn-group">
-                                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#payoutModal{{ batch_id|replace('-', '_') }}">
-                                                        <i class="fas fa-eye me-1"></i> Details
-                                                    </button>
-                                                    
-                                                    {% if data.latest_status != 'paid' %}
-                                                        <form method="post" action="{{ url_for('affiliate.check_payout_status_route', batch_id=batch_id) }}" class="d-inline">
-                                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                            <button type="submit" class="btn btn-sm btn-outline-info">
-                                                                <i class="fas fa-sync-alt me-1"></i> Check Status
-                                                            </button>
-                                                        </form>
-                                                    {% endif %}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-                        
-                        <!-- Payout Details Modals -->
-                        {% for batch_id, data in grouped_payouts.items() %}
-                            <div class="modal fade" id="payoutModal{{ batch_id|replace('-', '_') }}" tabindex="-1" aria-labelledby="payoutModalLabel{{ batch_id|replace('-', '_') }}" aria-hidden="true">
-                                <div class="modal-dialog modal-lg">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="payoutModalLabel{{ batch_id|replace('-', '_') }}">Payout Batch Details</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <div class="card mb-3">
-                                                <div class="card-header bg-light">
-                                                    <h6 class="mb-0">Batch Information</h6>
-                                                </div>
-                                                <div class="card-body">
-                                                    <dl class="row mb-0">
-                                                        <dt class="col-sm-4">Batch ID:</dt>
-                                                        <dd class="col-sm-8">{{ batch_id }}</dd>
-                                                        
-                                                        <dt class="col-sm-4">Created Date:</dt>
-                                                        <dd class="col-sm-8">{{ data.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</dd>
-                                                        
-                                                        <dt class="col-sm-4">Status:</dt>
-                                                        <dd class="col-sm-8">
-                                                            {% if data.latest_status == 'payout_initiated' %}
-                                                                <span class="badge bg-warning text-dark">Processing</span>
-                                                            {% elif data.latest_status == 'paid' %}
-                                                                <span class="badge bg-success">Completed</span>
-                                                            {% elif data.latest_status == 'payout_failed' %}
-                                                                <span class="badge bg-danger">Failed</span>
-                                                            {% else %}
-                                                                <span class="badge bg-secondary">Unknown</span>
-                                                            {% endif %}
-                                                        </dd>
-                                                        
-                                                        <dt class="col-sm-4">Total Amount:</dt>
-                                                        <dd class="col-sm-8">£{{ "%.2f"|format(data.total_amount) }}</dd>
-                                                        
-                                                        <dt class="col-sm-4">Affiliates:</dt>
-                                                        <dd class="col-sm-8">{{ data.affiliates|length }}</dd>
-                                                    </dl>
-                                                </div>
-                                            </div>
-                                            
-                                            <h6 class="mb-3">Included Commissions</h6>
-                                            <div class="table-responsive">
-                                                <table class="table table-bordered">
-                                                    <thead class="table-light">
-                                                        <tr>
-                                                            <th>Affiliate</th>
-                                                            <th>Amount</th>
-                                                            <th>Status</th>
-                                                            <th>PayPal Email</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {% for commission in data.commissions %}
-                                                            <tr>
-                                                                <td>{{ commission.affiliate.name }}</td>
-                                                                <td>£{{ "%.2f"|format(commission.commission_amount) }}</td>
-                                                                <td>
-                                                                    {% if commission.status == 'payout_initiated' %}
-                                                                        <span class="badge bg-warning text-dark">Processing</span>
-                                                                    {% elif commission.status == 'paid' %}
-                                                                        <span class="badge bg-success">Paid</span>
-                                                                    {% elif commission.status == 'payout_failed' %}
-                                                                        <span class="badge bg-danger">Failed</span>
-                                                                    {% else %}
-                                                                        <span class="badge bg-secondary">{{ commission.status }}</span>
-                                                                    {% endif %}
-                                                                </td>
-                                                                <td>{{ commission.affiliate.paypal_email }}</td>
-                                                            </tr>
-                                                        {% endfor %}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                            
-                                            {% if data.latest_status != 'paid' %}
-                                                <form method="post" action="{{ url_for('affiliate.check_payout_status_route', batch_id=batch_id) }}">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <button type="submit" class="btn btn-primary">
-                                                        <i class="fas fa-sync-alt me-1"></i> Check Status
-                                                    </button>
-                                                </form>
-                                            {% endif %}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="alert alert-info">
-                            <p class="mb-0">No payouts have been processed yet.</p>
-                        </div>
-                    {% endif %}
-                </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-value">{{ payout_batch.items|length }}</div>
+                <div class="stats-label">Recipients</div>
             </div>
-            
-            <!-- PayPal Payout Information -->
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h3 class="h5 mb-0">About PayPal Payouts</h3>
-                </div>
-                <div class="card-body">
-                    <ul class="mb-0">
-                        <li class="mb-2">PayPal Payouts are processed in batches to multiple recipients simultaneously</li>
-                        <li class="mb-2">The status of a batch can be checked by clicking the "Check Status" button</li>
-                        <li class="mb-2">It may take up to 24 hours for PayPal to fully process payouts</li>
-                        <li class="mb-2">Failed payouts will be marked accordingly and can be retried from the Pending Commissions page</li>
-                        <li>For issues with PayPal payouts, check your PayPal account credentials and API access</li>
-                    </ul>
-                </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-value text-success">{{ payout_batch.success_count }}</div>
+                <div class="stats-label">Successful Payouts</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-value {% if payout_batch.error_count > 0 %}text-danger{% endif %}">{{ payout_batch.error_count }}</div>
+                <div class="stats-label">Failed Payouts</div>
             </div>
         </div>
     </div>
+    
+    <!-- Payout Batch Information -->
+    <div class="payout-details mb-4">
+        <div class="row mb-3">
+            <div class="col-md-4">
+                <small class="text-muted d-block">Batch Status</small>
+                <span class="badge {% if payout_batch.batch_status == 'SUCCESS' %}bg-success{% elif payout_batch.batch_status == 'PENDING' %}bg-warning{% elif payout_batch.batch_status == 'PROCESSING' %}bg-info{% else %}bg-danger{% endif %}">
+                    {{ payout_batch.batch_status }}
+                </span>
+            </div>
+            <div class="col-md-4">
+                <small class="text-muted d-block">Created Date</small>
+                <span>{{ payout_batch.time_created }}</span>
+            </div>
+            <div class="col-md-4">
+                <small class="text-muted d-block">Last Updated</small>
+                <span>{{ payout_batch.time_updated or 'N/A' }}</span>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-4">
+                <small class="text-muted d-block">Batch Header</small>
+                <span>{{ payout_batch.batch_header.sender_batch_header.email_subject }}</span>
+            </div>
+            <div class="col-md-4">
+                <small class="text-muted d-block">Fees Charged</small>
+                <span>${{ payout_batch.fees_charged or '0.00' }}</span>
+            </div>
+            <div class="col-md-4">
+                <small class="text-muted d-block">Sender Batch ID</small>
+                <code class="small">{{ payout_batch.batch_header.sender_batch_header.sender_batch_id }}</code>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Individual Payouts Table -->
+    <h2 class="mb-3">Individual Payouts</h2>
+    
+    <div class="table-responsive admin-table mb-4">
+        <table class="table table-dark">
+            <thead>
+                <tr>
+                    <th>Recipient</th>
+                    <th>Amount</th>
+                    <th>Status</th>
+                    <th>Transaction ID</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in payout_batch.items %}
+                <tr>
+                    <td>
+                        <div>{{ item.payout_item.receiver }}</div>
+                        <small class="text-muted">{{ item.payout_item_id }}</small>
+                    </td>
+                    <td>${{ item.payout_item.amount.value }}</td>
+                    <td>
+                        <span class="badge {% if item.transaction_status == 'SUCCESS' %}bg-success{% elif item.transaction_status == 'PENDING' %}bg-warning{% elif item.transaction_status == 'PROCESSING' %}bg-info{% elif item.transaction_status == 'FAILED' or item.transaction_status == 'BLOCKED' or item.transaction_status == 'RETURNED' %}bg-danger{% else %}bg-secondary{% endif %}">
+                            {{ item.transaction_status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if item.activity_id %}
+                        <code class="small">{{ item.activity_id }}</code>
+                        {% else %}
+                        <span class="text-muted">Pending</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.errors %}
+                        <button type="button" class="btn btn-sm btn-danger" data-bs-toggle="modal" data-bs-target="#errorModal{{ loop.index }}">
+                            View Error
+                        </button>
+                        
+                        <!-- Error Modal -->
+                        <div class="modal fade" id="errorModal{{ loop.index }}" tabindex="-1" aria-labelledby="errorModalLabel{{ loop.index }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content bg-dark text-light">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="errorModalLabel{{ loop.index }}">Payout Error Details</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <small class="text-muted d-block">Recipient</small>
+                                            <strong>{{ item.payout_item.receiver }}</strong>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <small class="text-muted d-block">Error Name</small>
+                                            <span class="text-danger">{{ item.errors.name }}</span>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <small class="text-muted d-block">Error Message</small>
+                                            <p>{{ item.errors.message }}</p>
+                                        </div>
+                                        
+                                        {% if item.errors.details %}
+                                        <div>
+                                            <small class="text-muted d-block">Additional Details</small>
+                                            <ul class="mt-2">
+                                                {% for detail in item.errors.details %}
+                                                <li>{{ detail.field }}: {{ detail.issue }}</li>
+                                                {% endfor %}
+                                            </ul>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="modal" data-bs-target="#detailModal{{ loop.index }}">
+                            View Details
+                        </button>
+                        
+                        <!-- Details Modal -->
+                        <div class="modal fade" id="detailModal{{ loop.index }}" tabindex="-1" aria-labelledby="detailModalLabel{{ loop.index }}" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content bg-dark text-light">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="detailModalLabel{{ loop.index }}">Payout Details</h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <div class="mb-3">
+                                            <small class="text-muted d-block">Recipient</small>
+                                            <strong>{{ item.payout_item.receiver }}</strong>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <small class="text-muted d-block">Amount</small>
+                                            <span>${{ item.payout_item.amount.value }} {{ item.payout_item.amount.currency }}</span>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <small class="text-muted d-block">Status</small>
+                                            <span class="badge {% if item.transaction_status == 'SUCCESS' %}bg-success{% elif item.transaction_status == 'PENDING' %}bg-warning{% elif item.transaction_status == 'PROCESSING' %}bg-info{% else %}bg-secondary{% endif %}">
+                                                {{ item.transaction_status }}
+                                            </span>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <small class="text-muted d-block">Transaction ID</small>
+                                            <code>{{ item.activity_id or 'Pending' }}</code>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            <small class="text-muted d-block">Payment Type</small>
+                                            <span>{{ item.payout_item.recipient_type }}</span>
+                                        </div>
+                                        
+                                        <div>
+                                            <small class="text-muted d-block">Note to Recipient</small>
+                                            <p class="mt-1">{{ item.payout_item.note or 'No note provided' }}</p>
+                                        </div>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="d-flex justify-content-between">
+        <a href="{{ url_for('affiliate.admin_commissions') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Back to Commission Management
+        </a>
+        
+        <form method="post" action="{{ url_for('affiliate.check_payout_status_route', batch_id=payout_batch.batch_id) }}">
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-sync-alt me-2"></i> Refresh Payout Status
+            </button>
+        </form>
+    </div>
 </div>
+
+<script>
+    // Simple modal functionality if Bootstrap JS is not included
+    document.addEventListener('DOMContentLoaded', function() {
+        const modalButtons = document.querySelectorAll('[data-bs-toggle="modal"]');
+        const modalCloseBtns = document.querySelectorAll('.modal [data-bs-dismiss="modal"], .modal .btn-close');
+        
+        modalButtons.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const target = document.querySelector(this.getAttribute('data-bs-target'));
+                if (target) {
+                    target.classList.add('show');
+                    target.style.display = 'block';
+                }
+            });
+        });
+        
+        modalCloseBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                const modal = this.closest('.modal');
+                if (modal) {
+                    modal.classList.remove('show');
+                    modal.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

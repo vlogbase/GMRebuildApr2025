@@ -186,11 +186,12 @@ class Affiliate(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64), nullable=False)
     email = db.Column(db.String(120), nullable=False, unique=True, index=True)
-    paypal_email = db.Column(db.String(120), nullable=False, unique=True)
+    paypal_email = db.Column(db.String(120), nullable=True, unique=True)
     paypal_email_verified_at = db.Column(db.DateTime, nullable=True)
     referral_code = db.Column(db.String(16), nullable=False, unique=True, index=True)
     referred_by_affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliate.id'), nullable=True)
-    status = db.Column(db.String(20), nullable=False, default='active')  # 'active' or 'inactive'
+    status = db.Column(db.String(20), nullable=False, default=AffiliateStatus.PENDING_TERMS.value)
+    terms_agreed_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
@@ -200,7 +201,7 @@ class Affiliate(db.Model):
     commissions = db.relationship('Commission', backref='affiliate', lazy='dynamic', cascade='all, delete-orphan')
     
     @staticmethod
-    def create_affiliate(name, email, paypal_email, referred_by_code=None):
+    def create_affiliate(name, email, paypal_email=None, referred_by_code=None, status=AffiliateStatus.PENDING_TERMS.value):
         """Create a new affiliate with a unique referral code"""
         # Generate a unique referral code
         alphabet = string.ascii_uppercase + string.digits
@@ -215,7 +216,8 @@ class Affiliate(db.Model):
             name=name,
             email=email,
             paypal_email=paypal_email,
-            referral_code=code
+            referral_code=code,
+            status=status
         )
         
         # If referred by another affiliate, set the relationship
@@ -225,6 +227,43 @@ class Affiliate(db.Model):
                 affiliate.referred_by_affiliate_id = referring_affiliate.id
         
         return affiliate
+        
+    @staticmethod
+    def auto_create_for_user(user):
+        """Automatically create an affiliate record for a new user"""
+        try:
+            # Check if affiliate already exists
+            existing_affiliate = Affiliate.query.filter_by(email=user.email).first()
+            if existing_affiliate:
+                return existing_affiliate
+                
+            # Generate a new affiliate with pending terms status
+            affiliate = Affiliate.create_affiliate(
+                name=user.username,
+                email=user.email,
+                status=AffiliateStatus.PENDING_TERMS.value
+            )
+            
+            # Save to database
+            db.session.add(affiliate)
+            db.session.commit()
+            
+            return affiliate
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error auto-creating affiliate for user {user.id}: {e}")
+            db.session.rollback()
+            return None
+            
+    def agree_to_terms(self, paypal_email=None):
+        """Mark affiliate as having agreed to terms and set paypal email if provided"""
+        self.status = AffiliateStatus.ACTIVE.value
+        self.terms_agreed_at = datetime.utcnow()
+        
+        if paypal_email:
+            self.paypal_email = paypal_email
+            
+        return self
     
     def __repr__(self):
         return f'<Affiliate {self.id}: {self.name} ({self.email})>'

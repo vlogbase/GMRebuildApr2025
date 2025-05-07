@@ -1,236 +1,507 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
-{% block title %}Admin - Affiliate Commissions{% endblock %}
+{% block title %}Affiliate Commission Management - GloriaMundo Chat{% endblock %}
+
+{% block head %}
+<style>
+    .admin-container {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+    
+    .stats-card {
+        background-color: #1e2124;
+        border-radius: 8px;
+        padding: 1.5rem;
+        height: 100%;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .stats-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #5865f2;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stats-label {
+        color: #8e9297;
+        font-size: 0.9rem;
+    }
+    
+    .admin-table {
+        background-color: #1e2124;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    
+    .admin-table thead {
+        background-color: #2c2f33;
+    }
+    
+    .admin-table th, .admin-table td {
+        padding: 0.75rem;
+        border-bottom: 1px solid #3f4246;
+        vertical-align: middle;
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+    }
+    
+    .status-held {
+        background-color: #f0ad4e;
+        color: #212529;
+    }
+    
+    .status-approved {
+        background-color: #5cb85c;
+        color: #212529;
+    }
+    
+    .status-paid {
+        background-color: #5865f2;
+        color: #fff;
+    }
+    
+    .status-rejected {
+        background-color: #d9534f;
+        color: #fff;
+    }
+    
+    .filter-form {
+        background-color: #2c2f33;
+        padding: 1rem;
+        border-radius: 8px;
+        margin-bottom: 1.5rem;
+    }
+    
+    .tier-badge {
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        margin-right: 0.3rem;
+    }
+    
+    .tier-1 {
+        background-color: #5865f2;
+        color: #fff;
+    }
+    
+    .tier-2 {
+        background-color: #5cb85c;
+        color: #fff;
+    }
+    
+    .commission-actions form {
+        display: inline-block;
+    }
+    
+    .actions-column {
+        white-space: nowrap;
+    }
+    
+    .payout-form {
+        background-color: #2c2f33;
+        padding: 1.5rem;
+        border-radius: 8px;
+        margin-top: 2rem;
+    }
+    
+    .currency-input {
+        position: relative;
+    }
+    
+    .currency-input:before {
+        content: '$';
+        position: absolute;
+        left: 10px;
+        top: 7px;
+        color: #adb5bd;
+        z-index: 10;
+    }
+    
+    .currency-input input {
+        padding-left: 25px;
+    }
+    
+    .nav-tabs {
+        border-bottom: 1px solid #3f4246;
+        margin-bottom: 1.5rem;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #8e9297;
+        border: none;
+        padding: 0.75rem 1rem;
+        margin-right: 0.5rem;
+        border-radius: 4px 4px 0 0;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        color: #fff;
+        background-color: #2c2f33;
+        border: none;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: #fff;
+        background-color: #5865f2;
+        border: none;
+    }
+    
+    .tab-content {
+        padding-top: 1rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row">
-        <!-- Sidebar -->
-        <div class="col-md-3 mb-4">
-            <div class="list-group">
-                <a href="{{ url_for('affiliate.admin_commissions') }}" class="list-group-item list-group-item-action active">
-                    <i class="fas fa-money-bill-wave me-2"></i> Pending Commissions
-                </a>
-                <a href="{{ url_for('affiliate.admin_payouts') }}" class="list-group-item list-group-item-action">
-                    <i class="fas fa-history me-2"></i> Payout History
-                </a>
-                <a href="#" class="list-group-item list-group-item-action">
-                    <i class="fas fa-users me-2"></i> Affiliate Directory
-                </a>
+<div class="container mt-4 mb-5 admin-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1>Affiliate Commission Management</h1>
+            <p class="text-muted">Manage affiliate commissions and process payouts</p>
+        </div>
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i> Back to Dashboard
+        </a>
+    </div>
+    
+    <!-- Overview Stats -->
+    <div class="row mb-4">
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-value">${{ stats.total_commissions }}</div>
+                <div class="stats-label">Total Commissions</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-value">${{ stats.pending_payouts }}</div>
+                <div class="stats-label">Pending Payouts</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-value">{{ stats.active_affiliates }}</div>
+                <div class="stats-label">Active Affiliates</div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="stats-card">
+                <div class="stats-value">{{ stats.conversion_rate }}%</div>
+                <div class="stats-label">Avg. Conversion Rate</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Navigation Tabs -->
+    <ul class="nav nav-tabs" id="affiliateAdminTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="commissions-tab" data-bs-toggle="tab" data-bs-target="#commissions" type="button" role="tab" aria-controls="commissions" aria-selected="true">
+                Commissions
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="payouts-tab" data-bs-toggle="tab" data-bs-target="#payouts" type="button" role="tab" aria-controls="payouts" aria-selected="false">
+                Process Payouts
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab" aria-controls="history" aria-selected="false">
+                Payout History
+            </button>
+        </li>
+    </ul>
+    
+    <div class="tab-content" id="affiliateAdminTabContent">
+        <!-- Commissions Tab -->
+        <div class="tab-pane fade show active" id="commissions" role="tabpanel" aria-labelledby="commissions-tab">
+            <!-- Filter Form -->
+            <div class="filter-form mb-4">
+                <form method="get" action="{{ url_for('affiliate.admin_commissions') }}" class="row">
+                    <div class="col-md-3 mb-3 mb-md-0">
+                        <label for="statusFilter" class="form-label">Status</label>
+                        <select class="form-select" id="statusFilter" name="status">
+                            <option value="">All Statuses</option>
+                            <option value="held" {% if request.args.get('status') == 'held' %}selected{% endif %}>Holding</option>
+                            <option value="approved" {% if request.args.get('status') == 'approved' %}selected{% endif %}>Approved</option>
+                            <option value="paid" {% if request.args.get('status') == 'paid' %}selected{% endif %}>Paid</option>
+                            <option value="rejected" {% if request.args.get('status') == 'rejected' %}selected{% endif %}>Rejected</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3 mb-md-0">
+                        <label for="tierFilter" class="form-label">Tier</label>
+                        <select class="form-select" id="tierFilter" name="tier">
+                            <option value="">All Tiers</option>
+                            <option value="1" {% if request.args.get('tier') == '1' %}selected{% endif %}>Tier 1 (10%)</option>
+                            <option value="2" {% if request.args.get('tier') == '2' %}selected{% endif %}>Tier 2 (5%)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 mb-3 mb-md-0">
+                        <label for="minAmountFilter" class="form-label">Min Amount</label>
+                        <div class="currency-input">
+                            <input type="text" class="form-control" id="minAmountFilter" name="min_amount" value="{{ request.args.get('min_amount', '') }}" placeholder="0.00">
+                        </div>
+                    </div>
+                    <div class="col-md-3 align-self-end">
+                        <button type="submit" class="btn btn-primary w-100">Filter</button>
+                    </div>
+                </form>
             </div>
             
-            <div class="card mt-4">
-                <div class="card-header bg-info text-white">
-                    <h3 class="h5 mb-0">Admin Controls</h3>
+            <!-- Commission Table -->
+            {% if commissions and commissions|length > 0 %}
+            <form method="post" action="{{ url_for('affiliate.process_payouts') }}" id="commissionForm">
+                <div class="table-responsive admin-table mb-3">
+                    <table class="table table-dark">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="selectAll">
+                                    </div>
+                                </th>
+                                <th>Date</th>
+                                <th>Affiliate</th>
+                                <th>Referral</th>
+                                <th>Tier</th>
+                                <th>Amount</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for commission in commissions %}
+                            <tr>
+                                <td>
+                                    <div class="form-check">
+                                        <input class="form-check-input commission-checkbox" type="checkbox" name="commission_ids[]" value="{{ commission.id }}" 
+                                            {% if commission.status != 'approved' %}disabled{% endif %}>
+                                    </div>
+                                </td>
+                                <td>{{ commission.created_at.strftime('%b %d, %Y') }}</td>
+                                <td>
+                                    <div>{{ commission.affiliate_name }}</div>
+                                    <small class="text-muted">{{ commission.affiliate_email }}</small>
+                                </td>
+                                <td>{{ commission.customer_name }}</td>
+                                <td>
+                                    {% if commission.tier == 1 %}
+                                    <span class="tier-badge tier-1">Tier 1</span>
+                                    {% else %}
+                                    <span class="tier-badge tier-2">Tier 2</span>
+                                    {% endif %}
+                                </td>
+                                <td>${{ "%.2f"|format(commission.commission_amount) }}</td>
+                                <td>
+                                    {% if commission.status == 'held' %}
+                                    <span class="status-badge status-held">Holding</span>
+                                    {% elif commission.status == 'approved' %}
+                                    <span class="status-badge status-approved">Approved</span>
+                                    {% elif commission.status == 'paid' %}
+                                    <span class="status-badge status-paid">Paid</span>
+                                    {% elif commission.status == 'rejected' %}
+                                    <span class="status-badge status-rejected">Rejected</span>
+                                    {% endif %}
+                                </td>
+                                <td class="actions-column">
+                                    {% if commission.status == 'held' %}
+                                    <form method="post" action="{{ url_for('affiliate.approve_commission', commission_id=commission.id) }}" class="d-inline-block">
+                                        <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                    </form>
+                                    {% endif %}
+                                    
+                                    {% if commission.status in ['held', 'approved'] %}
+                                    <form method="post" action="{{ url_for('affiliate.reject_commission', commission_id=commission.id) }}" class="d-inline-block">
+                                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to reject this commission?')">Reject</button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </div>
-                <div class="card-body">
-                    <div class="d-grid gap-2">
-                        <a href="{{ url_for('billing.account_management') }}" class="btn btn-outline-primary">
-                            <i class="fas fa-credit-card me-2"></i> Billing Dashboard
-                        </a>
-                        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-home me-2"></i> Main Site
-                        </a>
+                
+                <!-- Bulk Actions -->
+                <div class="mb-4">
+                    <button type="submit" class="btn btn-primary" id="processPayoutsBtn" disabled>
+                        Process Selected Payouts via PayPal
+                    </button>
+                    <span class="ms-3 text-muted" id="selectedCount">0 commissions selected</span>
+                </div>
+            </form>
+            {% else %}
+            <div class="p-5 text-center admin-table">
+                <i class="fas fa-search mb-3" style="font-size: 2rem; color: #8e9297;"></i>
+                <h3 class="mb-3">No Commissions Found</h3>
+                <p class="text-muted">No commissions match your current filter criteria.</p>
+            </div>
+            {% endif %}
+        </div>
+        
+        <!-- Process Payouts Tab -->
+        <div class="tab-pane fade" id="payouts" role="tabpanel" aria-labelledby="payouts-tab">
+            <div class="payout-form">
+                <h3 class="mb-3">Process Bulk Payout</h3>
+                <p class="text-muted mb-4">Process payouts to all affiliates with approved commissions that meet the minimum threshold.</p>
+                
+                <form method="post" action="{{ url_for('affiliate.process_payouts') }}">
+                    <input type="hidden" name="bulk_payout" value="1">
+                    
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <label for="minThreshold" class="form-label">Minimum Payout Threshold</label>
+                            <div class="currency-input">
+                                <input type="text" class="form-control" id="minThreshold" name="min_threshold" value="25.00">
+                            </div>
+                            <small class="text-muted">Only affiliates with approved commissions totaling at least this amount will receive payouts</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="payoutNote" class="form-label">Payout Note</label>
+                            <input type="text" class="form-control" id="payoutNote" name="payout_note" 
+                                   value="GloriaMundo Chat Affiliate Commission Payout - {{ now.strftime('%B %Y') }}">
+                            <small class="text-muted">This note will be visible to affiliates in their PayPal account</small>
+                        </div>
                     </div>
-                </div>
+                    
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <button type="submit" class="btn btn-primary" onclick="return confirm('Are you sure you want to process payouts for all eligible affiliates?')">
+                                <i class="fas fa-money-bill-wave me-2"></i> Process Payouts
+                            </button>
+                            <div class="mt-2 text-muted">This will send payments via PayPal to all eligible affiliates</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="stats-value">${{ stats.eligible_for_payout }}</div>
+                            <div class="stats-label">Total Amount for Payout</div>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
         
-        <!-- Main content -->
-        <div class="col-md-9">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} alert-dismissible fade show">
-                            {{ message }}
-                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
-            
-            <div class="card mb-4">
-                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-                    <h3 class="h5 mb-0">Pending Commissions</h3>
-                </div>
-                <div class="card-body">
-                    <p class="card-text">
-                        These commissions have passed the 30-day hold period and are ready to be paid out. 
-                        Select affiliates to process their payouts.
-                    </p>
-                    
-                    {% if grouped_commissions %}
-                        <form method="post" action="{{ url_for('affiliate.process_payouts') }}">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th style="width: 45px;">
-                                                <div class="form-check">
-                                                    <input class="form-check-input" type="checkbox" id="selectAll" onchange="toggleSelectAll()">
-                                                </div>
-                                            </th>
-                                            <th>Affiliate</th>
-                                            <th>PayPal Email</th>
-                                            <th>Email Verified</th>
-                                            <th>Commission Total</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {% for affiliate_id, data in grouped_commissions.items() %}
-                                            <tr>
-                                                <td>
-                                                    <div class="form-check">
-                                                        <input class="form-check-input affiliate-checkbox" type="checkbox" name="affiliate_id" value="{{ affiliate_id }}" id="affiliate{{ affiliate_id }}">
-                                                    </div>
-                                                </td>
-                                                <td>{{ data.affiliate.name }}</td>
-                                                <td>{{ data.affiliate.paypal_email }}</td>
-                                                <td>
-                                                    {% if data.affiliate.paypal_email_verified_at %}
-                                                        <span class="badge bg-success">Verified</span>
-                                                    {% else %}
-                                                        <span class="badge bg-warning text-dark">Unverified</span>
-                                                    {% endif %}
-                                                </td>
-                                                <td>£{{ "%.2f"|format(data.total_amount) }}</td>
-                                                <td>
-                                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#commissionModal{{ affiliate_id }}">
-                                                        <i class="fas fa-eye me-1"></i> Details
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        {% endfor %}
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            <div class="d-flex justify-content-end mt-3">
-                                <button type="submit" class="btn btn-primary" id="processPayoutsBtn" disabled>
-                                    <i class="fas fa-money-bill-wave me-2"></i> Process Selected Payouts
-                                </button>
-                            </div>
-                        </form>
-                        
-                        <!-- Commission Details Modals -->
-                        {% for affiliate_id, data in grouped_commissions.items() %}
-                            <div class="modal fade" id="commissionModal{{ affiliate_id }}" tabindex="-1" aria-labelledby="commissionModalLabel{{ affiliate_id }}" aria-hidden="true">
-                                <div class="modal-dialog modal-lg">
-                                    <div class="modal-content">
-                                        <div class="modal-header">
-                                            <h5 class="modal-title" id="commissionModalLabel{{ affiliate_id }}">Commission Details: {{ data.affiliate.name }}</h5>
-                                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                        </div>
-                                        <div class="modal-body">
-                                            <div class="table-responsive">
-                                                <table class="table table-bordered">
-                                                    <thead class="table-light">
-                                                        <tr>
-                                                            <th>Date</th>
-                                                            <th>Transaction ID</th>
-                                                            <th>Amount</th>
-                                                            <th>Level</th>
-                                                            <th>Actions</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {% for commission in data.commissions %}
-                                                            <tr>
-                                                                <td>{{ commission.commission_earned_date.strftime('%Y-%m-%d') }}</td>
-                                                                <td>{{ commission.triggering_transaction_id[:10] }}...</td>
-                                                                <td>£{{ "%.2f"|format(commission.commission_amount) }}</td>
-                                                                <td>
-                                                                    {% if commission.commission_level == 1 %}
-                                                                        <span class="badge bg-success">Level 1</span>
-                                                                    {% else %}
-                                                                        <span class="badge bg-info">Level 2</span>
-                                                                    {% endif %}
-                                                                </td>
-                                                                <td>
-                                                                    <form method="post" action="{{ url_for('affiliate.reject_commission', commission_id=commission.id) }}" class="d-inline" onsubmit="return confirm('Are you sure you want to reject this commission? This action cannot be undone.')">
-                                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                                        <button type="submit" class="btn btn-sm btn-danger">
-                                                                            <i class="fas fa-times"></i> Reject
-                                                                        </button>
-                                                                    </form>
-                                                                </td>
-                                                            </tr>
-                                                        {% endfor %}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+        <!-- Payout History Tab -->
+        <div class="tab-pane fade" id="history" role="tabpanel" aria-labelledby="history-tab">
+            {% if payouts and payouts|length > 0 %}
+            <div class="table-responsive admin-table">
+                <table class="table table-dark">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Batch ID</th>
+                            <th>Total Amount</th>
+                            <th>Recipients</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payout in payouts %}
+                        <tr>
+                            <td>{{ payout.created_at.strftime('%b %d, %Y') }}</td>
+                            <td>
+                                <div class="small text-truncate" style="max-width: 150px;">{{ payout.paypal_batch_id }}</div>
+                            </td>
+                            <td>${{ "%.2f"|format(payout.total_amount) }}</td>
+                            <td>{{ payout.recipient_count }}</td>
+                            <td>
+                                <span class="badge bg-{{ payout.status_color }}">{{ payout.status_display }}</span>
+                            </td>
+                            <td>
+                                <form method="post" action="{{ url_for('affiliate.check_payout_status_route', batch_id=payout.paypal_batch_id) }}" class="d-inline-block">
+                                    <button type="submit" class="btn btn-sm btn-primary">
+                                        <i class="fas fa-sync-alt me-1"></i> Update Status
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
                         {% endfor %}
-                    {% else %}
-                        <div class="alert alert-info">
-                            <p class="mb-0">There are no commissions pending payout at this time.</p>
-                        </div>
-                    {% endif %}
-                </div>
+                    </tbody>
+                </table>
             </div>
-            
-            <!-- PayPal Status Information -->
-            <div class="card">
-                <div class="card-header bg-light">
-                    <h3 class="h5 mb-0">PayPal Payout Process</h3>
-                </div>
-                <div class="card-body">
-                    <ul class="mb-0">
-                        <li class="mb-2">Selected commissions will be processed through PayPal's Payouts API</li>
-                        <li class="mb-2">Affiliates will receive payments to their specified PayPal email addresses</li>
-                        <li class="mb-2">PayPal verifies recipient emails during the first successful payout</li>
-                        <li class="mb-2">Commission status will be updated automatically when processed</li>
-                        <li>You can check the status of payouts in the "Payout History" section</li>
-                    </ul>
-                </div>
+            {% else %}
+            <div class="p-5 text-center admin-table">
+                <i class="fas fa-money-check-alt mb-3" style="font-size: 2rem; color: #8e9297;"></i>
+                <h3 class="mb-3">No Payout History</h3>
+                <p class="text-muted">No payouts have been processed yet.</p>
             </div>
+            {% endif %}
         </div>
     </div>
 </div>
 
 <script>
-    // Handle checkbox selection
-    function toggleSelectAll() {
-        var selectAllCheckbox = document.getElementById('selectAll');
-        var affiliateCheckboxes = document.querySelectorAll('.affiliate-checkbox');
-        
-        affiliateCheckboxes.forEach(function(checkbox) {
-            checkbox.checked = selectAllCheckbox.checked;
-        });
-        
-        updateProcessButton();
-    }
-    
-    // Enable/disable the process button based on selections
-    function updateProcessButton() {
-        var affiliateCheckboxes = document.querySelectorAll('.affiliate-checkbox');
-        var processButton = document.getElementById('processPayoutsBtn');
-        var anyChecked = false;
-        
-        affiliateCheckboxes.forEach(function(checkbox) {
-            if (checkbox.checked) {
-                anyChecked = true;
-            }
-        });
-        
-        processButton.disabled = !anyChecked;
-    }
-    
-    // Add event listeners to checkboxes
     document.addEventListener('DOMContentLoaded', function() {
-        var affiliateCheckboxes = document.querySelectorAll('.affiliate-checkbox');
+        // Handle select all checkbox
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const commissionCheckboxes = document.querySelectorAll('.commission-checkbox:not(:disabled)');
+        const processPayoutsBtn = document.getElementById('processPayoutsBtn');
+        const selectedCountElem = document.getElementById('selectedCount');
         
-        affiliateCheckboxes.forEach(function(checkbox) {
-            checkbox.addEventListener('change', updateProcessButton);
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const isChecked = this.checked;
+                
+                commissionCheckboxes.forEach(checkbox => {
+                    checkbox.checked = isChecked;
+                });
+                
+                updateSelectedCount();
+            });
+        }
+        
+        // Handle individual checkboxes
+        commissionCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                updateSelectedCount();
+                
+                // Update select all checkbox state
+                if (selectAllCheckbox) {
+                    const allChecked = [...commissionCheckboxes].every(cb => cb.checked);
+                    selectAllCheckbox.checked = allChecked;
+                }
+            });
+        });
+        
+        // Function to update selected count and button state
+        function updateSelectedCount() {
+            const selectedCount = document.querySelectorAll('.commission-checkbox:checked').length;
+            
+            if (selectedCountElem) {
+                selectedCountElem.textContent = `${selectedCount} commission${selectedCount !== 1 ? 's' : ''} selected`;
+            }
+            
+            if (processPayoutsBtn) {
+                processPayoutsBtn.disabled = selectedCount === 0;
+            }
+        }
+        
+        // Initialize tab functionality if Bootstrap JS is not included
+        const tabLinks = document.querySelectorAll('[data-bs-toggle="tab"]');
+        const tabContents = document.querySelectorAll('.tab-pane');
+        
+        tabLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Remove active class from all tabs and panes
+                tabLinks.forEach(tab => tab.classList.remove('active'));
+                tabContents.forEach(pane => {
+                    pane.classList.remove('show', 'active');
+                });
+                
+                // Add active class to current tab and pane
+                this.classList.add('active');
+                const target = document.querySelector(this.getAttribute('data-bs-target'));
+                if (target) {
+                    target.classList.add('show', 'active');
+                }
+            });
         });
     });
 </script>

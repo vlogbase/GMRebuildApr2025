@@ -576,16 +576,13 @@ def cookie_policy():
 def redirect_billing():
     """
     Fallback handler for /billing/account redirections.
-    This addresses the issue where client-side JS might still reference this route.
+    Now that we have a real billing blueprint, redirect to the actual account management page.
     """
     # Log the redirection for monitoring
-    logger.info(f"Redirecting from /billing/account to index page without query params")
+    logger.info(f"Redirecting from /billing/account to billing.account_management")
     
-    # Flash a message to the user
-    flash("Billing features coming soon!", "info")
-    
-    # Redirect to the index page without any query parameters
-    return redirect(url_for('index'))
+    # Redirect to the billing.account_management blueprint route
+    return redirect(url_for('billing.account_management'))
 
 @app.route('/test-upload')
 @login_required

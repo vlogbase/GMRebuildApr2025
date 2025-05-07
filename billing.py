@@ -21,7 +21,7 @@ from sqlalchemy import desc, func, and_
 
 from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
-from models import CustomerReferral, Affiliate, Commission, CommissionStatus
+from models import CustomerReferral, Affiliate, Commission, CommissionStatus, AffiliateStatus
 from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature
 
 # Configure logging
@@ -52,12 +52,45 @@ def account_management():
         recent_usage = Usage.query.filter_by(user_id=current_user.id) \
             .order_by(desc(Usage.created_at)).limit(5).all()
         
+        # Get affiliate information
+        affiliate = Affiliate.query.filter_by(email=current_user.email).first()
+        
+        # If the user doesn't have an affiliate record, auto-create one
+        if not affiliate:
+            affiliate = Affiliate.auto_create_for_user(current_user)
+            
+        # Get commission statistics if affiliate exists and is active
+        commission_stats = {}
+        if affiliate and affiliate.status == AffiliateStatus.ACTIVE.value:
+            # Get total earned commissions
+            earned_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
+                Commission.affiliate_id == affiliate.id,
+                Commission.status.in_([CommissionStatus.APPROVED.value, CommissionStatus.PAID.value])
+            ).scalar() or 0
+            
+            # Get pending commissions
+            pending_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
+                Commission.affiliate_id == affiliate.id,
+                Commission.status == CommissionStatus.HELD.value
+            ).scalar() or 0
+            
+            # Get referral count
+            referral_count = CustomerReferral.query.filter_by(affiliate_id=affiliate.id).count()
+            
+            commission_stats = {
+                'total_earned': f'${earned_commissions:.2f}',
+                'pending': f'${pending_commissions:.2f}',
+                'referrals': referral_count
+            }
+        
         return render_template(
             'account.html',
             user=current_user,
             packages=packages,
             recent_transactions=recent_transactions,
-            recent_usage=recent_usage
+            recent_usage=recent_usage,
+            affiliate=affiliate,
+            commission_stats=commission_stats
         )
     
     except Exception as e:
