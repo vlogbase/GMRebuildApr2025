@@ -41,23 +41,36 @@ def account_management():
     Account management page showing credit balance, usage history, and purchase options.
     """
     try:
+        logger.info(f"Loading account management page for user: {current_user.id} - {current_user.email}")
+        
         # Get packages
         packages = Package.query.filter_by(is_active=True).all()
+        logger.debug(f"Found {len(packages)} active packages")
         
         # Get recent transactions
         recent_transactions = Transaction.query.filter_by(user_id=current_user.id) \
             .order_by(desc(Transaction.created_at)).limit(5).all()
+        logger.debug(f"Found {len(recent_transactions)} recent transactions")
         
         # Get recent usage
         recent_usage = Usage.query.filter_by(user_id=current_user.id) \
             .order_by(desc(Usage.created_at)).limit(5).all()
+        logger.debug(f"Found {len(recent_usage)} recent usage records")
         
         # Get affiliate information
         affiliate = Affiliate.query.filter_by(email=current_user.email).first()
         
         # If the user doesn't have an affiliate record, auto-create one
         if not affiliate:
-            affiliate = Affiliate.auto_create_for_user(current_user)
+            logger.info(f"No affiliate record found for user: {current_user.email}, attempting to create one")
+            try:
+                affiliate = Affiliate.auto_create_for_user(current_user)
+                logger.info(f"Successfully created affiliate record with ID: {affiliate.id if affiliate else 'None'}")
+            except Exception as e:
+                logger.error(f"Error creating affiliate record: {e}")
+                affiliate = None
+        else:
+            logger.info(f"Found existing affiliate record with ID: {affiliate.id}, status: {affiliate.status}")
             
         # Get commission statistics if affiliate exists and is active
         commission_stats = {}
@@ -144,6 +157,16 @@ def account_management():
                     'total_purchases': f'{total_purchases or 0:.2f}'
                 })
         
+        # Add detailed logging of values passed to template
+        if affiliate:
+            logger.info(f"Affiliate info: id={affiliate.id}, status={affiliate.status}, name={affiliate.name}")
+            if affiliate.status == AffiliateStatus.ACTIVE.value:
+                logger.info(f"Commission stats: {commission_stats}")
+                logger.info(f"Commissions count: {len(commissions)}")
+                logger.info(f"Referrals count: {len(referrals)}")
+                logger.info(f"Sub-referrals count: {len(sub_referrals)}")
+        
+        logger.info("Rendering account.html template")
         return render_template(
             'account.html',
             user=current_user,

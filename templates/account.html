@@ -232,7 +232,7 @@
         <button class="tab-button" onclick="openTab('usage', event)">Usage Analytics</button>
         <button class="tab-button" onclick="openTab('pricing', event)">Pricing</button>
         <button class="tab-button" onclick="openTab('settings', event)">Account Settings</button>
-        <button class="tab-button" onclick="openTab('tellFriend', event)">Tell a Friend</button>
+        <button class="tab-button" id="tellFriendTabBtn">Tell a Friend</button>
     </div>
 
     <!-- Tab Content -->
@@ -627,6 +627,46 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded event fired - Initializing Tell a Friend tab functions');
+    
+    // Special handling for tellFriend tab button
+    const tellFriendTabBtn = document.getElementById('tellFriendTabBtn');
+    if (tellFriendTabBtn) {
+        console.log('Found Tell a Friend tab button, adding click handler');
+        tellFriendTabBtn.addEventListener('click', function(event) {
+            event.preventDefault();  // Prevent default anchor behavior
+            console.log('Tell a Friend tab button clicked');
+            
+            // Hide all tab panes
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            tabPanes.forEach(pane => {
+                pane.classList.remove('active');
+                console.log(`Removed active class from tab: ${pane.id}`);
+            });
+            
+            // Deactivate all tab buttons
+            const tabButtons = document.querySelectorAll('.tab-navigation .tab-button');
+            tabButtons.forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            // Activate the Tell a Friend tab
+            const tellFriendTab = document.getElementById('tellFriend');
+            if (tellFriendTab) {
+                console.log('Found Tell a Friend tab, activating it');
+                tellFriendTab.classList.add('active');
+                tellFriendTab.style.display = 'block';
+            } else {
+                console.error('Tell a Friend tab element not found');
+            }
+            
+            // Activate this button
+            this.classList.add('active');
+        });
+    } else {
+        console.warn('Tell a Friend tab button not found');
+    }
+    
     // Enable/disable activation button based on checkbox
     const agreeCheckbox = document.getElementById('agreeToTerms');
     const activateButton = document.getElementById('activateReferralBtn');
@@ -693,30 +733,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Stripe integration is complete - custom amount calculator removed
     
     // Debug form submission for purchase buttons
-    document.addEventListener('DOMContentLoaded', function() {
-        // Select all purchase forms
-        const purchaseForms = document.querySelectorAll('form[id^="purchase-form-"]');
-        
-        // Add event listeners to each form
-        purchaseForms.forEach(form => {
-            form.addEventListener('submit', function(e) {
-                console.log('Purchase form submitted:', form.id);
-                // Continue with form submission (do not prevent default)
-            });
-            
-            // Add event listeners to the buttons inside forms
-            const button = form.querySelector('button[type="submit"]');
-            if (button) {
-                button.addEventListener('click', function(e) {
-                    console.log('Buy button clicked for form:', form.id);
-                    // Let the normal form submission happen
-                });
-            }
+    // Select all purchase forms
+    const purchaseForms = document.querySelectorAll('form[id^="purchase-form-"]');
+    
+    // Add event listeners to each form
+    purchaseForms.forEach(form => {
+        form.addEventListener('submit', function(e) {
+            console.log('Purchase form submitted:', form.id);
+            // Continue with form submission (do not prevent default)
         });
+        
+        // Add event listeners to the buttons inside forms
+        const button = form.querySelector('button[type="submit"]');
+        if (button) {
+            button.addEventListener('click', function(e) {
+                console.log('Buy button clicked for form:', form.id);
+                // Let the normal form submission happen
+            });
+        }
     });
     
     // Initialize tabs
     window.openTab = function(tabName, clickEvent) {
+        console.log(`Opening tab: ${tabName}`);
+        
         // Hide all tab panes
         const tabPanes = document.querySelectorAll('.tab-pane');
         tabPanes.forEach(pane => {
@@ -732,7 +772,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Activate the selected tab pane
         const selectedPane = document.getElementById(tabName);
         if (selectedPane) {
+            console.log(`Found tab pane: #${tabName}`);
             selectedPane.classList.add('active');
+        } else {
+            console.error(`Tab pane not found: #${tabName}`);
         }
         
         // Activate the clicked button - only if we have a click event
@@ -746,9 +789,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Load pricing data if the pricing tab is selected
+        // Tab-specific logic
         if (tabName === 'pricing') {
             loadPricingData();
+        } else if (tabName === 'tellFriend') {
+            console.log('Loading Tell a Friend tab content');
+            // Make sure the tab is visible
+            const tellFriendTab = document.getElementById('tellFriend');
+            if (tellFriendTab) {
+                tellFriendTab.style.display = 'block';
+            }
         }
     }
     
