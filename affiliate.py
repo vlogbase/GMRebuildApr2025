@@ -18,6 +18,7 @@ from sqlalchemy import desc, func, and_, not_
 from werkzeug.security import generate_password_hash
 
 from app import db
+from forms import AgreeToTermsForm, UpdatePayPalEmailForm
 from models import User, Affiliate, CustomerReferral, Commission, CommissionStatus, AffiliateStatus
 from paypal_config import process_paypal_payout, check_payout_status, generate_sender_batch_id
 
@@ -132,39 +133,51 @@ def agree_to_terms():
     """
     Process affiliate terms agreement and optional PayPal email.
     """
-    try:
-        # Check if user has already agreed to terms
-        affiliate = Affiliate.query.filter_by(email=current_user.email).first()
-        
-        if not affiliate:
-            # Auto-create affiliate for the user
-            affiliate = Affiliate.auto_create_for_user(current_user)
-            if not affiliate:
-                flash("Error creating affiliate account. Please try again.", "error")
-                return redirect(url_for('account'))
-                
-        # Check if already active
-        if affiliate.status == AffiliateStatus.ACTIVE.value:
-            flash("You have already agreed to the affiliate terms.", "info")
-            return redirect(url_for('account'))
+    # Create the form
+    form = AgreeToTermsForm()
+    
+    # Validate the form - this will check the CSRF token
+    if form.validate_on_submit():
+        try:
+            # Check if user has already agreed to terms
+            affiliate = Affiliate.query.filter_by(email=current_user.email).first()
             
-        # Get PayPal email if provided
-        paypal_email = request.form.get('paypal_email')
-        
-        # Update affiliate status
-        affiliate.agree_to_terms(paypal_email)
-        
-        # Save to database
-        db.session.commit()
-        
-        flash("Your affiliate account is now active! You can start sharing your referral link.", "success")
-        return redirect(url_for('account'))
-        
-    except Exception as e:
-        logger.error(f"Error in agree_to_terms: {e}")
-        db.session.rollback()
-        flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('account'))
+            if not affiliate:
+                # Auto-create affiliate for the user
+                affiliate = Affiliate.auto_create_for_user(current_user)
+                if not affiliate:
+                    flash("Error creating affiliate account. Please try again.", "error")
+                    return redirect(url_for('billing.account_management'))
+                    
+            # Check if already active
+            if affiliate.status == AffiliateStatus.ACTIVE.value:
+                flash("You have already agreed to the affiliate terms.", "info")
+                return redirect(url_for('billing.account_management'))
+                
+            # Get PayPal email from the form
+            paypal_email = form.paypal_email.data
+            
+            # Update affiliate status
+            affiliate.agree_to_terms(paypal_email)
+            
+            # Save to database
+            db.session.commit()
+            
+            flash("Your affiliate account is now active! You can start sharing your referral link.", "success")
+            return redirect(url_for('billing.account_management'))
+            
+        except Exception as e:
+            logger.error(f"Error in agree_to_terms: {e}")
+            db.session.rollback()
+            flash(f"An error occurred: {str(e)}", "error")
+            return redirect(url_for('billing.account_management'))
+    else:
+        # Form validation failed
+        logger.warning(f"Form validation failed: {form.errors}")
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{field}: {error}", "error")
+        return redirect(url_for('billing.account_management'))
 
 @affiliate_bp.route('/update-paypal-email', methods=['POST'])
 @login_required
@@ -172,33 +185,41 @@ def update_paypal_email():
     """
     Update PayPal email for affiliate.
     """
-    try:
-        paypal_email = request.form.get('paypal_email')
-        
-        if not paypal_email:
-            flash("PayPal email is required", "error")
-            return redirect(url_for('account'))
+    # Create the form
+    form = UpdatePayPalEmailForm()
+    
+    # Validate the form - this will check the CSRF token
+    if form.validate_on_submit():
+        try:
+            paypal_email = form.paypal_email.data
             
-        # Get the affiliate associated with the current user
-        affiliate = Affiliate.query.filter_by(email=current_user.email).first()
-        
-        if not affiliate:
-            flash("You are not registered as an affiliate. Please activate your account first.", "info")
-            return redirect(url_for('account'))
+            # Get the affiliate associated with the current user
+            affiliate = Affiliate.query.filter_by(email=current_user.email).first()
             
-        # Update PayPal email
-        affiliate.paypal_email = paypal_email
-        affiliate.paypal_email_verified_at = None  # Reset verification status
-        db.session.commit()
-        
-        flash("PayPal email updated successfully", "success")
-        return redirect(url_for('account'))
-        
-    except Exception as e:
-        logger.error(f"Error updating PayPal email: {e}")
-        db.session.rollback()
-        flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('account'))
+            if not affiliate:
+                flash("You are not registered as an affiliate. Please activate your account first.", "info")
+                return redirect(url_for('billing.account_management'))
+                
+            # Update PayPal email
+            affiliate.paypal_email = paypal_email
+            affiliate.paypal_email_verified_at = None  # Reset verification status
+            db.session.commit()
+            
+            flash("PayPal email updated successfully", "success")
+            return redirect(url_for('billing.account_management'))
+            
+        except Exception as e:
+            logger.error(f"Error updating PayPal email: {e}")
+            db.session.rollback()
+            flash(f"An error occurred: {str(e)}", "error")
+            return redirect(url_for('billing.account_management'))
+    else:
+        # Form validation failed
+        logger.warning(f"Form validation failed: {form.errors}")
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{field}: {error}", "error")
+        return redirect(url_for('billing.account_management'))
 
 @affiliate_bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -652,6 +673,40 @@ def check_payout_status_route(batch_id):
         db.session.rollback()
         flash(f"An error occurred: {str(e)}", "error")
         return redirect(url_for('affiliate.admin_payouts'))
+
+@affiliate_bp.route('/admin/approve-commission/<commission_id>', methods=['POST'])
+@login_required
+def approve_commission(commission_id):
+    """
+    Approve a commission for payout.
+    """
+    try:
+        # Check if user is admin
+        if not is_admin():
+            flash("You do not have permission to access this page", "error")
+            return redirect(url_for('index'))
+        
+        # Get the commission
+        commission = Commission.query.get(commission_id)
+        if not commission:
+            flash("Commission not found", "error")
+            return redirect(url_for('affiliate.admin_commissions'))
+        
+        # Update status
+        commission.status = CommissionStatus.APPROVED.value
+        commission.updated_at = datetime.utcnow()
+        
+        # Commit changes
+        db.session.commit()
+        
+        flash("Commission approved successfully", "success")
+        return redirect(url_for('affiliate.admin_commissions'))
+        
+    except Exception as e:
+        logger.error(f"Error approving commission: {e}")
+        db.session.rollback()
+        flash(f"An error occurred: {str(e)}", "error")
+        return redirect(url_for('affiliate.admin_commissions'))
 
 @affiliate_bp.route('/admin/reject-commission/<commission_id>', methods=['POST'])
 @login_required

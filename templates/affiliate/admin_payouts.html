@@ -307,6 +307,7 @@
         </a>
         
         <form method="post" action="{{ url_for('affiliate.check_payout_status_route', batch_id=payout_batch.batch_id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-sync-alt me-2"></i> Refresh Payout Status
             </button>

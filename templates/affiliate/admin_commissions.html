@@ -256,6 +256,7 @@
             <!-- Commission Table -->
             {% if commissions and commissions|length > 0 %}
             <form method="post" action="{{ url_for('affiliate.process_payouts') }}" id="commissionForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="table-responsive admin-table mb-3">
                     <table class="table table-dark">
                         <thead>
@@ -311,12 +312,14 @@
                                 <td class="actions-column">
                                     {% if commission.status == 'held' %}
                                     <form method="post" action="{{ url_for('affiliate.approve_commission', commission_id=commission.id) }}" class="d-inline-block">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-sm btn-success">Approve</button>
                                     </form>
                                     {% endif %}
                                     
                                     {% if commission.status in ['held', 'approved'] %}
                                     <form method="post" action="{{ url_for('affiliate.reject_commission', commission_id=commission.id) }}" class="d-inline-block">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to reject this commission?')">Reject</button>
                                     </form>
                                     {% endif %}
@@ -351,6 +354,7 @@
                 <p class="text-muted mb-4">Process payouts to all affiliates with approved commissions that meet the minimum threshold.</p>
                 
                 <form method="post" action="{{ url_for('affiliate.process_payouts') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="bulk_payout" value="1">
                     
                     <div class="row mb-4">
@@ -414,6 +418,7 @@
                             </td>
                             <td>
                                 <form method="post" action="{{ url_for('affiliate.check_payout_status_route', batch_id=payout.paypal_batch_id) }}" class="d-inline-block">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn btn-sm btn-primary">
                                         <i class="fas fa-sync-alt me-1"></i> Update Status
                                     </button>
