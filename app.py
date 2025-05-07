@@ -464,6 +464,8 @@ def generate_summary(conversation_id, retry_attempt=0, max_retries=2):
         max_retries: Maximum number of retries (default 2)
     """
     print(f"[SUMMARIZE {conversation_id}] Function called. Retry attempt: {retry_attempt}/{max_retries}") # Enhanced logging
+    print(f"DEBUG: generate_summary - ENTERED with conv_id: {conversation_id}")
+    logger.info(f"DEBUG: generate_summary - ENTERED with conv_id: {conversation_id}")
     try:
         logger.info(f"Generating summary for conversation {conversation_id} (attempt {retry_attempt+1})")
         from models import Conversation, Message
@@ -620,9 +622,17 @@ def generate_summary(conversation_id, retry_attempt=0, max_retries=2):
             conversation.title = title_text
             conversation.updated_at = datetime.utcnow()  # Explicitly update the timestamp
             print(f"[SUMMARIZE {conversation_id}] Updating DB title with fresh timestamp") 
-            db.session.commit()
-            print(f"[SUMMARIZE {conversation_id}] DB commit successful.") 
-            logger.info(f"Updated conversation {conversation_id} title to: '{title_text}' with new timestamp")
+            logger.info(f"DEBUG: Attempting to update conversation {conversation_id} with title: '{title_text}'")
+            try:
+                db.session.commit()
+                print(f"[SUMMARIZE {conversation_id}] DB commit successful.") 
+                logger.info(f"DEBUG: Database commit successful for summary of conversation {conversation_id}")
+                logger.info(f"Updated conversation {conversation_id} title to: '{title_text}' with new timestamp")
+            except Exception as db_error:
+                print(f"[SUMMARIZE {conversation_id}] DB commit FAILED: {db_error}")
+                logger.error(f"DEBUG: Database commit FAILED for summary: {db_error}")
+                db.session.rollback()
+                raise  # Re-raise to trigger retry logic
         else:
             print(f"[SUMMARIZE {conversation_id}] Failed to extract title from API response: {response_data}") 
             logger.warning(f"Failed to extract title from API response: {response_data}")
@@ -2197,12 +2207,15 @@ def chat(): # Synchronous function
                                 # Call the generate_summary function - non-blocking under gevent
                                 # Ensure we've patched gevent beforehand to make this properly async
                                 print(f"[CHAT] About to generate title for conversation {current_conv_id}")
+                                logger.info(f"DEBUG: /chat - ABOUT TO CALL generate_summary for conversation {current_conv_id}")
                                 try:
                                     generate_summary(current_conv_id)
                                     print(f"[CHAT] Title generation for conversation {current_conv_id} initiated successfully")
+                                    logger.info(f"DEBUG: /chat - RETURNED FROM generate_summary CALL for conversation {current_conv_id}")
                                 except Exception as e:
                                     import traceback
                                     print(f"[CHAT] Error initiating title generation: {e}")
+                                    logger.error(f"DEBUG: /chat - ERROR DURING generate_summary CALL: {e}")
                                     traceback.print_exc()
                         except Exception as e:
                             logger.error(f"Error checking message count or triggering title generation: {e}")
