@@ -239,37 +239,6 @@ FREE_MODEL_FALLBACKS = [
     "neural-chat/neural-chat-7b-v3-1:free" # Another fallback
 ]
 
-# Multimodal models that support image inputs
-MULTIMODAL_MODELS = [
-    # Verified specific model IDs - full matches for maximum reliability
-    "anthropic/claude-3-opus-20240229",
-    "anthropic/claude-3-sonnet-20240229",
-    "anthropic/claude-3-haiku-20240307",
-    "anthropic/claude-3.5-sonnet-20240620",
-    "anthropic/claude-3.7-sonnet-20240910",
-    "openai/gpt-4-vision-preview",
-    "openai/gpt-4o-2024-05-13",
-    "openai/gpt-4-turbo",
-    
-    # Google model IDs as currently available in OpenRouter
-    "google/gemini-pro-vision",
-    "google/gemini-1.0-pro-vision",
-    "google/gemini-1.0-pro-vision-001",
-    "google/gemini-pro",
-    
-    # Generic model patterns - these partial matches help catch model variations
-    # Put these after specific matches for better visibility
-    "google/gemini",  # This will match all Gemini models
-    "anthropic/claude-3", # This will match all Claude 3 models
-    "claude-3",
-    "claude-3.5",
-    "claude-3.7",
-    "gpt-4-vision",
-    "gpt-4o",
-    "vision",
-    "multimodal"
-]
-
 # Safe fallback model IDs when no specific model can be determined
 # Listed in order of preference - we'll try each one until we find one that works
 SAFE_FALLBACK_MODELS = [
@@ -278,16 +247,6 @@ SAFE_FALLBACK_MODELS = [
     "meta-llama/llama-3-8b",  # Text-only fallback
     "mistralai/mistral-7b"     # Another text-only fallback
 ]
-
-# Cache for OpenRouter models
-OPENROUTER_MODELS_CACHE = {
-    "data": None,
-    "timestamp": 0,
-    "expiry": 86400  # Cache expiry in seconds (24 hours)
-}
-
-# This is needed for the non-authenticated user check in the chat endpoint
-OPENROUTER_MODELS_INFO = []
 
 # Initialize the scheduler for background tasks with enhanced configuration
 def init_scheduler():
