@@ -824,6 +824,10 @@ body.account-page .tab-pane {
     display: flex;
     flex-direction: column;
     border-right: 1px solid var(--border-color);
+    height: 100vh; /* Fix height to viewport height */
+    position: sticky;
+    top: 0;
+    overflow: hidden; /* Prevent sidebar from causing main page to scroll */
 }
 
 .sidebar-header {
@@ -854,6 +858,7 @@ body.account-page .tab-pane {
     flex: 1;
     overflow-y: auto;
     padding: 8px 0;
+    max-height: calc(100vh - 170px); /* Ensure there's space for sidebar-header and sidebar-footer */
 }
 
 .conversation-item {
@@ -923,6 +928,10 @@ body.account-page .tab-pane {
 .sidebar-footer {
     padding: 12px;
     border-top: 1px solid var(--border-color);
+    background-color: var(--sidebar-bg); /* Ensure same background as sidebar */
+    position: sticky;
+    bottom: 0;
+    z-index: 10; /* Ensure it stays on top of other content */
 }
 
 .user-info {
@@ -1071,12 +1080,57 @@ body.account-page .tab-pane {
     height: 100vh;
 }
 
+/* App Header Styles */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background-color: var(--sidebar-bg);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 10;
+}
+
+.app-title h1 {
+    font-size: 1.2rem;
+    margin: 0;
+    color: var(--text-color);
+}
+
+.app-account-access {
+    display: flex;
+    align-items: center;
+}
+
+.header-account-link {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--text-color);
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 5px;
+    background-color: rgba(36, 185, 189, 0.1);
+    transition: background-color 0.2s;
+}
+
+.header-account-link:hover {
+    background-color: rgba(36, 185, 189, 0.2);
+    color: var(--accent-color);
+}
+
+.header-account-link i {
+    font-size: 1.1rem;
+    color: var(--accent-color);
+}
+
 .chat-messages {
     flex: 1;
     overflow-y: auto;
     padding: 20px;
     display: flex;
     flex-direction: column;
+    height: calc(100vh - 120px); /* Account for app-header and chat-input-container */
 }
 
 /* Welcome Section */
@@ -2540,10 +2594,44 @@ code {
         width: 100%;
         height: auto;
         max-height: 40vh;
+        position: relative; /* Override sticky position from desktop */
+        overflow: hidden; /* Hide overflow */
+    }
+    
+    .conversation-list {
+        max-height: calc(40vh - 130px); /* Adjust for mobile header and footer */
+        overflow-y: auto;
+    }
+    
+    .sidebar-footer {
+        position: relative; /* Override sticky position from desktop */
+        bottom: auto;
     }
     
     .chat-container {
-        height: 60vh;
+        height: auto;
+        min-height: 60vh;
+    }
+    
+    .chat-messages {
+        height: auto; /* Allow content to determine height */
+        min-height: 40vh; /* Minimum height for messages area */
+    }
+    
+    .app-header {
+        padding: 8px 10px; /* Smaller padding on very small screens */
+    }
+    
+    .app-title h1 {
+        font-size: 0.9rem; /* Even smaller title on very small screens */
+    }
+    
+    .header-account-link {
+        padding: 4px 6px; /* Smaller padding on very small screens */
+    }
+    
+    .header-account-link .account-link-text {
+        display: none; /* Hide text on small screens, show only icon */
     }
     
     .model-preset-container {

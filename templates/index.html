@@ -66,6 +66,21 @@
         
         <!-- Main Chat Area -->
         <div class="chat-container">
+            <!-- App Header -->
+            <div class="app-header">
+                <div class="app-title">
+                    <h1>GloriaMundo Chat</h1>
+                </div>
+                {% if current_user.is_authenticated %}
+                <div class="app-account-access">
+                    <a href="{{ url_for('billing.account_management') }}" class="header-account-link">
+                        <i class="fa-solid fa-user-circle"></i>
+                        <span class="account-link-text">My Account</span>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            
             <div class="chat-messages" id="chat-messages">
                 <!-- Welcome message -->
                 <div class="welcome-container">
