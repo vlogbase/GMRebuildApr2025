@@ -1,0 +1,18 @@
+{
+  "mappings": {
+    "dynamic": false,
+    "fields": {
+      "embedding": {
+        "dimensions": 3072,
+        "similarity": "cosine",
+        "type": "knnVector"
+      },
+      "user_id": {
+        "type": "filter"
+      },
+      "userId": {
+        "type": "filter"
+      }
+    }
+  }
+}
