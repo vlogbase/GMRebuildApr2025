@@ -223,12 +223,12 @@ OPENROUTER_MODELS = {
     "free-gemini": "google/gemini-flash:free" # Verified free model
 }
 DEFAULT_PRESET_MODELS = {
-    "1": "google/gemini-pro-vision", # Default multimodal model
-    "2": "anthropic/claude-3-haiku:beta", # Fast, good quality
-    "3": "anthropic/claude-3-sonnet:beta", # High quality
-    "4": "openai/gpt-4o-2024-05-13", # Premium quality
-    "5": "meta-llama/llama-3-8b-instruct", # Open model
-    "6": "google/gemini-flash-1.5-8b", # Free model
+    "1": "google/gemini-2.5-pro-preview", # Multi-purpose powerhouse
+    "2": "meta-llama/llama-4-maverick", # Fast, good quality
+    "3": "openai/o4-mini-high", # Balanced performance
+    "4": "openai/gpt-4o-2024-11-20", # Premium quality
+    "5": "perplexity/sonar-pro", # Open model
+    "6": "google/gemini-2.0-flash-exp:free", # Free model
 }
 FREE_MODEL_FALLBACKS = [
     # Updated with verified free models available in OpenRouter

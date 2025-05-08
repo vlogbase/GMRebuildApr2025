@@ -49,6 +49,16 @@
           }
         }
       ]
+    },
+    "test_ui": {
+      "sections": [
+        {
+          "name": "Test UI Enhancements",
+          "tasks": {
+            "run": "python test_ui_workflow.py"
+          }
+        }
+      ]
     }
   }
 }

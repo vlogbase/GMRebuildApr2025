@@ -284,21 +284,31 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Default model IDs for each preset button - must match DEFAULT_PRESET_MODELS in app.py
     const defaultModels = {
-        '1': 'google/gemini-pro-vision', // Default multimodal model
-        '2': 'anthropic/claude-3-haiku-20240307', // Fast, good quality
-        '3': 'anthropic/claude-3-sonnet-20240229', // High quality
-        '4': 'openai/gpt-4o-2024-05-13', // Premium quality
-        '5': 'meta-llama/llama-3-8b', // Open model
-        '6': 'google/gemini-flash:free' // Free model
+        '1': 'google/gemini-2.5-pro-preview', // Multi-purpose powerhouse
+        '2': 'meta-llama/llama-4-maverick', // Fast, good quality
+        '3': 'openai/o4-mini-high', // Balanced performance
+        '4': 'openai/gpt-4o-2024-11-20', // Premium quality
+        '5': 'perplexity/sonar-pro', // Open model
+        '6': 'google/gemini-2.0-flash-exp:free' // Free model
+    };
+    
+    // Short display names for preset buttons
+    const defaultModelDisplayNames = {
+        'google/gemini-2.5-pro-preview': 'Gemini 2.5 Pro',
+        'meta-llama/llama-4-maverick': 'Llama 4 M',
+        'openai/o4-mini-high': 'O4 Mini High',
+        'openai/gpt-4o-2024-11-20': 'GPT-4o',
+        'perplexity/sonar-pro': 'Sonar Pro',
+        'google/gemini-2.0-flash-exp:free': 'Gemini Flash'
     };
     
     // Free model fallbacks (in order of preference)
     const freeModelFallbacks = [
         'google/gemini-2.0-flash-exp:free',
-        'qwen/qwq-32b:free',
-        'deepseek/deepseek-r1-distill-qwen-32b:free',
-        'deepseek/deepseek-r1-distill-llama-70b:free',
-        'openrouter/optimus-alpha'
+        'google/gemini-flash:free',
+        'openai/gpt-3.5-turbo:free',
+        'anthropic/claude-instant:free',
+        'mistralai/mistral-7b-instruct:free'
     ];
     
     // Open selector variable - tracks which preset is being configured
@@ -1246,9 +1256,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Special handling for preset 6 (Free Model)
                     if (presetId === '6') {
-                        nameSpan.textContent = 'FREE - ' + formatModelName(modelId, true);
+                        // Check if we have a display name
+                        if (defaultModelDisplayNames[modelId]) {
+                            nameSpan.textContent = 'FREE - ' + defaultModelDisplayNames[modelId];
+                        } else {
+                            nameSpan.textContent = 'FREE - ' + formatModelName(modelId, true);
+                        }
                     } else {
-                        nameSpan.textContent = formatModelName(modelId);
+                        // Check if we have a display name
+                        if (defaultModelDisplayNames[modelId]) {
+                            nameSpan.textContent = defaultModelDisplayNames[modelId];
+                        } else {
+                            nameSpan.textContent = formatModelName(modelId);
+                        }
                         
                         // Find the model in allModels to get its cost band
                         const model = allModels?.find(m => m.id === modelId);
@@ -1281,6 +1301,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to format model ID into a display name
     function formatModelName(modelId, isFreePrefixed = false) {
         if (!modelId) return 'Unknown';
+        
+        // Check if we have a custom display name for this model
+        if (defaultModelDisplayNames[modelId]) {
+            return defaultModelDisplayNames[modelId];
+        }
         
         // Handle special cases for free models
         if (modelId.includes(':free') && !isFreePrefixed) {
@@ -1780,7 +1805,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Create model name element
             const nameSpan = document.createElement('span');
             nameSpan.className = 'model-name';
-            nameSpan.textContent = model.name;
+            // Use our display name mapping if available
+            if (defaultModelDisplayNames[model.id]) {
+                nameSpan.textContent = defaultModelDisplayNames[model.id];
+            } else {
+                nameSpan.textContent = model.name;
+            }
             
             // Add cost band indicator if available
             if (model.cost_band) {
@@ -1869,9 +1899,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (nameSpan) {
                 // Special handling for preset 6 (Free Model)
                 if (presetId === '6') {
-                    nameSpan.textContent = 'FREE - ' + formatModelName(modelId, true);
+                    if (defaultModelDisplayNames[modelId]) {
+                        nameSpan.textContent = 'FREE - ' + defaultModelDisplayNames[modelId];
+                    } else {
+                        nameSpan.textContent = 'FREE - ' + formatModelName(modelId, true);
+                    }
                 } else {
-                    nameSpan.textContent = formatModelName(modelId);
+                    if (defaultModelDisplayNames[modelId]) {
+                        nameSpan.textContent = defaultModelDisplayNames[modelId];
+                    } else {
+                        nameSpan.textContent = formatModelName(modelId);
+                    }
                 }
             }
         }
@@ -1941,9 +1979,17 @@ document.addEventListener('DOMContentLoaded', function() {
                         if (nameSpan) {
                             // Special handling for preset 6 (Free Model)
                             if (presetId === '6') {
-                                nameSpan.textContent = 'FREE - ' + formatModelName(defaultModels[presetId], true);
+                                if (defaultModelDisplayNames[defaultModels[presetId]]) {
+                                    nameSpan.textContent = 'FREE - ' + defaultModelDisplayNames[defaultModels[presetId]];
+                                } else {
+                                    nameSpan.textContent = 'FREE - ' + formatModelName(defaultModels[presetId], true);
+                                }
                             } else {
-                                nameSpan.textContent = formatModelName(defaultModels[presetId]);
+                                if (defaultModelDisplayNames[defaultModels[presetId]]) {
+                                    nameSpan.textContent = defaultModelDisplayNames[defaultModels[presetId]];
+                                } else {
+                                    nameSpan.textContent = formatModelName(defaultModels[presetId]);
+                                }
                             }
                         }
                     }
