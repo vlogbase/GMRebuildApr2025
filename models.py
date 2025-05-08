@@ -42,7 +42,7 @@ class User(UserMixin, db.Model):
     profile_picture = db.Column(db.String(512), nullable=True)  # Profile picture URL
     last_login_at = db.Column(db.DateTime, nullable=True)  # Track last login time
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    is_active = db.Column(db.Boolean, default=True)
+    user_is_active = db.Column(db.Boolean, default=True)  # Whether this user account is active
     
     # Billing fields
     credits = db.Column(db.Integer, nullable=False, default=0)  # User's credit balance in credits (1 credit = $0.00001)
@@ -303,6 +303,7 @@ class OpenRouterModel(db.Model):
     is_free = db.Column(db.Boolean, default=False)  # Free models
     supports_reasoning = db.Column(db.Boolean, default=False)  # Models with strong reasoning capabilities
     cost_band = db.Column(db.String(8), nullable=True)  # '$', '$$', '$$$', '$$$$' band
+    model_is_active = db.Column(db.Boolean, default=True)  # Whether model is still available from OpenRouter
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # When this model record was created
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Last model data update
     last_fetched_at = db.Column(db.DateTime, default=datetime.utcnow)  # Last API fetch time
@@ -312,13 +313,13 @@ class OpenRouterModel(db.Model):
         
     @classmethod
     def get_all_models(cls):
-        """Return all models ordered by name"""
-        return cls.query.order_by(cls.name).all()
+        """Return all active models ordered by name"""
+        return cls.query.filter_by(model_is_active=True).order_by(cls.name).all()
         
     @classmethod
     def get_multimodal_models(cls):
-        """Return only multimodal models"""
-        return cls.query.filter_by(is_multimodal=True).order_by(cls.name).all()
+        """Return only active multimodal models"""
+        return cls.query.filter_by(is_multimodal=True, model_is_active=True).order_by(cls.name).all()
         
     @classmethod
     def is_model_multimodal(cls, model_id):
@@ -346,8 +347,8 @@ class OpenRouterModel(db.Model):
         
         max_band_value = band_values.get(max_cost_band, 4)  # Default to highest if invalid
         
-        # Get all models
-        all_models = cls.query.all()
+        # Get only active models
+        all_models = cls.query.filter_by(model_is_active=True).all()
         
         # Filter based on band value
         filtered_models = []

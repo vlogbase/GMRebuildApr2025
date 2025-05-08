@@ -223,13 +223,12 @@ OPENROUTER_MODELS = {
     "free-gemini": "google/gemini-flash:free" # Verified free model
 }
 DEFAULT_PRESET_MODELS = {
-    # Updated preset models with verified available IDs
     "1": "google/gemini-pro-vision", # Default multimodal model
-    "2": "anthropic/claude-3-haiku-20240307", # Fast, good quality
-    "3": "anthropic/claude-3-sonnet-20240229", # High quality
+    "2": "anthropic/claude-3-haiku:beta", # Fast, good quality
+    "3": "anthropic/claude-3-sonnet:beta", # High quality
     "4": "openai/gpt-4o-2024-05-13", # Premium quality
-    "5": "meta-llama/llama-3-8b", # Open model
-    "6": "google/gemini-flash:free" # Free model
+    "5": "meta-llama/llama-3-8b-instruct", # Open model
+    "6": "google/gemini-flash-1.5-8b", # Free model
 }
 FREE_MODEL_FALLBACKS = [
     # Updated with verified free models available in OpenRouter
@@ -2740,8 +2739,8 @@ def get_models():
     try:
         from models import OpenRouterModel
         
-        # Query all models from the database
-        db_models = OpenRouterModel.query.order_by(OpenRouterModel.name).all()
+        # Query only active models from the database
+        db_models = OpenRouterModel.query.filter_by(model_is_active=True).order_by(OpenRouterModel.name).all()
         
         if db_models:
             # Convert SQLAlchemy models to the format expected by the frontend

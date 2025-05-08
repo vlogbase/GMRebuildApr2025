@@ -28,7 +28,8 @@ def get_available_models():
             from models import OpenRouterModel
             
             with app.app_context():
-                db_models = OpenRouterModel.query.all()
+                # Only include active models
+                db_models = OpenRouterModel.query.filter_by(model_is_active=True).all()
                 if db_models:
                     model_ids = [model.model_id for model in db_models]
                     logger.info(f"Found {len(model_ids)} models in database")
@@ -169,7 +170,8 @@ def select_multimodal_fallback(has_image_content, available_models=None, has_rag
         from models import OpenRouterModel
         
         with app.app_context():
-            model_query = OpenRouterModel.query
+            # Only consider active models
+            model_query = OpenRouterModel.query.filter_by(model_is_active=True)
             
             # Filter by capability
             if has_image_content:

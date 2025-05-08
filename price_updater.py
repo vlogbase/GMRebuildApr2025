@@ -184,6 +184,14 @@ def fetch_and_store_openrouter_prices() -> bool:
             updated_count = 0
             new_count = 0
             
+            # First, mark all models as inactive - we'll re-activate the ones we find in the API response
+            try:
+                # Mark all existing models as inactive before updating
+                OpenRouterModel.query.update({OpenRouterModel.model_is_active: False})
+                logger.info("Marked all existing models as inactive")
+            except Exception as e:
+                logger.error(f"Error marking models as inactive: {e}")
+            
             # Use a single database session for all operations
             for model_id, model_data in prices.items():
                 try:
@@ -215,6 +223,9 @@ def fetch_and_store_openrouter_prices() -> bool:
                         db_model.supports_reasoning = any(keyword in model_id.lower() or keyword in model_name or keyword in model_description 
                                                      for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
                         
+                        # Since we found this model in the API response, mark it as active
+                        db_model.model_is_active = True
+                        
                         # Update timestamps
                         db_model.last_fetched_at = datetime.utcnow()
                         db_model.updated_at = datetime.utcnow()
@@ -238,21 +249,22 @@ def fetch_and_store_openrouter_prices() -> bool:
                         supports_reasoning = any(keyword in model_id.lower() or keyword in model_name or keyword in model_description 
                                             for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
                         
-                        new_model = OpenRouterModel(
-                            model_id=model_id,
-                            name=model_data['model_name'],
-                            description=original_model.get('description', ''),
-                            context_length=context_length,
-                            input_price_usd_million=model_data['input_price'],
-                            output_price_usd_million=model_data['output_price'],
-                            is_multimodal=model_data['is_multimodal'],
-                            is_free=is_free,
-                            supports_reasoning=supports_reasoning,
-                            cost_band=model_data['cost_band'],
-                            created_at=datetime.utcnow(),
-                            updated_at=datetime.utcnow(),
-                            last_fetched_at=datetime.utcnow()
-                        )
+                        # Create a new model instance
+                        new_model = OpenRouterModel()
+                        new_model.model_id = model_id
+                        new_model.name = model_data['model_name']
+                        new_model.description = original_model.get('description', '')
+                        new_model.context_length = context_length
+                        new_model.input_price_usd_million = model_data['input_price']
+                        new_model.output_price_usd_million = model_data['output_price']
+                        new_model.is_multimodal = model_data['is_multimodal']
+                        new_model.is_free = is_free
+                        new_model.supports_reasoning = supports_reasoning
+                        new_model.cost_band = model_data['cost_band']
+                        new_model.model_is_active = True
+                        new_model.created_at = datetime.utcnow()
+                        new_model.updated_at = datetime.utcnow()
+                        new_model.last_fetched_at = datetime.utcnow()
                         db.session.add(new_model)
                         new_count += 1
                         
