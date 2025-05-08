@@ -2418,8 +2418,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     metadataContainer.textContent = metadataText;
+                    // Debug logging for investigating RAG indicator
+                    console.log("DEBUG-RAG-FRONTEND: Full metadata received:", metadata);
+                    console.log("DEBUG-RAG-FRONTEND: Is using_documents flag present?", metadata && 'using_documents' in metadata);
+                    if (metadata) {
+                        console.log("DEBUG-RAG-FRONTEND: using_documents value:", metadata.using_documents);
+                        console.log("DEBUG-RAG-FRONTEND: document_sources:", metadata.document_sources);
+                    }
+
                     // Add document reference indicator if using documents
                     if (metadata && metadata.using_documents) {
+                        console.log("DEBUG-RAG-FRONTEND: Attempting to add document reference indicator");
                         const documentRef = document.createElement('span');
                         documentRef.className = 'document-reference';
                         documentRef.innerHTML = '<i class="fa-solid fa-file-lines"></i> Using your documents';
@@ -2431,9 +2440,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                 ? metadata.document_sources[0] 
                                 : `${sourceCount} documents`;
                             documentRef.innerHTML = `<i class="fa-solid fa-file-lines"></i> Using ${sourceText}`;
+                            console.log("DEBUG-RAG-FRONTEND: Set document reference text to:", documentRef.innerHTML);
                         }
                         
                         metadataContainer.appendChild(documentRef);
+                        console.log("DEBUG-RAG-FRONTEND: Document reference indicator added to DOM");
+                    } else {
+                        console.log("DEBUG-RAG-FRONTEND: Not adding document reference indicator - using_documents flag not set");
                     }
                     
                     if (metadataText || (metadata && metadata.using_documents)) {
@@ -2940,6 +2953,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     console.log("==> Processing type: metadata"); 
                                     // Metadata received (usually after content stream ends)
                                     console.log("Received metadata:", parsedData.metadata);
+                                    // Debug RAG information
+                                    console.log("DEBUG-RAG: Full metadata object:", parsedData.metadata);
+                                    console.log("DEBUG-RAG: using_documents flag present?", parsedData.metadata && 'using_documents' in parsedData.metadata);
+                                    if (parsedData.metadata && 'using_documents' in parsedData.metadata) {
+                                        console.log("DEBUG-RAG: using_documents value =", parsedData.metadata.using_documents);
+                                    }
+                                    
                                     if (parsedData.metadata) {
                                         const meta = parsedData.metadata;
                                         
@@ -2972,10 +2992,55 @@ document.addEventListener('DOMContentLoaded', function() {
                                                  metadataText += ` · Tokens: ${meta.prompt_tokens} prompt + ${meta.completion_tokens} completion`;
                                             }
                                             console.log("Setting metadata text:", metadataText);
-                                            metadataContainer.textContent = metadataText;
+                                            
+                                            // Create a text node instead of using textContent directly
+                                            // This ensures we can append multiple elements to the container
+                                            const textNode = document.createTextNode(metadataText);
+                                            metadataContainer.innerHTML = ''; // Clear any existing content
+                                            metadataContainer.appendChild(textNode);
                                             
                                             // Add a class to highlight the metadata as visible
                                             metadataContainer.classList.add('metadata-visible');
+                                            
+                                            // Add document reference indicator if using documents
+                                            if (meta.using_documents) {
+                                                console.log("DEBUG-RAG: Adding document reference indicator");
+                                                const documentRef = document.createElement('span');
+                                                documentRef.className = 'document-reference';
+                                                documentRef.innerHTML = '<i class="fa-solid fa-file-lines"></i> Using your documents';
+                                                documentRef.title = 'This response includes information from your uploaded documents';
+                                                
+                                                // If we have source information, make it expandable
+                                                if (meta.document_sources && meta.document_sources.length > 0) {
+                                                    console.log("DEBUG-RAG: Adding document sources:", meta.document_sources);
+                                                    documentRef.classList.add('has-sources');
+                                                    documentRef.addEventListener('click', function() {
+                                                        const existingSourceList = messageWrapper.querySelector('.document-sources');
+                                                        if (existingSourceList) {
+                                                            existingSourceList.remove();
+                                                            documentRef.classList.remove('expanded');
+                                                        } else {
+                                                            const sourceList = document.createElement('div');
+                                                            sourceList.className = 'document-sources';
+                                                            sourceList.innerHTML = '<h4>Document Sources</h4>';
+                                                            const sourceUl = document.createElement('ul');
+                                                            meta.document_sources.forEach(source => {
+                                                                const li = document.createElement('li');
+                                                                li.textContent = source;
+                                                                sourceUl.appendChild(li);
+                                                            });
+                                                            sourceList.appendChild(sourceUl);
+                                                            messageWrapper.appendChild(sourceList);
+                                                            documentRef.classList.add('expanded');
+                                                        }
+                                                    });
+                                                }
+                                                
+                                                metadataContainer.appendChild(documentRef);
+                                                console.log("DEBUG-RAG: Document reference indicator added");
+                                            } else {
+                                                console.log("DEBUG-RAG: Not adding document reference - using_documents flag not set");
+                                            }
                                         }
 
                                         // Update action buttons now that we have the final message ID

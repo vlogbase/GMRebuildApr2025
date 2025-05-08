@@ -1431,6 +1431,60 @@ body.account-page .tab-pane {
     font-size: 10px;
 }
 
+.document-reference.has-sources {
+    cursor: pointer;
+    padding-right: 14px;
+    position: relative;
+}
+
+.document-reference.has-sources:after {
+    content: '▼';
+    font-size: 8px;
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: transform 0.2s ease;
+}
+
+.document-reference.has-sources.expanded:after {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.document-sources {
+    background-color: rgba(10, 40, 50, 0.9);
+    border: 1px solid rgba(36, 185, 189, 0.3);
+    border-radius: 4px;
+    color: #f0f0f0;
+    font-size: 12px;
+    margin-top: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 8px;
+    width: 100%;
+}
+
+.document-sources h4 {
+    color: var(--accent-color);
+    font-size: 13px;
+    margin: 0 0 6px 0;
+}
+
+.document-sources ul {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+}
+
+.document-sources li {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 4px 0;
+}
+
+.document-sources li:last-child {
+    border-bottom: none;
+}
+
 .metadata-visible {
     /* Additional styles for enhanced visibility when metadata is present */
     background-color: rgba(0, 0, 0, 0.1);

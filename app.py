@@ -1819,6 +1819,11 @@ def chat(): # Synchronous function
                     has_rag_documents = True
                     doc_sources = [chunk.get('source_document_name', 'Unknown') for chunk in relevant_chunks]
                     unique_sources = list(set(doc_sources))
+                    
+                    # Debug logging for RAG document detection
+                    print(f"DEBUG-RAG-DETECTION: Set has_rag_documents={has_rag_documents}")
+                    print(f"DEBUG-RAG-DETECTION: Document sources: {doc_sources}")
+                    print(f"DEBUG-RAG-DETECTION: Unique sources: {unique_sources}")
                 else:
                     logger.info("No relevant document chunks found for the query")
                     
@@ -2317,6 +2322,17 @@ def chat(): # Synchronous function
                             metadata_payload['using_documents'] = True
                             if 'unique_sources' in locals() and unique_sources:
                                 metadata_payload['document_sources'] = unique_sources
+                            
+                            # Enhanced debug logging for metadata payload with RAG info
+                            print(f"DEBUG-RAG-METADATA: Adding RAG info to metadata_payload")
+                            print(f"DEBUG-RAG-METADATA: using_documents = {metadata_payload.get('using_documents')}")
+                            print(f"DEBUG-RAG-METADATA: document_sources = {metadata_payload.get('document_sources', [])}")
+                        else:
+                            print(f"DEBUG-RAG-METADATA: Not adding RAG info (has_rag_documents={('has_rag_documents' in locals() and has_rag_documents)})")
+                            if 'has_rag_documents' in locals():
+                                print(f"DEBUG-RAG-METADATA: has_rag_documents explicitly set to {has_rag_documents}")
+                            else:
+                                print(f"DEBUG-RAG-METADATA: has_rag_documents variable not defined in this scope")
                                 
                         # Send the metadata
                         yield f"data: {json.dumps({'type': 'metadata', 'metadata': metadata_payload})}\n\n"
