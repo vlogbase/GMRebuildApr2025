@@ -1970,6 +1970,8 @@ def chat(): # Synchronous function
             
             # Create a safe copy of the payload for logging (to avoid credentials leaks)
             log_payload = payload.copy()
+            # Make sure json is available in this scope
+            import json
             # Use json.dumps for clean logging of the entire payload
             final_payload_json = json.dumps(log_payload, indent=2)
             logger.debug(f"PAYLOAD DEBUG: Final payload being sent to OpenRouter:\n{final_payload_json}")
