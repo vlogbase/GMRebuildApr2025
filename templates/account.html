@@ -125,7 +125,7 @@
                                             <div class="text-center mb-3">
                                                 <span class="display-6">${{ "%.2f"|format(package.amount_usd) }}</span>
                                             </div>
-                                            <p class="text-center">{{ package.credits // 1000 }} credits</p>
+                                            <p class="text-center">Pay what you use - no minimums</p>
                                             <div class="mt-auto">
                                                 <ul class="list-group list-group-flush mb-3">
                                                     <li class="list-group-item bg-transparent text-light"><i class="fas fa-check-circle text-success me-2"></i>Access premium models</li>
@@ -175,22 +175,22 @@
                         <div class="card-body">
                             {% if recent_transactions %}
                             <div class="table-responsive">
-                                <table class="table table-striped table-hover">
-                                    <thead>
+                                <table class="table table-dark table-striped table-hover">
+                                    <thead class="table-dark">
                                         <tr>
-                                            <th>Date</th>
-                                            <th>Amount</th>
-                                            <th>Payment Method</th>
-                                            <th>Status</th>
-                                            <th>Action</th>
+                                            <th class="text-white">Date</th>
+                                            <th class="text-white">Amount</th>
+                                            <th class="text-white">Payment Method</th>
+                                            <th class="text-white">Status</th>
+                                            <th class="text-white">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {% for transaction in recent_transactions %}
                                         <tr>
-                                            <td>{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
-                                            <td>${{ "%.2f"|format(transaction.amount_usd) }}</td>
-                                            <td>
+                                            <td class="text-light">{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
+                                            <td class="text-light">${{ "%.2f"|format(transaction.amount_usd) }}</td>
+                                            <td class="text-light">
                                                 <span class="d-flex align-items-center">
                                                     {% if transaction.payment_method == 'stripe' %}
                                                     <i class="fab fa-cc-stripe me-2 text-primary"></i>
@@ -200,7 +200,7 @@
                                                     {{ transaction.payment_method|capitalize }}
                                                 </span>
                                             </td>
-                                            <td>
+                                            <td class="text-light">
                                                 {% if transaction.status == 'completed' %}
                                                     <span class="badge bg-success">Completed</span>
                                                 {% elif transaction.status == 'pending' %}
@@ -209,7 +209,7 @@
                                                     <span class="badge bg-danger">Failed</span>
                                                 {% endif %}
                                             </td>
-                                            <td>
+                                            <td class="text-light">
                                                 <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" data-bs-placement="top" title="View Receipt">
                                                     <i class="fas fa-receipt"></i>
                                                 </button>
@@ -286,7 +286,7 @@
                                                     <h2 class="text-light">
                                                         {% set total_spent = namespace(value=0) %}
                                                         {% for usage in recent_usage %}
-                                                            {% set total_spent.value = total_spent.value + (usage.credits_used / 1000) %}
+                                                            {% set total_spent.value = total_spent.value + (usage.credits_used / 100000) %}
                                                         {% endfor %}
                                                         ${{ "%.2f"|format(total_spent.value) }}
                                                     </h2>
@@ -326,26 +326,26 @@
                                     </div>
                                     
                                     <div class="table-responsive">
-                                        <table class="table table-striped table-hover">
-                                            <thead>
+                                        <table class="table table-dark table-striped table-hover">
+                                            <thead class="table-dark">
                                                 <tr>
-                                                    <th style="min-width: 110px;">Date</th>
-                                                    <th style="min-width: 80px;">Type</th>
-                                                    <th style="min-width: 180px;">Model</th>
-                                                    <th style="min-width: 80px;">Cost</th>
+                                                    <th style="min-width: 110px;" class="text-white">Date</th>
+                                                    <th style="min-width: 80px;" class="text-white">Type</th>
+                                                    <th style="min-width: 180px;" class="text-white">Model</th>
+                                                    <th style="min-width: 80px;" class="text-white">Cost</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {% for usage in recent_usage %}
                                                 <tr>
-                                                    <td>{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
-                                                    <td>
+                                                    <td class="text-light">{{ usage.created_at.strftime('%Y-%m-%d') }}</td>
+                                                    <td class="text-light">
                                                         <span class="badge {% if usage.usage_type == 'chat' %}bg-info{% elif usage.usage_type == 'embedding' %}bg-warning text-dark{% else %}bg-secondary{% endif %}">
                                                             {{ usage.usage_type|capitalize }}
                                                         </span>
                                                     </td>
-                                                    <td>{{ usage.model_id }}</td>
-                                                    <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                                    <td class="text-light">{{ usage.model_id }}</td>
+                                                    <td class="text-light">${{ "%.4f"|format(usage.credits_used / 100000) }}</td>
                                                 </tr>
                                                 {% endfor %}
                                             </tbody>
@@ -374,42 +374,42 @@
                                 <div id="usage-detailed-tab" class="tab-pane fade" role="tabpanel" aria-labelledby="detailedViewBtn">
                                     {% if recent_usage %}
                                     <div class="table-responsive">
-                                        <table class="table table-striped table-hover">
-                                            <thead>
+                                        <table class="table table-dark table-striped table-hover">
+                                            <thead class="table-dark">
                                                 <tr>
-                                                    <th style="min-width: 110px;">Date</th>
-                                                    <th style="min-width: 180px;">Model</th>
-                                                    <th style="min-width: 100px;">Input Tokens</th>
-                                                    <th style="min-width: 100px;">Input Cost</th>
-                                                    <th style="min-width: 100px;">Output Tokens</th>
-                                                    <th style="min-width: 100px;">Output Cost</th>
-                                                    <th style="min-width: 100px;">Total Cost</th>
+                                                    <th style="min-width: 110px;" class="text-white">Date</th>
+                                                    <th style="min-width: 180px;" class="text-white">Model</th>
+                                                    <th style="min-width: 100px;" class="text-white">Input Tokens</th>
+                                                    <th style="min-width: 100px;" class="text-white">Input Cost</th>
+                                                    <th style="min-width: 100px;" class="text-white">Output Tokens</th>
+                                                    <th style="min-width: 100px;" class="text-white">Output Cost</th>
+                                                    <th style="min-width: 100px;" class="text-white">Total Cost</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {% for usage in recent_usage %}
                                                 <tr>
-                                                    <td>{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                                                    <td>{{ usage.model_id }}</td>
-                                                    <td>{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
-                                                    <td>
+                                                    <td class="text-light">{{ usage.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                                    <td class="text-light">{{ usage.model_id }}</td>
+                                                    <td class="text-light">{{ usage.prompt_tokens if usage.prompt_tokens else 'N/A' }}</td>
+                                                    <td class="text-light">
                                                         {% if usage.prompt_tokens and usage.model_id %}
-                                                            {% set input_cost = ((usage.credits_used / 1000) * 0.7)|float %}
+                                                            {% set input_cost = ((usage.credits_used / 100000) * 0.7)|float %}
                                                             ${{ "%.4f"|format(input_cost) }}
                                                         {% else %}
                                                             N/A
                                                         {% endif %}
                                                     </td>
-                                                    <td>{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
-                                                    <td>
+                                                    <td class="text-light">{{ usage.completion_tokens if usage.completion_tokens else 'N/A' }}</td>
+                                                    <td class="text-light">
                                                         {% if usage.completion_tokens and usage.model_id %}
-                                                            {% set output_cost = ((usage.credits_used / 1000) * 0.3)|float %}
+                                                            {% set output_cost = ((usage.credits_used / 100000) * 0.3)|float %}
                                                             ${{ "%.4f"|format(output_cost) }}
                                                         {% else %}
                                                             N/A
                                                         {% endif %}
                                                     </td>
-                                                    <td>${{ "%.4f"|format(usage.credits_used / 1000) }}</td>
+                                                    <td class="text-light">${{ "%.4f"|format(usage.credits_used / 100000) }}</td>
                                                 </tr>
                                                 {% endfor %}
                                             </tbody>
