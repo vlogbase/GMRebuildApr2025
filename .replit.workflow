@@ -10,6 +10,16 @@
         }
       ]
     },
+    "test_chat_ui": {
+      "sections": [
+        {
+          "name": "Test Chat UI Enhancements",
+          "tasks": {
+            "run": "python test_chat_ui.py"
+          }
+        }
+      ]
+    },
     "app_workflow": {
       "sections": [
         {

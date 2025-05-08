@@ -1321,6 +1321,7 @@ def chat(): # Synchronous function
             # Initialize RAG content flag
             has_rag_content = False
             relevant_chunks = []
+            document_names = [] # Track document names for the UI
             
             # Global document_processor is already declared at the function start
             
@@ -1763,15 +1764,23 @@ def chat(): # Synchronous function
                     # Format document chunks as context
                     context_text = "Below is relevant information from your documents:\n\n"
                     
+                    # Track document names for the UI indicator
+                    document_names = []
+                    
                     for i, chunk in enumerate(relevant_chunks):
                         source = chunk.get('source_document_name', 'Unknown')
                         text = chunk.get('text_chunk', '')
                         score = chunk.get('score', 0)
                         
+                        # Add unique document names to the list for UI display
+                        if source not in document_names and source != 'Unknown':
+                            document_names.append(source)
+                        
                         # Add formatted chunk with source attribution
                         context_text += f"[Document: {source}]\n{text}\n\n"
                     
                     logger.info(f"RAG: Formatted context text (first 100 chars): {context_text[:100]}...")
+                    logger.info(f"RAG: Found {len(document_names)} unique document names for UI indicator: {document_names}")
                     
                     # Add a context system message at the beginning of the conversation
                     context_message = {
@@ -2211,6 +2220,13 @@ def chat(): # Synchronous function
                 if full_response_text: # Only save if there was actual content
                     try:
                         from models import Message 
+                        # Store document names as JSON if we have RAG documents
+                        rag_docs = None
+                        if document_names and len(document_names) > 0:
+                            import json
+                            rag_docs = json.dumps(document_names)
+                            logger.info(f"Storing {len(document_names)} RAG document names with assistant message")
+                            
                         assistant_db_message = Message(
                             conversation_id=current_conv_id, 
                             role='assistant', 
@@ -2219,6 +2235,7 @@ def chat(): # Synchronous function
                             model_id_used=final_model_id_used, 
                             prompt_tokens=final_prompt_tokens, 
                             completion_tokens=final_completion_tokens,
+                            rag_documents=rag_docs,
                             rating=None 
                         )
                         db.session.add(assistant_db_message)
@@ -2296,9 +2313,20 @@ def chat(): # Synchronous function
                             logger.error(f"Error checking message count or triggering title generation: {e}")
                             # Don't raise the exception - we want to continue even if this fails
 
-                        # Yield the final metadata event
+                        # Yield the final metadata event with RAG documents if available
                         logger.info(f"==> Preparing to yield METADATA for message {assistant_message_id}")
-                        yield f"data: {json.dumps({'type': 'metadata', 'metadata': {'id': assistant_message_id, 'model_id_used': final_model_id_used, 'prompt_tokens': final_prompt_tokens, 'completion_tokens': final_completion_tokens}})}\n\n"
+                        metadata = {
+                            'id': assistant_message_id, 
+                            'model_id_used': final_model_id_used, 
+                            'prompt_tokens': final_prompt_tokens, 
+                            'completion_tokens': final_completion_tokens
+                        }
+                        
+                        # Include RAG document names in metadata if available
+                        if document_names and len(document_names) > 0:
+                            metadata['rag_documents'] = document_names
+                            
+                        yield f"data: {json.dumps({'type': 'metadata', 'metadata': metadata})}\n\n"
                         logger.info(f"==> SUCCESSFULLY yielded METADATA for message {assistant_message_id}")
 
                     except Exception as db_error:

@@ -1383,13 +1383,31 @@ body.account-page .tab-pane {
     padding-top: 4px;
     padding-bottom: 4px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .metadata-visible {
     /* Additional styles for enhanced visibility when metadata is present */
     background-color: rgba(0, 0, 0, 0.1);
     border-radius: 4px;
+}
+
+/* RAG Document Indicator */
+.rag-documents-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: #24b9bd;
+    cursor: help;
+    margin-right: 3px;
+}
+
+.rag-documents-icon svg {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
 }
 
 /* Input Area */
@@ -2230,6 +2248,40 @@ body.account-page .tab-pane {
 
 #image-preview:hover {
     transform: scale(1.05);
+}
+
+/* Styles for collapsible message content */
+.collapsible-content {
+    position: relative;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.collapsible-content::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 40px;
+    background: linear-gradient(transparent, var(--bg-color));
+    pointer-events: none;
+}
+
+.show-more-btn {
+    color: var(--accent-color);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 6px 0;
+    margin-top: 4px;
+    font-size: 14px;
+    text-align: left;
+    font-weight: 500;
+}
+
+.show-more-btn:hover {
+    text-decoration: underline;
 }
 
 .remove-image-btn {

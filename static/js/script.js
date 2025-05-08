@@ -916,15 +916,24 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Event Listeners
     if (messageInput) {
+        // Function to auto-resize the textarea based on content
+        function autoResizeTextarea() {
+            messageInput.style.height = 'auto';
+            messageInput.style.height = (messageInput.scrollHeight) + 'px';
+        }
+        
+        // Initialize height on page load
+        autoResizeTextarea();
+        
+        // Monitor for input to resize dynamically as user types
+        messageInput.addEventListener('input', autoResizeTextarea);
+        
+        // Handle Enter key for sending messages
         messageInput.addEventListener('keydown', function(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
                 sendMessage();
             }
-            
-            // Auto-resize textarea
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
         });
     }
     
@@ -2126,9 +2135,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const message = messageInput.value.trim();
         if (!message && (!attachedImageUrls || attachedImageUrls.length === 0)) return;
         
-        // Clear input
+        // Clear input and reset height to default
         messageInput.value = '';
         messageInput.style.height = 'auto';
+        messageInput.style.height = '40px'; // Reset to default height
         
         // First time? Clear welcome message
         if (document.querySelector('.welcome-container') && chatMessages) {
@@ -2263,7 +2273,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             } else {
                 // Legacy format - just text content
-                messageContent.innerHTML = formatMessage(content);
+                // Apply logic for truncating long user messages only if sender is 'user'
+                if (sender === 'user' && content.length > 300) {
+                    const truncateHeight = '120px'; // Roughly 5-6 lines of text
+                    
+                    // Create wrapper div for collapsible content
+                    const collapsibleContent = document.createElement('div');
+                    collapsibleContent.className = 'collapsible-content';
+                    collapsibleContent.innerHTML = formatMessage(content);
+                    collapsibleContent.style.maxHeight = truncateHeight;
+                    collapsibleContent.style.overflow = 'hidden';
+                    collapsibleContent.style.position = 'relative';
+                    collapsibleContent.style.transition = 'max-height 0.3s ease-out';
+                    
+                    // Create show more button
+                    const showMoreBtn = document.createElement('button');
+                    showMoreBtn.className = 'show-more-btn';
+                    showMoreBtn.innerHTML = 'Show more';
+                    showMoreBtn.style.display = 'block';
+                    
+                    // Handle show more/less functionality
+                    let expanded = false;
+                    showMoreBtn.addEventListener('click', function() {
+                        if (expanded) {
+                            collapsibleContent.style.maxHeight = truncateHeight;
+                            this.innerHTML = 'Show more';
+                            expanded = false;
+                        } else {
+                            collapsibleContent.style.maxHeight = collapsibleContent.scrollHeight + 'px';
+                            this.innerHTML = 'Show less';
+                            expanded = true;
+                        }
+                    });
+                    
+                    // Append content and button to message content
+                    messageContent.appendChild(collapsibleContent);
+                    messageContent.appendChild(showMoreBtn);
+                } else {
+                    // Regular message, no truncation needed
+                    messageContent.innerHTML = formatMessage(content);
+                }
                 
                 // Check if this message has an image (from metadata)
                 if (metadata && metadata.image_url) {
@@ -2356,12 +2405,31 @@ document.addEventListener('DOMContentLoaded', function() {
                     // If we have model and token information, display it
                     let metadataText = '';
                     
+                    // Add RAG document indicator if available
+                    if (metadata.rag_documents && metadata.rag_documents.length > 0) {
+                        // Create documents icon and indicator
+                        const docsIcon = document.createElement('span');
+                        docsIcon.className = 'rag-documents-icon';
+                        docsIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>';
+                        
+                        // Add tooltip with document names
+                        const docCount = metadata.rag_documents.length;
+                        const docNames = metadata.rag_documents.join(', ');
+                        docsIcon.title = `Referenced ${docCount} document${docCount > 1 ? 's' : ''}: ${docNames}`;
+                        
+                        // Add the documents indicator to metadata
+                        metadataContainer.appendChild(docsIcon);
+                        metadataText += 'Documents used'; // This will be replaced with the icon
+                    }
+                    
                     if (metadata.model_id_used) {
                         // Format and shorten the model name
                         const shortModelName = formatModelName(metadata.model_id_used);
+                        if (metadataText) metadataText += ' · ';
                         metadataText += `Model: ${shortModelName}`;
                     } else if (metadata.model) {
                         const shortModelName = formatModelName(metadata.model);
+                        if (metadataText) metadataText += ' · ';
                         metadataText += `Model: ${shortModelName}`;
                     }
                     
@@ -2370,7 +2438,15 @@ document.addEventListener('DOMContentLoaded', function() {
                         metadataText += `Tokens: ${metadata.prompt_tokens} prompt + ${metadata.completion_tokens} completion`;
                     }
                     
-                    metadataContainer.textContent = metadataText;
+                    // If we don't have RAG documents, set the text content directly
+                    if (!metadata.rag_documents || metadata.rag_documents.length === 0) {
+                        metadataContainer.textContent = metadataText;
+                    } else {
+                        // Otherwise append the remaining metadata as text
+                        const textNode = document.createTextNode(metadataText.replace('Documents used · ', ' · '));
+                        metadataContainer.appendChild(textNode);
+                    }
+                    
                     if (metadataText) {
                         messageWrapper.appendChild(metadataContainer);
                     }
