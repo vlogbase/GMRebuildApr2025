@@ -1227,6 +1227,34 @@ body.account-page .tab-pane {
     padding: 12px 16px;
     border-radius: 8px;
     line-height: 1.5;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+/* Truncated message styles */
+.truncated-message {
+    max-height: 200px; /* Limit max height for long messages */
+    overflow: hidden;
+    position: relative;
+    mask-image: linear-gradient(to bottom, black 160px, transparent 200px);
+    -webkit-mask-image: linear-gradient(to bottom, black 160px, transparent 200px);
+}
+
+.show-more-toggle {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 4px 8px;
+    background-color: var(--hover-color);
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    color: var(--accent-color);
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+.show-more-toggle:hover {
+    background-color: rgba(36, 185, 189, 0.15);
 }
 
 .message-user .message-content {
@@ -1384,6 +1412,23 @@ body.account-page .tab-pane {
     padding-bottom: 4px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     display: block;
+}
+
+/* Document reference indicator */
+.document-reference {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: rgba(36, 185, 189, 0.15);
+    color: var(--accent-color);
+    font-size: 11px;
+}
+
+.document-reference i {
+    font-size: 10px;
 }
 
 .metadata-visible {

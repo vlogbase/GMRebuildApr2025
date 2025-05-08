@@ -916,16 +916,34 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Event Listeners
     if (messageInput) {
+        // Function to auto-resize the textarea
+        function autoResizeTextarea() {
+            // Reset height to auto first to get the correct scrollHeight
+            messageInput.style.height = 'auto';
+            
+            // Set the height based on scrollHeight (with a minimum height)
+            const newHeight = Math.max(40, Math.min(messageInput.scrollHeight, 200));
+            messageInput.style.height = newHeight + 'px';
+        }
+        
+        // Handle input event for continuous resizing as user types
+        messageInput.addEventListener('input', autoResizeTextarea);
+        
+        // Handle keydown for Enter key and special cases
         messageInput.addEventListener('keydown', function(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
                 sendMessage();
             }
             
-            // Auto-resize textarea
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
+            // For Backspace and Delete keys, resize after a brief delay
+            if (event.key === 'Backspace' || event.key === 'Delete') {
+                setTimeout(autoResizeTextarea, 10);
+            }
         });
+        
+        // Initial resize in case there's content already
+        autoResizeTextarea();
     }
     
     // Add clipboard paste event listener to the message input
@@ -2126,9 +2144,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const message = messageInput.value.trim();
         if (!message && (!attachedImageUrls || attachedImageUrls.length === 0)) return;
         
-        // Clear input
+        // Clear input and reset textarea height to initial state
         messageInput.value = '';
-        messageInput.style.height = 'auto';
+        messageInput.style.height = '40px'; // Reset to initial height
         
         // First time? Clear welcome message
         if (document.querySelector('.welcome-container') && chatMessages) {
@@ -2263,7 +2281,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 
             } else {
                 // Legacy format - just text content
-                messageContent.innerHTML = formatMessage(content);
+                const formattedMessage = formatMessage(content);
+                messageContent.innerHTML = formattedMessage;
+                
+                // Only add "Show more" for user messages that are long
+                if (sender === 'user' && shouldTruncateMessage(content)) {
+                    // Add truncated class
+                    messageContent.classList.add('truncated-message');
+                    
+                    // Create "Show more" toggle button
+                    const showMoreToggle = document.createElement('div');
+                    showMoreToggle.className = 'show-more-toggle';
+                    showMoreToggle.textContent = 'Show more';
+                    showMoreToggle.addEventListener('click', function() {
+                        if (messageContent.classList.contains('truncated-message')) {
+                            // Expand message
+                            messageContent.classList.remove('truncated-message');
+                            showMoreToggle.textContent = 'Show less';
+                        } else {
+                            // Collapse message
+                            messageContent.classList.add('truncated-message');
+                            showMoreToggle.textContent = 'Show more';
+                            
+                            // Scroll to make sure the message is visible
+                            messageElement.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+                        }
+                    });
+                    
+                    // Add toggle after message content
+                    messageWrapper.insertBefore(showMoreToggle, messageWrapper.firstChild.nextSibling);
+                }
                 
                 // Check if this message has an image (from metadata)
                 if (metadata && metadata.image_url) {
@@ -2371,7 +2418,25 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     metadataContainer.textContent = metadataText;
-                    if (metadataText) {
+                    // Add document reference indicator if using documents
+                    if (metadata && metadata.using_documents) {
+                        const documentRef = document.createElement('span');
+                        documentRef.className = 'document-reference';
+                        documentRef.innerHTML = '<i class="fa-solid fa-file-lines"></i> Using your documents';
+                        
+                        // Add document sources if available
+                        if (metadata.document_sources && metadata.document_sources.length > 0) {
+                            const sourceCount = metadata.document_sources.length;
+                            const sourceText = sourceCount === 1 
+                                ? metadata.document_sources[0] 
+                                : `${sourceCount} documents`;
+                            documentRef.innerHTML = `<i class="fa-solid fa-file-lines"></i> Using ${sourceText}`;
+                        }
+                        
+                        metadataContainer.appendChild(documentRef);
+                    }
+                    
+                    if (metadataText || (metadata && metadata.using_documents)) {
                         messageWrapper.appendChild(metadataContainer);
                     }
                 }
@@ -3008,6 +3073,19 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to format message with markdown, code blocks, etc.
+    // Helper function to determine if a message should be truncated
+    function shouldTruncateMessage(text) {
+        // Count characters in the message (excluding code blocks)
+        const textWithoutCodeBlocks = text.replace(/```[^`]+```/g, '');
+        const characterCount = textWithoutCodeBlocks.length;
+        
+        // Get number of newlines (approximation of text height)
+        const newlineCount = (text.match(/\n/g) || []).length;
+        
+        // Truncate if text is long OR has many newlines
+        return characterCount > 500 || newlineCount > 12;
+    }
+    
     function formatMessage(text) {
         // Simple markdown-like formatting (this could be expanded or replaced with a proper markdown library)
         

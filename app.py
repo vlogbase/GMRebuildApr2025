@@ -1813,6 +1813,12 @@ def chat(): # Synchronous function
                         logger.error(f"RAG: Error logging message structure: {e}")
                     
                     logger.info(f"RAG: Added context from {len(relevant_chunks)} document chunks")
+                    
+                    # Add a flag to track that this conversation is using document retrieval
+                    # This will be used to display a visual indicator in the UI
+                    has_rag_documents = True
+                    doc_sources = [chunk.get('source_document_name', 'Unknown') for chunk in relevant_chunks]
+                    unique_sources = list(set(doc_sources))
                 else:
                     logger.info("No relevant document chunks found for the query")
                     
@@ -2298,7 +2304,22 @@ def chat(): # Synchronous function
 
                         # Yield the final metadata event
                         logger.info(f"==> Preparing to yield METADATA for message {assistant_message_id}")
-                        yield f"data: {json.dumps({'type': 'metadata', 'metadata': {'id': assistant_message_id, 'model_id_used': final_model_id_used, 'prompt_tokens': final_prompt_tokens, 'completion_tokens': final_completion_tokens}})}\n\n"
+                        # Prepare metadata payload
+                        metadata_payload = {
+                            'id': assistant_message_id, 
+                            'model_id_used': final_model_id_used, 
+                            'prompt_tokens': final_prompt_tokens, 
+                            'completion_tokens': final_completion_tokens
+                        }
+                        
+                        # Add document info if RAG was used
+                        if 'has_rag_documents' in locals() and has_rag_documents:
+                            metadata_payload['using_documents'] = True
+                            if 'unique_sources' in locals() and unique_sources:
+                                metadata_payload['document_sources'] = unique_sources
+                                
+                        # Send the metadata
+                        yield f"data: {json.dumps({'type': 'metadata', 'metadata': metadata_payload})}\n\n"
                         logger.info(f"==> SUCCESSFULLY yielded METADATA for message {assistant_message_id}")
 
                     except Exception as db_error:
