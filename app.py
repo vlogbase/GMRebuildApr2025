@@ -114,7 +114,7 @@ try:
         logger.info(f"Container {azure_container_name} created successfully")
     
     # Validate by trying to list blobs
-    container_client.list_blobs(max_results=1)
+    container_client.list_blobs(maxresults=1)
     
     logger.info(f"Azure Blob Storage initialized successfully for container: {azure_container_name}")
     USE_AZURE_STORAGE = True
@@ -856,7 +856,7 @@ def test_multimodal():
         # Try to get a test image URL from Azure Blob Storage
         if 'USE_AZURE_STORAGE' in globals() and USE_AZURE_STORAGE and 'container_client' in globals() and container_client:
             # List blobs to find an image
-            for blob in container_client.list_blobs(max_results=5):
+            for blob in container_client.list_blobs(maxresults=5):
                 if blob.name.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp')):
                     test_image_url = get_object_storage_url(blob.name, public=False, expires_in=3600)
                     break
