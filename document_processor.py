@@ -557,47 +557,6 @@ class DocumentProcessor:
             # Default to false if there's an error
             return False
             
-    def get_user_document_names(self, user_id: Union[str, int]) -> List[str]:
-        """
-        Get a list of document names for a specific user.
-        
-        Args:
-            user_id: The ID of the user
-            
-        Returns:
-            List[str]: List of document names
-        """
-        if not self.db_initialized:
-            _log_rag("MongoDB not available for retrieving document names", level='warning')
-            return []
-        
-        try:
-            # Convert user_id to string for consistency
-            user_id_str = str(user_id)
-            
-            # Find all documents for this user
-            documents = self.documents_collection.find({
-                "$or": [
-                    {"user_id": user_id_str},
-                    {"userId": user_id_str}  # For backward compatibility
-                ]
-            }, {"filename": 1, "title": 1})
-            
-            # Extract document names, preferring title if available
-            document_names = []
-            for doc in documents:
-                # Use title if available, otherwise use filename
-                doc_name = doc.get("title") or doc.get("filename", "Unknown Document")
-                if doc_name and doc_name not in document_names:
-                    document_names.append(doc_name)
-            
-            _log_rag(f"Found {len(document_names)} document names for user {user_id}", level='info')
-            return document_names
-            
-        except Exception as e:
-            _log_rag(f"Error retrieving document names: {e}", level='error')
-            return []
-            
     def retrieve_relevant_chunks(self, query_text: str, user_id: Union[str, int], limit: int = 5) -> List[Dict[str, Any]]:
         """
         Retrieve text chunks relevant to a query using MongoDB Atlas Vector Search.

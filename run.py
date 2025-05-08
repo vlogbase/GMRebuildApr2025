@@ -1,8 +1,7 @@
-#!/usr/bin/env python3
 """
-Run the Flask application
+Simple script to run the Flask application
 """
-from main import app
+from app import app
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
