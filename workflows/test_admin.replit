@@ -1,0 +1,2 @@
+run = "python test_admin_workflow.py"
+language = "python"

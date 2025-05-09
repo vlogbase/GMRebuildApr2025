@@ -1,140 +1,197 @@
 /**
- * Admin Dashboard JavaScript
+ * Admin Dashboard Functionality
  * 
- * This script handles the functionality specific to the admin dashboard,
- * including commission management, status updates, and payouts processing.
+ * Specialized functionality for the admin dashboard, including:
+ * - Commission selection and batch processing
+ * - Payout status checking
+ * - Search and filtering
  */
-
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Admin dashboard JS loaded');
+    console.log('admin-dashboard.js loaded');
     
-    // Function to handle the "Select All" checkbox
-    const selectAllCheckbox = document.getElementById('selectAllCommissions');
-    if (selectAllCheckbox) {
-        console.log('Select all checkbox found');
-        selectAllCheckbox.addEventListener('change', function() {
-            const isChecked = this.checked;
-            document.querySelectorAll('.commission-checkbox').forEach(checkbox => {
-                checkbox.checked = isChecked;
-            });
-            updateSelectedCount();
-        });
-    }
-    
-    // Add event listeners to individual commission checkboxes
-    document.querySelectorAll('.commission-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', updateSelectedCount);
-    });
-    
-    // Function to update the selected count and enable/disable batch actions
-    function updateSelectedCount() {
-        const selectedCount = document.querySelectorAll('.commission-checkbox:checked').length;
-        const countDisplay = document.getElementById('selectedCount');
-        const processButton = document.getElementById('processPayoutsBtn');
-        
-        if (countDisplay) {
-            countDisplay.textContent = `${selectedCount} commissions selected`;
-        }
-        
-        if (processButton) {
-            if (selectedCount > 0) {
-                processButton.removeAttribute('disabled');
-            } else {
-                processButton.setAttribute('disabled', 'disabled');
-            }
-        }
-    }
-    
-    // Handle form submission for batch processing
-    const batchForm = document.getElementById('commissionBatchForm');
-    if (batchForm) {
-        batchForm.addEventListener('submit', function(e) {
-            const selectedCount = document.querySelectorAll('.commission-checkbox:checked').length;
-            
-            if (selectedCount === 0) {
-                e.preventDefault();
-                alert('Please select at least one commission to process.');
-                return false;
-            }
-            
-            if (!confirm(`Are you sure you want to process ${selectedCount} commissions for payment?`)) {
-                e.preventDefault();
-                return false;
-            }
-            
-            return true;
-        });
-    }
-    
-    // Initialize tooltips from Bootstrap
-    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    tooltipTriggerList.map(function(tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
-    
-    // Add filter functionality for the commissions table
-    const searchInput = document.getElementById('commission-search');
+    // Initialize the search functionality
+    const searchInput = document.getElementById('commissionSearch');
     if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase();
-            const tableRows = document.querySelectorAll('#commissionsTable tbody tr');
+        searchInput.addEventListener('input', filterCommissions);
+    }
+    
+    // Filter commissions based on search input
+    function filterCommissions() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const commissionRows = document.querySelectorAll('.commission-row');
+        
+        commissionRows.forEach(row => {
+            const affiliateText = row.querySelector('.affiliate-name').textContent.toLowerCase();
+            const emailText = row.querySelector('.affiliate-email').textContent.toLowerCase();
+            const amountText = row.querySelector('.commission-amount').textContent.toLowerCase();
+            const matchesSearch = 
+                affiliateText.includes(searchTerm) || 
+                emailText.includes(searchTerm) || 
+                amountText.includes(searchTerm);
             
-            tableRows.forEach(row => {
-                const text = row.textContent.toLowerCase();
-                if (text.includes(searchTerm)) {
-                    row.style.display = '';
+            row.style.display = matchesSearch ? '' : 'none';
+        });
+        
+        // Update empty state message
+        updateEmptyState();
+    }
+    
+    // Update empty state message based on search results
+    function updateEmptyState() {
+        const visibleRows = document.querySelectorAll('.commission-row[style=""]').length;
+        const emptyMessage = document.getElementById('emptyCommissionsMessage');
+        const tableBody = document.getElementById('commissionsTableBody');
+        
+        if (emptyMessage && tableBody) {
+            if (visibleRows === 0) {
+                // No visible rows - show empty message
+                if (searchInput.value) {
+                    // Empty due to search filter
+                    emptyMessage.textContent = 'No commissions match your search criteria.';
                 } else {
-                    row.style.display = 'none';
+                    // Empty because there are no commissions
+                    emptyMessage.textContent = 'No commissions are currently available for processing.';
                 }
+                emptyMessage.style.display = 'block';
+                tableBody.style.display = 'none';
+            } else {
+                // Has visible rows - hide empty message
+                emptyMessage.style.display = 'none';
+                tableBody.style.display = '';
+            }
+        }
+    }
+    
+    // Initialize the date filters
+    const startDateFilter = document.getElementById('startDateFilter');
+    const endDateFilter = document.getElementById('endDateFilter');
+    
+    if (startDateFilter && endDateFilter) {
+        startDateFilter.addEventListener('change', applyDateFilters);
+        endDateFilter.addEventListener('change', applyDateFilters);
+    }
+    
+    // Apply date filters to the commissions table
+    function applyDateFilters() {
+        const startDate = startDateFilter.value ? new Date(startDateFilter.value) : null;
+        const endDate = endDateFilter.value ? new Date(endDateFilter.value) : null;
+        
+        if (!startDate && !endDate) {
+            // If no date filters, reset visibility
+            document.querySelectorAll('.commission-row').forEach(row => {
+                row.classList.remove('date-filtered');
             });
+            
+            // Re-apply search filter
+            filterCommissions();
+            return;
+        }
+        
+        document.querySelectorAll('.commission-row').forEach(row => {
+            const dateStr = row.querySelector('.commission-date').getAttribute('data-date');
+            const rowDate = new Date(dateStr);
+            
+            let isVisible = true;
+            
+            if (startDate && rowDate < startDate) {
+                isVisible = false;
+            }
+            
+            if (endDate) {
+                // Add one day to end date to include the end date itself
+                const inclusiveEndDate = new Date(endDate);
+                inclusiveEndDate.setDate(inclusiveEndDate.getDate() + 1);
+                
+                if (rowDate >= inclusiveEndDate) {
+                    isVisible = false;
+                }
+            }
+            
+            if (isVisible) {
+                row.classList.remove('date-filtered');
+            } else {
+                row.classList.add('date-filtered');
+                row.style.display = 'none';
+            }
+        });
+        
+        // Re-apply search filter
+        filterCommissions();
+    }
+    
+    // Reset all filters
+    const resetFiltersButton = document.getElementById('resetFilters');
+    if (resetFiltersButton) {
+        resetFiltersButton.addEventListener('click', function() {
+            if (searchInput) searchInput.value = '';
+            if (startDateFilter) startDateFilter.value = '';
+            if (endDateFilter) endDateFilter.value = '';
+            
+            // Reset all rows
+            document.querySelectorAll('.commission-row').forEach(row => {
+                row.classList.remove('date-filtered');
+                row.style.display = '';
+            });
+            
+            // Update empty state
+            updateEmptyState();
         });
     }
     
-    // Simple statistics chart initialization (if Chart.js is available)
-    if (typeof Chart !== 'undefined') {
-        const ctx = document.getElementById('adminStatsChart');
-        if (ctx) {
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: ['Held', 'Approved', 'Paid', 'Rejected'],
-                    datasets: [{
-                        label: 'Commission Status',
-                        data: [
-                            document.querySelectorAll('.badge.bg-warning').length,
-                            document.querySelectorAll('.badge.bg-success').length,
-                            document.querySelectorAll('.badge.bg-info').length,
-                            document.querySelectorAll('.badge.bg-danger').length
-                        ],
-                        backgroundColor: [
-                            'rgba(255, 193, 7, 0.5)',
-                            'rgba(40, 167, 69, 0.5)',
-                            'rgba(23, 162, 184, 0.5)',
-                            'rgba(220, 53, 69, 0.5)'
-                        ],
-                        borderColor: [
-                            'rgba(255, 193, 7, 1)',
-                            'rgba(40, 167, 69, 1)',
-                            'rgba(23, 162, 184, 1)',
-                            'rgba(220, 53, 69, 1)'
-                        ],
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                precision: 0
-                            }
+    // Initialize payout status refresh buttons
+    const refreshButtons = document.querySelectorAll('.refresh-status');
+    refreshButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const batchId = this.getAttribute('data-batch-id');
+            if (!batchId) return;
+            
+            // Show spinner and disable button
+            this.disabled = true;
+            this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Refreshing...';
+            
+            // Fetch updated status
+            fetch(`/admin/payouts/check-status/${batchId}`)
+                .then(response => response.json())
+                .then(data => {
+                    // Update status in the table
+                    const statusCell = document.querySelector(`.status-cell[data-batch-id="${batchId}"]`);
+                    if (statusCell) {
+                        statusCell.textContent = data.status;
+                        
+                        // Update status class
+                        statusCell.classList.remove('text-warning', 'text-success', 'text-danger');
+                        if (data.status === 'SUCCESS') {
+                            statusCell.classList.add('text-success');
+                        } else if (data.status === 'PENDING') {
+                            statusCell.classList.add('text-warning');
+                        } else if (data.status === 'FAILED') {
+                            statusCell.classList.add('text-danger');
                         }
                     }
-                }
-            });
-        }
-    }
+                    
+                    // Reset button
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+                    
+                    // Update details if available
+                    if (data.details) {
+                        const detailsCell = document.querySelector(`.details-cell[data-batch-id="${batchId}"]`);
+                        if (detailsCell) {
+                            detailsCell.textContent = data.details;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error refreshing payout status:', error);
+                    this.disabled = false;
+                    this.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Failed';
+                    setTimeout(() => {
+                        this.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+                    }, 3000);
+                });
+        });
+    });
     
-    // Log that initialization is complete
-    console.log('Admin dashboard JS initialization complete');
+    // Call updateEmptyState initially to set the correct state
+    updateEmptyState();
 });

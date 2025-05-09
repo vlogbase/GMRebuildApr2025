@@ -1,68 +1,150 @@
-// Clean implementation of account.js
+/**
+ * Clean implementation of account page JavaScript.
+ * Handles basic tab functionality and delegation to specialized handlers.
+ */
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Account.html: DOMContentLoaded. Admin tab JS should handle activation if ?tab=admin is present.');
+    console.log('account_clean.js: DOMContentLoaded');
     
-    // Initialize Bootstrap tooltips
-    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-        return new bootstrap.Tooltip(tooltipTriggerEl);
+    // Basic Bootstrap Tab initialization
+    var triggerTabList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tab"]'));
+    triggerTabList.forEach(function (triggerEl) {
+        console.log(`Initializing tab: ${triggerEl.id}`);
+        
+        // Only setup listeners for non-admin tabs
+        if (triggerEl.id !== 'admin-tab') {
+            triggerEl.addEventListener('shown.bs.tab', function(event) {
+                console.log(`Tab shown: ${event.target.getAttribute('data-bs-target')}`);
+                
+                // Get the tab name from data-bs-target attribute (removing the # symbol)
+                const tabName = event.target.getAttribute('data-bs-target').substring(1);
+                
+                // Tab-specific logic
+                if (tabName === 'pricing') {
+                    console.log('Loading pricing data for pricing tab');
+                    if (typeof loadPricingData === 'function') {
+                        loadPricingData();
+                    }
+                } else if (tabName === 'tellFriend' && typeof window.initializeTellFriendTabContent === 'function') {
+                    console.log('Initializing Tell a Friend tab content');
+                    window.initializeTellFriendTabContent();
+                }
+            });
+        }
     });
     
-    // If window.openTab is essential for deep linking or other functionalities
+    // Utility function to open tabs
     window.openTab = function(tabId) {
-        console.log('window.openTab called for:', tabId);
+        console.log(`window.openTab called for: ${tabId}`);
+        
+        // For admin tab, delegate to specialized handler
+        if (tabId === 'admin' && typeof window.activateAdminTab === 'function') {
+            console.log('Delegating to activateAdminTab function');
+            return window.activateAdminTab();
+        }
+        
+        // For other tabs, use standard Bootstrap API
         const tabTriggerEl = document.querySelector(`[data-bs-target="#${tabId}"]`);
         if (tabTriggerEl) {
-            const tab = new bootstrap.Tab(tabTriggerEl);
-            tab.show();
+            try {
+                const tab = new bootstrap.Tab(tabTriggerEl);
+                tab.show();
+                console.log(`Bootstrap tab.show() called for ${tabId}`);
+                return true;
+            } catch (e) {
+                console.error(`Error showing tab: ${tabId}`, e);
+                return false;
+            }
         } else {
             console.error(`Tab trigger element not found for target: #${tabId}`);
+            return false;
         }
     };
     
-    // Special handler for the admin tab to ensure it's visible when activated
-    window.openAdminTab = function() {
-        console.log('Manual admin tab opening requested');
-        
-        // Get the tab element
-        const adminTab = document.getElementById('admin');
-        const adminButton = document.getElementById('admin-tab');
-        
-        if (adminTab && adminButton) {
-            // First use Bootstrap's API
-            const tab = new bootstrap.Tab(adminButton);
-            tab.show();
-            
-            // Then ensure manually that it's visible (backup approach)
-            document.querySelectorAll('.tab-pane').forEach(pane => {
-                pane.classList.remove('show', 'active');
-            });
-            adminTab.classList.add('show', 'active');
-            
-            // Also activate the button
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            adminButton.classList.add('active');
-            
-            console.log('Admin tab should now be visible');
-        } else {
-            console.error('Admin tab elements not found:', {
-                tab: adminTab !== null,
-                button: adminButton !== null
-            });
-        }
-    };
+    // Check URL parameters for tab parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
     
-    // Check if we should activate the admin tab based on URL params
-    document.addEventListener('DOMContentLoaded', function() {
-        console.log('Checking URL parameters for tab selection');
-        const urlParams = new URLSearchParams(window.location.search);
-        const tabParam = urlParams.get('tab');
+    if (tabParam && tabParam !== 'admin') {
+        console.log(`URL parameter tab=${tabParam} detected`);
+        setTimeout(() => window.openTab(tabParam), 100);
+    }
+    
+    // Initialize the manual admin tab activator button
+    const manualActivator = document.getElementById('manual-admin-tab-activator');
+    if (manualActivator) {
+        console.log('Adding click handler to manual admin tab activator');
+        manualActivator.addEventListener('click', function() {
+            console.log('Manual admin tab activator clicked');
+            if (typeof window.activateAdminTab === 'function') {
+                window.activateAdminTab();
+            } else {
+                window.openTab('admin');
+            }
+        });
+    }
+    
+    // Model Pricing Table functionality
+    window.loadPricingData = function() {
+        console.log('Loading pricing data');
+        const pricingTableBody = document.getElementById('pricingTableBody');
+        const lastUpdatedElem = document.getElementById('lastUpdated');
         
-        if (tabParam === 'admin') {
-            console.log('URL parameter indicates admin tab should be active');
-            window.openAdminTab();
+        if (!pricingTableBody) {
+            console.error('Pricing table body element not found');
+            return;
         }
-    });
+        
+        // Show loading state
+        pricingTableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-5">
+                    <div class="d-flex flex-column align-items-center">
+                        <div class="spinner-border text-info mb-3" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="caption">Loading pricing data...</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        if (lastUpdatedElem) {
+            lastUpdatedElem.textContent = 'Loading...';
+        }
+        
+        // Fetch data from API
+        fetch('/api/get_model_prices')
+            .then(response => {
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        throw new Error(`Failed to fetch pricing data. Status: ${response.status}. Message: ${text}`);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Received pricing data from API:', data);
+                
+                // Process and display the pricing data
+                // This is a simplified version - the full implementation would be preserved
+                if (typeof window.renderPricingTable === 'function') {
+                    window.renderPricingTable(data);
+                } else {
+                    console.error('renderPricingTable function not defined');
+                }
+            })
+            .catch(error => {
+                console.error('Error loading pricing data:', error);
+                pricingTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <p class="caption text-danger">No pricing data available. Please try again later.</p>
+                            <small class="text-muted">${error.message}</small>
+                        </td>
+                    </tr>
+                `;
+                if (lastUpdatedElem) {
+                    lastUpdatedElem.textContent = 'Update failed';
+                }
+            });
+    };
 });

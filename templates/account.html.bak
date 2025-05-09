@@ -13,19 +13,6 @@
 {% endif %}
 {% endblock %}
 
-{% block scripts %}
-{{ super() }}
-
-<!-- Specialized Scripts for Account Page -->
-<script src="{{ url_for('static', filename='js/account_clean.js') }}"></script>
-
-<!-- Admin Dashboard Scripts (only loaded for admin users) -->
-{% if is_admin %}
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
-<script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
-{% endif %}
-{% endblock %}
-
 {% block content %}
 <div class="container mt-4">
     <div class="row mb-4">
@@ -883,17 +870,25 @@
         const targetEl = document.querySelector(target);
         console.log(`Target element ${target} exists: ${targetEl !== null}`);
         
-        // For admin tab, delegate to our specialized handler in admin.js
+        // Add click handler for admin tab specifically (direct approach)
         if (triggerEl.id === 'admin-tab') {
-            console.log('Admin tab click will be handled by admin.js (using activateAdminTab)');
+            console.log('Adding special click handler for admin tab');
             triggerEl.addEventListener('click', function(e) {
-                console.log('Admin tab clicked directly - delegating to admin.js');
+                console.log('Admin tab clicked directly');
                 
-                // Call the global admin tab activator function
-                if (typeof window.activateAdminTab === 'function') {
-                    window.activateAdminTab();
+                // Hide all tab panes
+                document.querySelectorAll('.tab-pane').forEach(pane => {
+                    pane.classList.remove('show', 'active');
+                });
+                
+                // Show the admin tab
+                const adminTab = document.getElementById('admin');
+                if (adminTab) {
+                    adminTab.classList.add('show', 'active');
+                    console.log('Admin tab manually activated via click');
                 } else {
-                    console.error('activateAdminTab function not found - admin.js may not be loaded correctly');
+                    console.error('Admin tab element not found in DOM when clicked');
+                }
             });
         }
         
@@ -946,14 +941,21 @@
             const bsTab = new bootstrap.Tab(tabTrigger);
             bsTab.show();
             
-            // For admin tab, delegate to our specialized handler in admin.js
+            // Additional direct DOM manipulation for the admin tab (backup approach)
             if (tabName === 'admin') {
-                console.log('Additional handling for admin tab via window.activateAdminTab');
-                // Call the global admin tab activator function
-                if (typeof window.activateAdminTab === 'function') {
-                    window.activateAdminTab();
+                console.log('Additional handling for admin tab');
+                const adminTab = document.getElementById('admin');
+                if (adminTab) {
+                    // Hide all other tab panes
+                    document.querySelectorAll('.tab-pane').forEach(pane => {
+                        pane.classList.remove('show', 'active');
+                    });
+                    
+                    // Show the admin tab
+                    adminTab.classList.add('show', 'active');
+                    console.log('Admin tab manually activated');
                 } else {
-                    console.error('activateAdminTab function not found - admin.js may not be loaded correctly');
+                    console.error('Admin tab element not found in DOM');
                 }
             }
         } else {
@@ -1547,11 +1549,41 @@
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 <script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
 
-<!-- Clean Admin Tab Initialization Script -->
-<!-- 
-    All JavaScript has been moved to external files:
-    - static/js/account_clean.js - Basic tab functionality
-    - static/js/admin.js - Admin tab functionality (admin users only)
-    - static/js/admin-dashboard.js - Commission selection functionality (admin users only)
--->
+<!-- Admin Tab Initialization Script - Simplified to prevent conflicts -->
+<script>
+    // Note: Main tab opening functionality has been moved to account_clean.js
+    console.log('Admin Tab Initialization Script loaded - Using simplified version to prevent conflicts');
+    
+    // Simple check for admin tab on document load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Check if admin tab exists
+        const adminTabPane = document.getElementById('admin');
+        const adminTabButton = document.getElementById('admin-tab');
+        
+        if (adminTabPane && adminTabButton) {
+            console.log('Admin tab found on page load');
+            
+            // For testing admin tab activation
+            if ({{ 'true' if is_admin else 'false' }}) {
+                console.log('Admin user detected - admin tab should be accessible');
+            }
+            
+            // Check URL parameters for tab=admin
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            
+            if (tabParam === 'admin') {
+                console.log('URL parameter indicates admin tab should be active - activating now');
+                
+                // Basic approach: hide all other tabs and show admin tab
+                document.querySelectorAll('.tab-pane').forEach(pane => {
+                    pane.classList.remove('show', 'active');
+                });
+                
+                adminTabPane.classList.add('show', 'active');
+                adminTabButton.classList.add('active');
+            }
+        }
+    });
+</script>
 {% endblock %}
