@@ -1,4 +1,10 @@
-[workflow]
-onOpen = false
-Run = "python admin_test_workflow.py"
-clearTerminalOnRun = true
+[tool.poetry]
+command = "python debug_admin_tab.py"
+language = "python"
+entrypoint = "debug_admin_tab.py"
+
+[languages.python.nix]
+channel = "stable-22_11"
+
+[env]
+ADMIN_ENABLED = "true"
