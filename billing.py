@@ -552,6 +552,7 @@ def process_affiliate_commission(user_id, transaction):
     This implements a two-tier affiliate system with:
     - 10% commission for Level 1 affiliates (direct referrers)
     - 5% commission for Level 2 affiliates (referrers of direct referrers)
+    - Commissions are only paid for 1 year after the customer's first purchase
     
     Args:
         user_id (int): The customer's user ID
@@ -586,17 +587,32 @@ def process_affiliate_commission(user_id, transaction):
             logger.info(f"L1 affiliate {customer_referral.affiliate_id} not found or not active")
             return False
         
-        # Step 3: Calculate base amount in GBP
+        # Current time for commission dates
+        now = datetime.utcnow()
+        
+        # Step 3: Check if this is the first purchase that results in a commission 
+        # and update the first_commissioned_purchase_at field if needed
+        if not customer_referral.first_commissioned_purchase_at:
+            logger.info(f"Setting first commissioned purchase date for customer {user_id} to {now}")
+            customer_referral.first_commissioned_purchase_at = now
+            db.session.add(customer_referral)
+            
+        # Step 4: Check if the transaction is within the one-year commission window
+        if not customer_referral.is_within_commission_window(transaction.created_at or now):
+            logger.info(f"Transaction outside of one-year commission window for user {user_id}")
+            logger.info(f"First commission date: {customer_referral.first_commissioned_purchase_at}")
+            logger.info(f"Transaction date: {transaction.created_at or now}")
+            return False
+            
+        # Step 5: Calculate base amount in GBP
         # For simplicity, we're using the transaction amount directly
         # In a real app, you might want to convert from USD to GBP if needed
         amount_gbp = transaction.amount_usd
         
-        # Step 4: Calculate and create L1 commission (10%)
+        # Step 6: Calculate and create L1 commission (10%)
         l1_commission_rate = 0.10  # 10%
         l1_commission_amount = round(amount_gbp * l1_commission_rate, 2)
         
-        # Current time for commission dates
-        now = datetime.utcnow()
         available_date = now + timedelta(days=30)  # Available after 30 days
         
         # Create L1 commission record
@@ -616,7 +632,7 @@ def process_affiliate_commission(user_id, transaction):
         db.session.add(l1_commission)
         logger.info(f"Created L1 commission of £{l1_commission_amount} for affiliate {l1_affiliate.id}")
         
-        # Step 5: Check if there's a Level 2 (L2) affiliate
+        # Step 7: Check if there's a Level 2 (L2) affiliate
         if l1_affiliate.referred_by_affiliate_id:
             # Get the L2 affiliate
             l2_affiliate = Affiliate.query.get(l1_affiliate.referred_by_affiliate_id)
@@ -643,8 +659,11 @@ def process_affiliate_commission(user_id, transaction):
                 db.session.add(l2_commission)
                 logger.info(f"Created L2 commission of £{l2_commission_amount} for affiliate {l2_affiliate.id}")
         
+        # Commit all changes
+        db.session.commit()
         return True
     
     except Exception as e:
         logger.error(f"Error processing affiliate commission: {e}")
+        db.session.rollback()  # Rollback transaction on error
         return False

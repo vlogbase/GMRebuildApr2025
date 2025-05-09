@@ -278,6 +278,7 @@ class CustomerReferral(db.Model):
     affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliate.id'), nullable=False)
     signup_date = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    first_commissioned_purchase_at = db.Column(db.DateTime, nullable=True)
     
     # Create a unique constraint for customer_user_id
     __table_args__ = (
@@ -286,6 +287,31 @@ class CustomerReferral(db.Model):
     
     # Relationships
     customer = db.relationship('User', backref=db.backref('referral_info', uselist=False))
+    
+    def is_within_commission_window(self, transaction_date=None):
+        """
+        Check if a transaction date is within the one-year commission window.
+        
+        Args:
+            transaction_date (datetime, optional): The date of the transaction to check.
+                If None, uses the current UTC time.
+                
+        Returns:
+            bool: True if the transaction date is within one year of the first commissioned purchase,
+                  or if there's no first purchase yet. False otherwise.
+        """
+        if not self.first_commissioned_purchase_at:
+            # No first purchase yet, so any transaction is eligible
+            return True
+            
+        if transaction_date is None:
+            transaction_date = datetime.utcnow()
+            
+        # Calculate the end of the eligibility window (one year after first purchase)
+        eligibility_end_date = self.first_commissioned_purchase_at + timedelta(days=365)
+        
+        # Check if transaction_date is before or equal to eligibility_end_date
+        return transaction_date <= eligibility_end_date
     
     def __repr__(self):
         return f'<CustomerReferral {self.id}: User {self.customer_user_id} referred by Affiliate {self.affiliate_id}>'
