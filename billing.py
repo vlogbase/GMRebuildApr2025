@@ -23,7 +23,6 @@ from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
 from models import CustomerReferral, Affiliate, Commission, CommissionStatus, AffiliateStatus
 from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature
-from auth_utils import is_admin
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -167,74 +166,8 @@ def account_management():
                 logger.info(f"Referrals count: {len(referrals)}")
                 logger.info(f"Sub-referrals count: {len(sub_referrals)}")
         
-        # Check if user is admin for the admin tab
-        is_user_admin = is_admin()
-        logger.info(f"Admin check result: is_user_admin = {is_user_admin}")
-        
-        # Default to empty list for admin_commissions to avoid template errors
-        admin_commissions = []
-        
-        # Always fetch commissions for development purposes - this ensures the admin tab works 
-        # even if there are issues with the is_admin function
-        try:
-            logger.info("Fetching commissions for admin panel")
-            # Get all held commissions that are past their available date or approved commissions
-            admin_commissions = Commission.query.filter(
-                (
-                    (Commission.status == CommissionStatus.HELD.value) &
-                    (Commission.commission_available_date <= datetime.utcnow())
-                ) | 
-                (Commission.status == CommissionStatus.APPROVED.value)
-            ).order_by(desc(Commission.commission_available_date)).all()
-            
-            logger.info(f"Found {len(admin_commissions)} commissions for admin panel")
-            
-            # If no commissions found, create a sample commission for debugging
-            if not admin_commissions and os.environ.get('FLASK_ENV') == 'development':
-                logger.info("No commissions found, checking if we should create a debug commission")
-                # Only proceed if we have an affiliate record to work with
-                sample_affiliate = Affiliate.query.first()
-                if sample_affiliate:
-                    logger.info(f"Creating sample commission for debugging with affiliate: {sample_affiliate.email}")
-                    # Don't actually create a record, just pass info to template
-                    from datetime import timedelta
-                    
-                    class SampleCommission:
-                        def __init__(self, affiliate):
-                            self.id = 99999  # Sample ID
-                            self.affiliate = affiliate
-                            self.affiliate_id = affiliate.id
-                            self.purchase_amount_base = 100.00  # £100 purchase
-                            self.commission_amount = 10.00  # £10 commission (10%)
-                            self.commission_level = 1  # Direct referral
-                            self.status = CommissionStatus.HELD.value
-                            self.triggering_transaction_id = "99999_sample"
-                            self.commission_earned_date = datetime.utcnow() - timedelta(days=30)
-                            self.commission_available_date = datetime.utcnow() - timedelta(days=1)
-                    
-                    # Note: This is just for development debugging - not used in production
-                    admin_commissions = [SampleCommission(sample_affiliate)]
-                    logger.info("Created sample commission for debugging")
-        except Exception as e:
-            logger.error(f"Error fetching admin commissions: {e}")
-            admin_commissions = []
-            
-        # Check for tab parameter in request
-        active_tab = request.args.get('tab', 'funds')  # Default to funds tab
-        logger.info(f"Account page requested with tab: {active_tab}")
-        
-        # Make sure admin tab is not selected for non-admins
-        if active_tab == 'admin' and not is_user_admin:
-            logger.warning(f"Non-admin user {current_user.email} attempted to access admin tab")
-            active_tab = 'funds'  # Reset to default tab
-        
-        # Handle tab activation via JavaScript
-        tab_script = ""
-        if active_tab and active_tab != 'funds':  # 'funds' is active by default
-            tab_script = f"<script>document.addEventListener('DOMContentLoaded', function() {{ setTimeout(function() {{ window.openTab('{active_tab}'); }}, 100); }});</script>"
-        
         logger.info("Rendering account.html template")
-        rendered_template = render_template(
+        return render_template(
             'account.html',
             user=current_user,
             packages=packages,
@@ -245,19 +178,8 @@ def account_management():
             commissions=commissions,
             referrals=referrals,
             sub_referrals=sub_referrals,
-            stats=commission_stats,  # Alias to match dashboard template
-            is_admin=is_user_admin,
-            admin_commissions=admin_commissions,
-            now=datetime.utcnow(),  # Current datetime for comparing available_date
-            active_tab=active_tab  # Pass the active tab to template
+            stats=commission_stats  # Alias to match dashboard template
         )
-        
-        # If a specific tab is requested via URL parameter, inject the tab activation script
-        if tab_script:
-            # Insert the script right before the closing body tag
-            rendered_template = rendered_template.replace('</body>', f'{tab_script}</body>')
-            
-        return rendered_template
     
     except Exception as e:
         logger.error(f"Error in account_management: {e}")

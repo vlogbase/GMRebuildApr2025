@@ -7,23 +7,6 @@
 {% block styles %}
 {{ super() }}
 <!-- Custom styles are now in static/css/style.css -->
-<!-- Admin Dashboard styles -->
-{% if is_admin %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard.css') }}">
-{% endif %}
-{% endblock %}
-
-{% block scripts %}
-{{ super() }}
-
-<!-- Specialized Scripts for Account Page -->
-<script src="{{ url_for('static', filename='js/account_clean.js') }}"></script>
-
-<!-- Admin Dashboard Scripts (only loaded for admin users) -->
-{% if is_admin %}
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
-<script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
-{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -101,17 +84,6 @@
                         <i class="fas fa-users me-2"></i>Tell a Friend
                     </button>
                 </li>
-                <!-- Only show admin tab for admin users -->
-                {% if is_admin %}
-                <!-- DEBUG: Admin tab navigation is visible (is_admin = {{ is_admin }}) -->
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link {% if request.args.get('tab') == 'admin' %}active{% endif %}" 
-                            id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin" 
-                            type="button" role="tab" aria-controls="admin" aria-selected="{% if request.args.get('tab') == 'admin' %}true{% else %}false{% endif %}">
-                        <i class="fas fa-user-shield me-2"></i>Admin
-                    </button>
-                </li>
-                {% endif %}
             </ul>
         </div>
     </div>
@@ -119,7 +91,7 @@
     <!-- Tab Content -->
     <div class="tab-content pt-4">
         <!-- Add Funds Tab -->
-        <div id="funds" class="tab-pane fade {% if request.args.get('tab') != 'admin' %}show active{% endif %}" role="tabpanel" aria-labelledby="funds-tab">
+        <div id="funds" class="tab-pane fade show active" role="tabpanel" aria-labelledby="funds-tab">
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card">
@@ -607,103 +579,12 @@
         <div id="tellFriend" class="tab-pane fade" role="tabpanel" aria-labelledby="tellFriend-tab">
             {% include 'affiliate/tell_friend_tab.html' %}
         </div>
-        
-        <!-- Admin Tab (only visible for admins) -->
-        <!-- DEBUG BEFORE: is_admin = {{ is_admin }} -->
-        {% if is_admin %}
-        <!-- DEBUG INSIDE: Admin tab content should be visible (is_admin = {{ is_admin }}) -->
-        <div id="admin" class="tab-pane fade {% if request.args.get('tab') == 'admin' %}show active{% endif %}" role="tabpanel" aria-labelledby="admin-tab">
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0">
-                                <i class="fas fa-user-shield me-2"></i>Admin Dashboard
-                                <span class="badge bg-warning text-dark ms-2">Admin Access Granted</span>
-                            </h5>
-                        </div>
-                        <div class="card-body">
-                            <!-- Manual admin tab activation button for debugging -->
-                            <div class="alert alert-secondary mb-3">
-                                <h4 class="text-danger">DEBUG INFO</h4>
-                                <p>Admin status: <strong>{{ is_admin }}</strong></p>
-                                <p>Admin commissions count: <strong>{{ admin_commissions|length }}</strong></p>
-                                <button id="manual-admin-tab-activator" class="btn btn-sm btn-warning mb-2">
-                                    <i class="fas fa-bolt me-1"></i> Force Activate Admin Tab
-                                </button>
-                                <button class="btn btn-sm btn-secondary ms-2 mb-2" onclick="console.log('Admin tab content exists:', document.getElementById('admin') !== null)">
-                                    <i class="fas fa-search me-1"></i> Log Admin Tab Element
-                                </button>
-                            </div>
-                            
-                            <!-- SIMPLIFIED ADMIN CONTENT FOR DEBUGGING -->
-                            <h1 style="color:yellow;">ADMIN TAB CONTENT LOADED</h1>
-                            <h3 style="color:white;">Debug Info:</h3>
-                            <ul style="color:white;">
-                                <li>is_admin: {{ is_admin }}</li>
-                                <li>commissions count: {{ admin_commissions|length }}</li>
-                                <li>current time: {{ now }}</li>
-                            </ul>
-                            
-                            <!-- Include full admin content -->
-                            {% include 'affiliate/admin_tab.html' %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-        {% else %}
-        <!-- DEBUG ELSE: Admin tab content NOT visible (is_admin = {{ is_admin }}) -->
-        {% endif %}
     </div>
 </div>
 
-<!-- Removed complex JavaScript initialization, now using external account_clean.js -->
-<script src="{{ url_for('static', filename='js/account_clean.js') }}"></script>
-
-<!-- External JS files replace inline script -->
-<!-- Note: All functionality has been moved to external files -->
-    
-    // Admin commission management functionality
-    const selectAllCommissions = document.getElementById('selectAllCommissions');
-    const commissionCheckboxes = document.querySelectorAll('.commission-checkbox');
-    const processPayoutsBtn = document.getElementById('processPayoutsBtn');
-    const selectedCountSpan = document.getElementById('selectedCount');
-    
-    if (selectAllCommissions && commissionCheckboxes.length > 0 && processPayoutsBtn && selectedCountSpan) {
-        // Handle select all checkbox
-        selectAllCommissions.addEventListener('change', function() {
-            const isChecked = this.checked;
-            commissionCheckboxes.forEach(checkbox => {
-                checkbox.checked = isChecked;
-            });
-            
-            // Update selected count and button state
-            updateSelectedCount();
-        });
-        
-        // Handle individual checkboxes
-        commissionCheckboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', function() {
-                // Check if all checkboxes are selected
-                const allChecked = Array.from(commissionCheckboxes).every(cb => cb.checked);
-                selectAllCommissions.checked = allChecked;
-                
-                // Update selected count and button state
-                updateSelectedCount();
-            });
-        });
-        
-        // Function to update selected count display and process button state
-        function updateSelectedCount() {
-            const selectedCount = Array.from(commissionCheckboxes).filter(cb => cb.checked).length;
-            selectedCountSpan.textContent = selectedCount + ' commissions selected';
-            processPayoutsBtn.disabled = selectedCount === 0;
-        }
-        
-        // Initialize the count
-        updateSelectedCount();
-    }
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOMContentLoaded event fired - Initializing account page functions');
     
     // Initialize Bootstrap tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -870,66 +751,19 @@
     }
     
     // Initialize Bootstrap tab functionality
-    console.log('Setting up tab triggers - Looking for all [data-bs-toggle="tab"] elements');
     var triggerTabList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tab"]'));
-    console.log('Found tab triggers:', triggerTabList.length);
-    
-    // Debug each tab trigger
     triggerTabList.forEach(function (triggerEl) {
-        const target = triggerEl.getAttribute('data-bs-target');
-        console.log(`Tab trigger: ${triggerEl.id} -> target: ${target}`);
-        
-        // Check if the target element exists
-        const targetEl = document.querySelector(target);
-        console.log(`Target element ${target} exists: ${targetEl !== null}`);
-        
-        // For admin tab, delegate to our specialized handler in admin.js
-        if (triggerEl.id === 'admin-tab') {
-            console.log('Admin tab click will be handled by admin.js (using activateAdminTab)');
-            triggerEl.addEventListener('click', function(e) {
-                console.log('Admin tab clicked directly - delegating to admin.js');
-                
-                // Call the global admin tab activator function
-                if (typeof window.activateAdminTab === 'function') {
-                    window.activateAdminTab();
-                } else {
-                    console.error('activateAdminTab function not found - admin.js may not be loaded correctly');
-            });
-        }
-        
-        // Regular bootstrap tab event
         triggerEl.addEventListener('shown.bs.tab', function (event) {
             console.log(`Tab shown: ${event.target.getAttribute('data-bs-target')}`);
             
             // Get the tab name from data-bs-target attribute (removing the # symbol)
             const tabName = event.target.getAttribute('data-bs-target').substring(1);
-            console.log(`Tab name extracted: ${tabName}`);
             
             // Tab-specific logic
             if (tabName === 'pricing') {
-                console.log('Loading pricing data for pricing tab');
                 loadPricingData();
             } else if (tabName === 'tellFriend' && typeof window.initializeTellFriendTabContent === 'function') {
-                console.log('Initializing Tell a Friend tab content');
                 window.initializeTellFriendTabContent();
-            } else if (tabName === 'admin') {
-                console.log('Admin tab shown - checking content');
-                const adminTabPane = document.getElementById('admin');
-                console.log('Admin tab pane exists:', adminTabPane !== null);
-                if (adminTabPane) {
-                    console.log('Admin tab pane HTML:', adminTabPane.innerHTML.substring(0, 100) + '...');
-                    
-                    // Force admin tab to show (in case bootstrap event didn't work)
-                    // Hide all tab panes first
-                    document.querySelectorAll('.tab-pane').forEach(pane => {
-                        if (pane.id !== 'admin') {
-                            pane.classList.remove('show', 'active');
-                        }
-                    });
-                    
-                    // Show the admin tab
-                    adminTabPane.classList.add('show', 'active');
-                }
             }
         });
     });
@@ -945,17 +779,6 @@
             // Use Bootstrap's tab API to show the tab
             const bsTab = new bootstrap.Tab(tabTrigger);
             bsTab.show();
-            
-            // For admin tab, delegate to our specialized handler in admin.js
-            if (tabName === 'admin') {
-                console.log('Additional handling for admin tab via window.activateAdminTab');
-                // Call the global admin tab activator function
-                if (typeof window.activateAdminTab === 'function') {
-                    window.activateAdminTab();
-                } else {
-                    console.error('activateAdminTab function not found - admin.js may not be loaded correctly');
-                }
-            }
         } else {
             console.error(`Tab trigger not found for: #${tabName}`);
         }
@@ -971,8 +794,6 @@
                 // Just call the initialization function
                 window.initializeTellFriendTabContent();
             }
-        } else if (tabName === 'admin') {
-            console.log('Loading Admin tab content');
         }
     }
     
@@ -1541,17 +1362,4 @@
     handleCsvExport();
 });
 </script>
-
-<!-- Admin Dashboard Script -->
-<!-- Load admin.js before admin-dashboard.js for proper tab initialization -->
-<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
-<script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
-
-<!-- Clean Admin Tab Initialization Script -->
-<!-- 
-    All JavaScript has been moved to external files:
-    - static/js/account_clean.js - Basic tab functionality
-    - static/js/admin.js - Admin tab functionality (admin users only)
-    - static/js/admin-dashboard.js - Commission selection functionality (admin users only)
--->
 {% endblock %}

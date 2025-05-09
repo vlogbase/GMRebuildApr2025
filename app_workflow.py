@@ -21,11 +21,6 @@ def run():
     try:
         logger.info("Starting Flask application for testing")
         
-        # Set admin emails for testing
-        if "ADMIN_EMAILS" not in os.environ:
-            os.environ["ADMIN_EMAILS"] = "andy@sentigral.com,test@example.com"
-            logger.info(f"Set ADMIN_EMAILS to: {os.environ['ADMIN_EMAILS']}")
-        
         # Import the Flask app from app.py
         from app import app
         
