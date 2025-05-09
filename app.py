@@ -198,8 +198,28 @@ except Exception as e:
 # Initialize admin interface
 try:
     from gm_admin import init_admin
-    init_admin()
-    logger.info("Admin module initialized successfully")
+    admin = init_admin()
+    logger.info(f"Admin module initialized successfully at URL: {admin.url}")
+    
+    # Also register the admin blueprint for alternative access
+    from admin_blueprint import admin_blueprint
+    app.register_blueprint(admin_blueprint)
+    logger.info("Admin blueprint registered successfully")
+    
+    # Add a direct route for admin access in case blueprints have issues
+    @app.route('/admin-direct')
+    def admin_direct():
+        """Direct route to admin dashboard, as a fallback"""
+        from flask import redirect
+        from flask_login import current_user
+        from affiliate import is_admin
+        
+        if not current_user.is_authenticated or not is_admin():
+            flash('You do not have permission to access the admin area.', 'error')
+            return redirect(url_for('index'))
+            
+        return redirect('/gm-admin/')
+        
 except Exception as e:
     logger.error(f"Error initializing Admin module: {e}")
 

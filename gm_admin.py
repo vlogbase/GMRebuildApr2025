@@ -301,7 +301,7 @@ def init_admin():
     admin.add_view(AffiliateModelView(Affiliate, db.session, name='Affiliates'))
     admin.add_view(UserTokenUsageView(User, db.session, name='User Token Usage', endpoint='user_token_usage'))
     admin.add_view(PopularModelsView(Usage, db.session, name='Popular Models', endpoint='popular_models'))
-
+    
     # Create a custom admin route
     @app.route('/admin')
     @login_required
@@ -311,5 +311,6 @@ def init_admin():
             flash('You do not have permission to access the admin area.', 'error')
             return redirect(url_for('index'))
         return redirect(url_for('gm_admin.index'))
-        
+    
+    # Return the admin instance so it can be used elsewhere
     return admin
