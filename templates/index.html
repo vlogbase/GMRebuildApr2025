@@ -48,9 +48,6 @@
                 </div>
                 {% endif %}
                 <div class="footer-buttons">
-                    <button id="clear-conversations-btn" class="clear-conversations-btn">
-                        <i class="fa-regular fa-trash-can"></i> Clear conversations
-                    </button>
                     {% if current_user.is_authenticated %}
                     <button id="logout-btn" class="auth-btn" onclick="window.location.href='{{ url_for('google_auth.logout') }}'">
                         <i class="fa-solid fa-sign-out-alt"></i> Sign out

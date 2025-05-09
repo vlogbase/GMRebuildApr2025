@@ -1120,6 +1120,47 @@ def upload_image():
             "error": f"Server error: {str(e)}"
         }), 500
 
+@app.route('/clear-conversations', methods=['POST'])
+@login_required
+def clear_conversations():
+    """Clear all conversations for the current user"""
+    try:
+        from models import Conversation
+        
+        # Mark all user's conversations as inactive (soft delete)
+        logger.info(f"Clearing all conversations for user {current_user.id}")
+        
+        conversations = Conversation.query.filter_by(
+            user_id=current_user.id,
+            is_active=True
+        ).all()
+        
+        count = 0
+        for conv in conversations:
+            conv.is_active = False
+            count += 1
+        
+        db.session.commit()
+        logger.info(f"Successfully marked {count} conversations as inactive for user {current_user.id}")
+        
+        # Create a new conversation
+        title = "New Conversation"
+        share_id = generate_share_id()
+        conversation = Conversation(
+            title=title, 
+            share_id=share_id,
+            user_id=current_user.id
+        )
+        db.session.add(conversation)
+        db.session.commit()
+        
+        return jsonify({"success": True, "message": f"Cleared {count} conversations", "new_conversation_id": conversation.id})
+    
+    except Exception as e:
+        logger.exception(f"Error clearing conversations for user {current_user.id}: {e}")
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/conversations', methods=['GET'])
 @login_required
 def get_conversations():
