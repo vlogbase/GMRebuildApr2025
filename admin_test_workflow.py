@@ -4,27 +4,42 @@ This runs the Flask application with admin access enabled.
 """
 
 import os
-import subprocess
 import sys
-import time
-import signal
+import logging
+from datetime import datetime
+
+# Configure logging
+log_file = f"admin_output.log"
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler(log_file),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
 
 def run():
     """
     Run tests for admin dashboard functionality.
     """
-    print("Starting admin dashboard test...")
-    print("This will launch a Flask app with the debug admin tab endpoint.")
-    print("Access the debug page at: http://localhost:5000/debug-admin")
+    logger.info(f"Starting admin dashboard test workflow at {datetime.now().isoformat()}")
     
     try:
-        # Run the debug script
-        subprocess.run([sys.executable, "debug_admin_tab.py"])
+        # Ensure admin access for testing
+        os.environ['ADMIN_EMAILS'] = 'test@example.com,andy@sentigral.com'
+        logger.info(f"Admin emails set to: {os.environ.get('ADMIN_EMAILS')}")
         
-    except KeyboardInterrupt:
-        print("\nTest terminated by user")
+        # Run the debug script
+        logger.info("Running admin tab debug script")
+        import debug_admin_tab
+        debug_admin_tab.main()
+        
+        logger.info("Admin dashboard test completed successfully")
     except Exception as e:
-        print(f"Error running admin test: {e}")
+        logger.error(f"Error in admin dashboard test: {e}", exc_info=True)
+        sys.exit(1)
 
 if __name__ == "__main__":
     run()

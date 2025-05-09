@@ -645,41 +645,15 @@
     </div>
 </div>
 
+<!-- Removed complex JavaScript initialization, now using external account_clean.js -->
+<script src="{{ url_for('static', filename='js/account_clean.js') }}"></script>
+
+<!-- Legacy script block start - keeping only essential Bootstrap initialization -->
 <script>
-// Refactored script block - fixes JavaScript syntax error
+// Simple initialization code only - main functionality moved to account_clean.js
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOMContentLoaded event fired - Initializing account page functions');
-    
-    // Manual admin tab activation for debugging
-    const manualAdminTabActivator = document.getElementById('manual-admin-tab-activator');
-    const adminTab = document.getElementById('admin');
-    const adminTabTrigger = document.getElementById('admin-tab');
-    
-    if (manualAdminTabActivator && adminTab && adminTabTrigger) {
-        console.log('Admin tab debugging tools initialized');
-        console.log('Admin tab exists:', adminTab !== null);
-        console.log('Admin tab trigger exists:', adminTabTrigger !== null);
-        
-        manualAdminTabActivator.addEventListener('click', function() {
-            console.log('Manual admin tab activation clicked');
-            
-            // Hide all other tab panes
-            document.querySelectorAll('.tab-pane').forEach(pane => {
-                pane.classList.remove('show', 'active');
-            });
-            
-            // Remove active class from all tab triggers
-            document.querySelectorAll('.nav-link').forEach(link => {
-                link.classList.remove('active');
-            });
-            
-            // Activate admin tab and content
-            adminTabTrigger.classList.add('active');
-            adminTab.classList.add('show', 'active');
-            
-            console.log('Admin tab activated manually');
-        });
-    }
+    console.log('Account.html: DOMContentLoaded - Basic initialization only.');
+    // Most functionality moved to account_clean.js
     
     // Admin commission management functionality
     const selectAllCommissions = document.getElementById('selectAllCommissions');
@@ -1579,81 +1553,40 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 <script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
 
-<!-- Admin Tab Initialization Script -->
+<!-- Admin Tab Initialization Script - Simplified to prevent conflicts -->
 <script>
-    // Global tab opener function for debug purposes
-    window.openTab = function(tabId) {
-        console.log('Manual tab opening requested for:', tabId);
-        
-        // Get the tab element
-        const tabPane = document.getElementById(tabId);
-        const tabButton = document.getElementById(tabId + '-tab');
-        
-        if (!tabPane || !tabButton) {
-            console.error(`Tab ${tabId} not found`, { tabPane: !!tabPane, tabButton: !!tabButton });
-            return false;
-        }
-        
-        // Hide all tab panes
-        document.querySelectorAll('.tab-pane').forEach(pane => {
-            pane.classList.remove('show', 'active');
-        });
-        
-        // Deactivate all tab buttons
-        document.querySelectorAll('[data-bs-toggle="tab"]').forEach(button => {
-            button.classList.remove('active');
-        });
-        
-        // Show the requested tab
-        tabPane.classList.add('show', 'active');
-        tabButton.classList.add('active');
-        
-        console.log(`Tab ${tabId} activated manually`);
-        return true;
-    };
-
+    // Note: Main tab opening functionality has been moved to account_clean.js
+    console.log('Admin Tab Initialization Script loaded - Using simplified version to prevent conflicts');
+    
+    // Simple check for admin tab on document load
     document.addEventListener('DOMContentLoaded', function() {
         // Check if admin tab exists
         const adminTabPane = document.getElementById('admin');
         const adminTabButton = document.getElementById('admin-tab');
         
         if (adminTabPane && adminTabButton) {
-            console.log('Admin tab found on page load, verifying content');
+            console.log('Admin tab found on page load');
             
-            // Check if there's content in the admin tab
-            if (adminTabPane.innerHTML.trim() === '') {
-                console.error('Admin tab exists but has no content!');
-            } else {
-                console.log('Admin tab content found:', adminTabPane.innerHTML.substring(0, 100) + '...');
-                
-                // For testing, add a direct link to activate admin tab
-                if ({{ 'true' if is_admin else 'false' }}) {
-                    const debugDiv = document.createElement('div');
-                    debugDiv.className = 'alert alert-info mb-3';
-                    debugDiv.innerHTML = '<strong>Admin Debug:</strong> Admin tab found. <a href="#" onclick="window.openTab(\'admin\'); return false;">Click here</a> to manually activate tab.';
-                    document.querySelector('#admin .card-body').prepend(debugDiv);
-                }
-                
-                // Add a global click handler to ensure the admin tab works
-                document.getElementById('admin-tab').addEventListener('click', function(e) {
-                    console.log('Admin tab button clicked - using global handler');
-                    e.preventDefault();
-                    window.openTab('admin');
-                    return false;
-                });
-
-                // Load admin dashboard script
-                const adminScript = document.createElement('script');
-                adminScript.src = "{{ url_for('static', filename='js/admin-dashboard.js') }}";
-                document.head.appendChild(adminScript);
-                console.log('Admin dashboard script added dynamically');
+            // For testing admin tab activation
+            if ({{ 'true' if is_admin else 'false' }}) {
+                console.log('Admin user detected - admin tab should be accessible');
             }
-        } else {
-            console.log('Admin tab not found on page load', { 
-                adminTabPane: !!adminTabPane, 
-                adminTabButton: !!adminTabButton,
-                isAdmin: {{ 'true' if is_admin else 'false' }}
-            });
+            
+            // Check URL parameters for tab=admin
+            const urlParams = new URLSearchParams(window.location.search);
+            const tabParam = urlParams.get('tab');
+            
+            if (tabParam === 'admin') {
+                console.log('URL parameter indicates admin tab should be active - activating now');
+                
+                // Basic approach: hide all other tabs and show admin tab
+                document.querySelectorAll('.tab-pane').forEach(pane => {
+                    pane.classList.remove('show', 'active');
+                });
+                
+                adminTabPane.classList.add('show', 'active');
+                adminTabButton.classList.add('active');
+            }
         }
     });
 </script>
