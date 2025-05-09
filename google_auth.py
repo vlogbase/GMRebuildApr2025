@@ -81,13 +81,21 @@ def callback():
     else:
         return "User email not available or not verified by Google.", 400
 
+    # Check if user exists
+    is_new_user = False
     user = User.query.filter_by(email=users_email).first()
     if not user:
+        is_new_user = True
         user = User(username=users_name, email=users_email)
         db.session.add(user)
         db.session.commit()
 
+    # Log the user in
     login_user(user)
+    
+    # Check for referral code in cookie or session after login
+    # We don't need to handle this here since the affiliate.track_referral_cookie function
+    # will run on the next request and handle creating the referral based on stored session data
 
     # Get the redirect parameter if it exists in the session
     redirect_to = session.get('login_redirect', 'index')
