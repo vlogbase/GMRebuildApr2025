@@ -1,0 +1,710 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - Affiliate System{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .main-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+    
+    .table-responsive {
+        margin-top: 1.5rem;
+    }
+    
+    .card {
+        background-color: #2c2f33;
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 1.5rem;
+    }
+    
+    .card-header {
+        background-color: #23272a;
+        border-bottom: 1px solid #3f4246;
+        padding: 1rem 1.5rem;
+        font-weight: bold;
+    }
+    
+    .table {
+        margin-bottom: 0;
+    }
+    
+    .table thead th {
+        border-bottom: 2px solid #3f4246;
+        background-color: #23272a;
+        color: #ffffff;
+    }
+    
+    .table td, .table th {
+        padding: 0.75rem 1rem;
+        vertical-align: middle;
+        border-top: 1px solid #3f4246;
+    }
+    
+    .table-hover tbody tr:hover {
+        background-color: rgba(88, 101, 242, 0.1);
+    }
+    
+    .status-badge {
+        padding: 0.25rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-weight: bold;
+    }
+    
+    .status-held {
+        background-color: #f0ad4e;
+        color: #212529;
+    }
+    
+    .status-approved {
+        background-color: #5cb85c;
+        color: #ffffff;
+    }
+    
+    .status-paid {
+        background-color: #5865f2;
+        color: #ffffff;
+    }
+    
+    .status-rejected {
+        background-color: #d9534f;
+        color: #ffffff;
+    }
+    
+    .status-payout-initiated {
+        background-color: #17a2b8;
+        color: #ffffff;
+    }
+    
+    .status-payout-failed {
+        background-color: #dc3545;
+        color: #ffffff;
+    }
+    
+    .tier-badge {
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        margin-right: 0.3rem;
+    }
+    
+    .tier-1 {
+        background-color: #5865f2;
+        color: #ffffff;
+    }
+    
+    .tier-2 {
+        background-color: #5cb85c;
+        color: #ffffff;
+    }
+    
+    .action-button {
+        margin-right: 0.25rem;
+    }
+    
+    .alert {
+        border-radius: 8px;
+    }
+    
+    .nav-tabs {
+        border-bottom: 1px solid #3f4246;
+        margin-bottom: 1.5rem;
+    }
+    
+    .nav-tabs .nav-link {
+        color: #dcddde;
+        border: none;
+        border-bottom: 2px solid transparent;
+        background-color: transparent;
+        padding: 0.75rem 1rem;
+        margin-right: 0.5rem;
+        font-weight: 500;
+    }
+    
+    .nav-tabs .nav-link:hover {
+        color: #ffffff;
+        border-color: #5865f2;
+    }
+    
+    .nav-tabs .nav-link.active {
+        color: #ffffff;
+        background-color: transparent;
+        border-bottom: 2px solid #5865f2;
+    }
+    
+    .dashboard-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+        margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+        background-color: #2c2f33;
+        border-radius: 8px;
+        padding: 1.25rem;
+        text-align: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .stat-card h3 {
+        font-size: 2rem;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+    }
+    
+    .stat-card p {
+        color: #8e9297;
+        margin: 0;
+    }
+    
+    .stat-card.primary h3 {
+        color: #5865f2;
+    }
+    
+    .stat-card.success h3 {
+        color: #5cb85c;
+    }
+    
+    .stat-card.warning h3 {
+        color: #f0ad4e;
+    }
+    
+    .stat-card.info h3 {
+        color: #17a2b8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Affiliate System Admin Dashboard</h1>
+        <div>
+            <a href="{{ url_for('billing.account_management') }}" class="btn btn-outline-secondary me-2">
+                <i class="fas fa-credit-card me-2"></i> Billing Account
+            </a>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-2"></i> Back to Home
+            </a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+    
+    <!-- Dashboard Stats -->
+    <div class="dashboard-stats">
+        <div class="stat-card primary">
+            <h3>{{ stats.total_affiliates }}</h3>
+            <p>Total Affiliates</p>
+        </div>
+        <div class="stat-card success">
+            <h3>${{ "%.2f"|format(stats.total_commissions_paid) }}</h3>
+            <p>Total Commissions Paid</p>
+        </div>
+        <div class="stat-card warning">
+            <h3>${{ "%.2f"|format(stats.pending_commissions) }}</h3>
+            <p>Pending Commissions</p>
+        </div>
+        <div class="stat-card info">
+            <h3>{{ stats.new_affiliates_this_month }}</h3>
+            <p>New Affiliates This Month</p>
+        </div>
+    </div>
+
+    <!-- Dashboard Navigation Tabs -->
+    <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="commissions-tab" data-bs-toggle="tab" data-bs-target="#commissions" type="button" role="tab" aria-controls="commissions" aria-selected="true">
+                <i class="fas fa-dollar-sign me-2"></i>Commissions
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="affiliates-tab" data-bs-toggle="tab" data-bs-target="#affiliates" type="button" role="tab" aria-controls="affiliates" aria-selected="false">
+                <i class="fas fa-users me-2"></i>Affiliates
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="payouts-tab" data-bs-toggle="tab" data-bs-target="#payouts" type="button" role="tab" aria-controls="payouts" aria-selected="false">
+                <i class="fas fa-money-bill-wave me-2"></i>Payouts
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="settings-tab" data-bs-toggle="tab" data-bs-target="#settings" type="button" role="tab" aria-controls="settings" aria-selected="false">
+                <i class="fas fa-cog me-2"></i>Settings
+            </button>
+        </li>
+    </ul>
+
+    <!-- Tab Content -->
+    <div class="tab-content" id="dashboardTabsContent">
+        <!-- Commissions Tab -->
+        <div class="tab-pane fade show active" id="commissions" role="tabpanel" aria-labelledby="commissions-tab">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Commissions Pending Approval or Ready for Payout</span>
+                        <div class="d-flex align-items-center">
+                            <select class="form-select form-select-sm me-2" id="statusFilter">
+                                <option value="all">All Statuses</option>
+                                <option value="held">Held</option>
+                                <option value="approved">Approved</option>
+                                <option value="paid">Paid</option>
+                                <option value="rejected">Rejected</option>
+                                <option value="payout_initiated">Payout Initiated</option>
+                                <option value="payout_failed">Payout Failed</option>
+                            </select>
+                            <select class="form-select form-select-sm" id="levelFilter">
+                                <option value="all">All Levels</option>
+                                <option value="1">Tier 1</option>
+                                <option value="2">Tier 2</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if commissions and commissions|length > 0 %}
+                        <form method="post" action="{{ url_for('affiliate.process_payouts') }}" id="commissionForm">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="commissionsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>
+                                                <div class="form-check">
+                                                    <input class="form-check-input" type="checkbox" id="selectAll">
+                                                </div>
+                                            </th>
+                                            <th>ID</th>
+                                            <th>Affiliate</th>
+                                            <th>Customer ID</th>
+                                            <th>Purchase Amount</th>
+                                            <th>Commission</th>
+                                            <th>Level</th>
+                                            <th>Status</th>
+                                            <th>Earned Date</th>
+                                            <th>Available Date</th>
+                                            <th>Payout Batch</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for commission in commissions %}
+                                        <tr data-status="{{ commission.status }}" data-level="{{ commission.commission_level }}">
+                                            <td>
+                                                <div class="form-check">
+                                                    <input class="form-check-input commission-checkbox" type="checkbox" name="commission_ids[]" value="{{ commission.id }}" {% if commission.status != 'approved' %}disabled{% endif %}>
+                                                </div>
+                                            </td>
+                                            <td>{{ commission.id }}</td>
+                                            <td>{{ commission.affiliate.email }}</td>
+                                            <td>{{ commission.triggering_transaction_id }}</td>
+                                            <td>${{ "%.2f"|format(commission.purchase_amount_base) }}</td>
+                                            <td>${{ "%.2f"|format(commission.commission_amount) }}</td>
+                                            <td>
+                                                {% if commission.commission_level == 1 %}
+                                                <span class="tier-badge tier-1">Tier 1</span>
+                                                {% else %}
+                                                <span class="tier-badge tier-2">Tier 2</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if commission.status == 'held' %}
+                                                <span class="status-badge status-held">HELD</span>
+                                                {% elif commission.status == 'approved' %}
+                                                <span class="status-badge status-approved">APPROVED</span>
+                                                {% elif commission.status == 'paid' %}
+                                                <span class="status-badge status-paid">PAID</span>
+                                                {% elif commission.status == 'rejected' %}
+                                                <span class="status-badge status-rejected">REJECTED</span>
+                                                {% elif commission.status == 'payout_initiated' %}
+                                                <span class="status-badge status-payout-initiated">INITIATED</span>
+                                                {% elif commission.status == 'payout_failed' %}
+                                                <span class="status-badge status-payout-failed">FAILED</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ commission.commission_earned_date.strftime('%Y-%m-%d') }}</td>
+                                            <td>{{ commission.commission_available_date.strftime('%Y-%m-%d') }}</td>
+                                            <td>{{ commission.payout_batch_id or '-' }}</td>
+                                            <td>
+                                                {% if commission.status == 'held' and commission.commission_available_date <= now %}
+                                                <form method="post" action="{{ url_for('affiliate.approve_commission', commission_id=commission.id) }}" class="d-inline-block">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-sm btn-success action-button">Approve</button>
+                                                </form>
+                                                {% endif %}
+                                                
+                                                {% if commission.status in ['held', 'approved'] %}
+                                                <form method="post" action="{{ url_for('affiliate.reject_commission', commission_id=commission.id) }}" class="d-inline-block">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                    <button type="submit" class="btn btn-sm btn-danger action-button" onclick="return confirm('Are you sure you want to reject this commission?')">Reject</button>
+                                                </form>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="p-3">
+                                <button type="submit" class="btn btn-primary" id="processPayoutsBtn">
+                                    Process Selected Payouts
+                                </button>
+                                <span class="ms-3 text-muted" id="selectedCount">0 commissions selected</span>
+                            </div>
+                        </form>
+                    {% else %}
+                        <div class="p-5 text-center">
+                            <i class="fas fa-info-circle mb-3" style="font-size: 2rem; color: #8e9297;"></i>
+                            <h3 class="mb-3">No Commissions Found</h3>
+                            <p class="text-muted">No commissions are currently pending approval or ready for payout.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Affiliates Tab -->
+        <div class="tab-pane fade" id="affiliates" role="tabpanel" aria-labelledby="affiliates-tab">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Registered Affiliates</span>
+                        <input type="text" class="form-control form-control-sm" style="width: 250px;" placeholder="Search affiliates..." id="affiliateSearch">
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if affiliates and affiliates|length > 0 %}
+                        <div class="table-responsive">
+                            <table class="table table-hover" id="affiliatesTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>User</th>
+                                        <th>Email</th>
+                                        <th>PayPal Email</th>
+                                        <th>Verified</th>
+                                        <th>Referral Code</th>
+                                        <th>Created Date</th>
+                                        <th>Total Commissions</th>
+                                        <th>Total Earned</th>
+                                        <th>Total Paid</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for affiliate in affiliates %}
+                                    <tr>
+                                        <td>{{ affiliate.id }}</td>
+                                        <td>{{ affiliate.user.email }}</td>
+                                        <td>{{ affiliate.email }}</td>
+                                        <td>{{ affiliate.paypal_email or 'Not set' }}</td>
+                                        <td>
+                                            {% if affiliate.paypal_email_verified_at %}
+                                            <span class="badge bg-success">Verified</span>
+                                            {% else %}
+                                            <span class="badge bg-warning text-dark">Unverified</span>
+                                            {% endif %}
+                                        </td>
+                                        <td><code>{{ affiliate.referral_code }}</code></td>
+                                        <td>{{ affiliate.created_at.strftime('%Y-%m-%d') }}</td>
+                                        <td>{{ affiliate.total_commissions }}</td>
+                                        <td>${{ "%.2f"|format(affiliate.total_earned) }}</td>
+                                        <td>${{ "%.2f"|format(affiliate.total_paid) }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="p-5 text-center">
+                            <i class="fas fa-users mb-3" style="font-size: 2rem; color: #8e9297;"></i>
+                            <h3 class="mb-3">No Affiliates Found</h3>
+                            <p class="text-muted">No users have registered as affiliates yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Payouts Tab -->
+        <div class="tab-pane fade" id="payouts" role="tabpanel" aria-labelledby="payouts-tab">
+            <div class="card">
+                <div class="card-header">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span>Payout History</span>
+                        <a href="{{ url_for('affiliate.admin_payouts') }}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-external-link-alt me-1"></i> Detailed Payout Management
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if payouts and payouts|length > 0 %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Batch ID</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th>Affiliates</th>
+                                        <th>Commissions</th>
+                                        <th>Total Amount</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for payout in payouts %}
+                                    <tr>
+                                        <td>{{ payout.batch_id }}</td>
+                                        <td>{{ payout.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                        <td>
+                                            {% if payout.status == 'SUCCESS' %}
+                                            <span class="status-badge status-paid">SUCCESS</span>
+                                            {% elif payout.status == 'PENDING' %}
+                                            <span class="status-badge status-held">PENDING</span>
+                                            {% elif payout.status == 'PROCESSING' %}
+                                            <span class="status-badge status-payout-initiated">PROCESSING</span>
+                                            {% elif payout.status == 'FAILED' %}
+                                            <span class="status-badge status-payout-failed">FAILED</span>
+                                            {% else %}
+                                            <span class="status-badge">{{ payout.status }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ payout.affiliate_count }}</td>
+                                        <td>{{ payout.commission_count }}</td>
+                                        <td>${{ "%.2f"|format(payout.total_amount) }}</td>
+                                        <td>
+                                            <form method="post" action="{{ url_for('affiliate.check_payout_status_route', batch_id=payout.batch_id) }}" class="d-inline-block">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <button type="submit" class="btn btn-sm btn-info">
+                                                    <i class="fas fa-sync-alt me-1"></i> Check Status
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="p-5 text-center">
+                            <i class="fas fa-money-bill-wave mb-3" style="font-size: 2rem; color: #8e9297;"></i>
+                            <h3 class="mb-3">No Payouts Found</h3>
+                            <p class="text-muted">No payouts have been processed yet.</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Settings Tab -->
+        <div class="tab-pane fade" id="settings" role="tabpanel" aria-labelledby="settings-tab">
+            <div class="card">
+                <div class="card-header">
+                    Affiliate System Settings
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ url_for('affiliate.update_settings') }}" id="settingsForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5>Commission Rates</h5>
+                                <div class="mb-3">
+                                    <label for="tier1Rate" class="form-label">Tier 1 Rate (%)</label>
+                                    <input type="number" class="form-control" id="tier1Rate" name="tier1_rate" 
+                                           value="{{ settings.tier1_rate }}" min="0" max="100" step="0.1">
+                                    <div class="form-text text-muted">Commission percentage for direct referrals.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="tier2Rate" class="form-label">Tier 2 Rate (%)</label>
+                                    <input type="number" class="form-control" id="tier2Rate" name="tier2_rate" 
+                                           value="{{ settings.tier2_rate }}" min="0" max="100" step="0.1">
+                                    <div class="form-text text-muted">Commission percentage for indirect referrals.</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5>Payout Settings</h5>
+                                <div class="mb-3">
+                                    <label for="holdingPeriod" class="form-label">Holding Period (days)</label>
+                                    <input type="number" class="form-control" id="holdingPeriod" name="holding_period" 
+                                           value="{{ settings.holding_period }}" min="0" max="90">
+                                    <div class="form-text text-muted">Days to hold commissions before they become available for payout.</div>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="minPayoutAmount" class="form-label">Minimum Payout Amount ($)</label>
+                                    <input type="number" class="form-control" id="minPayoutAmount" name="min_payout_amount" 
+                                           value="{{ settings.min_payout_amount }}" min="0" step="0.01">
+                                    <div class="form-text text-muted">Minimum amount required for an affiliate to receive a payout.</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <h5>Commission Window</h5>
+                                <div class="mb-3">
+                                    <label for="commissionWindow" class="form-label">Commission Window (days)</label>
+                                    <input type="number" class="form-control" id="commissionWindow" name="commission_window" 
+                                           value="{{ settings.commission_window }}" min="0">
+                                    <div class="form-text text-muted">Number of days an affiliate can earn commissions from a referred customer (0 = forever).</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h5>System Settings</h5>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="systemEnabled" name="system_enabled" 
+                                           {% if settings.system_enabled %}checked{% endif %}>
+                                    <label class="form-check-label" for="systemEnabled">Enable Affiliate System</label>
+                                    <div class="form-text text-muted">If unchecked, the affiliate system will be disabled for all users.</div>
+                                </div>
+                                <div class="mb-3 form-check">
+                                    <input type="checkbox" class="form-check-input" id="autoApprove" name="auto_approve" 
+                                           {% if settings.auto_approve %}checked{% endif %}>
+                                    <label class="form-check-label" for="autoApprove">Auto-approve Commissions</label>
+                                    <div class="form-text text-muted">If checked, commissions will be automatically approved after the holding period.</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i> Save Settings
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle "Select All" checkbox
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const commissionCheckboxes = document.querySelectorAll('.commission-checkbox:not([disabled])');
+        const processButton = document.getElementById('processPayoutsBtn');
+        const selectedCountElem = document.getElementById('selectedCount');
+        
+        // Update selected count
+        function updateSelectedCount() {
+            const selectedCount = document.querySelectorAll('.commission-checkbox:checked').length;
+            selectedCountElem.textContent = `${selectedCount} commission${selectedCount !== 1 ? 's' : ''} selected`;
+            processButton.disabled = selectedCount === 0;
+        }
+        
+        // Initialize state
+        updateSelectedCount();
+        
+        // Select all checkbox functionality
+        if (selectAllCheckbox) {
+            selectAllCheckbox.addEventListener('change', function() {
+                const visibleCheckboxes = document.querySelectorAll('tr:not(.d-none) .commission-checkbox:not([disabled])');
+                visibleCheckboxes.forEach(checkbox => {
+                    checkbox.checked = selectAllCheckbox.checked;
+                });
+                updateSelectedCount();
+            });
+        }
+        
+        // Individual checkbox functionality
+        commissionCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const visibleCheckboxes = document.querySelectorAll('tr:not(.d-none) .commission-checkbox:not([disabled])');
+                const allChecked = Array.from(visibleCheckboxes).every(cb => cb.checked);
+                const anyChecked = Array.from(visibleCheckboxes).some(cb => cb.checked);
+                
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = allChecked;
+                    selectAllCheckbox.indeterminate = anyChecked && !allChecked;
+                }
+                
+                updateSelectedCount();
+            });
+        });
+        
+        // Status filter functionality
+        const statusFilter = document.getElementById('statusFilter');
+        const levelFilter = document.getElementById('levelFilter');
+        
+        function applyFilters() {
+            const statusValue = statusFilter.value;
+            const levelValue = levelFilter.value;
+            
+            const rows = document.querySelectorAll('#commissionsTable tbody tr');
+            
+            rows.forEach(row => {
+                const rowStatus = row.getAttribute('data-status');
+                const rowLevel = row.getAttribute('data-level');
+                
+                const statusMatch = statusValue === 'all' || rowStatus === statusValue;
+                const levelMatch = levelValue === 'all' || rowLevel === levelValue;
+                
+                if (statusMatch && levelMatch) {
+                    row.classList.remove('d-none');
+                } else {
+                    row.classList.add('d-none');
+                }
+            });
+            
+            // Update "Select All" checkbox state after filtering
+            if (selectAllCheckbox) {
+                const visibleCheckboxes = document.querySelectorAll('tr:not(.d-none) .commission-checkbox:not([disabled])');
+                const allChecked = Array.from(visibleCheckboxes).every(cb => cb.checked);
+                const anyChecked = Array.from(visibleCheckboxes).some(cb => cb.checked);
+                
+                selectAllCheckbox.checked = allChecked && visibleCheckboxes.length > 0;
+                selectAllCheckbox.indeterminate = anyChecked && !allChecked;
+            }
+        }
+        
+        if (statusFilter) {
+            statusFilter.addEventListener('change', applyFilters);
+        }
+        
+        if (levelFilter) {
+            levelFilter.addEventListener('change', applyFilters);
+        }
+        
+        // Affiliate search functionality
+        const affiliateSearch = document.getElementById('affiliateSearch');
+        
+        if (affiliateSearch) {
+            affiliateSearch.addEventListener('input', function() {
+                const searchTerm = affiliateSearch.value.toLowerCase();
+                const rows = document.querySelectorAll('#affiliatesTable tbody tr');
+                
+                rows.forEach(row => {
+                    const text = row.textContent.toLowerCase();
+                    if (text.includes(searchTerm)) {
+                        row.classList.remove('d-none');
+                    } else {
+                        row.classList.add('d-none');
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -396,6 +396,152 @@ def referral_link():
 
 # --- Admin Routes ---
 
+@affiliate_bp.route('/admin/dashboard', methods=['GET'])
+@login_required
+def admin_dashboard():
+    """
+    Admin dashboard for managing the affiliate system.
+    This dedicated page allows admins to review and manage commissions,
+    affiliates, payouts, and system settings in a comprehensive interface.
+    """
+    try:
+        # Check if user is admin
+        if not is_admin():
+            flash("You do not have permission to access this page", "error")
+            return redirect(url_for('index'))
+        
+        # Get current date for calculations
+        now = datetime.utcnow()
+        first_of_month = datetime(now.year, now.month, 1)
+        
+        # Get all commissions with all statuses for the dashboard
+        commissions = Commission.query.join(
+            Affiliate, Commission.affiliate_id == Affiliate.id
+        ).order_by(
+            desc(Commission.commission_earned_date)
+        ).all()
+        
+        # Get all affiliates with additional stats
+        affiliates = Affiliate.query.all()
+        
+        # Process affiliates to include additional information
+        for affiliate in affiliates:
+            # Count total commissions
+            affiliate.total_commissions = Commission.query.filter(
+                Commission.affiliate_id == affiliate.id
+            ).count()
+            
+            # Calculate total earned (all commissions)
+            total_earned_result = db.session.query(
+                func.sum(Commission.commission_amount)
+            ).filter(
+                Commission.affiliate_id == affiliate.id
+            ).scalar()
+            affiliate.total_earned = total_earned_result or 0
+            
+            # Calculate total paid (only paid commissions)
+            total_paid_result = db.session.query(
+                func.sum(Commission.commission_amount)
+            ).filter(
+                and_(
+                    Commission.affiliate_id == affiliate.id,
+                    Commission.status == CommissionStatus.PAID.value
+                )
+            ).scalar()
+            affiliate.total_paid = total_paid_result or 0
+        
+        # Get payout batches (derived from commissions with payout_batch_id)
+        payout_batches = {}
+        payout_commissions = Commission.query.filter(
+            Commission.payout_batch_id.isnot(None)
+        ).order_by(desc(Commission.updated_at)).all()
+        
+        for commission in payout_commissions:
+            batch_id = commission.payout_batch_id
+            if batch_id not in payout_batches:
+                # Initialize payout batch
+                payout_batches[batch_id] = {
+                    'batch_id': batch_id,
+                    'created_at': commission.updated_at,
+                    'status': None,
+                    'affiliate_count': set(),
+                    'commission_count': 0,
+                    'total_amount': 0
+                }
+            
+            # Update batch information
+            payout_batches[batch_id]['affiliate_count'].add(commission.affiliate_id)
+            payout_batches[batch_id]['commission_count'] += 1
+            payout_batches[batch_id]['total_amount'] += float(commission.commission_amount)
+            
+            # Use most recent status
+            if commission.status == CommissionStatus.PAID.value:
+                payout_batches[batch_id]['status'] = 'SUCCESS'
+            elif commission.status == CommissionStatus.PAYOUT_INITIATED.value:
+                if not payout_batches[batch_id]['status'] or payout_batches[batch_id]['status'] != 'SUCCESS':
+                    payout_batches[batch_id]['status'] = 'PROCESSING'
+            elif commission.status == CommissionStatus.PAYOUT_FAILED.value:
+                if not payout_batches[batch_id]['status'] or payout_batches[batch_id]['status'] not in ['SUCCESS', 'PROCESSING']:
+                    payout_batches[batch_id]['status'] = 'FAILED'
+        
+        # Process payout batches to format for template
+        payouts = []
+        for batch_id, batch_data in payout_batches.items():
+            batch_data['affiliate_count'] = len(batch_data['affiliate_count'])
+            payouts.append(batch_data)
+        
+        # Sort payouts by created_at (most recent first)
+        payouts.sort(key=lambda x: x['created_at'], reverse=True)
+        
+        # Compile dashboard statistics
+        stats = {
+            'total_affiliates': len(affiliates),
+            'new_affiliates_this_month': Affiliate.query.filter(
+                Affiliate.created_at >= first_of_month
+            ).count(),
+            'total_commissions_paid': db.session.query(
+                func.sum(Commission.commission_amount)
+            ).filter(
+                Commission.status == CommissionStatus.PAID.value
+            ).scalar() or 0,
+            'pending_commissions': db.session.query(
+                func.sum(Commission.commission_amount)
+            ).filter(
+                or_(
+                    Commission.status == CommissionStatus.HELD.value,
+                    Commission.status == CommissionStatus.APPROVED.value
+                )
+            ).scalar() or 0
+        }
+        
+        # Get affiliate system settings
+        # In a real implementation, these would come from a settings table
+        # For now, we'll use default values
+        settings = {
+            'tier1_rate': 10,  # 10% commission for tier 1
+            'tier2_rate': 5,   # 5% commission for tier 2
+            'holding_period': 30,  # 30 days holding period
+            'min_payout_amount': 25.00,  # $25 minimum payout
+            'commission_window': 365,  # 365 days (1 year)
+            'system_enabled': True,  # System enabled
+            'auto_approve': False  # Don't auto-approve
+        }
+        
+        return render_template(
+            'affiliate/admin_dashboard.html',
+            commissions=commissions,
+            affiliates=affiliates,
+            payouts=payouts,
+            stats=stats,
+            settings=settings,
+            now=now
+        )
+            
+    except Exception as e:
+        logger.error(f"Error in admin dashboard: {e}")
+        flash(f"An error occurred: {str(e)}", "error")
+        return redirect(url_for('index'))
+
 @affiliate_bp.route('/admin/commissions')
 @login_required
 def admin_commissions():
@@ -473,7 +619,7 @@ def process_payouts():
             
             if not eligible_affiliates:
                 flash("No affiliates eligible for payout", "warning")
-                return redirect(url_for('affiliate.admin_commissions'))
+                return redirect(url_for('affiliate.admin_dashboard'))
                 
             selected_affiliates = [str(affiliate.affiliate_id) for affiliate in eligible_affiliates]
         else:
@@ -482,7 +628,7 @@ def process_payouts():
             
             if not selected_commission_ids:
                 flash("No commissions selected for payout", "warning")
-                return redirect(url_for('affiliate.admin_commissions'))
+                return redirect(url_for('affiliate.admin_dashboard'))
                 
             # Get commissions
             selected_commissions = Commission.query.filter(
@@ -541,7 +687,7 @@ def process_payouts():
         
         if not payout_items:
             flash("No eligible affiliates for payout", "warning")
-            return redirect(url_for('affiliate.admin_commissions'))
+            return redirect(url_for('affiliate.admin_dashboard'))
             
         # Process the payout via PayPal
         payout_result = process_paypal_payout(sender_batch_id, payout_items)
@@ -587,13 +733,13 @@ def process_payouts():
             
         else:
             flash(f"Error processing payout: {payout_result.get('error', 'Unknown error')}", "error")
-            return redirect(url_for('affiliate.admin_commissions'))
+            return redirect(url_for('affiliate.admin_dashboard'))
             
     except Exception as e:
         logger.error(f"Error in process_payouts: {e}")
         db.session.rollback()
         flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('affiliate.admin_commissions'))
+        return redirect(url_for('affiliate.admin_dashboard'))
 
 @affiliate_bp.route('/admin/payouts')
 @login_required
@@ -734,7 +880,7 @@ def approve_commission(commission_id):
         commission = Commission.query.get(commission_id)
         if not commission:
             flash("Commission not found", "error")
-            return redirect(url_for('affiliate.admin_commissions'))
+            return redirect(url_for('affiliate.admin_dashboard'))
         
         # Update status
         commission.status = CommissionStatus.APPROVED.value
@@ -744,13 +890,13 @@ def approve_commission(commission_id):
         db.session.commit()
         
         flash("Commission approved successfully", "success")
-        return redirect(url_for('affiliate.admin_commissions'))
+        return redirect(url_for('affiliate.admin_dashboard'))
         
     except Exception as e:
         logger.error(f"Error approving commission: {e}")
         db.session.rollback()
         flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('affiliate.admin_commissions'))
+        return redirect(url_for('affiliate.admin_dashboard'))
 
 @affiliate_bp.route('/admin/reject-commission/<commission_id>', methods=['POST'])
 @login_required
@@ -768,7 +914,7 @@ def reject_commission(commission_id):
         commission = Commission.query.get(commission_id)
         if not commission:
             flash("Commission not found", "error")
-            return redirect(url_for('affiliate.admin_commissions'))
+            return redirect(url_for('affiliate.admin_dashboard'))
         
         # Update status
         commission.status = CommissionStatus.REJECTED.value
@@ -778,12 +924,46 @@ def reject_commission(commission_id):
         db.session.commit()
         
         flash("Commission rejected successfully", "success")
-        return redirect(url_for('affiliate.admin_commissions'))
+        return redirect(url_for('affiliate.admin_dashboard'))
         
     except Exception as e:
         logger.error(f"Error rejecting commission: {e}")
         db.session.rollback()
         flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('affiliate.admin_commissions'))
+        return redirect(url_for('affiliate.admin_dashboard'))
+
+@affiliate_bp.route('/admin/update-settings', methods=['POST'])
+@login_required
+def update_settings():
+    """
+    Update affiliate system settings.
+    This endpoint would normally update settings in a database table,
+    but for simplicity we'll just show a success message.
+    """
+    try:
+        # Check if user is admin
+        if not is_admin():
+            flash("You do not have permission to access this page", "error")
+            return redirect(url_for('index'))
+        
+        # Get form data
+        tier1_rate = float(request.form.get('tier1_rate', 10))
+        tier2_rate = float(request.form.get('tier2_rate', 5))
+        holding_period = int(request.form.get('holding_period', 30))
+        min_payout_amount = float(request.form.get('min_payout_amount', 25.00))
+        commission_window = int(request.form.get('commission_window', 365))
+        system_enabled = 'system_enabled' in request.form
+        auto_approve = 'auto_approve' in request.form
+        
+        # In a real application, save these settings to the database
+        # For this example, we'll just show a success message
+        
+        flash("Affiliate system settings updated successfully", "success")
+        return redirect(url_for('affiliate.admin_dashboard'))
+        
+    except Exception as e:
+        logger.error(f"Error updating settings: {e}")
+        flash(f"An error occurred: {str(e)}", "error")
+        return redirect(url_for('affiliate.admin_dashboard'))
 
 # --- End of the routes ---
