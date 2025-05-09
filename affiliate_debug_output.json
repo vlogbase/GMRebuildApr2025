@@ -1,0 +1,30 @@
+{
+    "dad_user_info": {
+        "id": 5,
+        "email": "pdsurtees@gmail.com",
+        "username": "Peter",
+        "created_at": "2025-05-08T09:45:09.216372"
+    },
+    "your_affiliate_info": {
+        "id": 4,
+        "referral_code": "M11174LA",
+        "status": "active",
+        "email": "andy@sentigral.com"
+    },
+    "referral_info": {
+        "error": "No CustomerReferral for User ID 5 (Email: pdsurtees@gmail.com)"
+    },
+    "transaction_info": {
+        "id": 5,
+        "user_id": 5,
+        "package_id": 1,
+        "amount_usd": 5.0,
+        "credits": 500000,
+        "status": "completed",
+        "stripe_payment_intent": "pi_3RMRKACkgfcNKUGF1RGojSXF",
+        "created_at": "2025-05-08T10:04:20.852779"
+    },
+    "commission_info": {
+        "related_to_transaction_error": "No Commission for intent pi_3RMRKACkgfcNKUGF1RGojSXF"
+    }
+}
