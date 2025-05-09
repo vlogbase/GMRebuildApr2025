@@ -1,40 +1,39 @@
 """
-Simple script to run the Flask application for testing admin access functionality.
+Simple script to run the admin testing dashboard in a deployed Replit environment
 """
 
 import os
 import sys
-import subprocess
+import logging
 
-def main():
-    """
-    Run the Flask application with admin access enabled for testing.
-    This is a simple wrapper around admin_app_workflow.py.
-    """
-    # Set environment variables for testing
-    os.environ['ADMIN_EMAILS'] = 'andy@sentigral.com,test@example.com'
-    os.environ['FLASK_ENV'] = 'development'
-    
-    # Clear the console
-    os.system('clear')
-    
-    # Print header
-    print("\n===== Admin Dashboard Testing =====")
-    print("Running Flask application with admin access enabled...")
-    print("Environment:")
-    print(f"  ADMIN_EMAILS: {os.environ.get('ADMIN_EMAILS')}")
-    print(f"  FLASK_ENV: {os.environ.get('FLASK_ENV')}")
-    print("==================================\n")
-    
-    # Run the admin app workflow
+# Configure logging
+logging.basicConfig(level=logging.INFO, 
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def run():
+    """Run the admin test application"""
     try:
-        subprocess.run([sys.executable, "admin_app_workflow.py", "run"], check=True)
-    except subprocess.CalledProcessError as e:
-        print(f"Error running admin app workflow: {e}")
+        # Set up admin credentials in the environment
+        os.environ['ADMIN_EMAILS'] = 'andy@sentigral.com,test@example.com'
+        logger.info(f"ADMIN_EMAILS set to: {os.environ.get('ADMIN_EMAILS')}")
+        
+        # Import Flask app here to avoid circular imports
+        from app import app
+        
+        # Print admin route details for testing
+        logger.info("Admin route details:")
+        logger.info(f"Admin Dashboard: /admin/dashboard")
+        logger.info(f"Admin Commissions: /affiliate/admin/commissions")
+        logger.info(f"Admin Payouts: /affiliate/admin/payouts")
+        
+        # Start the Flask application
+        logger.info("Starting Flask application for admin testing at http://localhost:5000")
+        app.run(host='0.0.0.0', port=5000, debug=True)
+        
+    except Exception as e:
+        logger.error(f"Failed to start admin test application: {e}")
         sys.exit(1)
-    except KeyboardInterrupt:
-        print("\nAdmin test interrupted by user.")
-        sys.exit(0)
 
 if __name__ == "__main__":
-    main()
+    run()

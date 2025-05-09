@@ -23,7 +23,7 @@ from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
 from models import CustomerReferral, Affiliate, Commission, CommissionStatus, AffiliateStatus
 from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature
-from affiliate import is_admin
+from auth_utils import is_admin
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -228,8 +228,13 @@ def account_management():
             logger.warning(f"Non-admin user {current_user.email} attempted to access admin tab")
             active_tab = 'funds'  # Reset to default tab
         
+        # Handle tab activation via JavaScript
+        tab_script = ""
+        if active_tab and active_tab != 'funds':  # 'funds' is active by default
+            tab_script = f"<script>document.addEventListener('DOMContentLoaded', function() {{ setTimeout(function() {{ window.openTab('{active_tab}'); }}, 100); }});</script>"
+        
         logger.info("Rendering account.html template")
-        return render_template(
+        rendered_template = render_template(
             'account.html',
             user=current_user,
             packages=packages,
@@ -246,6 +251,13 @@ def account_management():
             now=datetime.utcnow(),  # Current datetime for comparing available_date
             active_tab=active_tab  # Pass the active tab to template
         )
+        
+        # If a specific tab is requested via URL parameter, inject the tab activation script
+        if tab_script:
+            # Insert the script right before the closing body tag
+            rendered_template = rendered_template.replace('</body>', f'{tab_script}</body>')
+            
+        return rendered_template
     
     except Exception as e:
         logger.error(f"Error in account_management: {e}")

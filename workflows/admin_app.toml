@@ -1,10 +1,11 @@
-[workflow]
-name = "admin_app"
-description = "Run the Flask application with admin credentials for testing"
-start = "python admin_app_workflow.py"
-command = "cd ${env.REPL_HOME} && python admin_app_workflow.py run"
-color = "rgb(3, 191, 69)"
-icon = "fa:user-shield"
-restartable = true
-singleton = true
-show-console = false
+[entrypoint]
+command = ["python3", "admin_app_workflow.py"]
+port = 5000
+autoload = true
+keepPreviousOutputs = true
+show_restart_notification = false
+private = false
+preview = true
+
+[hints]
+restart = "Enable/Disable Admin Mode for Development"

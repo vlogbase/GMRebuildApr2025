@@ -1,90 +1,65 @@
 """
-Debug script to check admin tab permissions and rendering.
-This can be used to test the affiliate admin functionality without making actual changes.
+Debug script to test admin tab functionality
 """
 
 import os
 import sys
+from app import app, db
+from auth_utils import is_admin
 import logging
-from datetime import datetime, timedelta
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+logging.basicConfig(level=logging.INFO, 
+                  format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def main():
-    """
-    Run tests to check admin tab functionality.
-    """
-    try:
-        # Set environment variables for testing
-        os.environ['ADMIN_EMAILS'] = 'andy@sentigral.com,test@example.com'
-        os.environ['FLASK_ENV'] = 'development'
-        
-        # Import app components
-        from app import app, db
-        from models import User, Affiliate, Commission, CommissionStatus
-        
-        with app.app_context():
-            # Check admin access
-            from affiliate import is_admin
-            
-            # Import and get a real admin user from database
-            admin_email = os.environ.get('ADMIN_EMAILS', 'andy@sentigral.com').split(',')[0]
-            test_admin = User.query.filter_by(email=admin_email).first()
-            
-            # Log admin user details
-            if test_admin:
-                logger.info(f"Found admin user: {test_admin.email}")
-            else:
-                logger.warning(f"No admin user found with email: {admin_email}")
-            
-            # Simulate admin check
-            result = is_admin()
-            logger.info(f"Admin check result: {result}")
-            
-            # Check commission counts
-            held_commissions = Commission.query.filter_by(status=CommissionStatus.HELD.value).count()
-            approved_commissions = Commission.query.filter_by(status=CommissionStatus.APPROVED.value).count()
-            paid_commissions = Commission.query.filter_by(status=CommissionStatus.PAID.value).count()
-            
-            logger.info(f"Commission counts - Held: {held_commissions}, Approved: {approved_commissions}, Paid: {paid_commissions}")
-            
-            # Check active affiliates
-            active_affiliates = Affiliate.query.filter_by(status='active').count()
-            logger.info(f"Active affiliates: {active_affiliates}")
-            
-            # Check available commissions (held and past their availability date)
-            now = datetime.utcnow()
-            available_commissions = Commission.query.filter(
-                Commission.status == CommissionStatus.HELD.value,
-                Commission.commission_available_date <= now
-            ).count()
-            
-            logger.info(f"Available commissions: {available_commissions}")
-            
-            # Check for commissions that will be available soon
-            future_date = now + timedelta(days=7)
-            soon_available = Commission.query.filter(
-                Commission.status == CommissionStatus.HELD.value,
-                Commission.commission_available_date > now,
-                Commission.commission_available_date <= future_date
-            ).count()
-            
-            logger.info(f"Commissions available within 7 days: {soon_available}")
-            
-            # Success message
-            logger.info("Admin tab debug test completed successfully")
+def test_admin_visibility():
+    """Test if admin functionality is working properly"""
+    # Set admin emails
+    os.environ['ADMIN_EMAILS'] = 'andy@sentigral.com,test@example.com'
+    logger.info(f"ADMIN_EMAILS set to: {os.environ.get('ADMIN_EMAILS')}")
     
-    except Exception as e:
-        logger.error(f"Error testing admin functionality: {e}")
-        sys.exit(1)
+    # Create a test context
+    with app.test_request_context():
+        # Import here to avoid circular imports
+        from flask_login import login_user
+        from models import User
+        
+        # Create or get test admin user
+        admin_user = User.query.filter_by(email='andy@sentigral.com').first()
+        if not admin_user:
+            logger.info("Admin user not found, this is expected in test environment")
+            # Create a minimal mock user for testing
+            class MockUser:
+                id = 999
+                email = 'andy@sentigral.com'
+                is_authenticated = True
+                is_active = True
+                def get_id(self):
+                    return str(self.id)
+            admin_user = MockUser()
+        
+        # Login the admin user
+        login_user(admin_user)
+        logger.info(f"Logged in as: {admin_user.email}")
+        
+        # Test if admin check works
+        admin_status = is_admin()
+        logger.info(f"Admin check result: {admin_status}")
+        
+        return admin_status
 
 if __name__ == "__main__":
-    main()
+    # Run with app context
+    with app.app_context():
+        try:
+            is_admin_result = test_admin_visibility()
+            if is_admin_result:
+                logger.info("SUCCESS: Admin check is working correctly!")
+                sys.exit(0)
+            else:
+                logger.error("FAIL: Admin check returned False when it should be True")
+                sys.exit(1)
+        except Exception as e:
+            logger.error(f"ERROR: Admin check failed with exception: {e}")
+            sys.exit(1)

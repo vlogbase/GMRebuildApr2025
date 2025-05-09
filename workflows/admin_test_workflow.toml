@@ -1,0 +1,2 @@
+[entrypoint]
+command = ["python3", "admin_test_workflow.py"]
