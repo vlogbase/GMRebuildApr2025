@@ -84,13 +84,15 @@
                         <i class="fas fa-users me-2"></i>Tell a Friend
                     </button>
                 </li>
-                <!-- Always show admin tab for debugging -->
+                <!-- Only show admin tab for admin users -->
+                {% if is_admin %}
                 <li class="nav-item" role="presentation">
                     <button class="nav-link" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin" 
                             type="button" role="tab" aria-controls="admin" aria-selected="false">
                         <i class="fas fa-user-shield me-2"></i>Admin
                     </button>
                 </li>
+                {% endif %}
             </ul>
         </div>
     </div>
@@ -587,108 +589,12 @@
             {% include 'affiliate/tell_friend_tab.html' %}
         </div>
         
-        <!-- Admin Tab (always visible for debugging) -->
+        <!-- Admin Tab (only visible for admins) -->
+        {% if is_admin %}
         <div id="admin" class="tab-pane fade" role="tabpanel" aria-labelledby="admin-tab">
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0">Commission Management</h5>
-                        </div>
-                        <div class="card-body">
-                            {% if admin_commissions %}
-                            <div class="table-responsive">
-                                <form action="{{ url_for('affiliate.process_payouts') }}" method="post" id="commissionBatchForm">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <table class="table table-dark table-striped table-hover">
-                                        <thead class="table-dark">
-                                            <tr>
-                                                <th class="text-white" style="width: 30px;"><input type="checkbox" id="selectAllCommissions" class="form-check-input"></th>
-                                                <th class="text-white">ID</th>
-                                                <th class="text-white">Affiliate</th>
-                                                <th class="text-white">Customer</th>
-                                                <th class="text-white">Purchase Amount</th>
-                                                <th class="text-white">Commission</th>
-                                                <th class="text-white">Level</th>
-                                                <th class="text-white">Status</th>
-                                                <th class="text-white">Earned Date</th>
-                                                <th class="text-white">Available Date</th>
-                                                <th class="text-white">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for commission in admin_commissions %}
-                                            {% set affiliate = commission.affiliate %}
-                                            <tr>
-                                                <td>
-                                                    {% if commission.status == 'approved' %}
-                                                    <input type="checkbox" name="commission_ids" value="{{ commission.id }}" class="form-check-input commission-checkbox">
-                                                    {% endif %}
-                                                </td>
-                                                <td class="text-light">{{ commission.id }}</td>
-                                                <td class="text-light">{{ affiliate.name }} ({{ affiliate.email }})</td>
-                                                <td class="text-light">User #{{ commission.triggering_transaction_id.split('_')[0] }}</td>
-                                                <td class="text-light">£{{ "%.2f"|format(commission.purchase_amount_base) }}</td>
-                                                <td class="text-light">£{{ "%.2f"|format(commission.commission_amount) }}</td>
-                                                <td class="text-light">{{ commission.commission_level }}</td>
-                                                <td class="text-light">
-                                                    {% if commission.status == 'held' %}
-                                                        <span class="badge bg-warning text-dark">Held</span>
-                                                    {% elif commission.status == 'approved' %}
-                                                        <span class="badge bg-success">Approved</span>
-                                                    {% elif commission.status == 'paid' %}
-                                                        <span class="badge bg-info">Paid</span>
-                                                    {% elif commission.status == 'rejected' %}
-                                                        <span class="badge bg-danger">Rejected</span>
-                                                    {% else %}
-                                                        <span class="badge bg-secondary">{{ commission.status|capitalize }}</span>
-                                                    {% endif %}
-                                                </td>
-                                                <td class="text-light">{{ commission.commission_earned_date.strftime('%Y-%m-%d') }}</td>
-                                                <td class="text-light">{{ commission.commission_available_date.strftime('%Y-%m-%d') }}</td>
-                                                <td class="text-light">
-                                                    {% if commission.status == 'held' and commission.commission_available_date <= now %}
-                                                    <form action="{{ url_for('affiliate.approve_commission', commission_id=commission.id) }}" method="post" class="d-inline">
-                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                        <button type="submit" class="btn btn-sm btn-success" title="Approve Commission">
-                                                            <i class="fas fa-check"></i>
-                                                        </button>
-                                                    </form>
-                                                    {% endif %}
-                                                    
-                                                    {% if commission.status in ['held', 'approved'] %}
-                                                    <form action="{{ url_for('affiliate.reject_commission', commission_id=commission.id) }}" method="post" class="d-inline">
-                                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                        <button type="submit" class="btn btn-sm btn-danger" title="Reject Commission" onclick="return confirm('Are you sure you want to reject this commission?');">
-                                                            <i class="fas fa-times"></i>
-                                                        </button>
-                                                    </form>
-                                                    {% endif %}
-                                                </td>
-                                            </tr>
-                                            {% endfor %}
-                                        </tbody>
-                                    </table>
-                                    
-                                    <div class="mt-4">
-                                        <button type="submit" class="btn btn-primary" id="processPayoutsBtn" disabled>
-                                            <i class="fas fa-money-bill-wave me-2"></i>Process Selected Payouts
-                                        </button>
-                                        <span class="ms-3 text-muted" id="selectedCount">0 commissions selected</span>
-                                    </div>
-                                </form>
-                            </div>
-                            {% else %}
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i>
-                                No commissions are currently available for approval or payout.
-                            </div>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {% include 'affiliate/admin_tab.html' %}
         </div>
+        {% endif %}
     </div>
 </div>
 
@@ -1513,4 +1419,7 @@ document.addEventListener('DOMContentLoaded', function() {
     handleCsvExport();
 });
 </script>
+
+<!-- Admin Dashboard Script -->
+<script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
 {% endblock %}

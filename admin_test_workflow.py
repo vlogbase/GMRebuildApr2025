@@ -5,11 +5,10 @@ Simple script to run the Flask application for testing admin access functionalit
 import os
 import sys
 import logging
-from datetime import datetime
 
 # Set up logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(sys.stdout)
@@ -20,23 +19,25 @@ logger = logging.getLogger(__name__)
 
 def run():
     """
-    Run the Flask application with error handling and logging.
+    Run the Flask application for admin dashboard testing.
     """
     try:
-        logger.info("Starting Flask application for admin access testing")
+        logger.info("Starting Flask application for admin dashboard testing")
         
-        # Print relevant environment variables for debugging
-        admin_emails = os.environ.get('ADMIN_EMAILS', 'Not set')
-        logger.info(f"ADMIN_EMAILS env variable: {admin_emails}")
+        # Force development mode and set admin email
+        os.environ['FLASK_ENV'] = 'development'
+        os.environ['ADMIN_EMAILS'] = 'andy@sentigral.com'
+        logger.info(f"ADMIN_EMAILS env variable set to: {os.environ['ADMIN_EMAILS']}")
         
-        # Import here to avoid circular imports
+        # Import and run app
         from app import app
-        
-        # Run the app
+        logger.info("Starting Flask app on port 5000")
         app.run(host='0.0.0.0', port=5000, debug=True)
         
     except Exception as e:
         logger.error(f"Error running Flask application: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
         sys.exit(1)
 
 if __name__ == "__main__":

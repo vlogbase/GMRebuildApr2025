@@ -1,2 +1,2 @@
 [deployment]
-run = "python3 app.py"
+run = "python3 admin_app_workflow.py"

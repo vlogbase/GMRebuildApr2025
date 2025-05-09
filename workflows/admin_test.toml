@@ -1,0 +1,4 @@
+[workflow]
+onOpen = false
+Run = "python admin_test_workflow.py"
+clearTerminalOnRun = true
