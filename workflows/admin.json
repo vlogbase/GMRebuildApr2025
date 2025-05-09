@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "name": "Admin Dashboard",
+  "onStart": "python admin_app_workflow.py",
+  "httpPort": 5000,
+  "language": "python3",
+  "webview": {
+    "hidden": false,
+    "height": 1000,
+    "resizable": true,
+    "width": 1024
+  }
+}

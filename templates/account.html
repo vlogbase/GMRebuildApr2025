@@ -7,6 +7,10 @@
 {% block styles %}
 {{ super() }}
 <!-- Custom styles are now in static/css/style.css -->
+<!-- Admin Dashboard styles -->
+{% if is_admin %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin-dashboard.css') }}">
+{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -88,8 +92,9 @@
                 {% if is_admin %}
                 <!-- DEBUG: Admin tab navigation is visible (is_admin = {{ is_admin }}) -->
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin" 
-                            type="button" role="tab" aria-controls="admin" aria-selected="false">
+                    <button class="nav-link {% if request.args.get('tab') == 'admin' %}active{% endif %}" 
+                            id="admin-tab" data-bs-toggle="tab" data-bs-target="#admin" 
+                            type="button" role="tab" aria-controls="admin" aria-selected="{% if request.args.get('tab') == 'admin' %}true{% else %}false{% endif %}">
                         <i class="fas fa-user-shield me-2"></i>Admin
                     </button>
                 </li>
@@ -101,7 +106,7 @@
     <!-- Tab Content -->
     <div class="tab-content pt-4">
         <!-- Add Funds Tab -->
-        <div id="funds" class="tab-pane fade show active" role="tabpanel" aria-labelledby="funds-tab">
+        <div id="funds" class="tab-pane fade {% if request.args.get('tab') != 'admin' %}show active{% endif %}" role="tabpanel" aria-labelledby="funds-tab">
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card">
@@ -594,7 +599,7 @@
         <!-- DEBUG BEFORE: is_admin = {{ is_admin }} -->
         {% if is_admin %}
         <!-- DEBUG INSIDE: Admin tab content should be visible (is_admin = {{ is_admin }}) -->
-        <div id="admin" class="tab-pane fade" role="tabpanel" aria-labelledby="admin-tab">
+        <div id="admin" class="tab-pane fade {% if request.args.get('tab') == 'admin' %}show active{% endif %}" role="tabpanel" aria-labelledby="admin-tab">
             <div class="row mb-4">
                 <div class="col-12">
                     <div class="card">
@@ -618,46 +623,17 @@
                                 </button>
                             </div>
                             
-                            <!-- Admin Navigation -->
-                            <ul class="nav nav-tabs mb-4" id="adminTabs" role="tablist">
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link active" id="commissions-tab" data-bs-toggle="tab" data-bs-target="#commissions" 
-                                            type="button" role="tab" aria-controls="commissions" aria-selected="true">
-                                        <i class="fas fa-money-check-alt me-2"></i>Commission Management
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="payouts-tab" data-bs-toggle="tab" data-bs-target="#payouts" 
-                                            type="button" role="tab" aria-controls="payouts" aria-selected="false">
-                                        <i class="fas fa-money-bill-wave me-2"></i>Payout History
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link" id="settings-admin-tab" data-bs-toggle="tab" data-bs-target="#settings-admin" 
-                                            type="button" role="tab" aria-controls="settings-admin" aria-selected="false">
-                                        <i class="fas fa-tools me-2"></i>Admin Settings
-                                    </button>
-                                </li>
+                            <!-- SIMPLIFIED ADMIN CONTENT FOR DEBUGGING -->
+                            <h1 style="color:yellow;">ADMIN TAB CONTENT LOADED</h1>
+                            <h3 style="color:white;">Debug Info:</h3>
+                            <ul style="color:white;">
+                                <li>is_admin: {{ is_admin }}</li>
+                                <li>commissions count: {{ admin_commissions|length }}</li>
+                                <li>current time: {{ now }}</li>
                             </ul>
                             
-                            <!-- Admin Tab Content -->
-                            <div class="tab-content">
-                                <div id="commissions" class="tab-pane fade show active" role="tabpanel" aria-labelledby="commissions-tab">
-                                    {% include 'affiliate/admin_tab.html' %}
-                                </div>
-                                <div id="payouts" class="tab-pane fade" role="tabpanel" aria-labelledby="payouts-tab">
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle me-2"></i>
-                                        View and manage payout history here. This feature is coming soon.
-                                    </div>
-                                </div>
-                                <div id="settings-admin" class="tab-pane fade" role="tabpanel" aria-labelledby="settings-admin-tab">
-                                    <div class="alert alert-info">
-                                        <i class="fas fa-info-circle me-2"></i>
-                                        Configure admin settings here. This feature is coming soon.
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- Include full admin content -->
+                            {% include 'affiliate/admin_tab.html' %}
                         </div>
                     </div>
                 </div>
@@ -670,6 +646,8 @@
 </div>
 
 <script>
+/* ORIGINAL SCRIPT HAS BEEN TEMPORARILY COMMENTED OUT FOR DEBUGGING */
+/*
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired - Initializing account page functions');
     
@@ -1598,6 +1576,8 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 
 <!-- Admin Dashboard Script -->
+<!-- Load admin.js before admin-dashboard.js for proper tab initialization -->
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 <script src="{{ url_for('static', filename='js/admin-dashboard.js') }}"></script>
 
 <!-- Admin Tab Initialization Script -->
@@ -1662,6 +1642,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.openTab('admin');
                     return false;
                 });
+
+                // Load admin dashboard script
+                const adminScript = document.createElement('script');
+                adminScript.src = "{{ url_for('static', filename='js/admin-dashboard.js') }}";
+                document.head.appendChild(adminScript);
+                console.log('Admin dashboard script added dynamically');
             }
         } else {
             console.log('Admin tab not found on page load', { 

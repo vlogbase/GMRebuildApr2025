@@ -1,0 +1,82 @@
+/**
+ * Admin Dashboard Specific Styles
+ * These styles ensure the admin tab and its content are properly displayed
+ */
+
+/* Admin tab link styling */
+#admin-tab {
+    color: #ffc107;
+    font-weight: bold;
+}
+
+#admin-tab.active {
+    background-color: #343a40;
+    color: #ffc107;
+    border-bottom: 2px solid #ffc107;
+}
+
+#admin-tab i {
+    color: #ffc107;
+}
+
+/* Admin tab content styling */
+#admin {
+    /* Important specificity to override any conflicting rules */
+    display: none !important;
+}
+
+#admin.show.active {
+    display: block !important;
+}
+
+/* Debug border for development */
+#admin.show.active {
+    border: 2px solid #ffc107;
+}
+
+/* Admin stats cards */
+#admin .card {
+    transition: all 0.3s ease;
+}
+
+#admin .card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(255, 193, 7, 0.15);
+}
+
+/* Admin table styling */
+#admin .table-dark {
+    background-color: #343a40;
+}
+
+#admin .table-dark thead th {
+    border-bottom: 2px solid #ffc107;
+}
+
+/* Commission badge styling */
+#admin .badge.bg-warning {
+    color: #343a40 !important;
+}
+
+/* Admin action buttons */
+#admin .btn-outline-primary:hover,
+#admin .btn-outline-info:hover,
+#admin .btn-outline-secondary:hover {
+    color: #fff;
+}
+
+/* Commission checkboxes */
+#admin .commission-checkbox,
+#admin #selectAllCommissions {
+    cursor: pointer;
+}
+
+/* Process payouts button */
+#admin #processPayoutsBtn {
+    transition: all 0.3s ease;
+}
+
+#admin #processPayoutsBtn:not([disabled]):hover {
+    background-color: #0d6efd;
+    box-shadow: 0 0.25rem 0.5rem rgba(13, 110, 253, 0.3);
+}

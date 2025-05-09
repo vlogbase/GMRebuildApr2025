@@ -1,0 +1,8 @@
+[runner]
+name = "Admin Dashboard"
+language = "python3"
+start = "python admin_app_workflow.py"
+port = 5000
+
+[env]
+ADMIN_EMAILS = "andy@sentigral.com,test@example.com"
