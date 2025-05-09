@@ -40,4 +40,5 @@ dependencies = [
     "paypal-payouts-sdk>=1.0.0",
     "paypalhttp>=1.0.1",
     "wtforms>=3.2.1",
+    "flask-admin>=1.6.1",
 ]

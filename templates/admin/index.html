@@ -1,0 +1,78 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<div class="container">
+    <div class="row">
+        <div class="col-md-12">
+            <h1>GloriaMundo Admin Dashboard</h1>
+            <p class="lead">Welcome to the admin dashboard. This interface provides tools for managing the affiliate system and viewing analytics.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4">
+            <div class="panel panel-primary">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Users & Affiliates</h3>
+                </div>
+                <div class="panel-body">
+                    <h4>{{ stats['total_users'] }}</h4>
+                    <p>Total Users</p>
+                    <h4>{{ stats['total_affiliates'] }}</h4>
+                    <p>Total Affiliates</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="panel panel-success">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Commission Status</h3>
+                </div>
+                <div class="panel-body">
+                    <h4>{{ stats['pending_commissions'] }}</h4>
+                    <p>Pending Commissions</p>
+                    <h4>{{ stats['approved_commissions'] }}</h4>
+                    <p>Approved Commissions</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="panel panel-info">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Financial Summary</h3>
+                </div>
+                <div class="panel-body">
+                    <h4>£{{ "%.2f"|format(stats['total_commission_amount']) }}</h4>
+                    <p>Total Commission Amount</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Quick Navigation</h2>
+            <div class="list-group">
+                <a href="{{ url_for('commission.index_view') }}" class="list-group-item">
+                    <h4 class="list-group-item-heading">Manage Commissions</h4>
+                    <p class="list-group-item-text">View, approve, reject, and process payouts for affiliate commissions</p>
+                </a>
+                <a href="{{ url_for('affiliate.index_view') }}" class="list-group-item">
+                    <h4 class="list-group-item-heading">Manage Affiliates</h4>
+                    <p class="list-group-item-text">View and manage affiliate accounts</p>
+                </a>
+                <a href="{{ url_for('user_token_usage.index_view') }}" class="list-group-item">
+                    <h4 class="list-group-item-heading">User Token Usage</h4>
+                    <p class="list-group-item-text">Analyze user token consumption and activity</p>
+                </a>
+                <a href="{{ url_for('popular_models.index_view') }}" class="list-group-item">
+                    <h4 class="list-group-item-heading">Popular Models</h4>
+                    <p class="list-group-item-text">See which AI models are most frequently used</p>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

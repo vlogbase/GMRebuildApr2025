@@ -1,20 +1,13 @@
-run = ["python", "test_rag_indicator.py"]
-hidden = ["venv", ".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
-onBoot = ["echo hello world"]
+[workflows.gm_admin_workflow]
+onBoot = false
+clearOnRerun = true
+restartOn = {}
+name = "GM Admin Dashboard"
+startCommand = ["python", "workflows/gm_admin_workflow.py"]
 
-[languages.python3]
-pattern = "**/*.py"
-syntax = "python"
-
-[languages.python3.languageServer]
-start = ["pylsp"]
-
-[unitTest]
-language = "python3"
-
-[nix]
-channel = "stable-22_11"
-
-[env]
-PYTHONHASHSEED = "0"
-PYTHONPATH = "${PYTHONPATH}:${REPL_HOME}"
+[workflows.gm_admin_test]
+onBoot = false
+clearOnRerun = true
+restartOn = {}
+name = "Test Admin Dashboard"
+startCommand = ["python", "gm_admin_test.py"]

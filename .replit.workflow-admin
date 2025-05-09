@@ -1,0 +1,12 @@
+# GloriaMundo Admin Dashboard Workflow Configuration
+# To use this configuration:
+# 1. Make a backup copy of .replit.workflow if needed
+# 2. cp .replit.workflow-admin .replit.workflow
+# 3. Restart the Replit environment
+
+[workflows.gm_admin_workflow]
+onBoot = false
+clearOnRerun = true
+restartOn = {}
+name = "GM Admin Dashboard"
+startCommand = ["python", "workflows/gm_admin_workflow.py"]
