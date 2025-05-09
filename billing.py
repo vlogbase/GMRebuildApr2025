@@ -171,6 +171,9 @@ def account_management():
         is_user_admin = is_admin()
         logger.info(f"Admin check result: is_user_admin = {is_user_admin}")
         
+        # Default to empty list for admin_commissions to avoid template errors
+        admin_commissions = []
+        
         # Always fetch commissions for development purposes - this ensures the admin tab works 
         # even if there are issues with the is_admin function
         try:
@@ -216,6 +219,15 @@ def account_management():
             logger.error(f"Error fetching admin commissions: {e}")
             admin_commissions = []
             
+        # Check for tab parameter in request
+        active_tab = request.args.get('tab', 'funds')  # Default to funds tab
+        logger.info(f"Account page requested with tab: {active_tab}")
+        
+        # Make sure admin tab is not selected for non-admins
+        if active_tab == 'admin' and not is_user_admin:
+            logger.warning(f"Non-admin user {current_user.email} attempted to access admin tab")
+            active_tab = 'funds'  # Reset to default tab
+        
         logger.info("Rendering account.html template")
         return render_template(
             'account.html',
@@ -231,7 +243,8 @@ def account_management():
             stats=commission_stats,  # Alias to match dashboard template
             is_admin=is_user_admin,
             admin_commissions=admin_commissions,
-            now=datetime.utcnow()  # Current datetime for comparing available_date
+            now=datetime.utcnow(),  # Current datetime for comparing available_date
+            active_tab=active_tab  # Pass the active tab to template
         )
     
     except Exception as e:

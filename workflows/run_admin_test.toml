@@ -1,0 +1,10 @@
+[workflow]
+name = "run_admin_test"
+description = "Run the admin test script to debug admin functionality"
+start = "python run_admin_test.py"
+command = "cd ${env.REPL_HOME} && python run_admin_test.py"
+color = "rgb(217, 72, 15)"
+icon = "fa:tools"
+restartable = true
+singleton = true
+show-console = true

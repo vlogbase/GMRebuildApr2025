@@ -27,7 +27,10 @@
                             <div class="card-body text-center">
                                 <i class="fas fa-hourglass-half fa-2x mb-3 text-warning"></i>
                                 <h6 class="mb-1">Pending Commissions</h6>
-                                <h4 class="text-warning">{{ admin_commissions|selectattr('status', 'equalto', 'held')|list|length }}</h4>
+                                <h4 class="text-warning">
+                                    {% set held_count = admin_commissions|selectattr('status', 'equalto', 'held')|list|length %}
+                                    {{ held_count }}
+                                </h4>
                             </div>
                         </div>
                     </div>
@@ -36,7 +39,10 @@
                             <div class="card-body text-center">
                                 <i class="fas fa-check-circle fa-2x mb-3 text-success"></i>
                                 <h6 class="mb-1">Ready for Payout</h6>
-                                <h4 class="text-success">{{ admin_commissions|selectattr('status', 'equalto', 'approved')|list|length }}</h4>
+                                <h4 class="text-success">
+                                    {% set approved_count = admin_commissions|selectattr('status', 'equalto', 'approved')|list|length %}
+                                    {{ approved_count }}
+                                </h4>
                             </div>
                         </div>
                     </div>
@@ -45,7 +51,15 @@
                             <div class="card-body text-center">
                                 <i class="fas fa-users fa-2x mb-3 text-info"></i>
                                 <h6 class="mb-1">Active Affiliates</h6>
-                                <h4 class="text-info">{{ admin_commissions|selectattr('affiliate.status', 'equalto', 'active')|map(attribute='affiliate.id')|unique|list|length }}</h4>
+                                <h4 class="text-info">
+                                    {% set unique_affiliates = [] %}
+                                    {% for commission in admin_commissions %}
+                                        {% if commission.affiliate and commission.affiliate.status == 'active' and commission.affiliate.id not in unique_affiliates %}
+                                            {% do unique_affiliates.append(commission.affiliate.id) %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {{ unique_affiliates|length }}
+                                </h4>
                             </div>
                         </div>
                     </div>

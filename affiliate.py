@@ -14,7 +14,7 @@ from urllib.parse import urljoin
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session, jsonify, abort, g
 from flask_login import current_user, login_required
-from sqlalchemy import desc, func, and_, not_
+from sqlalchemy import desc, func, and_, not_, or_, case
 from werkzeug.security import generate_password_hash
 
 from app import db
@@ -143,31 +143,59 @@ def set_referral_cookies(response):
 # --- Helper Functions ---
 
 def is_admin():
-    """Check if the current user is an admin"""
-    # In a real application, you would check against a role or a specific column
-    # For simplicity, we're checking if the user email is in the ADMIN_EMAILS list
-    admin_emails_str = os.environ.get('ADMIN_EMAILS', 'andy@sentigral.com')  # Default admin email
-    admin_emails = admin_emails_str.split(',') if admin_emails_str else []
+    """
+    Check if the current user is an admin
     
-    # Prepare response data for logging
-    auth_status = current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False
-    user_email = current_user.email if auth_status else 'Not authenticated'
-    is_admin_status = auth_status and user_email in admin_emails
+    This function performs the following checks:
+    1. Verifies the user is authenticated
+    2. Checks if the user's email is in the ADMIN_EMAILS environment variable
+    3. For development, automatically grants admin access to andy@sentigral.com
+    
+    Returns:
+        bool: True if the user is an admin, False otherwise
+    """
+    # Get logger for detailed diagnostics
+    logger = logging.getLogger('affiliate')
+    
+    # Get admin emails from environment
+    admin_emails_str = os.environ.get('ADMIN_EMAILS', 'andy@sentigral.com')  # Default admin email
+    admin_emails = [email.strip() for email in admin_emails_str.split(',')] if admin_emails_str else []
+    
+    # Log the configuration
+    logger.info(f"Admin check - Admin emails configured: {admin_emails}")
+    
+    # Check authentication status
+    if not hasattr(current_user, 'is_authenticated'):
+        logger.error("Admin check - current_user object doesn't have is_authenticated attribute")
+        return False
+        
+    auth_status = current_user.is_authenticated
+    if not auth_status:
+        logger.info("Admin check - User is not authenticated")
+        return False
+    
+    # Get user email (authenticated users should have this)
+    if not hasattr(current_user, 'email'):
+        logger.error("Admin check - authenticated user doesn't have email attribute")
+        return False
+        
+    user_email = current_user.email
+    
+    # Check if user email is in admin list
+    is_admin_status = user_email in admin_emails
     
     # Enhanced debug logging
-    logger = logging.getLogger('affiliate')
-    logger.debug(f"Admin check - Admin emails: {admin_emails}")
-    logger.debug(f"Admin check - Current user: {user_email}")
-    logger.debug(f"Admin check - Is authenticated: {auth_status}")
-    logger.debug(f"Admin check - Is admin: {is_admin_status}")
+    logger.info(f"Admin check - Current user: {user_email}")
+    logger.info(f"Admin check - Is authenticated: {auth_status}")
+    logger.info(f"Admin check - Is admin: {is_admin_status}")
     
     # Development fallback for debugging
     if os.environ.get('FLASK_ENV') == 'development' and user_email == 'andy@sentigral.com':
-        logger.debug("Development mode: Forcing admin access for andy@sentigral.com")
+        logger.info("Development mode: Forcing admin access for andy@sentigral.com")
         return True
     
     # Strict admin check
-    return auth_status and user_email in admin_emails
+    return is_admin_status
 
 def get_gbp_exchange_rate(currency):
     """Get the exchange rate from a currency to GBP"""
@@ -416,11 +444,12 @@ def referral_link():
 
 # --- Admin Routes ---
 
-@affiliate_bp.route('/admin/commissions')
+@affiliate_bp.route('/admin/dashboard')
 @login_required
-def admin_commissions():
+def admin_dashboard():
     """
-    Admin page for managing commissions.
+    Main admin dashboard entry point.
+    This redirects to the account page with admin tab pre-selected.
     """
     try:
         # Check if user is admin
@@ -428,13 +457,64 @@ def admin_commissions():
             flash("You do not have permission to access this page", "error")
             return redirect(url_for('index'))
         
-        # Get all held commissions that are available for payout
+        # Log the access
+        logger.info(f"Admin dashboard accessed by: {current_user.email}")
+        
+        # Redirect to account page with admin tab parameter
+        return redirect(url_for('billing.account_management', tab='admin'))
+        
+    except Exception as e:
+        logger.error(f"Error in admin dashboard: {e}")
+        flash(f"An error occurred: {str(e)}", "error")
+        return redirect(url_for('index'))
+
+@affiliate_bp.route('/admin/commissions')
+@login_required
+def admin_commissions():
+    """
+    Admin page for managing commissions.
+    
+    This route provides both:
+    1. A standalone admin commissions management page
+    2. Data for the admin tab in the account management page
+    
+    Returns commissions that are either:
+    - HELD status and past their availability date (ready for approval)
+    - APPROVED status (ready for payout)
+    """
+    try:
+        # Check if user is admin
+        if not is_admin():
+            logger.warning(f"Non-admin user {current_user.email} attempted to access admin_commissions")
+            flash("You do not have permission to access this page", "error")
+            return redirect(url_for('index'))
+        
+        logger.info(f"Admin user {current_user.email} accessing admin commissions page")
+        
+        # Get all commissions that need admin attention
+        # This includes:
+        # 1. Held commissions that are past their availability date (ready for approval)
+        # 2. Approved commissions (ready for payout)
         commissions = Commission.query.filter(
-            and_(
-                Commission.status == CommissionStatus.HELD.value,
-                Commission.commission_available_date <= datetime.utcnow()
+            or_(
+                and_(
+                    Commission.status == CommissionStatus.HELD.value,
+                    Commission.commission_available_date <= datetime.utcnow()
+                ),
+                Commission.status == CommissionStatus.APPROVED.value
             )
+        ).order_by(
+            # Sort by status (APPROVED first, then HELD)
+            case(
+                (Commission.status == CommissionStatus.APPROVED.value, 0),
+                (Commission.status == CommissionStatus.HELD.value, 1),
+                else_=2
+            ),
+            # Then by date (oldest first)
+            Commission.commission_available_date
         ).all()
+        
+        logger.info(f"Found {len(commissions)} commissions for admin review")
         
         # Group commissions by affiliate
         grouped_commissions = {}
@@ -442,19 +522,58 @@ def admin_commissions():
             affiliate_id = commission.affiliate_id
             if affiliate_id not in grouped_commissions:
                 affiliate = Affiliate.query.get(affiliate_id)
+                if not affiliate:
+                    logger.error(f"Missing affiliate with ID {affiliate_id}")
+                    continue
+                    
                 grouped_commissions[affiliate_id] = {
                     'affiliate': affiliate,
                     'commissions': [],
-                    'total_amount': 0.0
+                    'total_amount': 0.0,
+                    'approved_count': 0,
+                    'held_count': 0
                 }
             
-            # Add commission to group and update total
+            # Add commission to group and update totals
             grouped_commissions[affiliate_id]['commissions'].append(commission)
             grouped_commissions[affiliate_id]['total_amount'] += float(commission.commission_amount)
+            
+            # Track counts by status
+            if commission.status == CommissionStatus.APPROVED.value:
+                grouped_commissions[affiliate_id]['approved_count'] += 1
+            elif commission.status == CommissionStatus.HELD.value:
+                grouped_commissions[affiliate_id]['held_count'] += 1
         
+        # Add current datetime for template comparison
+        current_time = datetime.utcnow()
+        
+        # Determine if we should only render the commissions data (for XHR) or the full page
+        if request.args.get('format') == 'json':
+            # Return JSON data for AJAX requests
+            result = {
+                'success': True,
+                'count': len(commissions),
+                'commissions': [
+                    {
+                        'id': c.id,
+                        'affiliate_name': c.affiliate.name if c.affiliate else 'Unknown',
+                        'affiliate_email': c.affiliate.email if c.affiliate else 'unknown@example.com',
+                        'purchase_amount': float(c.purchase_amount_base),
+                        'commission_amount': float(c.commission_amount),
+                        'status': c.status,
+                        'available_date': c.commission_available_date.isoformat(),
+                        'is_available': c.commission_available_date <= current_time
+                    } for c in commissions
+                ]
+            }
+            return jsonify(result)
+        
+        # For normal page view
         return render_template(
             'affiliate/admin_commissions.html',
-            grouped_commissions=grouped_commissions
+            grouped_commissions=grouped_commissions,
+            commissions=commissions,
+            now=current_time
         )
         
     except Exception as e:
