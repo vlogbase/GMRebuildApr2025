@@ -19,7 +19,7 @@ from werkzeug.security import generate_password_hash
 
 from app import db
 from forms import AgreeToTermsForm, UpdatePayPalEmailForm
-from models import User, Affiliate, CustomerReferral, Commission, CommissionStatus, AffiliateStatus
+from models import User, Affiliate, CustomerReferral, Commission, CommissionStatus, AffiliateStatus, PaymentStatus, Transaction
 from paypal_config import process_paypal_payout, check_payout_status, generate_sender_batch_id
 
 # Configure logging
@@ -43,10 +43,10 @@ def track_referral_cookie():
     3. Once a customer is linked to an affiliate, they cannot be reassigned to another affiliate
     """
     try:
-        # Check if the request has a referral code in URL or cookie
+        # Check if the request has a referral code in URL
         ref_code = request.args.get('ref')
         
-        # Use referral code from URL or cookie
+        # If ref_code exists in URL, validate and store it
         if ref_code:
             # Validate referral code
             affiliate = Affiliate.query.filter_by(referral_code=ref_code).first()
@@ -55,71 +55,65 @@ def track_referral_cookie():
                 # Store referral code in session for future use
                 session['referral_code'] = ref_code
                 session['referral_timestamp'] = datetime.utcnow().isoformat()
+                logger.info(f"Stored referral code {ref_code} in session")
                 
-                # If user is authenticated, check if they need a referral record created
+                # If user is authenticated, try to create referral record immediately
                 if current_user.is_authenticated:
-                    # Check if user already has a referral
-                    existing_referral = CustomerReferral.query.filter_by(customer_user_id=current_user.id).first()
-                    
-                    if not existing_referral:
-                        # Check if user has made any payments (has transactions)
-                        from models import Transaction
-                        has_transactions = Transaction.query.filter_by(
-                            user_id=current_user.id, 
-                            status=PaymentStatus.COMPLETED.value
-                        ).first() is not None
-                        
-                        # Only create the referral if they haven't made a payment yet
-                        if not has_transactions:
-                            # Create new customer referral
-                            referral = CustomerReferral(
-                                customer_user_id=current_user.id,
-                                affiliate_id=affiliate.id
-                            )
-                            db.session.add(referral)
-                            db.session.commit()
-                            logger.info(f"Created customer referral for user {current_user.id} from affiliate {affiliate.id}")
-                        else:
-                            logger.info(f"User {current_user.id} already has transactions, not creating referral")
-                    else:
-                        logger.info(f"User {current_user.id} already has a referral, not creating another one")
+                    create_customer_referral(current_user.id, affiliate.id, ref_code)
                 
             # Set a flag to update cookies in the after_request handler
             g.update_cookies = True
-        # Check if we should create a referral from stored session data        
+                
+        # If no ref_code in URL but user is authenticated, check session for stored referral code
         elif current_user.is_authenticated:
-            # If user just logged in or signed up and has a stored referral code in session
             stored_ref_code = session.get('referral_code')
             if stored_ref_code:
-                # Check if user already has a referral
-                existing_referral = CustomerReferral.query.filter_by(customer_user_id=current_user.id).first()
+                # Get the affiliate from the stored referral code
+                affiliate = Affiliate.query.filter_by(referral_code=stored_ref_code).first()
                 
-                if not existing_referral:
-                    # Check if user has made any payments (has transactions)
-                    from models import Transaction, PaymentStatus
-                    has_transactions = Transaction.query.filter_by(
-                        user_id=current_user.id, 
-                        status=PaymentStatus.COMPLETED.value
-                    ).first() is not None
-                    
-                    # Only create the referral if they haven't made a payment yet
-                    if not has_transactions:
-                        # Get the affiliate from the stored referral code
-                        affiliate = Affiliate.query.filter_by(referral_code=stored_ref_code).first()
-                        
-                        if affiliate and affiliate.status == AffiliateStatus.ACTIVE.value:
-                            # Create new customer referral
-                            referral = CustomerReferral(
-                                customer_user_id=current_user.id,
-                                affiliate_id=affiliate.id
-                            )
-                            db.session.add(referral)
-                            db.session.commit()
-                            logger.info(f"Created customer referral for user {current_user.id} from stored affiliate code {stored_ref_code}")
+                if affiliate and affiliate.status == AffiliateStatus.ACTIVE.value:
+                    # Try to create customer referral from stored session data
+                    create_customer_referral(current_user.id, affiliate.id, stored_ref_code)
                 
     except Exception as e:
+        import traceback
         logger.error(f"Error tracking referral cookie: {e}")
         traceback.print_exc()
+
+def create_customer_referral(user_id, affiliate_id, ref_code):
+    """
+    Helper function to create a customer referral record if one doesn't exist.
+    
+    Args:
+        user_id (int): The ID of the user to create a referral for
+        affiliate_id (int): The ID of the affiliate who referred the user
+        ref_code (str): The referral code used (for logging)
+    """
+    try:
+        # Check if user already has a referral record
+        existing_referral = CustomerReferral.query.filter_by(customer_user_id=user_id).first()
+        
+        if not existing_referral:
+            # Create the new customer referral, regardless of transaction status
+            # This implements the policy that ANY user who clicks a referral link
+            # before their first payment should be attributed to that affiliate
+            new_referral = CustomerReferral(
+                customer_user_id=user_id,
+                affiliate_id=affiliate_id
+            )
+            db.session.add(new_referral)
+            db.session.commit()
+            logger.info(f"Created customer referral for user {user_id} from affiliate {affiliate_id} with code {ref_code}")
+            return True
+        else:
+            logger.info(f"User {user_id} already has a referral to affiliate {existing_referral.affiliate_id}, not creating another one")
+            return False
+    except Exception as e:
+        import traceback
+        logger.error(f"Error creating customer referral: {e}")
+        traceback.print_exc()
+        db.session.rollback()
+        return False
 
 @affiliate_bp.after_app_request
 def set_referral_cookies(response):
