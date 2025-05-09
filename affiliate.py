@@ -146,7 +146,18 @@ def is_admin():
     """Check if the current user is an admin"""
     # In a real application, you would check against a role or a specific column
     # For simplicity, we're checking if the user email is in the ADMIN_EMAILS list
-    admin_emails = os.environ.get('ADMIN_EMAILS', '').split(',')
+    admin_emails_str = os.environ.get('ADMIN_EMAILS', 'andy@sentigral.com')  # Hardcode the admin email for now
+    admin_emails = admin_emails_str.split(',') if admin_emails_str else []
+    
+    # Debug logging
+    print(f"DEBUG - Admin emails: {admin_emails}")
+    print(f"DEBUG - Current user: {current_user.email if current_user.is_authenticated else 'Not authenticated'}")
+    print(f"DEBUG - Is admin: {current_user.is_authenticated and current_user.email in admin_emails}")
+    
+    # Always return True for andy@sentigral.com
+    if current_user.is_authenticated and current_user.email == 'andy@sentigral.com':
+        return True
+    
     return current_user.is_authenticated and current_user.email in admin_emails
 
 def get_gbp_exchange_rate(currency):

@@ -23,6 +23,7 @@ from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
 from models import CustomerReferral, Affiliate, Commission, CommissionStatus, AffiliateStatus
 from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature
+from affiliate import is_admin
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -166,6 +167,24 @@ def account_management():
                 logger.info(f"Referrals count: {len(referrals)}")
                 logger.info(f"Sub-referrals count: {len(sub_referrals)}")
         
+        # Check if user is admin for the admin tab
+        is_user_admin = is_admin()
+        
+        # If admin, get all commissions that need approval or are ready for payout
+        admin_commissions = []
+        if is_user_admin:
+            logger.info("User is admin, fetching commissions for admin panel")
+            # Get all held commissions that are past their available date or approved commissions
+            admin_commissions = Commission.query.filter(
+                (
+                    (Commission.status == CommissionStatus.HELD.value) &
+                    (Commission.commission_available_date <= datetime.utcnow())
+                ) | 
+                (Commission.status == CommissionStatus.APPROVED.value)
+            ).order_by(desc(Commission.commission_available_date)).all()
+            
+            logger.info(f"Found {len(admin_commissions)} commissions for admin panel")
+            
         logger.info("Rendering account.html template")
         return render_template(
             'account.html',
@@ -178,7 +197,10 @@ def account_management():
             commissions=commissions,
             referrals=referrals,
             sub_referrals=sub_referrals,
-            stats=commission_stats  # Alias to match dashboard template
+            stats=commission_stats,  # Alias to match dashboard template
+            is_admin=is_user_admin,
+            admin_commissions=admin_commissions,
+            now=datetime.utcnow()  # Current datetime for comparing available_date
         )
     
     except Exception as e:
