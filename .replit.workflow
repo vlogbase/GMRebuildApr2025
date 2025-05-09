@@ -1,13 +1,5 @@
-[workflows.gm_admin_workflow]
-onBoot = false
-clearOnRerun = true
-restartOn = {}
-name = "GM Admin Dashboard"
-startCommand = ["python", "workflows/gm_admin_workflow.py"]
-
-[workflows.gm_admin_test]
-onBoot = false
-clearOnRerun = true
-restartOn = {}
-name = "Test Admin Dashboard"
-startCommand = ["python", "gm_admin_test.py"]
+run = "python app_workflow.py"
+language = "python3"
+entrypoint = "app_workflow.py"
+hidden = [".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
+modules = ["python-3.11:v2-20240124-3e3d06f"]

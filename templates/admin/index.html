@@ -5,72 +5,194 @@
     <div class="row">
         <div class="col-md-12">
             <h1>GloriaMundo Admin Dashboard</h1>
-            <p class="lead">Welcome to the admin dashboard. This interface provides tools for managing the affiliate system and viewing analytics.</p>
+            <p class="lead">Welcome to the admin dashboard. This interface provides management tools for the affiliate system and analytics.</p>
         </div>
     </div>
 
     <div class="row">
-        <div class="col-md-4">
+        <div class="col-md-9">
             <div class="panel panel-primary">
                 <div class="panel-heading">
-                    <h3 class="panel-title">Users & Affiliates</h3>
+                    <h3 class="panel-title">System Overview</h3>
                 </div>
                 <div class="panel-body">
-                    <h4>{{ stats['total_users'] }}</h4>
-                    <p>Total Users</p>
-                    <h4>{{ stats['total_affiliates'] }}</h4>
-                    <p>Total Affiliates</p>
+                    <div class="row">
+                        <!-- User Stats -->
+                        <div class="col-md-3">
+                            <div class="panel panel-info">
+                                <div class="panel-heading text-center">
+                                    <h4><i class="glyphicon glyphicon-user"></i> Users</h4>
+                                </div>
+                                <div class="panel-body text-center">
+                                    <h3>{{ user_count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Affiliate Stats -->
+                        <div class="col-md-3">
+                            <div class="panel panel-success">
+                                <div class="panel-heading text-center">
+                                    <h4><i class="glyphicon glyphicon-briefcase"></i> Affiliates</h4>
+                                </div>
+                                <div class="panel-body text-center">
+                                    <h3>{{ affiliate_count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Commission Stats -->
+                        <div class="col-md-3">
+                            <div class="panel panel-warning">
+                                <div class="panel-heading text-center">
+                                    <h4><i class="glyphicon glyphicon-gbp"></i> Commissions</h4>
+                                </div>
+                                <div class="panel-body text-center">
+                                    <h3>{{ commission_count }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Pending Commissions -->
+                        <div class="col-md-3">
+                            <div class="panel panel-danger">
+                                <div class="panel-heading text-center">
+                                    <h4><i class="glyphicon glyphicon-time"></i> Pending</h4>
+                                </div>
+                                <div class="panel-body text-center">
+                                    <h3>{{ pending_commissions }}</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-
-        <div class="col-md-4">
-            <div class="panel panel-success">
+        
+        <div class="col-md-3">
+            <div class="panel panel-default">
                 <div class="panel-heading">
-                    <h3 class="panel-title">Commission Status</h3>
+                    <h3 class="panel-title">Quick Links</h3>
                 </div>
                 <div class="panel-body">
-                    <h4>{{ stats['pending_commissions'] }}</h4>
-                    <p>Pending Commissions</p>
-                    <h4>{{ stats['approved_commissions'] }}</h4>
-                    <p>Approved Commissions</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-4">
-            <div class="panel panel-info">
-                <div class="panel-heading">
-                    <h3 class="panel-title">Financial Summary</h3>
-                </div>
-                <div class="panel-body">
-                    <h4>£{{ "%.2f"|format(stats['total_commission_amount']) }}</h4>
-                    <p>Total Commission Amount</p>
+                    <div class="list-group">
+                        <a href="{{ url_for('user.index_view') }}" class="list-group-item">
+                            <i class="glyphicon glyphicon-user"></i> Manage Users
+                        </a>
+                        <a href="{{ url_for('affiliate.index_view') }}" class="list-group-item">
+                            <i class="glyphicon glyphicon-briefcase"></i> Manage Affiliates
+                        </a>
+                        <a href="{{ url_for('commission.index_view') }}" class="list-group-item">
+                            <i class="glyphicon glyphicon-usd"></i> Manage Commissions
+                        </a>
+                        <a href="{{ url_for('user_token_usage.index_view') }}" class="list-group-item">
+                            <i class="glyphicon glyphicon-stats"></i> User Token Usage
+                        </a>
+                        <a href="{{ url_for('popular_models.index_view') }}" class="list-group-item">
+                            <i class="glyphicon glyphicon-signal"></i> Popular Models
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-
+    
     <div class="row">
-        <div class="col-md-12">
-            <h2>Quick Navigation</h2>
-            <div class="list-group">
-                <a href="{{ url_for('commission.index_view') }}" class="list-group-item">
-                    <h4 class="list-group-item-heading">Manage Commissions</h4>
-                    <p class="list-group-item-text">View, approve, reject, and process payouts for affiliate commissions</p>
-                </a>
-                <a href="{{ url_for('affiliate.index_view') }}" class="list-group-item">
-                    <h4 class="list-group-item-heading">Manage Affiliates</h4>
-                    <p class="list-group-item-text">View and manage affiliate accounts</p>
-                </a>
-                <a href="{{ url_for('user_token_usage.index_view') }}" class="list-group-item">
-                    <h4 class="list-group-item-heading">User Token Usage</h4>
-                    <p class="list-group-item-text">Analyze user token consumption and activity</p>
-                </a>
-                <a href="{{ url_for('popular_models.index_view') }}" class="list-group-item">
-                    <h4 class="list-group-item-heading">Popular Models</h4>
-                    <p class="list-group-item-text">See which AI models are most frequently used</p>
-                </a>
+        <!-- Commission Status Overview -->
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Commission Status Overview</h3>
+                </div>
+                <div class="panel-body">
+                    <table class="table table-striped table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Count</th>
+                                <th>Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="label label-warning">Pending</span></td>
+                                <td>{{ pending_commissions }}</td>
+                                <td>£{{ "%.2f"|format(total_pending) }}</td>
+                            </tr>
+                            <tr>
+                                <td><span class="label label-success">Approved</span></td>
+                                <td>{{ approved_commissions }}</td>
+                                <td>£{{ "%.2f"|format(total_approved) }}</td>
+                            </tr>
+                            <tr>
+                                <td><span class="label label-primary">Paid</span></td>
+                                <td>{{ paid_commissions }}</td>
+                                <td>£{{ "%.2f"|format(total_paid) }}</td>
+                            </tr>
+                            <tr>
+                                <td><span class="label label-danger">Rejected</span></td>
+                                <td>{{ rejected_commissions }}</td>
+                                <td>N/A</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="panel-footer">
+                    <a href="{{ url_for('commission.index_view') }}" class="btn btn-primary btn-sm">
+                        <i class="glyphicon glyphicon-search"></i> View All Commissions
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions Panel -->
+        <div class="col-md-6">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <h3 class="panel-title">Common Actions</h3>
+                </div>
+                <div class="panel-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="well well-sm">
+                                <h4>Process Commissions</h4>
+                                <p>View and process pending commissions that are ready for approval.</p>
+                                <a href="{{ url_for('commission.index_view', flt0_0=1, flt0_1='pending') }}" class="btn btn-warning btn-sm">
+                                    <i class="glyphicon glyphicon-check"></i> View Pending
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="well well-sm">
+                                <h4>Process Payouts</h4>
+                                <p>View and process approved commissions ready for payout via PayPal.</p>
+                                <a href="{{ url_for('commission.index_view', flt0_0=1, flt0_1='approved') }}" class="btn btn-success btn-sm">
+                                    <i class="glyphicon glyphicon-credit-card"></i> View Approved
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row" style="margin-top: 15px;">
+                        <div class="col-md-6">
+                            <div class="well well-sm">
+                                <h4>User Analytics</h4>
+                                <p>View detailed analytics on user token usage.</p>
+                                <a href="{{ url_for('user_token_usage.index_view') }}" class="btn btn-info btn-sm">
+                                    <i class="glyphicon glyphicon-stats"></i> View Analytics
+                                </a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="well well-sm">
+                                <h4>Model Usage</h4>
+                                <p>View analytics on model popularity and usage.</p>
+                                <a href="{{ url_for('popular_models.index_view') }}" class="btn btn-primary btn-sm">
+                                    <i class="glyphicon glyphicon-signal"></i> View Models
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

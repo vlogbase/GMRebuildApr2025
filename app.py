@@ -195,33 +195,30 @@ try:
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
 
-# Initialize admin interface
+# Initialize admin routes (simple approach without Flask-Admin)
 try:
-    from gm_admin import init_admin
-    admin = init_admin()
-    logger.info(f"Admin module initialized successfully at URL: {admin.url}")
+    # Register the admin_routes blueprint with the Flask app
+    from admin_routes import admin_routes
+    app.register_blueprint(admin_routes)
     
-    # Also register the admin blueprint for alternative access
-    from admin_blueprint import admin_blueprint
-    app.register_blueprint(admin_blueprint)
-    logger.info("Admin blueprint registered successfully")
-    
-    # Add a direct route for admin access in case blueprints have issues
-    @app.route('/admin-direct')
-    def admin_direct():
-        """Direct route to admin dashboard, as a fallback"""
-        from flask import redirect
-        from flask_login import current_user
+    # Add direct access route at root level for better discoverability
+    @app.route('/admin')
+    @login_required
+    def admin_redirect():
+        """Simple redirect to admin dashboard"""
         from affiliate import is_admin
-        
         if not current_user.is_authenticated or not is_admin():
             flash('You do not have permission to access the admin area.', 'error')
             return redirect(url_for('index'))
-            
-        return redirect('/gm-admin/')
+        return redirect(url_for('admin_routes.dashboard'))
+    
+    # List all admin-related routes for diagnostics
+    admin_registered_routes = [rule.rule for rule in app.url_map.iter_rules() if 'admin' in rule.rule]
+    logger.info(f"Admin routes registered: {admin_registered_routes}")
         
 except Exception as e:
-    logger.error(f"Error initializing Admin module: {e}")
+    logger.error(f"Error initializing Admin routes: {e}")
+    logger.error(traceback.format_exc())
 
 @login_manager.user_loader
 def load_user(user_id):

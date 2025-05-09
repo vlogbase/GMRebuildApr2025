@@ -1,49 +1,49 @@
 """
-Simple script to run the Flask application for testing in the Replit environment.
-This is a wrapper script to start the app.py Flask application.
+Workflow script to run the Flask application with admin interface.
 """
+
 import os
 import sys
 import logging
-
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-logger = logging.getLogger(__name__)
+from app import app, db
+from gm_admin import create_admin
 
 def run():
     """
-    Run the Flask application with error handling and logging.
+    Run the Flask application with admin interface.
     """
     try:
-        logger.info("Starting Flask application for testing")
+        # Configure logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.StreamHandler(sys.stdout),
+                logging.FileHandler('app_output.log')
+            ]
+        )
         
-        # Import the Flask app from app.py
-        from app import app
+        # Set environment variable for admin access during development/testing
+        if 'ADMIN_EMAILS' not in os.environ:
+            os.environ['ADMIN_EMAILS'] = 'andy@sentigral.com'
+            logging.info(f"Set ADMIN_EMAILS environment variable to: {os.environ['ADMIN_EMAILS']}")
         
-        # Set debug mode
-        app.config['DEBUG'] = True
+        # Initialize the admin interface
+        admin = create_admin(app, db)
+        logging.info("Admin interface created and initialized")
         
-        # Log CSRF protection status
-        if app.config.get('WTF_CSRF_ENABLED', True):
-            logger.info("CSRF protection is ENABLED")
-        else:
-            logger.warning("CSRF protection is DISABLED")
-            
-        # Log protection settings
-        logger.info(f"CSRF methods: {app.config.get('WTF_CSRF_METHODS', ['POST', 'PUT', 'PATCH', 'DELETE'])}")
-        logger.info(f"CSRF headers: {app.config.get('WTF_CSRF_HEADERS', ['X-CSRFToken', 'X-CSRF-Token'])}")
+        # Log all registered routes for debugging
+        logging.info("Registered routes:")
+        for rule in sorted(app.url_map.iter_rules(), key=lambda x: str(x)):
+            logging.info(f"Route: {rule.rule} Methods: {rule.methods}")
         
-        # Start the Flask server
-        logger.info("Starting Flask application. Access it via http://localhost:5000")
-        app.run(host='0.0.0.0', port=5000)
+        # Run the app
+        logging.info("Starting Flask application")
+        app.run(host='0.0.0.0', port=3000, debug=True)
         
     except Exception as e:
-        logger.error(f"Error starting Flask application: {e}")
-        raise
+        logging.error(f"Error starting Flask application: {str(e)}")
+        sys.exit(1)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     run()

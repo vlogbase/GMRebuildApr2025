@@ -1,13 +1,5 @@
 #!/bin/bash
-
-# Exit on error
-set -e
-
-# Set admin email
+# Run the admin interface as a standalone application
 export ADMIN_EMAILS="andy@sentigral.com"
-
-echo "Starting GloriaMundo Admin Dashboard on port 3000..."
-echo "Admin access restricted to: $ADMIN_EMAILS"
-
-# Start the admin dashboard
-python workflows/gm_admin_workflow.py
+echo "Starting admin interface..."
+python run_admin.py

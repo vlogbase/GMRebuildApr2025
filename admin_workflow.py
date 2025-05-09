@@ -1,58 +1,50 @@
 """
-Simple script to run the Flask application for testing the admin dashboard.
+Simple script to run the Flask application with admin dashboard functionality.
 """
+
 import os
-import logging
 import sys
-
-# Setup logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout),
-        logging.FileHandler('admin_output.log')
-    ]
-)
-
-logger = logging.getLogger(__name__)
+import logging
+from app import app, db
+from gm_admin import create_admin
 
 def run():
     """
     Run the Flask application with error handling and logging.
     """
-    # Make sure the admin email is set first (before importing app)
-    admin_emails = os.environ.get('ADMIN_EMAILS', '')
-    if not admin_emails:
-        logger.warning("ADMIN_EMAILS environment variable not set. Using default (andy@sentigral.com).")
-        os.environ['ADMIN_EMAILS'] = 'andy@sentigral.com'
-    else:
-        logger.info(f"Admin emails: {admin_emails}")
-    
     try:
-        # Import Flask app after environment variables are set
-        from app import app
+        # Configure logging
+        logging.basicConfig(
+            level=logging.INFO,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            handlers=[
+                logging.StreamHandler(sys.stdout),
+                logging.FileHandler('admin_output.log')
+            ]
+        )
+        logger = logging.getLogger(__name__)
         
-        # Enable debug mode for better error messages
-        app.debug = True
+        # Set environment variable for admin access during development/testing
+        if 'ADMIN_EMAILS' not in os.environ:
+            os.environ['ADMIN_EMAILS'] = 'andy@sentigral.com'
+            logger.info(f"Set ADMIN_EMAILS environment variable to: {os.environ['ADMIN_EMAILS']}")
         
-        # Save the server's PID to a file for easy termination
-        with open('app.pid', 'w') as f:
-            f.write(str(os.getpid()))
+        # Initialize the admin interface
+        admin = create_admin(app, db)
+        logger.info("Admin interface created and initialized")
         
-        # Initialize admin module explicitly
-        import admin
-        logger.info("Admin module initialized")
+        # Log all registered routes for debugging
+        logger.info("Registered routes:")
+        for rule in sorted(app.url_map.iter_rules(), key=lambda x: str(x)):
+            logger.info(f"Route: {rule.rule} Methods: {rule.methods}")
         
-        # Start the Flask application
-        logger.info("Starting Flask application for admin dashboard testing...")
-        app.run(host='0.0.0.0', port=5000)
+        # Run the app
+        logger.info("Starting Flask application")
+        app.run(host='0.0.0.0', port=3000, debug=True)
         
     except Exception as e:
-        logger.error(f"Error starting the Flask application: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
-        raise
+        logging.error(f"Error starting Flask application: {str(e)}")
+        sys.exit(1)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     run()

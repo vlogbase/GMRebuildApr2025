@@ -1,0 +1,137 @@
+{% extends 'admin/layout.html' %}
+
+{% block title %}Dashboard - GloriaMundo Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Dashboard</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="actionDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                <i class="fas fa-cog"></i> Actions
+            </button>
+            <div class="dropdown-menu" aria-labelledby="actionDropdown">
+                <a class="dropdown-item" href="{{ url_for('admin_routes.users') }}">View Users</a>
+                <a class="dropdown-item" href="{{ url_for('admin_routes.commissions') }}">Manage Commissions</a>
+                <a class="dropdown-item" href="{{ url_for('admin_routes.usage') }}">Usage Statistics</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body py-3">
+                <i class="fas fa-users fa-2x mb-3"></i>
+                <h5 class="card-title mb-0">Users</h5>
+                <div class="display-4">{{ user_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body py-3">
+                <i class="fas fa-handshake fa-2x mb-3"></i>
+                <h5 class="card-title mb-0">Affiliates</h5>
+                <div class="display-4">{{ affiliate_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body py-3">
+                <i class="fas fa-money-bill-wave fa-2x mb-3"></i>
+                <h5 class="card-title mb-0">Commissions</h5>
+                <div class="display-4">{{ commission_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white h-100">
+            <div class="card-body py-3">
+                <i class="fas fa-clock fa-2x mb-3"></i>
+                <h5 class="card-title mb-0">Pending Commissions</h5>
+                <div class="display-4">{{ pending_commissions }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Recent Users -->
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-user-clock mr-2"></i>Recent Users</h5>
+            </div>
+            <div class="card-body">
+                {% if recent_users %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Username</th>
+                                    <th>Email</th>
+                                    <th>Created</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in recent_users %}
+                                <tr>
+                                    <td>{{ user.id }}</td>
+                                    <td>{{ user.username }}</td>
+                                    <td>{{ user.email }}</td>
+                                    <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('admin_routes.users') }}" class="btn btn-sm btn-outline-primary mt-2">View All Users</a>
+                {% else %}
+                    <p class="text-muted">No users found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Top Affiliates -->
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-award mr-2"></i>Top Affiliates</h5>
+            </div>
+            <div class="card-body">
+                {% if top_affiliates %}
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Affiliate</th>
+                                    <th>Email</th>
+                                    <th>Total Commission</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for affiliate, total in top_affiliates %}
+                                <tr>
+                                    <td>{{ affiliate.name }}</td>
+                                    <td>{{ affiliate.email }}</td>
+                                    <td>£{{ "%.2f"|format(total or 0) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <a href="{{ url_for('admin_routes.affiliates') }}" class="btn btn-sm btn-outline-primary mt-2">View All Affiliates</a>
+                {% else %}
+                    <p class="text-muted">No affiliates found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

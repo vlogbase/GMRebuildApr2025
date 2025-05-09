@@ -1,0 +1,73 @@
+{% extends 'admin/layout.html' %}
+
+{% block title %}Admin Access Check - GloriaMundo Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Admin Access Check</h1>
+</div>
+
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-check-circle mr-2"></i>Admin Diagnostic Information</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-info">
+            <p>This page displays diagnostic information about your admin access.</p>
+        </div>
+
+        <h4 class="mt-4">Authentication Status</h4>
+        <div class="table-responsive">
+            <table class="table table-bordered">
+                <tbody>
+                    <tr>
+                        <th style="width: 200px;">User Email</th>
+                        <td><strong>{{ user_email }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Admin Access</th>
+                        <td>
+                            {% if is_admin %}
+                                <span class="badge badge-success">YES</span>
+                            {% else %}
+                                <span class="badge badge-danger">NO</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h4 class="mt-4">Admin Configuration</h4>
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0">Authorized Admin Emails</h5>
+            </div>
+            <div class="card-body">
+                {% if admin_emails %}
+                    <ul class="list-group">
+                        {% for email in admin_emails %}
+                            <li class="list-group-item {% if email == user_email %}list-group-item-success{% endif %}">
+                                {{ email }}
+                                {% if email == user_email %}
+                                    <span class="badge badge-success float-right">Your Email</span>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <div class="alert alert-warning">
+                        <p>No admin emails are configured in the ADMIN_EMAILS environment variable.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <a href="{{ url_for('admin_routes.dashboard') }}" class="btn btn-primary">
+                <i class="fas fa-home"></i> Return to Admin Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

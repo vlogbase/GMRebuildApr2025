@@ -1,5 +1,5 @@
-run = "python admin_workflow.py"
+run = "python run_admin.py"
 language = "python3"
-entrypoint = "admin_workflow.py"
+entrypoint = "run_admin.py"
 hidden = [".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
 modules = ["python-3.11:v2-20240124-3e3d06f"]
