@@ -3361,6 +3361,10 @@ def upload_documents():
     """
     Route to handle document uploads for RAG functionality.
     Processes and stores documents in MongoDB for later retrieval.
+    
+    Document context is now conversation-specific:
+    1. When a document is uploaded, it's associated with the current conversation
+    2. The document will only be used for RAG in that specific conversation
     """
     # Declare global document_processor at the beginning of the function
     global document_processor
@@ -3375,6 +3379,11 @@ def upload_documents():
         else:
             user_id = get_user_identifier()
             
+        # Get conversation ID from the request
+        conversation_id = request.form.get('conversation_id')
+        if not conversation_id:
+            return jsonify({"error": "No conversation ID provided - document uploads must be associated with a conversation"}), 400
+        
         # Make sure document_processor is initialized
         if 'document_processor' not in globals() or document_processor is None:
             from document_processor import DocumentProcessor
@@ -3417,11 +3426,21 @@ def upload_documents():
                 continue
                 
             # Start a background thread to process the file
-            def process_file_task(file_data, filename, user_id):
-                logger.info(f"BACKGROUND TASK STARTED for {filename}, user {user_id}")
+            def process_file_task(file_data, filename, user_id, conversation_id):
+                logger.info(f"BACKGROUND TASK STARTED for {filename}, user {user_id}, conversation {conversation_id}")
                 try:
                     # Process and store the document
                     result = document_processor.process_and_store_document(file_data, filename, user_id)
+                    
+                    # If successful, store the document_id and conversation_id in the session
+                    if result and result.get('success') and result.get('document_id'):
+                        # Update the session with the document context info
+                        session['active_document_context'] = {
+                            'doc_id': result['document_id'],
+                            'conversation_id': conversation_id
+                        }
+                        logger.info(f"Saved document context in session: doc_id={result['document_id']}, conversation_id={conversation_id}")
+                    
                     logger.info(f"Document processing completed for {filename}: {result}")
                 except Exception as e:
                     logger.exception(f"Error processing document {filename}: {e}")
@@ -3434,7 +3453,7 @@ def upload_documents():
             # Start background processing
             processing_thread = threading.Thread(
                 target=process_file_task,
-                args=(file_stream, filename, user_id)
+                args=(file_stream, filename, user_id, conversation_id)
             )
             processing_thread.daemon = True  # Allow the thread to be terminated when the main program exits
             processing_thread.start()

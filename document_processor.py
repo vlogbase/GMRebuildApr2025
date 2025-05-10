@@ -150,6 +150,46 @@ class DocumentProcessor:
         except PyMongoError as e:
             logger.error(f"Error creating MongoDB indexes: {e}")
     
+    def _build_search_filter(self, user_id: str, target_document_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Build the filter for MongoDB $vectorSearch operation.
+        
+        Args:
+            user_id: The user ID to filter by
+            target_document_id: Optional document ID to further restrict results
+            
+        Returns:
+            Dict: MongoDB filter expression
+        """
+        # Base filter for user_id
+        base_filter = {
+            '$or': [
+                {'userId': user_id},  # Field as defined in the index
+                {'user_id': user_id}  # Field for backward compatibility
+            ]
+        }
+        
+        # If a target document ID is provided, add it to the filter
+        if target_document_id:
+            try:
+                # Convert string ID from session to ObjectId for MongoDB query
+                from bson import ObjectId
+                mongo_doc_id = ObjectId(target_document_id)
+                
+                # Add document_id filter with $and logic to combine with user_id filter
+                return {
+                    '$and': [
+                        base_filter,
+                        {'document_id': mongo_doc_id}
+                    ]
+                }
+            except Exception as e:
+                _log_rag(f"Invalid document_id format for ObjectId conversion: {target_document_id}, error: {e}", level="warning")
+                # If ID is invalid, continue with just the user_id filter
+        
+        # Return basic user_id filter if no document_id specified or conversion failed
+        return base_filter
+        
     def _get_embedding_azure(self, text: str) -> List[float]:
         """
         Get an embedding from Azure OpenAI with detailed error handling.
@@ -557,7 +597,7 @@ class DocumentProcessor:
             # Default to false if there's an error
             return False
             
-    def retrieve_relevant_chunks(self, query_text: str, user_id: Union[str, int], limit: int = 5) -> List[Dict[str, Any]]:
+    def retrieve_relevant_chunks(self, query_text: str, user_id: Union[str, int], limit: int = 5, target_document_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Retrieve text chunks relevant to a query using MongoDB Atlas Vector Search.
         
@@ -565,6 +605,7 @@ class DocumentProcessor:
             query_text: The query text
             user_id: The ID of the user
             limit: Maximum number of chunks to retrieve
+            target_document_id: Optional specific document ID to filter chunks by (conversation-specific context)
             
         Returns:
             List[Dict]: List of relevant text chunks with metadata
@@ -602,12 +643,7 @@ class DocumentProcessor:
                         'queryVector': query_embedding, # The embedding vector of the query
                         'numCandidates': 150,  # Number of candidates to consider
                         'limit': limit,          # Max number of results to return
-                        'filter': {
-                            '$or': [
-                                {'userId': str(user_id)},  # Field as defined in the index
-                                {'user_id': str(user_id)}  # Field for backward compatibility
-                            ]
-                        }
+                        'filter': self._build_search_filter(str(user_id), target_document_id)
                     }
                 },
                 { # Project the desired fields and the relevance score
