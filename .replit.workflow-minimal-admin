@@ -1,7 +1,7 @@
-run = "python simple_test_admin.py"
+run = "python minimal_admin.py"
 language = "python3"
 hidden = false
-entrypoint = "simple_test_admin.py"
+entrypoint = "minimal_admin.py"
 
 [env]
 PORT = "3000"
