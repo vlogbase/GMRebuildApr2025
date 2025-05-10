@@ -43,7 +43,8 @@ class SecureAdminIndexView(AdminIndexView, SecureBaseView):
     """Secure index view for admin panel"""
     def index(self):
         """Admin dashboard home page with overview statistics"""
-        return self.render('admin/index.html')
+        import datetime
+        return self.render('admin/index.html', now=datetime.datetime.now)
 
 class UserModelView(ModelView, SecureBaseView):
     """User management view"""
@@ -63,6 +64,17 @@ class AffiliateModelView(ModelView, SecureBaseView):
     column_searchable_list = ['email', 'paypal_email']
     column_default_sort = ('created_at', True)
 
+# Helper functions for formatters
+def _format_affiliate_email(view, context, model, name):
+    """Get affiliate email for display"""
+    try:
+        if model.affiliate:
+            return model.affiliate.email
+        return "N/A"
+    except Exception as e:
+        logger.error(f"Error getting affiliate email: {e}")
+        return "Error"
+
 class CommissionModelView(ModelView, SecureBaseView):
     """Commission management view"""
     column_list = [
@@ -72,6 +84,7 @@ class CommissionModelView(ModelView, SecureBaseView):
     ]
     
     column_formatters = {
+        'affiliate_id': _format_affiliate_email,
         'purchase_amount_base': lambda v, c, m, p: f'£{m.purchase_amount_base:.2f}',
         'commission_amount': lambda v, c, m, p: f'£{m.commission_amount:.2f}'
     }
@@ -80,16 +93,6 @@ class CommissionModelView(ModelView, SecureBaseView):
     column_filters = ['status', 'commission_available_date', 'commission_level']
     can_create = False  # Commissions are created automatically
     can_edit = True     # Allow editing status
-    
-    def _format_affiliate_email(view, context, model, name):
-        """Get affiliate email for display"""
-        try:
-            if model.affiliate:
-                return model.affiliate.email
-            return "N/A"
-        except Exception as e:
-            logger.error(f"Error getting affiliate email: {e}")
-            return "Error"
 
 def create_admin(app, db):
     """

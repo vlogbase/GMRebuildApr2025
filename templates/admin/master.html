@@ -1,125 +1,93 @@
-{% extends 'admin/base.html' %}
+{% extends admin_base_template %}
 
 {% block head_css %}
     {{ super() }}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
     <style>
-        body {
-            padding-top: 4px;
+        .admin-dashboard .jumbotron {
+            background-color: #f8f9fa;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            border-radius: 0.3rem;
         }
-        .navbar {
-            border-radius: 0;
-        }
-        .navbar-brand {
-            font-weight: bold;
-        }
-        .nav-item {
-            margin-right: 8px;
-        }
-        .admin-content {
-            margin-top: 20px;
-        }
-        .statistics-container {
-            margin-bottom: 30px;
-        }
-        .stat-card {
-            background-color: #fff;
+        
+        .admin-dashboard .panel {
+            border: 1px solid #ddd;
             border-radius: 4px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-            padding: 20px;
             margin-bottom: 20px;
-            transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+            box-shadow: 0 1px 1px rgba(0,0,0,.05);
         }
-        .stat-card:hover {
-            box-shadow: 0 14px 28px rgba(0,0,0,0.25), 0 10px 10px rgba(0,0,0,0.22);
+        
+        .admin-dashboard .panel-heading {
+            padding: 10px 15px;
+            border-bottom: 1px solid transparent;
+            border-top-left-radius: 3px;
+            border-top-right-radius: 3px;
         }
-        .stat-title {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color: #333;
+        
+        .admin-dashboard .panel-title {
+            margin-top: 0;
+            margin-bottom: 0;
+            font-size: 16px;
+            color: inherit;
         }
-        .stat-value {
-            font-size: 36px;
-            font-weight: bold;
-            color: #007bff;
+        
+        .admin-dashboard .panel-body {
+            padding: 15px;
         }
-        .stat-footer {
-            margin-top: 10px;
-            font-size: 12px;
-            color: #777;
+        
+        .admin-dashboard .panel-primary {
+            border-color: #337ab7;
+        }
+        
+        .admin-dashboard .panel-primary > .panel-heading {
+            color: #fff;
+            background-color: #337ab7;
+            border-color: #337ab7;
+        }
+        
+        .admin-dashboard .panel-info {
+            border-color: #5bc0de;
+        }
+        
+        .admin-dashboard .panel-info > .panel-heading {
+            color: #fff;
+            background-color: #5bc0de;
+            border-color: #5bc0de;
+        }
+        
+        .admin-dashboard .panel-success {
+            border-color: #5cb85c;
+        }
+        
+        .admin-dashboard .panel-success > .panel-heading {
+            color: #fff;
+            background-color: #5cb85c;
+            border-color: #5cb85c;
+        }
+        
+        .admin-dashboard .btn {
+            margin: 5px 0;
+            display: inline-block;
         }
     </style>
 {% endblock %}
 
-{% block page_body %}
-<div class="container">
-    <nav class="navbar navbar-default" role="navigation">
-        <!-- Brand and toggle get grouped for better mobile display -->
-        <div class="navbar-header">
-            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#admin-navbar-collapse">
-                <span class="sr-only">Toggle navigation</span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </button>
-            <a class="navbar-brand" href="{{ url_for('admin.index') }}">GloriaMundo Admin</a>
-        </div>
-
-        <!-- Collect the nav links, forms, and other content for toggling -->
-        <div class="collapse navbar-collapse" id="admin-navbar-collapse">
-            <ul class="nav navbar-nav">
-                {% for item in admin_view.admin.menu() %}
-                    {% if item.is_category() %}
-                        {% if item.get_children() %}
-                            <li class="dropdown">
-                                <a class="dropdown-toggle" data-toggle="dropdown" href="javascript:void(0)">{{ item.name }}<b class="caret"></b></a>
-                                <ul class="dropdown-menu">
-                                    {% for child in item.get_children() %}
-                                        {% if child.is_accessible() %}
-                                            <li><a href="{{ child.get_url() }}">{{ child.name }}</a></li>
-                                        {% endif %}
-                                    {% endfor %}
-                                </ul>
-                            </li>
-                        {% endif %}
-                    {% else %}
-                        {% if item.is_accessible() %}
-                            <li><a href="{{ item.get_url() }}">{{ item.name }}</a></li>
-                        {% endif %}
-                    {% endif %}
-                {% endfor %}
-            </ul>
-            
-            <ul class="nav navbar-nav navbar-right">
-                {% if current_user.is_authenticated %}
-                    <li class="dropdown">
-                        <a class="dropdown-toggle" data-toggle="dropdown" href="javascript:void(0)">
-                            {{ current_user.email }} <b class="caret"></b>
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a href="{{ url_for('index') }}">Back to App</a></li>
-                            <li><a href="{{ url_for('logout') }}">Log out</a></li>
-                        </ul>
-                    </li>
-                {% else %}
-                    <li><a href="{{ url_for('login') }}">Log in</a></li>
-                {% endif %}
-            </ul>
-        </div>
-    </nav>
-
-    {% block messages %}
-        {{ super() }}
-    {% endblock %}
-
-    <div class="admin-content">
-        {% block body %}{% endblock %}
-    </div>
+{% block access_control %}
+{% if current_user.is_authenticated %}
+<div class="navbar-text btn-group pull-right">
+    <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false">
+        <i class="glyphicon glyphicon-user"></i>
+        {{ current_user.email }}
+        <span class="caret"></span>
+    </a>
+    <ul class="dropdown-menu" role="menu">
+        <li><a href="{{ url_for('index') }}">Back to App</a></li>
+        <li><a href="{{ url_for('logout') }}">Log out</a></li>
+    </ul>
 </div>
+{% endif %}
 {% endblock %}
 
-{% block tail_js %}
-    {{ super() }}
-    <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% block brand %}
+<a class="navbar-brand" href="{{ url_for('admin.index') }}">GloriaMundo Admin</a>
 {% endblock %}
