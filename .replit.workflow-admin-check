@@ -1,6 +1,6 @@
-run = "python run.py"
+run = "python admin_check.py"
 language = "python3"
-entrypoint = "run.py"
+entrypoint = "admin_check.py"
 hidden = [".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
 modules = ["python-3.11:v2-20240124-3e3d06f"]
 

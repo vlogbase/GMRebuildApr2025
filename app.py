@@ -195,36 +195,28 @@ try:
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
 
-# The admin interface is now initialized in simple_admin_workflow.py
-# This avoids circular import issues and conflicts with other admin implementations
-# Simple diagnostic routes for admin access
-@app.route('/admin-home')
-def admin_home():
-    """Admin home page that checks access"""
-    if current_user.is_authenticated:
-        admin_emails = os.environ.get('ADMIN_EMAILS', 'andy@sentigral.com').split(',')
-        is_admin = current_user.email in admin_emails
-        if is_admin:
-            return redirect('/admin')
-        return f'Access denied. {current_user.email} is not an admin. Admin users: {admin_emails}'
-    return 'Please log in to access the admin dashboard'
-
-@app.route('/admin-check')
-def admin_check():
-    """Diagnostic page to check admin access"""
-    if not current_user.is_authenticated:
-        return '<h1>Not logged in</h1><p>Please log in to check admin access.</p>'
+# Initialize Flask-Admin interface
+try:
+    # Import the Flask-Admin creator function
+    from simple_admin import create_admin
     
-    admin_emails = os.environ.get('ADMIN_EMAILS', 'andy@sentigral.com').split(',')
-    is_admin = current_user.email in admin_emails
+    # Create and initialize the admin interface using the simplified version
+    logger.info("Initializing Flask-Admin interface from simple_admin.py")
+    admin = create_admin(app, db)
     
-    return f"""
-    <h1>Admin Access Check</h1>
-    <p>Logged in as: {current_user.email}</p>
-    <p>Admin emails: {admin_emails}</p>
-    <p>Is admin: {is_admin}</p>
-    <p><a href="/admin">Go to Admin Dashboard</a> (if you have access)</p>
-    """
+    # Log successful initialization
+    if admin:
+        logger.info("Flask-Admin interface successfully initialized")
+        
+        # List all registered routes for diagnostics
+        admin_routes = [rule.rule for rule in app.url_map.iter_rules() if 'admin' in rule.rule]
+        logger.info(f"Registered admin routes: {admin_routes}")
+    else:
+        logger.error("Flask-Admin initialization returned None")
+except Exception as e:
+    logger.error(f"Error initializing Flask-Admin interface: {e}")
+    import traceback
+    logger.error(traceback.format_exc())
 
 @login_manager.user_loader
 def load_user(user_id):
