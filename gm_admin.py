@@ -346,9 +346,12 @@ def create_admin(app, db):
     Returns:
         Admin: The initialized Flask-Admin instance
     """
-    # Import models only after app context is established
-    with app.app_context():
+    try:
+        # Import models outside the app context to avoid circular imports
         from models import User, Affiliate, Commission, Usage
+        
+        # Log that we're starting the admin creation process
+        app.logger.info("Starting Flask-Admin creation process")
         
         # Create admin instance with unique endpoint names
         admin = Admin(
@@ -429,5 +432,11 @@ def create_admin(app, db):
             
         logger.info("Admin interface created successfully")
         return admin
+    except Exception as e:
+        import traceback
+        error_msg = f"Error creating admin interface: {str(e)}\n{traceback.format_exc()}"
+        logger.error(error_msg)
+        # Return None on error to signal that admin creation failed
+        return None
 
 # Removed the redundant /admin expose function as it would conflict with Flask-Admin's own routes
