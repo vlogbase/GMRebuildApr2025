@@ -1,65 +1,160 @@
 """
-Simple Admin Module for GloriaMundo Chatbot
+Simplified Admin Module for GloriaMundo Chatbot
 
-This is a minimal implementation of the admin interface to diagnose issues.
+This module creates a simplified, stable admin interface using Flask-Admin.
+It focuses on core functionality with minimal complexity.
 """
 
-from flask import redirect, url_for, flash
+import os
+import logging
+from datetime import datetime
+from flask import redirect, url_for, request, flash
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
-from flask_login import current_user, login_required
+from flask_login import current_user
+from werkzeug.security import generate_password_hash
+import sqlalchemy as sa
 
-from app import app, db
-from models import User, Commission, Affiliate, Usage
-from affiliate import is_admin
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Security mixin for all views
 class SecureBaseView:
+    """Base view with security features for all admin views"""
     def is_accessible(self):
-        """Only allow access to admin users"""
-        return current_user.is_authenticated and is_admin()
+        """Only allow access to admin users (email: andy@sentigral.com)"""
+        if not current_user.is_authenticated:
+            return False
+        
+        # Get list of admin emails from environment or use default
+        admin_emails = os.environ.get('ADMIN_EMAILS', 'andy@sentigral.com').split(',')
+        return current_user.email in admin_emails
     
     def inaccessible_callback(self, name, **kwargs):
         """Redirect to login page if user doesn't have access"""
-        flash('You do not have permission to access the admin area.', 'error')
-        return redirect(url_for('index'))
+        flash('You need to be an admin to access this page.', 'error')
+        return redirect(url_for('login', next=request.url))
 
-# Secure admin index view
 class SecureAdminIndexView(AdminIndexView, SecureBaseView):
+    """Secure index view for admin panel"""
     @expose('/')
     def index(self):
-        """Admin dashboard home page"""
+        """Admin dashboard home page with overview statistics"""
         return self.render('admin/index.html')
 
-# Initialize admin interface
-def init_simple_admin():
-    """Initialize a simple admin interface for testing"""
-    # Create admin interface
-    admin = Admin(
-        app, 
-        name='Simple Admin', 
-        url='/simple-admin',
-        endpoint='simple_admin',
-        template_mode='bootstrap3',
-        index_view=SecureAdminIndexView(name='Dashboard')
-    )
+class UserModelView(ModelView, SecureBaseView):
+    """User management view"""
+    column_list = ['id', 'username', 'email', 'created_at']
+    column_searchable_list = ['email', 'username']
+    column_filters = ['created_at']
+    column_default_sort = ('created_at', True)
+    can_create = False  # Users are created through registration/Google Auth
+    can_edit = True
+    can_delete = False  # Prevent accidental deletion of users
+
+class AffiliateModelView(ModelView, SecureBaseView):
+    """Affiliate management view"""
+    column_list = [
+        'id', 'user_id', 'name', 'email', 'paypal_email', 'referral_code', 
+        'status', 'terms_agreed_at', 'created_at'
+    ]
+    column_filters = ['status', 'created_at']
+    column_searchable_list = ['email', 'paypal_email', 'name']
+    column_default_sort = ('created_at', True)
+    can_create = True
+    can_edit = True
+    can_delete = False  # Prevent accidental deletion of affiliates
+
+class CommissionModelView(ModelView, SecureBaseView):
+    """Commission management view"""
+    column_list = [
+        'id', 'affiliate_id', 'commission_level', 'purchase_amount_base', 
+        'commission_amount', 'status', 'commission_earned_date', 
+        'commission_available_date', 'payout_batch_id'
+    ]
+    column_formatters = {
+        'purchase_amount_base': lambda v, c, m, p: f'£{m.purchase_amount_base:.2f}',
+        'commission_amount': lambda v, c, m, p: f'£{m.commission_amount:.2f}'
+    }
+    column_default_sort = ('commission_available_date', True)
+    column_filters = ['status', 'commission_available_date', 'commission_level']
+    can_create = False  # Commissions are created automatically
+    can_edit = True     # Allow editing status
+    can_delete = False  # Prevent accidental deletion
+
+def create_admin(app, db):
+    """
+    Create and initialize the admin interface for the application.
     
-    # Add a single view for users
-    admin.add_view(ModelView(User, db.session, name='Users'))
+    Args:
+        app: Flask application instance
+        db: SQLAlchemy database instance
     
-    # Print debug info
-    print(f"Simple Admin initialized at URL: {admin.url}")
-    print(f"Routes registered: {[rule.rule for rule in app.url_map.iter_rules() if 'simple-admin' in rule.rule]}")
-    
-    # Create a direct route for admin access
-    @app.route('/simple-admin-direct')
-    @login_required
-    def simple_admin_direct():
-        """Direct route to admin dashboard"""
-        if not is_admin():
-            flash('You do not have permission to access the admin area.', 'error')
-            return redirect(url_for('index'))
-        return redirect('/simple-admin/')
-    
-    # Return the admin instance
-    return admin
+    Returns:
+        Admin: The initialized Flask-Admin instance
+    """
+    try:
+        # Import models here to avoid circular imports
+        from models import User, Affiliate, Commission
+        
+        # Create admin instance with unique endpoint name
+        admin = Admin(
+            app, 
+            name='GloriaMundo Admin',
+            template_mode='bootstrap3',
+            index_view=SecureAdminIndexView(
+                name='Dashboard', 
+                url='/admin',
+                endpoint='admin_dashboard_unique'  # Unique endpoint to avoid conflicts
+            ),
+            base_template='admin/master.html'
+        )
+        
+        # Add views with unique endpoint names to avoid conflicts
+        admin.add_view(UserModelView(
+            User, db.session, 
+            name='Users', 
+            category='User Management',
+            endpoint='admin_users_unique'  # Unique endpoint name
+        ))
+        
+        admin.add_view(AffiliateModelView(
+            Affiliate, db.session, 
+            name='Affiliates', 
+            category='Affiliate System',
+            endpoint='admin_affiliates_unique'  # Unique endpoint name
+        ))
+        
+        admin.add_view(CommissionModelView(
+            Commission, db.session, 
+            name='Commissions', 
+            category='Affiliate System',
+            endpoint='admin_commissions_unique'  # Unique endpoint name
+        ))
+        
+        # Add diagnostic route
+        @app.route('/admin-check')
+        def admin_check():
+            """Diagnostic page to check admin access"""
+            if not current_user.is_authenticated:
+                return '<h1>Not logged in</h1><p>Please log in to check admin access.</p>'
+            
+            admin_emails = os.environ.get('ADMIN_EMAILS', 'andy@sentigral.com').split(',')
+            is_admin = current_user.email in admin_emails
+            
+            return f"""
+            <h1>Admin Access Check</h1>
+            <p>Logged in as: {current_user.email}</p>
+            <p>Admin emails: {admin_emails}</p>
+            <p>Is admin: {is_admin}</p>
+            <p><a href="/admin">Go to Admin Dashboard</a></p>
+            """
+        
+        logger.info("Admin interface created successfully")
+        return admin
+        
+    except Exception as e:
+        logger.error(f"Error creating admin interface: {e}")
+        import traceback
+        logger.error(traceback.format_exc())
+        return None

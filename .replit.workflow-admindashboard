@@ -1,6 +1,6 @@
-run = "python simple_admin_workflow.py"
+run = "python start_application.py"
 language = "python3"
-entrypoint = "simple_admin_workflow.py"
+entrypoint = "start_application.py"
 hidden = [".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
 modules = ["python-3.11:v2-20240124-3e3d06f"]
 

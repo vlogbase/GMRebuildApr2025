@@ -197,16 +197,102 @@ except Exception as e:
 
 # Initialize Flask-Admin interface (using Flask-Admin extension)
 try:
-    # Import and initialize Flask-Admin using our custom admin module
-    from gm_admin import create_admin
+    # Import our custom admin module
+    from gm_admin import create_admin, SecureAdminIndexView, UserModelView, AffiliateModelView, CommissionModelView, UserTokenUsageView, PopularModelsView
+    import flask_admin
+    from flask_admin import Admin
     
-    # Create and configure the admin interface
-    admin = create_admin(app, db)
+    # Check if Flask-Admin is already registered
+    admin_module_exists = False
+    for extension in app.extensions.values():
+        if isinstance(extension, flask_admin.Admin):
+            admin_module_exists = True
+            logger.info("Flask-Admin is already registered")
+            break
     
-    # List all admin-related routes for diagnostics
-    admin_registered_routes = [rule.rule for rule in app.url_map.iter_rules() if 'admin' in rule.rule]
-    logger.info(f"Flask-Admin routes registered: {admin_registered_routes}")
-    logger.info("Flask-Admin interface has been successfully initialized from gm_admin.py")
+    if not admin_module_exists:
+        # Create a fresh Admin instance with unique endpoint names to avoid conflicts
+        with app.app_context():
+            from models import User, Affiliate, Commission, Usage
+            
+            # Create admin instance with unique endpoint names
+            admin = Admin(
+                app, 
+                name='GloriaMundo Admin',
+                template_mode='bootstrap3',
+                index_view=SecureAdminIndexView(
+                    name='Dashboard', 
+                    url='/admin',
+                    endpoint='admin_dashboard_main'  # Unique endpoint to avoid conflicts
+                ),
+                base_template='admin/master.html'
+            )
+            
+            # Add views with unique endpoint names to avoid blueprint naming conflicts
+            admin.add_view(UserModelView(
+                User, db.session, 
+                name='Users', 
+                category='User Management',
+                endpoint='admin_users_main'  # Unique endpoint to avoid conflicts
+            ))
+            admin.add_view(AffiliateModelView(
+                Affiliate, db.session, 
+                name='Affiliates', 
+                category='Affiliate System',
+                endpoint='admin_affiliates_main'  # Unique endpoint to avoid conflicts
+            ))
+            admin.add_view(CommissionModelView(
+                Commission, db.session, 
+                name='Commissions', 
+                category='Affiliate System',
+                endpoint='admin_commissions_main'  # Unique endpoint to avoid conflicts
+            ))
+            admin.add_view(UserTokenUsageView(
+                None, db.session, 
+                name='User Token Usage', 
+                category='Analytics',
+                endpoint='admin_token_usage_main'  # Unique endpoint to avoid conflicts
+            ))
+            admin.add_view(PopularModelsView(
+                None, db.session, 
+                name='Popular Models', 
+                category='Analytics',
+                endpoint='admin_popular_models_main'  # Unique endpoint to avoid conflicts
+            ))
+        
+        # Simple diagnostic routes
+        @app.route('/admin-home')
+        def admin_home():
+            """Admin home page that checks access"""
+            if current_user.is_authenticated:
+                admin_emails = os.environ.get('ADMIN_EMAILS', 'andy@sentigral.com').split(',')
+                is_admin = current_user.email in admin_emails
+                if is_admin:
+                    return redirect('/admin')
+                return f'Access denied. {current_user.email} is not an admin. Admin users: {admin_emails}'
+            return 'Please log in to access the admin dashboard'
+        
+        @app.route('/admin-check')
+        def admin_check():
+            """Diagnostic page to check admin access"""
+            if not current_user.is_authenticated:
+                return '<h1>Not logged in</h1><p>Please log in to check admin access.</p>'
+            
+            admin_emails = os.environ.get('ADMIN_EMAILS', 'andy@sentigral.com').split(',')
+            is_admin = current_user.email in admin_emails
+            
+            return f"""
+            <h1>Admin Check</h1>
+            <p>Logged in as: {current_user.email}</p>
+            <p>Admin emails: {admin_emails}</p>
+            <p>Is admin: {is_admin}</p>
+            <p><a href="/admin">Admin Dashboard</a></p>
+            """
+        
+        # List all admin-related routes for diagnostics
+        admin_registered_routes = [rule.rule for rule in app.url_map.iter_rules() if 'admin' in rule.rule]
+        logger.info(f"Flask-Admin routes registered: {admin_registered_routes}")
+        logger.info("Flask-Admin interface has been successfully initialized directly in app.py")
     
 except Exception as e:
     logger.error(f"Error initializing Flask-Admin interface: {e}")
