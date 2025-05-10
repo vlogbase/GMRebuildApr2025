@@ -150,60 +150,6 @@ class DocumentProcessor:
         except PyMongoError as e:
             logger.error(f"Error creating MongoDB indexes: {e}")
     
-    def _build_search_filter(self, user_id: str, target_document_id: Optional[str] = None, conversation_id: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Build the filter for MongoDB $vectorSearch operation.
-        
-        Args:
-            user_id: The user ID to filter by
-            target_document_id: Optional document ID to further restrict results
-            conversation_id: Optional conversation ID to filter documents
-            
-        Returns:
-            Dict: MongoDB filter expression
-        """
-        # Base filter for user_id
-        base_filter = {
-            '$or': [
-                {'userId': user_id},  # Field as defined in the index
-                {'user_id': user_id}  # Field for backward compatibility
-            ]
-        }
-        
-        # Filters to add (will be combined with $and)
-        filters_to_add = []
-        
-        # If a target document ID is provided, add it to the filters
-        if target_document_id:
-            try:
-                # Convert string ID from session to ObjectId for MongoDB query
-                from bson import ObjectId
-                mongo_doc_id = ObjectId(target_document_id)
-                
-                # Add document_id filter
-                filters_to_add.append({'document_id': mongo_doc_id})
-                _log_rag(f"Added document_id filter: {target_document_id}", level="info")
-            except Exception as e:
-                _log_rag(f"Invalid document_id format for ObjectId conversion: {target_document_id}, error: {e}", level="warning")
-        
-        # If a conversation ID is provided, add it to the filters
-        if conversation_id:
-            # Add conversation_id filter (exact match)
-            filters_to_add.append({'conversation_id': str(conversation_id)})
-            _log_rag(f"Added conversation_id filter: {conversation_id}", level="info")
-        
-        # If no additional filters, just return the base user filter
-        if not filters_to_add:
-            return base_filter
-        
-        # Combine all filters with $and logic
-        return {
-            '$and': [
-                base_filter,
-                *filters_to_add
-            ]
-        }
-        
     def _get_embedding_azure(self, text: str) -> List[float]:
         """
         Get an embedding from Azure OpenAI with detailed error handling.
@@ -393,7 +339,7 @@ class DocumentProcessor:
         
         return chunks
     
-    def process_and_store_document(self, file_stream: BinaryIO, filename: str, user_id: Union[str, int], conversation_id: Optional[Union[str, int]] = None) -> Dict[str, Any]:
+    def process_and_store_document(self, file_stream: BinaryIO, filename: str, user_id: Union[str, int]) -> Dict[str, Any]:
         """
         Process a document: extract text, chunk it, generate embeddings, and store in MongoDB.
         
@@ -401,7 +347,6 @@ class DocumentProcessor:
             file_stream: The file stream
             filename: The name of the file
             user_id: The ID of the user uploading the document
-            conversation_id: The ID of the conversation the document is associated with
             
         Returns:
             Dict: Status information about the processing
@@ -433,15 +378,8 @@ class DocumentProcessor:
                 "file_type": os.path.splitext(filename)[1].lower(),
                 "upload_timestamp": datetime.utcnow(),
                 "text_length": len(extracted_text),
-                "processed": True,
-                "conversation_id": str(conversation_id) if conversation_id else None
+                "processed": True
             }
-            
-            # Log conversation association
-            if conversation_id:
-                _log_rag(f"Associating document with conversation ID: {conversation_id}", level='info')
-            else:
-                _log_rag("No conversation ID provided, document will be globally available to the user", level='warn')
             
             # Store document in MongoDB
             document_id = self.documents_collection.insert_one(document).inserted_id
@@ -467,8 +405,7 @@ class DocumentProcessor:
                     "text_chunk": chunk_text,
                     "embedding": embedding,
                     "source_document_name": filename,
-                    "timestamp": datetime.utcnow(),
-                    "conversation_id": str(conversation_id) if conversation_id else None
+                    "timestamp": datetime.utcnow()
                 }
                 
                 # Store chunk in MongoDB
@@ -620,8 +557,7 @@ class DocumentProcessor:
             # Default to false if there's an error
             return False
             
-    def retrieve_relevant_chunks(self, query_text: str, user_id: Union[str, int], limit: int = 5, 
-                             target_document_id: Optional[str] = None, conversation_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def retrieve_relevant_chunks(self, query_text: str, user_id: Union[str, int], limit: int = 5) -> List[Dict[str, Any]]:
         """
         Retrieve text chunks relevant to a query using MongoDB Atlas Vector Search.
         
@@ -629,8 +565,6 @@ class DocumentProcessor:
             query_text: The query text
             user_id: The ID of the user
             limit: Maximum number of chunks to retrieve
-            target_document_id: Optional specific document ID to filter chunks by
-            conversation_id: Optional conversation ID to filter chunks by (conversation-specific context)
             
         Returns:
             List[Dict]: List of relevant text chunks with metadata
@@ -668,7 +602,12 @@ class DocumentProcessor:
                         'queryVector': query_embedding, # The embedding vector of the query
                         'numCandidates': 150,  # Number of candidates to consider
                         'limit': limit,          # Max number of results to return
-                        'filter': self._build_search_filter(str(user_id), target_document_id, conversation_id)
+                        'filter': {
+                            '$or': [
+                                {'userId': str(user_id)},  # Field as defined in the index
+                                {'user_id': str(user_id)}  # Field for backward compatibility
+                            ]
+                        }
                     }
                 },
                 { # Project the desired fields and the relevance score

@@ -89,35 +89,6 @@ csrf = CSRFProtect(app)
 def inject_now():
     return {'now': datetime.datetime.now()}
 
-# Create a global dictionary to store document context between requests
-# This is safer than assigning directly to app
-document_context_storage = {}
-
-@app.before_request
-def sync_document_context():
-    """
-    Before processing any request, check if document context has been updated
-    by a background thread and synchronize it with the session.
-    
-    This ensures document context properly follows conversation isolation.
-    """
-    # Check if there's a document context available from a background thread
-    if document_context_storage.get('last_processed_document'):
-        # Synchronize with session - only if this session matches the context
-        doc_context = document_context_storage['last_processed_document']
-        conversation_id = doc_context.get('conversation_id')
-        
-        # If this request is for the same conversation, update the session
-        if conversation_id and session.get('current_conversation_id') == conversation_id:
-            session['active_document_context'] = {
-                'doc_id': doc_context['doc_id'],
-                'conversation_id': conversation_id
-            }
-            logger.info(f"Synchronized document context to session: {doc_context['doc_id']} for conversation {conversation_id}")
-            
-            # Clear the global context to prevent applying to other sessions
-            document_context_storage.pop('last_processed_document', None)
-
 # Initialize Azure Blob Storage for image uploads
 try:
     # Get connection string and container name from environment variables
@@ -1172,16 +1143,6 @@ def clear_conversations():
         db.session.commit()
         logger.info(f"Successfully marked {count} conversations as inactive for user {current_user.id}")
         
-        # Clear any document context in the session
-        if 'active_document_context' in session:
-            session.pop('active_document_context', None)
-            logger.info("Cleared document context from session during conversation reset")
-        
-        # Clear the current conversation ID
-        if 'current_conversation_id' in session:
-            session.pop('current_conversation_id', None)
-            logger.info("Cleared current_conversation_id from session during conversation reset")
-        
         # Create a new conversation
         title = "New Conversation"
         share_id = generate_share_id()
@@ -1358,12 +1319,6 @@ def chat(): # Synchronous function
         message_history = data.get('history', [])
         conversation_id = data.get('conversation_id', None)
         
-        # Store the current conversation ID in the session
-        # This enables conversation-specific document context
-        if conversation_id:
-            session['current_conversation_id'] = conversation_id
-            logger.info(f"Set current_conversation_id in session: {conversation_id}")
-        
         # For non-authenticated users, force the free model
         if not current_user.is_authenticated:
             is_free_model = False
@@ -1500,10 +1455,6 @@ def chat(): # Synchronous function
             title = "New Conversation"
             share_id = generate_share_id() 
             conversation = Conversation(title=title, share_id=share_id)
-            
-            # Clear any active document context when starting a new conversation
-            session.pop('active_document_context', None)
-            logger.info("Starting new conversation - cleared document context")
             # Associate conversation with the authenticated user
             if current_user and current_user.is_authenticated:
                 conversation.user_id = current_user.id
@@ -1823,30 +1774,11 @@ def chat(): # Synchronous function
                             
                         # Double-check if the user has documents (should be true if has_rag_content was set)
                         if document_processor.user_has_documents(rag_user_id):
-                            # Initialize target document ID to None
-                            target_document_id = None
-                            
-                            # Check if there's an active document context in the session
-                            active_doc_context = session.get('active_document_context')
-                            if active_doc_context:
-                                stored_doc_id = active_doc_context.get('doc_id')
-                                stored_conv_id = active_doc_context.get('conversation_id')
-                                
-                                # Only use the document context if it matches the current conversation
-                                if stored_conv_id and str(stored_conv_id) == str(conversation_id):
-                                    target_document_id = stored_doc_id
-                                    logger.info(f"RAG: Using conversation-specific document {target_document_id} for conversation {conversation_id}")
-                                else:
-                                    logger.info(f"RAG: Document context ignored - belongs to conversation {stored_conv_id}, current is {conversation_id}")
-                            
                             # User has documents, proceed with retrieval
-                            # Pass both target_document_id and conversation_id for filtering
                             relevant_chunks = document_processor.retrieve_relevant_chunks(
                                 query_text=user_message,
                                 user_id=rag_user_id,
-                                limit=5,  # Retrieve top 5 most relevant chunks
-                                target_document_id=target_document_id,  # This will be None if no document for this conversation
-                                conversation_id=conversation_id  # Pass current conversation ID for direct filtering
+                                limit=5  # Retrieve top 5 most relevant chunks
                             )
                             logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks using Azure embeddings.")
                         else:
@@ -3429,10 +3361,6 @@ def upload_documents():
     """
     Route to handle document uploads for RAG functionality.
     Processes and stores documents in MongoDB for later retrieval.
-    
-    Document context is now conversation-specific:
-    1. When a document is uploaded, it's associated with the current conversation
-    2. The document will only be used for RAG in that specific conversation
     """
     # Declare global document_processor at the beginning of the function
     global document_processor
@@ -3447,11 +3375,6 @@ def upload_documents():
         else:
             user_id = get_user_identifier()
             
-        # Get conversation ID from the request
-        conversation_id = request.form.get('conversation_id')
-        if not conversation_id:
-            return jsonify({"error": "No conversation ID provided - document uploads must be associated with a conversation"}), 400
-        
         # Make sure document_processor is initialized
         if 'document_processor' not in globals() or document_processor is None:
             from document_processor import DocumentProcessor
@@ -3494,37 +3417,15 @@ def upload_documents():
                 continue
                 
             # Start a background thread to process the file
-            def process_file_task(file_data, filename, user_id, conversation_id):
-                logger.info(f"BACKGROUND TASK STARTED for {filename}, user {user_id}, conversation {conversation_id}")
+            def process_file_task(file_data, filename, user_id):
+                logger.info(f"BACKGROUND TASK STARTED for {filename}, user {user_id}")
                 try:
-                    # Process and store the document with conversation_id
-                    result = document_processor.process_and_store_document(file_data, filename, user_id, conversation_id)
-                    
-                    # If successful, store the document_id and conversation_id in the session
-                    if result and result.get('success') and result.get('document_id'):
-                        # Update the session with the document context info
-                        session['active_document_context'] = {
-                            'doc_id': result['document_id'],
-                            'conversation_id': conversation_id
-                        }
-                        logger.info(f"Saved document context in session: doc_id={result['document_id']}, conversation_id={conversation_id}")
-                    
+                    # Process and store the document
+                    result = document_processor.process_and_store_document(file_data, filename, user_id)
                     logger.info(f"Document processing completed for {filename}: {result}")
-                    
-                    # Store document context in the global storage to be picked up by the next request
-                    # This allows information sharing between background threads and request handlers
-                    if result and result.get('success') and result.get('document_id'):
-                        # Store the document context globally to be accessed by the main thread
-                        document_context_storage['last_processed_document'] = {
-                            'doc_id': result['document_id'],
-                            'conversation_id': conversation_id,
-                            'filename': filename,
-                            'timestamp': datetime.datetime.now().isoformat()
-                        }
-                        logger.info(f"Registered document context for next request: {document_context_storage['last_processed_document']}")
                 except Exception as e:
                     logger.exception(f"Error processing document {filename}: {e}")
-                logger.info(f"BACKGROUND TASK FINISHED for {filename}, user {user_id}, conversation {conversation_id}")
+                logger.info(f"BACKGROUND TASK FINISHED for {filename}, user {user_id}")
             
             # Create a copy of the file data for background processing
             file_data = file.stream.read()
@@ -3533,7 +3434,7 @@ def upload_documents():
             # Start background processing
             processing_thread = threading.Thread(
                 target=process_file_task,
-                args=(file_stream, filename, user_id, conversation_id)
+                args=(file_stream, filename, user_id)
             )
             processing_thread.daemon = True  # Allow the thread to be terminated when the main program exits
             processing_thread.start()

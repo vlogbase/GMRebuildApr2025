@@ -3500,20 +3500,10 @@ document.addEventListener('DOMContentLoaded', function() {
             uploadStatus.innerHTML = `<p>Uploading ${selectedFiles.length} file(s)...</p>
                                      <div class="upload-progress"><div class="upload-progress-bar"></div></div>`;
             
-            // Get the current conversation ID
-            const currentConversationId = state.selectedConversation;
-            if (!currentConversationId) {
-                uploadStatus.innerHTML = `<p>❌ Error: No active conversation selected. Please select a conversation first.</p>`;
-                this.disabled = false;
-                return;
-            }
-            
             const formData = new FormData();
             selectedFiles.forEach(file => {
                 formData.append('files[]', file);
             });
-            // Add the conversation ID to associate the document with the current conversation
-            formData.append('conversation_id', currentConversationId);
             
             // Disable the upload button during upload
             this.disabled = true;
