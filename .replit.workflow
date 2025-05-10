@@ -1,5 +1,14 @@
-run = "python app_workflow.py"
+run = "python main.py"
 language = "python3"
-entrypoint = "app_workflow.py"
-hidden = [".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
-modules = ["python-3.11:v2-20240124-3e3d06f"]
+hidden = false
+webview = "website"
+onBoot = ""
+interpreter = "/nix/store/2vm88xw7513h9pyjyafw32cjkwmqim1x-python3-3.11.9/bin/python3.11"
+entrypoint = "main.py"
+
+[nix]
+channel = "stable-23_11"
+
+[deployment]
+run = ["sh", "-c", "python main.py"]
+deploymentTarget = "cloudrun"
