@@ -28,6 +28,7 @@ except ImportError as e:
 try:
     import pymongo
     from pymongo.errors import PyMongoError
+    from bson.objectid import ObjectId
 except ImportError as e:
     logging.warning(f"MongoDB libraries could not be imported: {e}")
 
@@ -702,8 +703,22 @@ class DocumentProcessor:
             
             # Add active_document_ids filter if provided
             if active_document_ids and len(active_document_ids) > 0:
-                # Convert any ObjectId strings to string type for consistency
-                doc_ids = [str(doc_id) for doc_id in active_document_ids]
+                # Convert string IDs to ObjectId objects for MongoDB
+                doc_ids = []
+                for doc_id in active_document_ids:
+                    try:
+                        # If it's a string that can be converted to ObjectId, do so
+                        if isinstance(doc_id, str) and len(doc_id) == 24:
+                            doc_ids.append(ObjectId(doc_id))
+                        else:
+                            # Otherwise keep as is (might be actual ObjectId already)
+                            doc_ids.append(doc_id)
+                    except Exception as e:
+                        _log_rag(f"Error converting document ID {doc_id} to ObjectId: {e}", level='warning')
+                        # Include the original ID even if conversion fails
+                        doc_ids.append(doc_id)
+                
+                _log_rag(f"Using document IDs for filtering: {doc_ids}", level='debug')
                 
                 # Create document_id filter
                 doc_filter = {'document_id': {'$in': doc_ids}}
