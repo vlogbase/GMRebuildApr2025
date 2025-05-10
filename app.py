@@ -3433,11 +3433,8 @@ def upload_documents():
         conversation_id = request.form.get('conversation_id')
         if conversation_id:
             logger.info(f"Document upload associated with conversation ID: {conversation_id}")
-            # Store the document's association with this conversation in session
-            session_documents = session.get('active_document_context', {})
-            session_documents[conversation_id] = True
-            session['active_document_context'] = session_documents
-            logger.info(f"Updated session document context: {session['active_document_context']}")
+            # We'll set this later with the actual document ID and filename
+            # after successful processing
         
         # Process each file
         results = []
