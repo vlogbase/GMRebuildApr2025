@@ -197,11 +197,11 @@ except Exception as e:
 
 # Initialize Flask-Admin interface
 try:
-    # Import the Flask-Admin creator function
-    from simple_admin import create_admin
+    # Import the Flask-Admin creator function from gm_admin.py
+    from gm_admin import create_admin
     
-    # Create and initialize the admin interface using the simplified version
-    logger.info("Initializing Flask-Admin interface from simple_admin.py")
+    # Create and initialize the admin interface
+    logger.info("Initializing Flask-Admin interface from gm_admin.py")
     admin = create_admin(app, db)
     
     # Log successful initialization

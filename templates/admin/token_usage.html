@@ -1,0 +1,39 @@
+{% extends 'admin/master.html' %}
+
+{% block body %}
+<h1>User Token Usage</h1>
+
+{% if error %}
+<div class="alert alert-danger">
+    <p>{{ error }}</p>
+</div>
+{% else %}
+<div class="table-responsive">
+    <table class="table table-striped table-bordered table-hover">
+        <thead>
+            <tr>
+                {% for header in headers %}
+                <th>{{ header }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in usage_data %}
+            <tr>
+                <td>{{ item.user_id }}</td>
+                <td>{{ item.email }}</td>
+                <td>{{ item.total_credits }}</td>
+                <td>{{ item.last_activity }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if not usage_data %}
+<div class="alert alert-info">
+    <p>No token usage data found.</p>
+</div>
+{% endif %}
+{% endif %}
+{% endblock %}

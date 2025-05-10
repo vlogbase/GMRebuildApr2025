@@ -248,101 +248,92 @@ class AffiliateModelView(ModelView, SecureBaseView):
     can_create = False  # Affiliates are created through the regular registration flow
     can_edit = True     # Allow editing of affiliate details
 
-class UserTokenUsageView(ModelView, SecureBaseView):
-    """User token usage analytics view"""
-    can_create = False
-    can_edit = False
-    can_delete = False
+class UserTokenUsageView(BaseView, SecureBaseView):
+    """User token usage analytics view as a BaseView"""
     
-    def get_query(self):
-        """Override query to show aggregated token usage data"""
-        from models import Usage, User
-        from app import db
-        
-        # Build a subquery to summarize token usage
-        return (
-            db.session.query(
-                Usage.user_id.label('user_id'),
-                User.email.label('email'),
-                func.sum(Usage.input_tokens + Usage.output_tokens).label('total_credits'),
-                func.max(Usage.timestamp).label('last_activity')
+    @expose('/')
+    def index(self):
+        """Show aggregated token usage data"""
+        try:
+            from models import Usage, User
+            from app import db
+            
+            # Build a query to summarize token usage
+            usage_data = (
+                db.session.query(
+                    Usage.user_id.label('user_id'),
+                    User.email.label('email'),
+                    func.sum(Usage.input_tokens + Usage.output_tokens).label('total_credits'),
+                    func.max(Usage.timestamp).label('last_activity')
+                )
+                .join(User, Usage.user_id == User.id)
+                .group_by(Usage.user_id, User.email)
+                .order_by(desc('total_credits'))
+                .all()
             )
-            .join(User, Usage.user_id == User.id)
-            .group_by(Usage.user_id, User.email)
-            .order_by(desc('total_credits'))
-        )
-    
-    def get_count_query(self):
-        """Override count query to match the main query"""
-        from models import Usage
-        from app import db
-        
-        return (
-            db.session.query(func.count(func.distinct(Usage.user_id)))
-        )
-    
-    column_list = ['user_id', 'email', 'total_credits', 'last_activity']
-    
-    column_formatters = {
-        'total_credits': lambda v, c, m, p: '{:,}'.format(m.total_credits) if m.total_credits else '0'
-    }
-    
-    column_default_sort = ('total_credits', True)
-    
-    column_labels = {
-        'user_id': 'User ID',
-        'email': 'Email',
-        'total_credits': 'Total Credits Used',
-        'last_activity': 'Last Activity'
-    }
+            
+            # Format the data for display
+            formatted_data = []
+            for item in usage_data:
+                formatted_data.append({
+                    'user_id': item.user_id,
+                    'email': item.email,
+                    'total_credits': '{:,}'.format(item.total_credits) if item.total_credits else '0',
+                    'last_activity': item.last_activity
+                })
+            
+            return self.render('admin/token_usage.html', 
+                               usage_data=formatted_data,
+                               headers=['User ID', 'Email', 'Total Credits Used', 'Last Activity'])
+                               
+        except Exception as e:
+            import traceback
+            error_msg = f"Error retrieving token usage data: {str(e)}\n{traceback.format_exc()}"
+            logger.error(error_msg)
+            return self.render('admin/error.html', error=error_msg)
 
-class PopularModelsView(ModelView, SecureBaseView):
-    """Popular models analytics view"""
-    can_create = False
-    can_edit = False
-    can_delete = False
+class PopularModelsView(BaseView, SecureBaseView):
+    """Popular models analytics view as a BaseView"""
     
-    def get_query(self):
-        """Override query to show aggregated model usage data"""
-        from models import Usage
-        from app import db
-        
-        # Build a query to summarize model usage
-        return (
-            db.session.query(
-                Usage.model_id.label('model_id'),
-                func.count(Usage.id).label('usage_count'),
-                func.sum(Usage.input_tokens + Usage.output_tokens).label('total_credits'),
-                func.max(Usage.timestamp).label('last_used')
+    @expose('/')
+    def index(self):
+        """Show aggregated model usage data"""
+        try:
+            from models import Usage
+            from app import db
+            
+            # Build a query to summarize model usage
+            models_data = (
+                db.session.query(
+                    Usage.model_id.label('model_id'),
+                    func.count(Usage.id).label('usage_count'),
+                    func.sum(Usage.input_tokens + Usage.output_tokens).label('total_credits'),
+                    func.max(Usage.timestamp).label('last_used')
+                )
+                .group_by(Usage.model_id)
+                .order_by(desc('usage_count'))
+                .all()
             )
-            .group_by(Usage.model_id)
-            .order_by(desc('usage_count'))
-        )
-    
-    def get_count_query(self):
-        """Override count query to match the main query"""
-        from models import Usage
-        from app import db
-        
-        return (
-            db.session.query(func.count(func.distinct(Usage.model_id)))
-        )
-    
-    column_list = ['model_id', 'usage_count', 'total_credits', 'last_used']
-    
-    column_formatters = {
-        'total_credits': lambda v, c, m, p: '{:,}'.format(m.total_credits) if m.total_credits else '0',
-        'usage_count': lambda v, c, m, p: '{:,}'.format(m.usage_count) if m.usage_count else '0'
-    }
-    
-    column_default_sort = ('usage_count', True)
-    
-    column_labels = {
-        'model_id': 'Model ID',
-        'usage_count': 'Usage Count',
-        'total_credits': 'Total Credits Used',
-        'last_used': 'Last Used'
-    }
+            
+            # Format the data for display
+            formatted_data = []
+            for item in models_data:
+                formatted_data.append({
+                    'model_id': item.model_id,
+                    'usage_count': '{:,}'.format(item.usage_count) if item.usage_count else '0',
+                    'total_credits': '{:,}'.format(item.total_credits) if item.total_credits else '0',
+                    'last_used': item.last_used
+                })
+            
+            return self.render('admin/popular_models.html', 
+                              models_data=formatted_data,
+                              headers=['Model ID', 'Usage Count', 'Total Credits Used', 'Last Used'])
+                              
+        except Exception as e:
+            import traceback
+            error_msg = f"Error retrieving model usage data: {str(e)}\n{traceback.format_exc()}"
+            logger.error(error_msg)
+            return self.render('admin/error.html', error=error_msg)
 
 def create_admin(app, db):
     """
@@ -392,13 +383,11 @@ def create_admin(app, db):
             endpoint='admin_commissions'  # Unique endpoint to avoid conflicts
         ))
         admin.add_view(UserTokenUsageView(
-            None, db.session, 
             name='User Token Usage', 
             category='Analytics',
             endpoint='admin_token_usage'  # Unique endpoint to avoid conflicts
         ))
         admin.add_view(PopularModelsView(
-            None, db.session, 
             name='Popular Models', 
             category='Analytics',
             endpoint='admin_popular_models'  # Unique endpoint to avoid conflicts
