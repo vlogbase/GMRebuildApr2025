@@ -1,0 +1,14 @@
+run = "python run_app.py"
+language = "python3"
+entrypoint = "run_app.py"
+hidden = [".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
+modules = ["python-3.11:v2-20240124-3e3d06f"]
+
+[nix]
+channel = "stable-23_11"
+
+[env]
+PYTHONPATH = "${PYTHONPATH}:${REPL_HOME}"
+
+[unitTest]
+language = "python3"

@@ -412,7 +412,4 @@ def create_admin(app, db):
         logger.info("Admin interface created successfully")
         return admin
 
-@expose('/admin')
-def admin_index():
-    """Redirect to admin dashboard"""
-    return redirect('/admin')
+# Removed the redundant /admin expose function as it would conflict with Flask-Admin's own routes
