@@ -13,56 +13,6 @@ function getCSRFToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content;
 }
 
-// Utility function to escape HTML to prevent XSS
-function escapeHTML(str) {
-    return str.replace(/[&<>"']/g, function (match) {
-        return {
-            '&': '&amp;',
-            '<': '&lt;',
-            '>': '&gt;',
-            '"': '&quot;',
-            "'": '&#39;'
-        }[match];
-    });
-}
-
-// Function to update the active document indicator
-function updateActiveDocumentIndicator(conversationId) {
-    if (!conversationId) {
-        const indicator = document.getElementById('active-document-indicator');
-        if (indicator) {
-            indicator.style.display = 'none';
-            indicator.innerHTML = '';
-        }
-        return;
-    }
-    
-    fetch(`/api/conversation/${conversationId}/active_document_info`)
-        .then(response => response.json())
-        .then(data => {
-            const indicator = document.getElementById('active-document-indicator');
-            if (!indicator) return;
-            
-            if (data.active_document) {
-                const filename = data.active_document.filename;
-                indicator.innerHTML = `📄 <span>${escapeHTML(filename)}</span> <span style="color: #4CAF50;">(active)</span>`;
-                indicator.style.display = 'block';
-            } else {
-                indicator.style.display = 'none';
-                indicator.innerHTML = '';
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching active document info:', error);
-            // Don't show error to user, just hide the indicator
-            const indicator = document.getElementById('active-document-indicator');
-            if (indicator) {
-                indicator.style.display = 'none';
-                indicator.innerHTML = '';
-            }
-        });
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
@@ -2684,9 +2634,6 @@ document.addEventListener('DOMContentLoaded', function() {
         loadingMessage.textContent = 'Loading conversation...';
         chatMessages.appendChild(loadingMessage);
         
-        // Update active document indicator for this conversation
-        updateActiveDocumentIndicator(conversationId);
-        
         // Fetch conversation messages from the server
         fetch(`/conversation/${conversationId}/messages`)
             .then(response => {
@@ -3352,12 +3299,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Clear the message history
         messageHistory = [];
         
-        // Clear current conversation ID
-        currentConversationId = null;
-        
-        // Clear the active document indicator
-        updateActiveDocumentIndicator(null);
-        
         // Make sure chatMessages exists
         if (!chatMessages) {
             console.warn('Chat messages container not found - cannot clear chat');
@@ -3564,12 +3505,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 formData.append('files[]', file);
             });
             
-            // Include the current conversation ID if available
-            if (currentConversationId) {
-                formData.append('conversation_id', currentConversationId);
-                console.log(`Including conversation_id=${currentConversationId} with document upload`);
-            }
-            
             // Disable the upload button during upload
             this.disabled = true;
             
@@ -3593,11 +3528,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(() => {
                         documentUploadModal.style.display = 'none';
                         uploadStatus.innerHTML = '';
-                        
-                        // Update the active document indicator after successful upload
-                        if (currentConversationId) {
-                            updateActiveDocumentIndicator(currentConversationId);
-                        }
                     }, 3000);
                 } else {
                     uploadStatus.innerHTML = `<p>❌ Error: ${data.error}</p>`;

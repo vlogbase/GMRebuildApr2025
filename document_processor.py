@@ -339,7 +339,7 @@ class DocumentProcessor:
         
         return chunks
     
-    def process_and_store_document(self, file_stream: BinaryIO, filename: str, user_id: Union[str, int], conversation_id: str = None) -> Dict[str, Any]:
+    def process_and_store_document(self, file_stream: BinaryIO, filename: str, user_id: Union[str, int]) -> Dict[str, Any]:
         """
         Process a document: extract text, chunk it, generate embeddings, and store in MongoDB.
         
@@ -347,7 +347,6 @@ class DocumentProcessor:
             file_stream: The file stream
             filename: The name of the file
             user_id: The ID of the user uploading the document
-            conversation_id: Optional ID of the conversation this document is associated with
             
         Returns:
             Dict: Status information about the processing
@@ -382,11 +381,6 @@ class DocumentProcessor:
                 "processed": True
             }
             
-            # Add conversation_id if provided
-            if conversation_id:
-                document["conversation_id"] = str(conversation_id)
-                _log_rag(f"Document associated with conversation ID: {conversation_id}", level='info')
-            
             # Store document in MongoDB
             document_id = self.documents_collection.insert_one(document).inserted_id
             _log_rag(f"Created document record with ID: {document_id}", level='info')
@@ -413,10 +407,6 @@ class DocumentProcessor:
                     "source_document_name": filename,
                     "timestamp": datetime.utcnow()
                 }
-                
-                # Add conversation_id to chunk if provided
-                if conversation_id:
-                    chunk["conversation_id"] = str(conversation_id)
                 
                 # Store chunk in MongoDB
                 self.chunks_collection.insert_one(chunk)
@@ -567,8 +557,7 @@ class DocumentProcessor:
             # Default to false if there's an error
             return False
             
-    def retrieve_relevant_chunks(self, query_text: str, user_id: Union[str, int], limit: int = 5, 
-                           target_document_id: Optional[str] = None, conversation_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def retrieve_relevant_chunks(self, query_text: str, user_id: Union[str, int], limit: int = 5) -> List[Dict[str, Any]]:
         """
         Retrieve text chunks relevant to a query using MongoDB Atlas Vector Search.
         
@@ -576,8 +565,6 @@ class DocumentProcessor:
             query_text: The query text
             user_id: The ID of the user
             limit: Maximum number of chunks to retrieve
-            target_document_id: Optional ID of a specific document to search within
-            conversation_id: Optional ID of the conversation to filter chunks by (prevents context leakage between conversations)
             
         Returns:
             List[Dict]: List of relevant text chunks with metadata
@@ -606,40 +593,6 @@ class DocumentProcessor:
             if not isinstance(query_embedding, list) or len(query_embedding) != 3072:
                 _log_rag(f"WARNING: Query embedding has unexpected format. {embedding_stats}", level='warning')
             
-            # Prepare the filter for vectorSearch
-            base_filter = {
-                '$or': [
-                    {'userId': str(user_id)},  # Field as defined in the index
-                    {'user_id': str(user_id)}  # Field for backward compatibility
-                ]
-            }
-            
-            # Add filters for specific document_id and/or conversation_id if provided
-            additional_filters = []
-            
-            # Add document_id filter if provided
-            if target_document_id:
-                try:
-                    # Convert string ID to MongoDB ObjectId
-                    from bson import ObjectId
-                    mongo_doc_id = ObjectId(target_document_id)
-                    _log_rag(f"Filtering by specific document_id: {target_document_id}", level='info')
-                    additional_filters.append({'document_id': mongo_doc_id})
-                except Exception as e:
-                    _log_rag(f"Invalid document_id format for ObjectId conversion: {target_document_id}, error: {e}", level='warning')
-            
-            # Add conversation_id filter if provided
-            if conversation_id:
-                _log_rag(f"Filtering by conversation_id: {conversation_id}", level='info')
-                additional_filters.append({'conversation_id': str(conversation_id)})
-            
-            # Update the base filter with additional filters if needed
-            if additional_filters:
-                if '$and' in base_filter:
-                    base_filter['$and'].extend(additional_filters)
-                else:
-                    base_filter = {'$and': [base_filter, *additional_filters]}
-            
             # Perform aggregation using Atlas Vector Search
             pipeline = [
                 {
@@ -649,7 +602,12 @@ class DocumentProcessor:
                         'queryVector': query_embedding, # The embedding vector of the query
                         'numCandidates': 150,  # Number of candidates to consider
                         'limit': limit,          # Max number of results to return
-                        'filter': base_filter
+                        'filter': {
+                            '$or': [
+                                {'userId': str(user_id)},  # Field as defined in the index
+                                {'user_id': str(user_id)}  # Field for backward compatibility
+                            ]
+                        }
                     }
                 },
                 { # Project the desired fields and the relevance score

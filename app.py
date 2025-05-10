@@ -195,14 +195,6 @@ try:
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
 
-# Register document API routes
-try:
-    from document_api_route import setup_document_api_routes
-    setup_document_api_routes(app)
-    logger.info("Document API routes registered successfully")
-except Exception as e:
-    logger.error(f"Error registering Document API routes: {e}")
-
 @login_manager.user_loader
 def load_user(user_id):
     from models import User 
@@ -1162,10 +1154,6 @@ def clear_conversations():
         db.session.add(conversation)
         db.session.commit()
         
-        # Clear any active document context when creating a new conversation
-        session.pop('active_document_context', None)
-        logger.info("Cleared active document context for new conversation")
-        
         return jsonify({"success": True, "message": f"Cleared {count} conversations", "new_conversation_id": conversation.id})
     
     except Exception as e:
@@ -1205,10 +1193,6 @@ def get_conversations():
             try:
                 db.session.commit()
                 logger.info(f"Created initial conversation for user {current_user.id}")
-                
-                # Clear any active document context when creating a new conversation
-                session.pop('active_document_context', None)
-                logger.info("Cleared active document context for new conversation")
                 # Include created_at timestamp for proper date formatting in the UI
                 conversations = [{"id": conversation.id, "title": conversation.title, "created_at": conversation.created_at.isoformat()}]
             except Exception as e:
@@ -1480,10 +1464,6 @@ def chat(): # Synchronous function
                 db.session.commit()
                 conversation_id = conversation.id 
                 logger.info(f"Created new conversation with ID: {conversation_id}")
-                
-                # Clear any active document context when creating a new conversation
-                session.pop('active_document_context', None)
-                logger.info("Cleared active document context for new conversation")
             except Exception as e:
                  logger.exception("Error committing new conversation")
                  db.session.rollback()
@@ -1792,26 +1772,13 @@ def chat(): # Synchronous function
                             from document_processor import DocumentProcessor
                             document_processor = DocumentProcessor()
                             
-                        # Check if we have an active document context for this conversation
-                        target_document_id = None
-                        active_document_context = session.get('active_document_context')
-                        
-                        if active_document_context:
-                            stored_conversation_id = active_document_context.get('conversation_id')
-                            if str(conversation.id) == str(stored_conversation_id):
-                                # We have an active document for this conversation
-                                target_document_id = active_document_context.get('doc_id')
-                                logger.info(f"RAG: Using targeted document ID {target_document_id} for conversation {conversation.id}")
-                        
                         # Double-check if the user has documents (should be true if has_rag_content was set)
                         if document_processor.user_has_documents(rag_user_id):
                             # User has documents, proceed with retrieval
                             relevant_chunks = document_processor.retrieve_relevant_chunks(
                                 query_text=user_message,
                                 user_id=rag_user_id,
-                                limit=5,  # Retrieve top 5 most relevant chunks
-                                target_document_id=target_document_id,  # Filter by specific document if provided
-                                conversation_id=str(conversation.id)  # Filter by current conversation ID to prevent context leakage
+                                limit=5  # Retrieve top 5 most relevant chunks
                             )
                             logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks using Azure embeddings.")
                         else:
@@ -3429,13 +3396,6 @@ def upload_documents():
             '.c', '.cpp', '.cs', '.rb', '.php'
         }
         
-        # Get the conversation ID if provided
-        conversation_id = request.form.get('conversation_id')
-        if conversation_id:
-            logger.info(f"Document upload associated with conversation ID: {conversation_id}")
-            # We'll set this later with the actual document ID and filename
-            # after successful processing
-        
         # Process each file
         results = []
         
@@ -3456,46 +3416,25 @@ def upload_documents():
                 })
                 continue
                 
+            # Start a background thread to process the file
+            def process_file_task(file_data, filename, user_id):
+                logger.info(f"BACKGROUND TASK STARTED for {filename}, user {user_id}")
+                try:
+                    # Process and store the document
+                    result = document_processor.process_and_store_document(file_data, filename, user_id)
+                    logger.info(f"Document processing completed for {filename}: {result}")
+                except Exception as e:
+                    logger.exception(f"Error processing document {filename}: {e}")
+                logger.info(f"BACKGROUND TASK FINISHED for {filename}, user {user_id}")
+            
             # Create a copy of the file data for background processing
             file_data = file.stream.read()
             file_stream = io.BytesIO(file_data)
             
-            # Define a single process_file_task function that handles processing and session storage
-            def process_file_task_with_session(file_data, filename, user_id, conversation_id=None):
-                logger.info(f"BACKGROUND TASK STARTED for {filename}, user {user_id}, conversation {conversation_id}")
-                try:
-                    # Process and store the document with conversation ID if provided
-                    if conversation_id:
-                        result = document_processor.process_and_store_document(
-                            file_data, filename, user_id, conversation_id=conversation_id
-                        )
-                    else:
-                        result = document_processor.process_and_store_document(
-                            file_data, filename, user_id
-                        )
-                    
-                    logger.info(f"Document processing completed for {filename}: {result}")
-                    
-                    # If document processing was successful and we have a conversation_id, store in session
-                    if result.get('success') and conversation_id and result.get('document_id'):
-                        # We need to access the session object in the application context
-                        with app.app_context():
-                            # Update the session through a proxy object
-                            document_id = result.get('document_id')
-                            logger.info(f"Storing document {document_id} for conversation {conversation_id} in session")
-                            session['active_document_context'] = {
-                                'doc_id': document_id,
-                                'conversation_id': conversation_id,
-                                'filename': filename
-                            }
-                except Exception as e:
-                    logger.exception(f"Error processing document {filename}: {e}")
-                logger.info(f"BACKGROUND TASK FINISHED for {filename}, user {user_id}, conversation {conversation_id}")
-            
-            # Start background processing with threading instead of gevent
+            # Start background processing
             processing_thread = threading.Thread(
-                target=process_file_task_with_session,
-                args=(file_stream, filename, user_id, conversation_id)
+                target=process_file_task,
+                args=(file_stream, filename, user_id)
             )
             processing_thread.daemon = True  # Allow the thread to be terminated when the main program exits
             processing_thread.start()
@@ -3503,8 +3442,7 @@ def upload_documents():
             results.append({
                 "filename": filename,
                 "success": True,
-                "message": "Processing started in background",
-                "conversation_id": conversation_id
+                "message": "Processing started in background"
             })
         
         return jsonify({
