@@ -195,29 +195,21 @@ try:
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
 
-# Initialize admin routes (simple approach without Flask-Admin)
+# Initialize Flask-Admin interface (using Flask-Admin extension)
 try:
-    # Register the admin_routes blueprint with the Flask app
-    from admin_routes import admin_routes
-    app.register_blueprint(admin_routes)
+    # Import and initialize Flask-Admin using our custom admin module
+    from gm_admin import create_admin
     
-    # Add direct access route at root level for better discoverability
-    @app.route('/admin')
-    @login_required
-    def admin_redirect():
-        """Simple redirect to admin dashboard"""
-        from affiliate import is_admin
-        if not current_user.is_authenticated or not is_admin():
-            flash('You do not have permission to access the admin area.', 'error')
-            return redirect(url_for('index'))
-        return redirect(url_for('admin_routes.dashboard'))
+    # Create and configure the admin interface
+    admin = create_admin(app, db)
     
     # List all admin-related routes for diagnostics
     admin_registered_routes = [rule.rule for rule in app.url_map.iter_rules() if 'admin' in rule.rule]
-    logger.info(f"Admin routes registered: {admin_registered_routes}")
-        
+    logger.info(f"Flask-Admin routes registered: {admin_registered_routes}")
+    logger.info("Flask-Admin interface has been successfully initialized from gm_admin.py")
+    
 except Exception as e:
-    logger.error(f"Error initializing Admin routes: {e}")
+    logger.error(f"Error initializing Flask-Admin interface: {e}")
     logger.error(traceback.format_exc())
 
 @login_manager.user_loader
