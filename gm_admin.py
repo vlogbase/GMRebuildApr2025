@@ -24,13 +24,9 @@ def process_paypal_payouts(affiliate_commissions):
     # In a real implementation, this would call the actual PayPal API
     return {"batch_id": f"FALLBACK_{datetime.now().strftime('%Y%m%d%H%M%S')}", "status": "PENDING"}
 
-# Try to import the real PayPal payout function
-try:
-    from affiliate import process_paypal_payouts as actual_process_paypal_payouts
-    process_paypal_payouts = actual_process_paypal_payouts
-    logger.info("Successfully imported PayPal payouts module")
-except ImportError:
-    logger.warning("Could not import PayPal payouts module, using fallback")
+# Keep using our fallback implementation since the affiliate module 
+# doesn't export process_paypal_payouts yet
+logger.info("Using local implementation of process_paypal_payouts")
 
 class SecureBaseView:
     """Base view with security features for all admin views"""
@@ -263,8 +259,8 @@ class UserTokenUsageView(BaseView, SecureBaseView):
                 db.session.query(
                     Usage.user_id.label('user_id'),
                     User.email.label('email'),
-                    func.sum(Usage.input_tokens + Usage.output_tokens).label('total_credits'),
-                    func.max(Usage.timestamp).label('last_activity')
+                    func.sum(Usage.credits_used).label('total_credits'),
+                    func.max(Usage.created_at).label('last_activity')
                 )
                 .join(User, Usage.user_id == User.id)
                 .group_by(Usage.user_id, User.email)
@@ -307,8 +303,8 @@ class PopularModelsView(BaseView, SecureBaseView):
                 db.session.query(
                     Usage.model_id.label('model_id'),
                     func.count(Usage.id).label('usage_count'),
-                    func.sum(Usage.input_tokens + Usage.output_tokens).label('total_credits'),
-                    func.max(Usage.timestamp).label('last_used')
+                    func.sum(Usage.credits_used).label('total_credits'),
+                    func.max(Usage.created_at).label('last_used')
                 )
                 .group_by(Usage.model_id)
                 .order_by(desc('usage_count'))

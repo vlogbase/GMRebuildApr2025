@@ -833,7 +833,7 @@ def index():
             <body>
                 <h1>GloriaMundo Admin Dashboard</h1>
                 <p>The application is running but encountered a template error.</p>
-                <p><a href="/gm-admin">Go to Admin Dashboard</a></p>
+                <p><a href="/admin">Go to Admin Dashboard</a></p>
             </body>
         </html>
         """, 200
