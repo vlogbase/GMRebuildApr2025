@@ -1,10 +1,20 @@
-run = "python main.py"
+run = ["python", "test_rag_indicator.py"]
+hidden = ["venv", ".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
+onBoot = ["echo hello world"]
+
+[languages.python3]
+pattern = "**/*.py"
+syntax = "python"
+
+[languages.python3.languageServer]
+start = ["pylsp"]
+
+[unitTest]
 language = "python3"
-hidden = false
-entrypoint = "main.py"
+
+[nix]
+channel = "stable-22_11"
 
 [env]
-PORT = "3000"
-ADMIN_EMAILS = "andy@sentigral.com"
-FLASK_APP = "main.py"
-FLASK_ENV = "development"
+PYTHONHASHSEED = "0"
+PYTHONPATH = "${PYTHONPATH}:${REPL_HOME}"

@@ -1,8 +1,0 @@
-run = "ADMIN_EMAILS=andy@sentigral.com PORT=3000 gunicorn main:app --bind=0.0.0.0:3000 --worker-class=gevent --workers=1 --timeout=120"
-language = "python3"
-hidden = false
-entrypoint = "main.py"
-
-[env]
-ADMIN_EMAILS = "andy@sentigral.com"
-PORT = "3000"

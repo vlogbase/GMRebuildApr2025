@@ -1,8 +1,0 @@
-run = "python admin_workflow.py"
-language = "python3"
-hidden = false
-entrypoint = "admin_workflow.py"
-
-[env]
-PORT = "3000"
-ADMIN_EMAILS = "andy@sentigral.com"

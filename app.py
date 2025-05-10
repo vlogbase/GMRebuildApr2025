@@ -169,42 +169,6 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# Register admin blueprint if admin user exists
-try:
-    from admin_loader import register_admin_blueprint, admin_required
-    register_admin_blueprint(app)
-    app.logger.info("Admin blueprint registered successfully")
-    
-    # Add a direct admin route for reliability
-    @app.route('/admin')
-    @admin_required
-    def admin_main():
-        from datetime import datetime
-        # Import models here to avoid circular imports
-        from models import User
-        user_count = User.query.count()
-        
-        # Check if Affiliate model exists and is accessible
-        affiliate_count = 0
-        commission_count = 0
-        try:
-            from models import Affiliate, Commission
-            affiliate_count = Affiliate.query.count()
-            commission_count = Commission.query.count()
-        except Exception as e:
-            app.logger.warning(f"Could not access affiliate data: {str(e)}")
-        
-        return render_template('admin/dashboard.html',
-                              user_count=user_count,
-                              affiliate_count=affiliate_count,
-                              commission_count=commission_count,
-                              total_pending=0,
-                              total_approved=0,
-                              total_paid=0,
-                              now=datetime.now())
-except Exception as e:
-    app.logger.error(f"Error registering admin blueprint: {str(e)}")
-
 # Register blueprints
 try:
     from google_auth import google_auth
@@ -230,29 +194,6 @@ try:
     logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
-
-# Initialize Flask-Admin interface
-try:
-    # Import the Flask-Admin creator function from gm_admin.py
-    from gm_admin import create_admin
-    
-    # Create and initialize the admin interface
-    logger.info("Initializing Flask-Admin interface from gm_admin.py")
-    admin = create_admin(app, db)
-    
-    # Log successful initialization
-    if admin:
-        logger.info("Flask-Admin interface successfully initialized")
-        
-        # List all registered routes for diagnostics
-        admin_routes = [rule.rule for rule in app.url_map.iter_rules() if 'admin' in rule.rule]
-        logger.info(f"Registered admin routes: {admin_routes}")
-    else:
-        logger.error("Flask-Admin initialization returned None")
-except Exception as e:
-    logger.error(f"Error initializing Flask-Admin interface: {e}")
-    import traceback
-    logger.error(traceback.format_exc())
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -827,24 +768,6 @@ def get_object_storage_url(object_name, public=True, expires_in=3600, clean_url=
 # --- Routes ---
 @app.route('/')
 def index():
-    """
-    Root route for the application that handles health checks and serves the main UI.
-    This route ensures a 200 status code for deployment health checks.
-    """
-    # Handle basic health check request (for deployment)
-    user_agent = request.headers.get('User-Agent', '').lower()
-    if 'health' in user_agent or request.args.get('health') == 'check':
-        # Enhanced health check with admin routes information
-        admin_routes = [rule.rule for rule in app.url_map.iter_rules() 
-                      if rule.rule.startswith('/admin')]
-        
-        return jsonify({
-            'status': 'ok', 
-            'message': 'GloriaMundo application is running',
-            'admin_dashboard': len(admin_routes) > 0,
-            'admin_routes': admin_routes
-        }), 200
-    
     # Allow non-authenticated users to use the app with limited functionality
     is_logged_in = current_user.is_authenticated
     
@@ -859,29 +782,13 @@ def index():
             ).order_by(Conversation.updated_at.desc()).all()
         except Exception as e:
             logger.error(f"Error fetching conversations: {e}")
-            # Continue with empty conversations list
     
-    try:
-        return render_template(
-            'index.html', 
-            user=current_user, 
-            is_logged_in=is_logged_in,
-            conversations=conversations
-        )
-    except Exception as e:
-        # If template rendering fails, return a basic 200 response
-        # This ensures health checks still pass even if there are template issues
-        logger.error(f"Error rendering index template: {e}")
-        return f"""
-        <html>
-            <head><title>GloriaMundo Admin Dashboard</title></head>
-            <body>
-                <h1>GloriaMundo Admin Dashboard</h1>
-                <p>The application is running but encountered a template error.</p>
-                <p><a href="/admin">Go to Admin Dashboard</a></p>
-            </body>
-        </html>
-        """, 200
+    return render_template(
+        'index.html', 
+        user=current_user, 
+        is_logged_in=is_logged_in,
+        conversations=conversations
+    )
 
 @app.route('/login')
 def login():

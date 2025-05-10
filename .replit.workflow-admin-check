@@ -1,8 +1,0 @@
-run = "ADMIN_EMAILS=andy@sentigral.com python admin_check.py"
-language = "python3"
-hidden = false
-entrypoint = "admin_check.py"
-
-[env]
-ADMIN_EMAILS = "andy@sentigral.com"
-PORT = "3000"
