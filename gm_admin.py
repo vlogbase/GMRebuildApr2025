@@ -359,21 +359,50 @@ def create_admin(app, db):
     with app.app_context():
         from models import User, Affiliate, Commission, Usage
         
-        # Create admin instance
+        # Create admin instance with unique endpoint names
         admin = Admin(
             app, 
             name='GloriaMundo Admin',
             template_mode='bootstrap3',
-            index_view=SecureAdminIndexView(name='Dashboard', url='/admin'),
+            index_view=SecureAdminIndexView(
+                name='Dashboard', 
+                url='/admin',
+                endpoint='admin_dashboard'  # Unique endpoint to avoid conflicts
+            ),
             base_template='admin/master.html'
         )
         
-        # Add views
-        admin.add_view(UserModelView(User, db.session, name='Users', category='User Management'))
-        admin.add_view(AffiliateModelView(Affiliate, db.session, name='Affiliates', category='Affiliate System'))
-        admin.add_view(CommissionModelView(Commission, db.session, name='Commissions', category='Affiliate System'))
-        admin.add_view(UserTokenUsageView(None, db.session, name='User Token Usage', category='Analytics'))
-        admin.add_view(PopularModelsView(None, db.session, name='Popular Models', category='Analytics'))
+        # Add views with unique endpoint names to avoid blueprint naming conflicts
+        admin.add_view(UserModelView(
+            User, db.session, 
+            name='Users', 
+            category='User Management',
+            endpoint='admin_users'  # Unique endpoint to avoid conflicts
+        ))
+        admin.add_view(AffiliateModelView(
+            Affiliate, db.session, 
+            name='Affiliates', 
+            category='Affiliate System',
+            endpoint='admin_affiliates'  # Unique endpoint to avoid conflicts
+        ))
+        admin.add_view(CommissionModelView(
+            Commission, db.session, 
+            name='Commissions', 
+            category='Affiliate System',
+            endpoint='admin_commissions'  # Unique endpoint to avoid conflicts
+        ))
+        admin.add_view(UserTokenUsageView(
+            None, db.session, 
+            name='User Token Usage', 
+            category='Analytics',
+            endpoint='admin_token_usage'  # Unique endpoint to avoid conflicts
+        ))
+        admin.add_view(PopularModelsView(
+            None, db.session, 
+            name='Popular Models', 
+            category='Analytics',
+            endpoint='admin_popular_models'  # Unique endpoint to avoid conflicts
+        ))
         
         # Simple diagnostic routes
         @app.route('/admin-home')
