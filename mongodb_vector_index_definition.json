@@ -12,6 +12,12 @@
       },
       "userId": {
         "type": "filter"
+      },
+      "conversation_id": {
+        "type": "filter"
+      },
+      "document_id": {
+        "type": "filter"
       }
     }
   }

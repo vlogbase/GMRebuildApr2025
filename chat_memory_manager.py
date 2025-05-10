@@ -42,10 +42,10 @@ class ChatMemoryManager:
         
         # Initialize MongoDB connection
         try:
-            # Get MongoDB connection string
-            mongodb_uri = os.environ.get("MONGODB_ATLAS_URI")
+            # Get MongoDB connection string (try both possible variable names)
+            mongodb_uri = os.environ.get("MONGODB_ATLAS_URI", os.environ.get("MONGODB_URI"))
             if not mongodb_uri:
-                logger.error("MONGODB_ATLAS_URI not found in environment variables")
+                logger.error("Neither MONGODB_ATLAS_URI nor MONGODB_URI found in environment variables")
                 raise ValueError("MongoDB connection URI not provided")
             
             # Connect to MongoDB

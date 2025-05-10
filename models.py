@@ -92,6 +92,7 @@ class Conversation(db.Model):
     
     # Relationships
     messages = db.relationship('Message', backref='conversation', lazy='dynamic', cascade='all, delete-orphan')
+    documents = db.relationship('ConversationDocument', backref='conversation', lazy='dynamic', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Conversation {self.id}: {self.title}>'
@@ -113,6 +114,23 @@ class Message(db.Model):
     
     def __repr__(self):
         return f'<Message {self.id}: {self.role}>'
+
+
+class ConversationDocument(db.Model):
+    """Model for managing document associations with conversations and their context state"""
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
+    # Store MongoDB document identifier or path
+    document_identifier = db.Column(db.String(512), nullable=False) 
+    # Original filename for display purposes
+    original_filename = db.Column(db.String(256), nullable=False)
+    # Whether this document is included in the conversation context
+    is_context_active = db.Column(db.Boolean, default=True)
+    # When the document was uploaded
+    upload_timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<ConversationDocument {self.id}: {self.original_filename} (active: {self.is_context_active})>'
 
 
 class UserPreference(db.Model):
