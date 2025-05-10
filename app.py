@@ -1772,64 +1772,18 @@ def chat(): # Synchronous function
                             from document_processor import DocumentProcessor
                             document_processor = DocumentProcessor()
                             
-                        # Get active document IDs for the conversation if available
-                        active_document_ids = []
-                        
-                        # Get the conversation ID from the request
-                        conversation_id = request.json.get('conversation_id')
-                        
-                        # If we have a conversation ID, get the active document IDs
-                        if conversation_id and current_user.is_authenticated:
-                            try:
-                                from models import Conversation, ConversationDocument
-                                # Find the conversation by ID
-                                conversation = db.session.get(Conversation, int(conversation_id))
-                                
-                                if conversation:
-                                    # Get active document IDs for this conversation
-                                    conversation_docs = db.session.query(ConversationDocument).filter_by(
-                                        conversation_id=conversation.id,
-                                        is_context_active=True
-                                    ).all()
-                                    
-                                    # Extract document identifiers for active documents
-                                    active_document_ids = [doc.document_identifier for doc in conversation_docs]
-                                    logger.info(f"RAG: Found {len(active_document_ids)} active documents for conversation {conversation.id}")
-                            except Exception as doc_error:
-                                logger.error(f"RAG: Error getting active document IDs: {doc_error}")
-                        
-                        # First check if the user or conversation has documents
-                        has_docs = False
-                        
-                        # Check if conversation has documents if conversation object is available
-                        if current_user.is_authenticated and 'conversation' in locals() and conversation:
-                            has_docs = document_processor.conversation_has_documents(conversation.id)
-                            if has_docs:
-                                logger.info(f"RAG: Conversation {conversation.id} has documents")
-                        
-                        # If conversation doesn't have documents, fall back to user documents
-                        if not has_docs:
-                            has_docs = document_processor.user_has_documents(rag_user_id)
-                            if has_docs:
-                                logger.info(f"RAG: User {rag_user_id} has documents")
-                        
-                        # Proceed with retrieval if documents exist
-                        if has_docs:
-                            # Conversation_id to use for filtering (None if not authenticated or no conversation)
-                            conversation_id = conversation.id if 'conversation' in locals() and conversation else None
-                            
-                            # Retrieve relevant chunks filtered by conversation and active documents if available
+                        # Double-check if the user has documents (should be true if has_rag_content was set)
+                        if document_processor.user_has_documents(rag_user_id):
+                            # User has documents, proceed with retrieval
                             relevant_chunks = document_processor.retrieve_relevant_chunks(
                                 query_text=user_message,
                                 user_id=rag_user_id,
-                                conversation_id=conversation_id,
-                                active_document_ids=active_document_ids,
                                 limit=5  # Retrieve top 5 most relevant chunks
                             )
-                            logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks using conversation-specific context.")
+                            logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks using Azure embeddings.")
                         else:
-                            # No documents available
-                            logger.info("RAG: No documents available, skipping retrieval")
+                            # User doesn't have documents, skip retrieval
+                            logger.info("RAG: User has no documents, skipping retrieval")
                             relevant_chunks = []
                 except Exception as retrieval_error:
                     logger.error(f"RAG: Error retrieving document chunks: {retrieval_error}")
@@ -3402,117 +3356,11 @@ def test_csrf():
         'received_data': data
     })
 
-@app.route('/api/conversation/<int:conversation_id>/documents', methods=['GET'])
-@login_required
-def get_conversation_documents(conversation_id):
-    """
-    Get all documents associated with a conversation.
-    
-    Args:
-        conversation_id: The ID of the conversation
-    
-    Returns:
-        JSON response with list of documents
-    """
-    try:
-        # Verify the conversation belongs to the current user
-        from models import Conversation, ConversationDocument
-        
-        conversation = db.session.get(Conversation, conversation_id)
-        if not conversation:
-            return jsonify({"error": "Conversation not found"}), 404
-            
-        if conversation.user_id != current_user.id:
-            return jsonify({"error": "You don't have permission to access this conversation"}), 403
-            
-        # Get all documents for the conversation
-        documents = ConversationDocument.query.filter_by(conversation_id=conversation_id).all()
-        
-        # Format for response
-        doc_list = [{
-            "id": doc.id,
-            "original_filename": doc.original_filename,
-            "document_identifier": doc.document_identifier,
-            "is_context_active": doc.is_context_active,
-            "upload_timestamp": doc.upload_timestamp.isoformat() if doc.upload_timestamp else None
-        } for doc in documents]
-        
-        return jsonify({
-            "success": True,
-            "conversation_id": conversation_id,
-            "documents": doc_list
-        })
-        
-    except Exception as e:
-        logger.exception(f"Error getting conversation documents: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/conversation/<int:conversation_id>/document/<document_identifier>/toggle_context', methods=['POST'])
-@login_required
-def toggle_document_context(conversation_id, document_identifier):
-    """
-    Toggle the context active state of a document within a conversation.
-    
-    Args:
-        conversation_id: The ID of the conversation
-        document_identifier: The ID of the document to toggle
-    
-    Returns:
-        JSON response with updated document state
-    """
-    try:
-        # Verify the conversation belongs to the current user
-        from models import Conversation, ConversationDocument
-        
-        conversation = db.session.get(Conversation, conversation_id)
-        if not conversation:
-            return jsonify({"error": "Conversation not found"}), 404
-            
-        if conversation.user_id != current_user.id:
-            return jsonify({"error": "You don't have permission to access this conversation"}), 403
-            
-        # Find the document
-        document = db.session.get(ConversationDocument, document_identifier)
-        if not document:
-            return jsonify({"error": "Document not found"}), 404
-            
-        if document.conversation_id != conversation_id:
-            return jsonify({"error": "Document does not belong to this conversation"}), 403
-            
-        # Toggle the is_context_active flag
-        document.is_context_active = not document.is_context_active
-        db.session.commit()
-        
-        # Get updated list of documents
-        documents = ConversationDocument.query.filter_by(conversation_id=conversation_id).all()
-        doc_list = [{
-            "id": doc.id,
-            "original_filename": doc.original_filename,
-            "document_identifier": doc.document_identifier,
-            "is_context_active": doc.is_context_active,
-            "upload_timestamp": doc.upload_timestamp.isoformat() if doc.upload_timestamp else None
-        } for doc in documents]
-        
-        return jsonify({
-            "success": True,
-            "document": {
-                "id": document.id,
-                "is_context_active": document.is_context_active
-            },
-            "documents": doc_list
-        })
-        
-    except Exception as e:
-        logger.exception(f"Error toggling document context: {e}")
-        return jsonify({"error": str(e)}), 500
-
 @app.route('/upload', methods=['POST'])
-@login_required
 def upload_documents():
     """
     Route to handle document uploads for RAG functionality.
     Processes and stores documents in MongoDB for later retrieval.
-    Associates uploads with the current conversation if specified.
     """
     # Declare global document_processor at the beginning of the function
     global document_processor
@@ -3521,25 +3369,11 @@ def upload_documents():
         return jsonify({"error": "RAG functionality is not enabled"}), 400
         
     try:
-        # Get user ID from the authenticated user
-        user_id = str(current_user.id)
-        
-        # Get conversation_id if provided in the form data
-        conversation_id = request.form.get('conversation_id')
-        
-        # Verify the conversation exists and belongs to the user if provided
-        if conversation_id:
-            try:
-                from models import Conversation
-                conversation = db.session.get(Conversation, int(conversation_id))
-                if not conversation:
-                    return jsonify({"error": "Conversation not found"}), 404
-                    
-                if conversation.user_id != current_user.id:
-                    return jsonify({"error": "You don't have permission to upload to this conversation"}), 403
-            except Exception as e:
-                logger.exception(f"Error verifying conversation: {e}")
-                return jsonify({"error": f"Invalid conversation ID: {str(e)}"}), 400
+        # Get user ID - use either authenticated user or session-based identifier
+        if current_user and current_user.is_authenticated:
+            user_id = str(current_user.id)
+        else:
+            user_id = get_user_identifier()
             
         # Make sure document_processor is initialized
         if 'document_processor' not in globals() or document_processor is None:
@@ -3583,38 +3417,15 @@ def upload_documents():
                 continue
                 
             # Start a background thread to process the file
-            def process_file_task(file_data, filename, user_id, conversation_id=None):
-                logger.info(f"BACKGROUND TASK STARTED for {filename}, user {user_id}, conversation {conversation_id}")
+            def process_file_task(file_data, filename, user_id):
+                logger.info(f"BACKGROUND TASK STARTED for {filename}, user {user_id}")
                 try:
-                    # Process and store the document in MongoDB
-                    result = document_processor.process_and_store_document(file_data, filename, user_id, conversation_id)
+                    # Process and store the document
+                    result = document_processor.process_and_store_document(file_data, filename, user_id)
                     logger.info(f"Document processing completed for {filename}: {result}")
-                    
-                    # If successful and conversation_id is provided, create a DB record
-                    if result.get('success') and conversation_id:
-                        try:
-                            from models import ConversationDocument
-                            
-                            # Create a ConversationDocument record
-                            doc_record = ConversationDocument(
-                                conversation_id=int(conversation_id),
-                                document_identifier=str(result.get('document_id')),
-                                original_filename=filename,
-                                is_context_active=True  # Default to active
-                            )
-                            
-                            # Add and commit to the database
-                            db.session.add(doc_record)
-                            db.session.commit()
-                            
-                            logger.info(f"Created ConversationDocument record for {filename} in conversation {conversation_id}")
-                        except Exception as db_error:
-                            logger.exception(f"Error creating ConversationDocument record: {db_error}")
-                            # Note: We don't fail the whole process if just the record creation fails
-                            # The document is still stored in MongoDB
                 except Exception as e:
                     logger.exception(f"Error processing document {filename}: {e}")
-                logger.info(f"BACKGROUND TASK FINISHED for {filename}, user {user_id}, conversation {conversation_id}")
+                logger.info(f"BACKGROUND TASK FINISHED for {filename}, user {user_id}")
             
             # Create a copy of the file data for background processing
             file_data = file.stream.read()
@@ -3623,7 +3434,7 @@ def upload_documents():
             # Start background processing
             processing_thread = threading.Thread(
                 target=process_file_task,
-                args=(file_stream, filename, user_id, conversation_id)
+                args=(file_stream, filename, user_id)
             )
             processing_thread.daemon = True  # Allow the thread to be terminated when the main program exits
             processing_thread.start()

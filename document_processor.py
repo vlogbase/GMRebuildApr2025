@@ -28,7 +28,6 @@ except ImportError as e:
 try:
     import pymongo
     from pymongo.errors import PyMongoError
-    from bson.objectid import ObjectId
 except ImportError as e:
     logging.warning(f"MongoDB libraries could not be imported: {e}")
 
@@ -66,8 +65,7 @@ class DocumentProcessor:
         Reuses the existing embedding generation capabilities.
         """
         # Load environment variables
-        # Look for MongoDB URI under both possible variable names
-        self.mongo_uri = os.environ.get('MONGODB_ATLAS_URI', os.environ.get('MONGODB_URI'))
+        self.mongo_uri = os.environ.get('MONGODB_ATLAS_URI')
         self.openai_api_key = os.environ.get('AZURE_OPENAI_API_KEY') or os.environ.get('OPENROUTER_API_KEY')
         
         # Set up MongoDB collections if MongoDB URI is available
@@ -341,7 +339,7 @@ class DocumentProcessor:
         
         return chunks
     
-    def process_and_store_document(self, file_stream: BinaryIO, filename: str, user_id: Union[str, int], conversation_id: Union[str, int] = None) -> Dict[str, Any]:
+    def process_and_store_document(self, file_stream: BinaryIO, filename: str, user_id: Union[str, int]) -> Dict[str, Any]:
         """
         Process a document: extract text, chunk it, generate embeddings, and store in MongoDB.
         
@@ -349,7 +347,6 @@ class DocumentProcessor:
             file_stream: The file stream
             filename: The name of the file
             user_id: The ID of the user uploading the document
-            conversation_id: The ID of the conversation this document belongs to (optional)
             
         Returns:
             Dict: Status information about the processing
@@ -374,7 +371,7 @@ class DocumentProcessor:
             
             _log_rag(f"Successfully extracted {len(extracted_text)} characters from {filename}", level='info')
             
-            # Create document entry with conversation ID if provided
+            # Create document entry
             document = {
                 "user_id": str(user_id),
                 "filename": filename,
@@ -383,10 +380,6 @@ class DocumentProcessor:
                 "text_length": len(extracted_text),
                 "processed": True
             }
-            
-            # Add conversation_id if provided (for conversation-scoped documents)
-            if conversation_id is not None:
-                document["conversation_id"] = str(conversation_id)
             
             # Store document in MongoDB
             document_id = self.documents_collection.insert_one(document).inserted_id
@@ -414,10 +407,6 @@ class DocumentProcessor:
                     "source_document_name": filename,
                     "timestamp": datetime.utcnow()
                 }
-                
-                # Add conversation_id to the chunk if provided
-                if conversation_id is not None:
-                    chunk["conversation_id"] = str(conversation_id)
                 
                 # Store chunk in MongoDB
                 self.chunks_collection.insert_one(chunk)
@@ -568,91 +557,13 @@ class DocumentProcessor:
             # Default to false if there's an error
             return False
             
-    def get_conversation_documents(self, conversation_id: Union[str, int]) -> List[Dict[str, Any]]:
-        """
-        Get all documents associated with a conversation.
-        
-        Args:
-            conversation_id: The ID of the conversation
-            
-        Returns:
-            List[Dict]: List of document metadata for the conversation
-        """
-        if not self.db_initialized:
-            _log_rag("MongoDB not available for retrieving conversation documents", level='warning')
-            return []
-        
-        try:
-            # Convert conversation_id to string for consistency
-            conversation_id_str = str(conversation_id)
-            
-            # Retrieve documents for this conversation
-            documents = list(self.documents_collection.find(
-                {"conversation_id": conversation_id_str}, 
-                {
-                    "_id": 1,
-                    "filename": 1,
-                    "upload_timestamp": 1,
-                    "text_length": 1,
-                    "file_type": 1
-                }
-            ))
-            
-            # Convert ObjectId to string
-            for doc in documents:
-                if "_id" in doc:
-                    doc["_id"] = str(doc["_id"])
-                    
-                # Ensure timestamp is serializable
-                if "upload_timestamp" in doc and isinstance(doc["upload_timestamp"], datetime):
-                    doc["upload_timestamp"] = doc["upload_timestamp"].isoformat()
-            
-            _log_rag(f"Found {len(documents)} documents for conversation {conversation_id_str}", level='debug')
-            return documents
-            
-        except Exception as e:
-            _log_rag(f"Error retrieving conversation documents: {e}", level='error')
-            return []
-            
-    def conversation_has_documents(self, conversation_id: Union[str, int]) -> bool:
-        """
-        Check if a conversation has any documents associated with it.
-        
-        Args:
-            conversation_id: The ID of the conversation
-            
-        Returns:
-            bool: True if the conversation has documents, False otherwise
-        """
-        if not self.db_initialized:
-            _log_rag("MongoDB not available for checking conversation documents", level='warning')
-            return False
-        
-        try:
-            # Convert conversation_id to string for consistency
-            conversation_id_str = str(conversation_id)
-            
-            # Check if there's at least one document for this conversation
-            count = self.documents_collection.count_documents({"conversation_id": conversation_id_str}, limit=1)
-            has_docs = count > 0
-            
-            _log_rag(f"Conversation {conversation_id_str} has documents: {has_docs}", level='debug')
-            return has_docs
-            
-        except Exception as e:
-            _log_rag(f"Error checking if conversation has documents: {e}", level='error')
-            # Default to false if there's an error
-            return False
-            
-    def retrieve_relevant_chunks(self, query_text: str, user_id: Union[str, int], conversation_id: Union[str, int] = None, active_document_ids: List[str] = None, limit: int = 5) -> List[Dict[str, Any]]:
+    def retrieve_relevant_chunks(self, query_text: str, user_id: Union[str, int], limit: int = 5) -> List[Dict[str, Any]]:
         """
         Retrieve text chunks relevant to a query using MongoDB Atlas Vector Search.
         
         Args:
             query_text: The query text
             user_id: The ID of the user
-            conversation_id: Optional ID of the conversation to filter documents
-            active_document_ids: Optional list of document IDs to filter for (active documents)
             limit: Maximum number of chunks to retrieve
             
         Returns:
@@ -683,59 +594,6 @@ class DocumentProcessor:
                 _log_rag(f"WARNING: Query embedding has unexpected format. {embedding_stats}", level='warning')
             
             # Perform aggregation using Atlas Vector Search
-            # Build the base filter for user ID
-            base_filter = {
-                '$or': [
-                    {'userId': str(user_id)},  # Field as defined in the index
-                    {'user_id': str(user_id)}  # Field for backward compatibility
-                ]
-            }
-            
-            # Add conversation_id filter if provided
-            if conversation_id is not None:
-                # Add conversation_id filter as an AND condition
-                base_filter = {
-                    '$and': [
-                        base_filter,
-                        {'conversation_id': str(conversation_id)}
-                    ]
-                }
-            
-            # Add active_document_ids filter if provided
-            if active_document_ids and len(active_document_ids) > 0:
-                # Convert string IDs to ObjectId objects for MongoDB
-                doc_ids = []
-                for doc_id in active_document_ids:
-                    try:
-                        # If it's a string that can be converted to ObjectId, do so
-                        if isinstance(doc_id, str) and len(doc_id) == 24:
-                            doc_ids.append(ObjectId(doc_id))
-                        else:
-                            # Otherwise keep as is (might be actual ObjectId already)
-                            doc_ids.append(doc_id)
-                    except Exception as e:
-                        _log_rag(f"Error converting document ID {doc_id} to ObjectId: {e}", level='warning')
-                        # Include the original ID even if conversion fails
-                        doc_ids.append(doc_id)
-                
-                _log_rag(f"Using document IDs for filtering: {doc_ids}", level='debug')
-                
-                # Create document_id filter
-                doc_filter = {'document_id': {'$in': doc_ids}}
-                
-                # Combine with existing filters
-                if '$and' in base_filter:
-                    base_filter['$and'].append(doc_filter)
-                else:
-                    base_filter = {
-                        '$and': [
-                            base_filter,
-                            doc_filter
-                        ]
-                    }
-            
-            _log_rag(f"Vector search filter: {base_filter}", level='debug')
-            
             pipeline = [
                 {
                     '$vectorSearch': {
@@ -744,7 +602,12 @@ class DocumentProcessor:
                         'queryVector': query_embedding, # The embedding vector of the query
                         'numCandidates': 150,  # Number of candidates to consider
                         'limit': limit,          # Max number of results to return
-                        'filter': base_filter
+                        'filter': {
+                            '$or': [
+                                {'userId': str(user_id)},  # Field as defined in the index
+                                {'user_id': str(user_id)}  # Field for backward compatibility
+                            ]
+                        }
                     }
                 },
                 { # Project the desired fields and the relevance score
@@ -753,8 +616,6 @@ class DocumentProcessor:
                         'text_chunk': 1,
                         'source_document_name': 1,
                         'chunk_index': 1,
-                        'document_id': 1,
-                        'conversation_id': 1,
                         'score': { '$meta': 'vectorSearchScore' } # Get the relevance score from $vectorSearch
                     }
                 }
