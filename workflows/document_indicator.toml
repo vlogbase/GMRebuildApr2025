@@ -1,0 +1,4 @@
+[run]
+name = "document_indicator"
+commands = ["python document_indicator_workflow.py"]
+workdir = ""
