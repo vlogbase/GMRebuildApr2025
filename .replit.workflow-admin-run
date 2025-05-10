@@ -1,7 +1,7 @@
-run = "ADMIN_EMAILS=andy@sentigral.com python admin_check.py"
+run = "ADMIN_EMAILS=andy@sentigral.com python admin_run.py"
 language = "python3"
 hidden = false
-entrypoint = "admin_check.py"
+entrypoint = "admin_run.py"
 
 [env]
 ADMIN_EMAILS = "andy@sentigral.com"

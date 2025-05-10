@@ -131,8 +131,8 @@ def create_admin():
         app,
         name='GloriaMundo Admin',
         template_mode='bootstrap3',
-        index_view=SecureAdminIndexView(name='Dashboard', url='/admin'),
-        base_template='admin/bootstrap3/layout.html'  # Use actual base template
+        index_view=SecureAdminIndexView(name='Dashboard', url='/admin')
+        # No base_template parameter - use Flask-Admin's default
     )
     
     # Add views

@@ -1,73 +1,61 @@
-{% extends 'admin/layout.html' %}
-
-{% block title %}Admin Access Check - GloriaMundo Admin{% endblock %}
-
-{% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Admin Access Check</h1>
-</div>
-
-<div class="card">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="fas fa-check-circle mr-2"></i>Admin Diagnostic Information</h5>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Access Check - GloriaMundo</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .header {
+            background-color: #343a40;
+            color: white;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <h1>GloriaMundo Admin</h1>
+                <div>
+                    <a href="/" class="btn btn-outline-light">Back to Site</a>
+                </div>
+            </div>
+        </div>
     </div>
-    <div class="card-body">
-        <div class="alert alert-info">
-            <p>This page displays diagnostic information about your admin access.</p>
+
+    <div class="container">
+        <div class="alert alert-success">
+            <h4 class="alert-heading">Admin Access Verification</h4>
+            <p>You have successfully verified your admin access.</p>
         </div>
 
-        <h4 class="mt-4">Authentication Status</h4>
-        <div class="table-responsive">
-            <table class="table table-bordered">
-                <tbody>
-                    <tr>
-                        <th style="width: 200px;">User Email</th>
-                        <td><strong>{{ user_email }}</strong></td>
-                    </tr>
-                    <tr>
-                        <th>Admin Access</th>
-                        <td>
-                            {% if is_admin %}
-                                <span class="badge badge-success">YES</span>
-                            {% else %}
-                                <span class="badge badge-danger">NO</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-
-        <h4 class="mt-4">Admin Configuration</h4>
-        <div class="card">
-            <div class="card-header bg-light">
-                <h5 class="mb-0">Authorized Admin Emails</h5>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3 class="card-title">Admin Access Details</h3>
             </div>
             <div class="card-body">
-                {% if admin_emails %}
-                    <ul class="list-group">
-                        {% for email in admin_emails %}
-                            <li class="list-group-item {% if email == user_email %}list-group-item-success{% endif %}">
-                                {{ email }}
-                                {% if email == user_email %}
-                                    <span class="badge badge-success float-right">Your Email</span>
-                                {% endif %}
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% else %}
-                    <div class="alert alert-warning">
-                        <p>No admin emails are configured in the ADMIN_EMAILS environment variable.</p>
-                    </div>
-                {% endif %}
+                <p><strong>Your Email:</strong> {{ admin_email }}</p>
+                <p><strong>Authorized Admin Emails:</strong> {{ admin_emails }}</p>
+                
+                <div class="mt-3">
+                    <a href="/admin" class="btn btn-primary">Back to Dashboard</a>
+                    <a href="/admin-direct" class="btn btn-secondary">Alternative Admin Route</a>
+                </div>
             </div>
         </div>
-
-        <div class="mt-4">
-            <a href="{{ url_for('admin_routes.dashboard') }}" class="btn btn-primary">
-                <i class="fas fa-home"></i> Return to Admin Dashboard
-            </a>
-        </div>
     </div>
-</div>
-{% endblock %}
+
+    <footer class="bg-light py-4 mt-5">
+        <div class="container text-center">
+            <p>GloriaMundo Admin Dashboard &copy; {{ now.year }}</p>
+        </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

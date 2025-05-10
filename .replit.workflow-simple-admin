@@ -1,16 +1,8 @@
-run = "python -c \"import os; os.environ['ADMIN_EMAILS'] = 'andy@sentigral.com'; from app import app; from simple_admin import create_admin; admin = create_admin(app, app.extensions['sqlalchemy'].db); app.run(host='0.0.0.0', port=3000, debug=True)\""
+run = "ADMIN_EMAILS=andy@sentigral.com PORT=3000 gunicorn main:app --bind=0.0.0.0:3000 --worker-class=gevent --workers=1 --timeout=120"
 language = "python3"
-entrypoint = "simple_admin.py"
-hidden = [".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
-modules = ["python-3.11:v2-20240124-3e3d06f"]
-
-[nix]
-channel = "stable-23_11"
+hidden = false
+entrypoint = "main.py"
 
 [env]
-PYTHONPATH = "${PYTHONPATH}:${REPL_HOME}"
-PORT = "3000"
 ADMIN_EMAILS = "andy@sentigral.com"
-
-[unitTest]
-language = "python3"
+PORT = "3000"

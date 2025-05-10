@@ -1,57 +1,73 @@
 # GloriaMundo Admin Dashboard
 
-A secure admin interface for managing the GloriaMundo chatbot platform built with Flask-Admin.
+This document outlines the implementation of the GloriaMundo admin dashboard.
 
-## Features
+## Overview
 
-- **Secure Access Control**: Only authorized administrators (andy@sentigral.com) can access the dashboard
-- **Commission Management**: Approve, reject, and process affiliate commissions
-- **Affiliate Management**: View and manage affiliate accounts
-- **Analytics Views**: Track user token usage and see which AI models are most popular
-- **Dashboard Overview**: Get a quick view of key metrics and system health
+The admin dashboard provides secure access to system management features for authorized administrators. It uses a minimal implementation that integrates directly with the main application without relying on Flask-Admin extension.
 
-## Accessing the Admin Dashboard
+## Security
 
-The admin interface is available at: `/gm-admin`
+- Admin access is restricted to specific email addresses (default: `andy@sentigral.com`)
+- Custom `admin_required` decorator enforces access control
+- Unauthorized access attempts are logged and redirected to the login page or shown a 403 error
 
-The old `/admin` route will redirect to the new interface for backward compatibility.
+## Configuration
 
-## Running the Admin Dashboard
-
-You can start the admin dashboard by running:
+To specify admin email addresses, set the `ADMIN_EMAILS` environment variable with a comma-separated list of email addresses:
 
 ```
-./run_admin.sh
+ADMIN_EMAILS=andy@sentigral.com,admin@example.com
 ```
 
-The dashboard will be available at port 3000.
+## Implementation
 
-## Running Admin Tests
+The admin dashboard is implemented using a blueprint approach:
 
-To verify that the admin interface is working correctly, run:
+1. `admin_loader.py` - Core module that registers the admin blueprint and provides basic admin routes
+2. Templates in `templates/admin/` directory
+
+## Routes
+
+- `/admin` - Main admin dashboard showing system statistics
+- `/admin/check` - Diagnostic page to verify admin access is working
+- `/admin-direct` - Alternative route that redirects to the main admin dashboard
+
+## Development Notes
+
+### Multiple Approaches Tested
+
+Several implementations were created and tested:
+- Standard Flask-Admin integration (gm_admin.py)
+- Standalone admin app (admin_app.py)
+- Custom routes implementation (admin_routes.py)
+- Minimal blueprint approach (admin_loader.py) - CURRENT IMPLEMENTATION
+
+The minimal blueprint approach was chosen for its simplicity, reliability, and compatibility with the existing application structure.
+
+### Running the Admin Dashboard
+
+Use the provided workflow file:
 
 ```
-./run_admin_tests.sh
+.replit.workflow-simple-admin
 ```
 
-This will run a series of tests to check:
-- Admin access control
-- Route security 
-- Health check endpoints
+This will start the server with the necessary environment variables set.
 
-## Deployment
+### Adding New Admin Features
 
-The admin dashboard is configured to handle deployment health checks. The root endpoint (/) will return a 200 status code for health checks, making it compatible with deployment platforms.
+To extend the admin dashboard:
 
-## Security Features
+1. Add new routes to `admin_loader.py` using the `@admin_bp.route()` decorator
+2. Create corresponding templates in the `templates/admin/` directory
+3. Update the dashboard to include links to the new features
 
-- **Authentication**: Only authenticated users can attempt to access the admin interface
-- **Authorization**: Only users with email andy@sentigral.com can access admin functions
-- **Configuration**: Admin access is controlled through the `ADMIN_EMAILS` environment variable
+## Troubleshooting
 
-## Technical Details
+If the admin dashboard is not accessible:
 
-- Built with Flask-Admin using Bootstrap 3 templates
-- Custom secure base view with access control
-- Specialized views for various data models
-- Port 3000 configuration for dedicated admin interface
+1. Verify the user is logged in
+2. Check the user's email is in the `ADMIN_EMAILS` environment variable
+3. Look for error messages in the application logs
+4. Try accessing the `/admin-direct` route as an alternative

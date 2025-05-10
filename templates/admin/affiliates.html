@@ -1,89 +1,139 @@
-{% extends 'admin/layout.html' %}
+{% extends "admin/layout.html" %}
 
 {% block title %}Affiliates - GloriaMundo Admin{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Affiliates</h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        <div class="input-group">
-            <input type="text" id="affiliateSearch" class="form-control form-control-sm" placeholder="Search by email..." aria-label="Search">
-            <div class="input-group-append">
-                <button class="btn btn-sm btn-outline-secondary" type="button">
-                    <i class="fas fa-search"></i>
-                </button>
-            </div>
+<div class="main-header">
+    <h1>Affiliate Management</h1>
+    <p class="text-muted">View and manage GloriaMundo affiliates</p>
+</div>
+
+<div class="card card-admin">
+    <div class="card-header">
+        <h5 class="card-title mb-0">All Affiliates</h5>
+    </div>
+    <div class="card-body">
+        <div class="mb-3">
+            <input type="text" id="affiliateSearchInput" class="form-control" placeholder="Search affiliates...">
         </div>
+        
+        <table class="table table-striped" id="affiliatesTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>PayPal Email</th>
+                    <th>Referral Code</th>
+                    <th>Status</th>
+                    <th>Terms Agreed At</th>
+                    <th>Created At</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for affiliate in affiliates %}
+                <tr>
+                    <td>{{ affiliate.id }}</td>
+                    <td>{{ affiliate.name }}</td>
+                    <td>{{ affiliate.email }}</td>
+                    <td>{{ affiliate.paypal_email or 'Not Set' }}</td>
+                    <td>{{ affiliate.referral_code }}</td>
+                    <td>
+                        <span class="badge {% if affiliate.status == 'active' %}bg-success{% elif affiliate.status == 'pending' %}bg-warning{% else %}bg-secondary{% endif %}">
+                            {{ affiliate.status | capitalize }}
+                        </span>
+                    </td>
+                    <td>{{ affiliate.terms_agreed_at }}</td>
+                    <td>{{ affiliate.created_at }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header bg-light">
-        <h5 class="mb-0"><i class="fas fa-handshake mr-2"></i>Affiliate Management</h5>
+<div class="card card-admin mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Affiliate Status Summary</h5>
     </div>
     <div class="card-body">
-        {% if affiliates %}
-            <div class="table-responsive">
-                <table class="table table-striped table-hover" id="affiliatesTable">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>PayPal Email</th>
-                            <th>Referral Code</th>
-                            <th>Status</th>
-                            <th>Created At</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for affiliate in affiliates %}
-                        <tr>
-                            <td>{{ affiliate.id }}</td>
-                            <td>{{ affiliate.name }}</td>
-                            <td>{{ affiliate.email }}</td>
-                            <td>{{ affiliate.paypal_email }}</td>
-                            <td><code>{{ affiliate.referral_code }}</code></td>
-                            <td>
-                                {% if affiliate.status == 'active' %}
-                                    <span class="badge badge-success">Active</span>
-                                {% elif affiliate.status == 'inactive' %}
-                                    <span class="badge badge-warning">Inactive</span>
-                                {% elif affiliate.status == 'suspended' %}
-                                    <span class="badge badge-danger">Suspended</span>
-                                {% else %}
-                                    <span class="badge badge-secondary">{{ affiliate.status }}</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ affiliate.created_at.strftime('%Y-%m-%d') }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5>Active</h5>
+                        <h3>{{ affiliates | selectattr('status', 'equalto', 'active') | list | length }}</h3>
+                    </div>
+                </div>
             </div>
-        {% else %}
-            <p class="text-muted">No affiliates found.</p>
-        {% endif %}
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5>Pending</h5>
+                        <h3>{{ affiliates | selectattr('status', 'equalto', 'pending') | list | length }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5>Other</h5>
+                        <h3>{{ affiliates | reject('status', 'in', ['active', 'pending']) | list | length }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    // Simple client-side search functionality
-    document.getElementById('affiliateSearch').addEventListener('keyup', function() {
-        const searchTerm = this.value.toLowerCase();
-        const tableRows = document.querySelectorAll('#affiliatesTable tbody tr');
+    // Simple search functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.getElementById('affiliateSearchInput');
+        const table = document.getElementById('affiliatesTable');
+        const rows = table.querySelectorAll('tbody tr');
         
-        tableRows.forEach(row => {
-            const email = row.cells[2].innerText.toLowerCase();
-            const name = row.cells[1].innerText.toLowerCase();
+        searchInput.addEventListener('keyup', function() {
+            const searchTerm = this.value.toLowerCase();
             
-            if (email.includes(searchTerm) || name.includes(searchTerm)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            rows.forEach(row => {
+                const text = row.textContent.toLowerCase();
+                if (text.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+        
+        // Status filter
+        const statusFilter = document.createElement('select');
+        statusFilter.classList.add('form-select', 'mb-3', 'mt-3');
+        statusFilter.innerHTML = `
+            <option value="">All Statuses</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="inactive">Inactive</option>
+        `;
+        
+        searchInput.parentNode.insertAdjacentElement('afterend', statusFilter);
+        
+        statusFilter.addEventListener('change', function() {
+            const value = this.value.toLowerCase();
+            
+            rows.forEach(row => {
+                // Status is in the 6th cell (index 5)
+                const statusCell = row.cells[5];
+                const status = statusCell.textContent.trim().toLowerCase();
+                
+                if (value === '' || status.includes(value)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
         });
     });
 </script>

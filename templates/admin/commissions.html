@@ -1,100 +1,149 @@
-{% extends 'admin/layout.html' %}
+{% extends "admin/layout.html" %}
 
 {% block title %}Commissions - GloriaMundo Admin{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Commissions</h1>
-    <div class="btn-toolbar mb-2 mb-md-0">
-        <div class="btn-group mr-2">
-            <a href="{{ url_for('admin_routes.commissions') }}" class="btn btn-sm btn-outline-secondary {% if not current_filter %}active{% endif %}">All</a>
-            {% for status in statuses %}
-                {% if status == 'pending' %}
-                    <a href="{{ url_for('admin_routes.commissions', status=status) }}" class="btn btn-sm btn-outline-warning {% if current_filter == status %}active{% endif %}">Pending</a>
-                {% elif status == 'approved' %}
-                    <a href="{{ url_for('admin_routes.commissions', status=status) }}" class="btn btn-sm btn-outline-success {% if current_filter == status %}active{% endif %}">Approved</a>
-                {% elif status == 'paid' %}
-                    <a href="{{ url_for('admin_routes.commissions', status=status) }}" class="btn btn-sm btn-outline-primary {% if current_filter == status %}active{% endif %}">Paid</a>
-                {% elif status == 'rejected' %}
-                    <a href="{{ url_for('admin_routes.commissions', status=status) }}" class="btn btn-sm btn-outline-danger {% if current_filter == status %}active{% endif %}">Rejected</a>
-                {% else %}
-                    <a href="{{ url_for('admin_routes.commissions', status=status) }}" class="btn btn-sm btn-outline-secondary {% if current_filter == status %}active{% endif %}">{{ status|capitalize }}</a>
-                {% endif %}
-            {% endfor %}
-        </div>
+<div class="main-header">
+    <h1>Commission Management</h1>
+    <p class="text-muted">View and manage affiliate commissions</p>
+</div>
+
+<div class="card card-admin">
+    <div class="card-header">
+        <h5 class="card-title mb-0">All Commissions</h5>
+    </div>
+    <div class="card-body">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Affiliate</th>
+                    <th>Level</th>
+                    <th>Purchase Amount</th>
+                    <th>Commission</th>
+                    <th>Status</th>
+                    <th>Earned Date</th>
+                    <th>Available Date</th>
+                    <th>Payout Batch</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for commission, affiliate_email in commissions %}
+                <tr>
+                    <td>{{ commission.id }}</td>
+                    <td>{{ affiliate_email }}</td>
+                    <td>{{ commission.commission_level }}</td>
+                    <td>£{{ '{:.2f}'.format(commission.purchase_amount_base) }}</td>
+                    <td>£{{ '{:.2f}'.format(commission.commission_amount) }}</td>
+                    <td>
+                        <span class="badge {% if commission.status == 'pending' %}bg-warning{% elif commission.status == 'approved' %}bg-success{% elif commission.status == 'paid' %}bg-primary{% else %}bg-danger{% endif %}">
+                            {{ commission.status | capitalize }}
+                        </span>
+                    </td>
+                    <td>{{ commission.commission_earned_date }}</td>
+                    <td>{{ commission.commission_available_date }}</td>
+                    <td>{{ commission.payout_batch_id or 'N/A' }}</td>
+                    <td>
+                        {% if commission.status == 'pending' %}
+                        <form method="post" action="{{ url_for('admin.approve_commission', commission_id=commission.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-success btn-sm" onclick="return confirm('Are you sure you want to approve this commission?')">
+                                Approve
+                            </button>
+                        </form>
+                        {% endif %}
+                        
+                        {% if commission.status in ['pending', 'approved'] %}
+                        <form method="post" action="{{ url_for('admin.reject_commission', commission_id=commission.id) }}" class="d-inline">
+                            <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to reject this commission?')">
+                                Reject
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
-<div class="card">
-    <div class="card-header bg-light">
-        <h5 class="mb-0"><i class="fas fa-money-bill-wave mr-2"></i>Commission Management</h5>
+<div class="card card-admin mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Commission Status Summary</h5>
     </div>
     <div class="card-body">
-        {% if commissions %}
-            <div class="table-responsive">
-                <table class="table table-striped table-hover">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Affiliate</th>
-                            <th>Level</th>
-                            <th>Purchase Amount</th>
-                            <th>Commission</th>
-                            <th>Status</th>
-                            <th>Earned Date</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for commission in commissions %}
-                        <tr>
-                            <td>{{ commission.id }}</td>
-                            <td>{{ commission.affiliate.email }}</td>
-                            <td>{{ commission.commission_level }}</td>
-                            <td>£{{ "%.2f"|format(commission.purchase_amount_base) }}</td>
-                            <td>£{{ "%.2f"|format(commission.commission_amount) }}</td>
-                            <td>
-                                {% if commission.status == 'pending' %}
-                                    <span class="badge badge-warning">Pending</span>
-                                {% elif commission.status == 'approved' %}
-                                    <span class="badge badge-success">Approved</span>
-                                {% elif commission.status == 'paid' %}
-                                    <span class="badge badge-primary">Paid</span>
-                                {% elif commission.status == 'rejected' %}
-                                    <span class="badge badge-danger">Rejected</span>
-                                {% else %}
-                                    <span class="badge badge-secondary">{{ commission.status }}</span>
-                                {% endif %}
-                            </td>
-                            <td>{{ commission.commission_earned_date.strftime('%Y-%m-%d') }}</td>
-                            <td>
-                                {% if commission.status == 'pending' %}
-                                    <form method="POST" action="{{ url_for('admin_routes.approve_commission', commission_id=commission.id) }}" class="d-inline">
-                                        <button type="submit" class="btn btn-sm btn-success" title="Approve Commission">
-                                            <i class="fas fa-check"></i>
-                                        </button>
-                                    </form>
-                                    <form method="POST" action="{{ url_for('admin_routes.reject_commission', commission_id=commission.id) }}" class="d-inline">
-                                        <button type="submit" class="btn btn-sm btn-danger" title="Reject Commission">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </form>
-                                {% elif commission.status == 'approved' %}
-                                    <form method="POST" action="{{ url_for('admin_routes.reject_commission', commission_id=commission.id) }}" class="d-inline">
-                                        <button type="submit" class="btn btn-sm btn-danger" title="Reject Commission">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </form>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="row">
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5>Pending</h5>
+                        <h3>{{ commissions | selectattr('0.status', 'equalto', 'pending') | list | length }}</h3>
+                    </div>
+                </div>
             </div>
-        {% else %}
-            <p class="text-muted">No commissions found.</p>
-        {% endif %}
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5>Approved</h5>
+                        <h3>{{ commissions | selectattr('0.status', 'equalto', 'approved') | list | length }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5>Paid</h5>
+                        <h3>{{ commissions | selectattr('0.status', 'equalto', 'paid') | list | length }}</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-body text-center">
+                        <h5>Rejected</h5>
+                        <h3>{{ commissions | selectattr('0.status', 'equalto', 'rejected') | list | length }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Add DataTable for better sorting/filtering
+    document.addEventListener('DOMContentLoaded', function() {
+        // Simple client-side filtering
+        const statusFilter = document.createElement('select');
+        statusFilter.classList.add('form-select', 'mb-3');
+        statusFilter.innerHTML = `
+            <option value="">All Statuses</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="paid">Paid</option>
+            <option value="rejected">Rejected</option>
+        `;
+        
+        const tableContainer = document.querySelector('.table').parentNode;
+        tableContainer.insertBefore(statusFilter, tableContainer.firstChild);
+        
+        statusFilter.addEventListener('change', function() {
+            const value = this.value.toLowerCase();
+            const rows = document.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const statusCell = row.querySelector('td:nth-child(6)');
+                const status = statusCell.textContent.trim().toLowerCase();
+                
+                if (value === '' || status.includes(value)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

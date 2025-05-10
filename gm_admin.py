@@ -349,48 +349,46 @@ def create_admin(app, db):
         # Log that we're starting the admin creation process
         app.logger.info("Starting Flask-Admin creation process")
         
-        # Create admin instance with unique endpoint names
+        # Most basic admin instance - simplified for debugging template issues
         admin = Admin(
             app, 
             name='GloriaMundo Admin',
-            template_mode='bootstrap3',
-            index_view=SecureAdminIndexView(
-                name='Dashboard', 
-                url='/admin',
-                endpoint='admin_dashboard'  # Unique endpoint to avoid conflicts
-            ),
-            base_template='admin/master.html'
+            endpoint='flask_admin',  # Use a unique endpoint name to avoid conflicts
+            url='/flask-admin',      # Use a different URL to avoid conflicts with admin_loader.py
+            template_mode='bootstrap4'  # Changed from bootstrap3 to bootstrap4 for testing
+            # REMOVED: index_view and base_template for simplicity
         )
         
-        # Add views with unique endpoint names to avoid blueprint naming conflicts
-        admin.add_view(UserModelView(
-            User, db.session, 
-            name='Users', 
-            category='User Management',
-            endpoint='admin_users'  # Unique endpoint to avoid conflicts
-        ))
-        admin.add_view(AffiliateModelView(
-            Affiliate, db.session, 
-            name='Affiliates', 
-            category='Affiliate System',
-            endpoint='admin_affiliates'  # Unique endpoint to avoid conflicts
-        ))
-        admin.add_view(CommissionModelView(
-            Commission, db.session, 
-            name='Commissions', 
-            category='Affiliate System',
-            endpoint='admin_commissions'  # Unique endpoint to avoid conflicts
-        ))
-        admin.add_view(UserTokenUsageView(
-            name='User Token Usage', 
-            category='Analytics',
-            endpoint='admin_token_usage'  # Unique endpoint to avoid conflicts
-        ))
-        admin.add_view(PopularModelsView(
-            name='Popular Models', 
-            category='Analytics',
-            endpoint='admin_popular_models'  # Unique endpoint to avoid conflicts
-        ))
+        # TEMPORARILY COMMENTED OUT FOR DEBUGGING TEMPLATE ISSUES
+        # # Add views with unique endpoint names to avoid blueprint naming conflicts
+        # admin.add_view(UserModelView(
+        #     User, db.session, 
+        #     name='Users', 
+        #     category='User Management',
+        #     endpoint='admin_users'  # Unique endpoint to avoid conflicts
+        # ))
+        # admin.add_view(AffiliateModelView(
+        #     Affiliate, db.session, 
+        #     name='Affiliates', 
+        #     category='Affiliate System',
+        #     endpoint='admin_affiliates'  # Unique endpoint to avoid conflicts
+        # ))
+        # admin.add_view(CommissionModelView(
+        #     Commission, db.session, 
+        #     name='Commissions', 
+        #     category='Affiliate System',
+        #     endpoint='admin_commissions'  # Unique endpoint to avoid conflicts
+        # ))
+        # admin.add_view(UserTokenUsageView(
+        #     name='User Token Usage', 
+        #     category='Analytics',
+        #     endpoint='admin_token_usage'  # Unique endpoint to avoid conflicts
+        # ))
+        # admin.add_view(PopularModelsView(
+        #     name='Popular Models', 
+        #     category='Analytics',
+        #     endpoint='admin_popular_models'  # Unique endpoint to avoid conflicts
+        # ))
         
         # Simple diagnostic routes
         @app.route('/admin-home')

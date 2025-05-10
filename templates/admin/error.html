@@ -1,9 +1,26 @@
-{% extends 'admin/master.html' %}
+{% extends "admin/layout.html" %}
 
-{% block body %}
-<div class="alert alert-danger">
-    <h3>Error</h3>
-    <p>{{ error }}</p>
-    <p>Please check the server logs for more details or contact the system administrator.</p>
+{% block title %}Error - GloriaMundo Admin{% endblock %}
+
+{% block content %}
+<div class="main-header">
+    <h1>Error</h1>
+    <p class="text-muted">An error occurred while processing your request</p>
+</div>
+
+<div class="card card-admin">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Error Details</h5>
+    </div>
+    <div class="card-body">
+        <div class="alert alert-danger">
+            <h4 class="alert-heading">Error Occurred</h4>
+            <p>{{ error }}</p>
+        </div>
+        
+        <div class="mt-4">
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary">Return to Dashboard</a>
+        </div>
+    </div>
 </div>
 {% endblock %}

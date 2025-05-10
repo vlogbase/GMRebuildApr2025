@@ -169,6 +169,42 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
+# Register admin blueprint if admin user exists
+try:
+    from admin_loader import register_admin_blueprint, admin_required
+    register_admin_blueprint(app)
+    app.logger.info("Admin blueprint registered successfully")
+    
+    # Add a direct admin route for reliability
+    @app.route('/admin')
+    @admin_required
+    def admin_main():
+        from datetime import datetime
+        # Import models here to avoid circular imports
+        from models import User
+        user_count = User.query.count()
+        
+        # Check if Affiliate model exists and is accessible
+        affiliate_count = 0
+        commission_count = 0
+        try:
+            from models import Affiliate, Commission
+            affiliate_count = Affiliate.query.count()
+            commission_count = Commission.query.count()
+        except Exception as e:
+            app.logger.warning(f"Could not access affiliate data: {str(e)}")
+        
+        return render_template('admin/dashboard.html',
+                              user_count=user_count,
+                              affiliate_count=affiliate_count,
+                              commission_count=commission_count,
+                              total_pending=0,
+                              total_approved=0,
+                              total_paid=0,
+                              now=datetime.now())
+except Exception as e:
+    app.logger.error(f"Error registering admin blueprint: {str(e)}")
+
 # Register blueprints
 try:
     from google_auth import google_auth
@@ -798,7 +834,16 @@ def index():
     # Handle basic health check request (for deployment)
     user_agent = request.headers.get('User-Agent', '').lower()
     if 'health' in user_agent or request.args.get('health') == 'check':
-        return jsonify({'status': 'ok', 'message': 'GloriaMundo Admin Dashboard is running'}), 200
+        # Enhanced health check with admin routes information
+        admin_routes = [rule.rule for rule in app.url_map.iter_rules() 
+                      if rule.rule.startswith('/admin')]
+        
+        return jsonify({
+            'status': 'ok', 
+            'message': 'GloriaMundo application is running',
+            'admin_dashboard': len(admin_routes) > 0,
+            'admin_routes': admin_routes
+        }), 200
     
     # Allow non-authenticated users to use the app with limited functionality
     is_logged_in = current_user.is_authenticated
