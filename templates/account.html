@@ -491,14 +491,19 @@
                                 </th>
                                 <th onclick="sortPricingTable(5)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-center py-3">
                                     <div class="d-flex justify-content-center align-items-center">
-                                        Cost Band <i id="sort-icon-5" class="fas fa-sort"></i>
+                                        PDFs <i id="sort-icon-5" class="fas fa-sort"></i>
+                                    </div>
+                                </th>
+                                <th onclick="sortPricingTable(6)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-center py-3">
+                                    <div class="d-flex justify-content-center align-items-center">
+                                        Cost Band <i id="sort-icon-6" class="fas fa-sort"></i>
                                     </div>
                                 </th>
                             </tr>
                         </thead>
                         <tbody id="pricingTableBody">
                             <tr>
-                                <td colspan="5" class="text-center py-5">
+                                <td colspan="7" class="text-center py-5">
                                     <div class="d-flex flex-column align-items-center">
                                         <div class="spinner-border text-info mb-3" role="status">
                                             <span class="visually-hidden">Loading...</span>
@@ -878,6 +883,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         output_price: outputPriceStr,
                         context_length: modelDetails.context_length || 'N/A',
                         multimodal: modelDetails.is_multimodal ? 'Yes' : 'No',
+                        pdfs: modelDetails.supports_pdf ? 'Yes' : 'No',
                         cost_band: modelDetails.cost_band || ''
                     };
                 });
@@ -946,7 +952,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // No cached data or failed to parse it - show empty state
                 pricingTableBody.innerHTML = `
                     <tr>
-                        <td colspan="6" class="text-center py-5">
+                        <td colspan="7" class="text-center py-5">
                             <p class="caption text-danger">No pricing data available. Please try again later.</p>
                             <small class="text-muted">${error.message}</small>
                         </td>
@@ -1048,7 +1054,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     bValue = b.multimodal === 'Yes' ? 0 : 1;
                     break;
                 
-                case 5: // Cost Band
+                case 5: // PDFs
+                    // Yes comes before No for PDFs sorting
+                    aValue = a.pdfs === 'Yes' ? 0 : 1;
+                    bValue = b.pdfs === 'Yes' ? 0 : 1;
+                    break;
+                
+                case 6: // Cost Band
                     // Sort by number of $ characters
                     aValue = a.cost_band ? a.cost_band.length : 0;
                     bValue = b.cost_band ? b.cost_band.length : 0;
@@ -1075,7 +1087,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (filteredData.length === 0) {
             pricingTableBody.innerHTML = `
                 <tr>
-                    <td colspan="6" class="text-center py-4">
+                    <td colspan="7" class="text-center py-4">
                         <p class="caption">No matching models found.</p>
                     </td>
                 </tr>
@@ -1191,6 +1203,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td class="text-end">${contextDisplay}</td>
                     <td class="text-center">
                         ${multimodalDisplay}
+                    </td>
+                    <td class="text-center">
+                        ${model.pdfs === 'Yes' ? 
+                            '<span class="badge bg-success">Yes</span>' : 
+                            '<span class="badge bg-secondary">No</span>'}
                     </td>
                     <td class="text-center">
                         ${costBand ? `<span class="cost-band-indicator ${costBandClass}">${costBand}</span>` : ''}

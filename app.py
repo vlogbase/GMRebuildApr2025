@@ -2522,6 +2522,7 @@ def get_model_prices():
                     'output_price': db_model.output_price_usd_million,
                     'context_length': db_model.context_length,
                     'is_multimodal': db_model.is_multimodal,
+                    'supports_pdf': db_model.supports_pdf,
                     'model_name': db_model.name,
                     'cost_band': db_model.cost_band,
                     'source': 'database'
@@ -2774,7 +2775,8 @@ def get_model_pricing():
                 "output_price": output_price_display,
                 "context_length": context_length,
                 "throughput": throughput_estimate,
-                "multimodal": "Yes" if is_multimodal else "No"
+                "multimodal": "Yes" if is_multimodal else "No",
+                "pdfs": "Yes" if db_model.supports_pdf else "No"
             })
         
         # Add the manually defined text-embedding-3-large model
@@ -2785,7 +2787,8 @@ def get_model_pricing():
             "output_price": "$0.00",  # Changed from "N/A" to "$0.00" for consistency
             "context_length": "8192",
             "throughput": "Very High",
-            "multimodal": "No"
+            "multimodal": "No",
+            "pdfs": "No"
         })
         
         # Sort models alphabetically for consistent display

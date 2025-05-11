@@ -328,6 +328,7 @@ class OpenRouterModel(db.Model):
     is_multimodal = db.Column(db.Boolean, default=False)  # Whether model supports images
     is_free = db.Column(db.Boolean, default=False)  # Free models
     supports_reasoning = db.Column(db.Boolean, default=False)  # Models with strong reasoning capabilities
+    supports_pdf = db.Column(db.Boolean, default=False)  # Whether model supports PDF files
     cost_band = db.Column(db.String(8), nullable=True)  # '$', '$$', '$$$', '$$$$' band
     model_is_active = db.Column(db.Boolean, default=True)  # Whether model is still available from OpenRouter
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # When this model record was created
@@ -348,11 +349,25 @@ class OpenRouterModel(db.Model):
         return cls.query.filter_by(is_multimodal=True, model_is_active=True).order_by(cls.name).all()
         
     @classmethod
+    def get_pdf_models(cls):
+        """Return only active models that support PDF files"""
+        return cls.query.filter_by(supports_pdf=True, model_is_active=True).order_by(cls.name).all()
+        
+    @classmethod
     def is_model_multimodal(cls, model_id):
         """Check if a specific model supports multimodal inputs"""
         model = cls.query.get(model_id)
         if model:
             return model.is_multimodal
+        # Default to False if model not found
+        return False
+        
+    @classmethod
+    def is_model_pdf_capable(cls, model_id):
+        """Check if a specific model supports PDF files directly"""
+        model = cls.query.get(model_id)
+        if model:
+            return model.supports_pdf
         # Default to False if model not found
         return False
         

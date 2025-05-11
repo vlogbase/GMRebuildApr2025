@@ -114,10 +114,13 @@ def fetch_and_store_openrouter_prices() -> bool:
             # Check if model has multimodal capabilities from architecture
             architecture = model.get('architecture', {})
             is_multimodal = False
+            supports_pdf = False
             
             if architecture:
                 input_modalities = architecture.get('input_modalities', [])
                 is_multimodal = len(input_modalities) > 1 or 'image' in input_modalities
+                # Check for PDF support (models that can handle files/PDFs directly)
+                supports_pdf = 'file' in input_modalities
             
             # Apply our markup and store in the cache
             # Calculate per million tokens pricing for easier display/calculation
@@ -151,6 +154,7 @@ def fetch_and_store_openrouter_prices() -> bool:
                 'raw_output_price': output_price_million,  # Price per million tokens without markup
                 'context_length': model.get('context_length', 'Unknown'),
                 'is_multimodal': is_multimodal or model.get('is_multimodal', False),
+                'supports_pdf': supports_pdf,
                 'model_name': model.get('name', model_id.split('/')[-1]),
                 'cost_band': cost_band  # Add cost band indicator
             }
@@ -211,6 +215,7 @@ def fetch_and_store_openrouter_prices() -> bool:
                         db_model.input_price_usd_million = model_data['input_price']
                         db_model.output_price_usd_million = model_data['output_price']
                         db_model.is_multimodal = model_data['is_multimodal']
+                        db_model.supports_pdf = model_data['supports_pdf']
                         db_model.cost_band = model_data['cost_band']
                         
                         # Update additional fields
@@ -258,6 +263,7 @@ def fetch_and_store_openrouter_prices() -> bool:
                         new_model.input_price_usd_million = model_data['input_price']
                         new_model.output_price_usd_million = model_data['output_price']
                         new_model.is_multimodal = model_data['is_multimodal']
+                        new_model.supports_pdf = model_data['supports_pdf']
                         new_model.is_free = is_free
                         new_model.supports_reasoning = supports_reasoning
                         new_model.cost_band = model_data['cost_band']
