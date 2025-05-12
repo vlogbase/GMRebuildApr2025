@@ -1,80 +1,80 @@
 """
-Simple script to check which models support PDF files via the OpenRouter API.
+Script to check PDF support in OpenRouter model information.
 """
-
 import os
-import requests
+import sys
 import json
 import logging
+from sqlalchemy import create_engine, text
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def get_pdf_capable_models():
-    """Fetch models from OpenRouter API and identify PDF-capable ones"""
-    openrouter_api_key = os.environ.get('OPENROUTER_API_KEY')
-    if not openrouter_api_key:
-        logger.error("OPENROUTER_API_KEY not found in environment variables")
-        return []
-    
-    # Define headers for OpenRouter API
-    headers = {
-        "Authorization": f"Bearer {openrouter_api_key}",
-        "HTTP-Referer": "https://gloriamundo.com",
-        "X-Title": "GloriaMundo Chatbot"
-    }
-    
-    logger.info("Fetching models from OpenRouter API...")
-    
+def check_pdf_support():
+    """
+    Check PDF support for GPT-4o and Gemini models in the database.
+    """
     try:
-        # Fetch models from OpenRouter API
-        response = requests.get("https://openrouter.ai/api/v1/models", headers=headers)
-        if response.status_code != 200:
-            logger.error(f"Failed to fetch models from OpenRouter. Status code: {response.status_code}")
-            return []
-        
-        models_data = response.json().get('data', [])
-        if not models_data:
-            logger.error("No models found in the API response")
-            return []
-        
-        logger.info(f"Successfully fetched {len(models_data)} models from OpenRouter API")
-        
-        # Extract model IDs with PDF support
-        pdf_models = []
-        for model in models_data:
-            model_id = model.get('id', '')
-            name = model.get('name', model_id.split('/')[-1])
-            architecture = model.get('architecture', {})
+        # Get database URL from environment
+        db_url = os.environ.get('DATABASE_URL')
+        if not db_url:
+            logger.error("DATABASE_URL environment variable not set")
+            return False
             
-            # Check for PDF support
-            supports_pdf = False
-            if architecture:
-                input_modalities = architecture.get('input_modalities', [])
-                supports_pdf = 'file' in input_modalities
+        # Create engine
+        engine = create_engine(db_url)
+        
+        with engine.connect() as conn:
+            # Query for GPT-4o and Gemini models
+            query = text("""
+                SELECT model_id, name, supports_pdf, is_multimodal, cost_band, input_price_usd_million 
+                FROM open_router_model 
+                WHERE model_id LIKE '%gpt-4o%' OR model_id LIKE '%gemini%'
+                ORDER BY model_id
+            """)
             
-            if supports_pdf:
-                pdf_models.append({
-                    'id': model_id,
-                    'name': name
-                })
-        
-        # Output the results
-        logger.info(f"Found {len(pdf_models)} models with PDF support:")
-        for model in pdf_models:
-            logger.info(f"- {model['name']} ({model['id']})")
-        
-        # Save to a JSON file for reference
-        with open('pdf_capable_models.json', 'w') as f:
-            json.dump(pdf_models, f, indent=2)
-        logger.info("PDF-capable models saved to pdf_capable_models.json")
-        
-        return pdf_models
-        
+            result = conn.execute(query)
+            rows = result.fetchall()
+            
+            if not rows:
+                logger.info("No GPT-4o or Gemini models found in the database")
+                return False
+            
+            logger.info(f"Found {len(rows)} GPT-4o and Gemini models:")
+            for row in rows:
+                model_id, name, supports_pdf, is_multimodal, cost_band, input_price = row
+                logger.info(f"Model ID: {model_id}")
+                logger.info(f"  Name: {name}")
+                logger.info(f"  Supports PDF: {supports_pdf}")
+                logger.info(f"  Is Multimodal: {is_multimodal}")
+                logger.info(f"  Cost Band: {cost_band}")
+                logger.info(f"  Input Price: {input_price}")
+                logger.info("---")
+            
+            # Check how the model info is sent to the frontend
+            query = text("""
+                SELECT * FROM open_router_model LIMIT 1;
+            """)
+            result = conn.execute(query)
+            row = result.fetchone()
+            
+            if row:
+                logger.info("Database schema for open_router_model:")
+                for column, value in zip(result.keys(), row):
+                    logger.info(f"  {column}: {value}")
+            
+            return True
+                
     except Exception as e:
-        logger.error(f"Error fetching models from OpenRouter: {e}")
-        return []
+        logger.error(f"Error checking PDF support: {e}")
+        return False
 
 if __name__ == "__main__":
-    get_pdf_capable_models()
+    logger.info("Checking PDF support for GPT-4o and Gemini models...")
+    success = check_pdf_support()
+    if success:
+        logger.info("Successfully checked PDF support")
+    else:
+        logger.error("Failed to check PDF support")
+        sys.exit(1)

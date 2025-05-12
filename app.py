@@ -3195,6 +3195,7 @@ def get_models():
                         'completion': str(db_model.output_price_usd_million / 1000000)
                     },
                     'is_multimodal': db_model.is_multimodal,
+                    'supports_pdf': db_model.supports_pdf,  # Added supports_pdf flag
                     'is_free': db_model.input_price_usd_million == 0 and db_model.output_price_usd_million == 0,
                     'is_perplexity': 'perplexity/' in db_model.model_id.lower(),
                     'is_reasoning': any(keyword in db_model.model_id.lower() or 
