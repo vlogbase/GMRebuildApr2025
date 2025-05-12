@@ -1,2 +1,9 @@
 #!/bin/bash
-gunicorn main:app -k gevent -w 4 --timeout 300 --bind 0.0.0.0:5000 --reload
+
+# Set up environment
+export FLASK_APP=app.py
+export FLASK_DEBUG=1
+
+# Run the Flask application using our wrapper script
+echo "Starting Flask application..."
+python app_workflow.py

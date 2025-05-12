@@ -1391,6 +1391,7 @@ def upload_pdf():
                     "pdf_url": blob_client.url,
                     "pdf_data_url": pdf_data_url,
                     "filename": filename,
+                    "document_name": filename,  # Add document_name for display in UI
                     "conversation_id": conversation.id  # Return the conversation ID to the client
                 })
             except Exception as e:
@@ -1440,6 +1441,7 @@ def upload_pdf():
                     "pdf_url": pdf_url,
                     "pdf_data_url": pdf_data_url,
                     "filename": filename,
+                    "document_name": filename,  # Add document_name for display in UI
                     "conversation_id": conversation.id  # Return the conversation ID to the client
                 })
         else:
@@ -1488,6 +1490,7 @@ def upload_pdf():
                 "pdf_url": pdf_url,
                 "pdf_data_url": pdf_data_url,
                 "filename": filename,
+                "document_name": filename,  # Add document_name for display in UI
                 "conversation_id": conversation.id  # Return the conversation ID to the client
             })
     except Exception as e:

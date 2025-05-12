@@ -277,7 +277,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create new indicator with the appropriate styling
         indicator = document.createElement('div');
         indicator.id = 'upload-indicator';
+        indicator.className = 'upload-indicator';
         indicator.style.display = 'none';
+        indicator.style.transition = 'opacity 0.5s ease';
         
         // Add it before the chat input
         const chatInputContainer = document.querySelector('.chat-input-container');
@@ -1024,15 +1026,21 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show upload indicator specifically for PDF
         const uploadIndicator = document.getElementById('upload-indicator') || createUploadIndicator();
         uploadIndicator.style.display = 'block';
-        uploadIndicator.textContent = 'Processing PDF document...';
+        uploadIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing PDF document...';
         uploadIndicator.className = 'upload-indicator pdf-upload';
         
         const result = await handleFileUpload(file, 'pdf');
         
         // Update indicator based on result
         if (result && result.success) {
-            uploadIndicator.textContent = 'PDF ready for chat!';
+            uploadIndicator.innerHTML = '<i class="fas fa-check-circle"></i> PDF ready for chat!';
             uploadIndicator.className = 'upload-indicator pdf-upload success';
+            
+            // If we have a document name from the response, display it
+            if (result.document_name) {
+                // Update the displayed name
+                uploadIndicator.innerHTML = '<i class="fas fa-check-circle"></i> PDF ready: ' + result.document_name;
+            }
             
             // Show success message for 3 seconds then fade out
             setTimeout(() => {
@@ -1044,7 +1052,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 500); // Fade out transition duration
             }, 3000);
         } else {
-            uploadIndicator.textContent = 'Error processing PDF: ' + (result?.error || 'Unknown error');
+            uploadIndicator.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error processing PDF: ' + (result?.error || 'Unknown error');
             uploadIndicator.className = 'upload-indicator pdf-upload error';
             
             // Show error for 5 seconds then fade out
@@ -1184,34 +1192,34 @@ document.addEventListener('DOMContentLoaded', function() {
         const displayLimit = Math.min(attachedDocuments.length, 4);
         
         for (let i = 0; i < displayLimit; i++) {
-            const document = attachedDocuments[i];
+            const docItem = attachedDocuments[i];
             
             // Create a container for each preview
-            const previewContainer = document.createElement('div');
+            const previewContainer = window.document.createElement('div');
             previewContainer.className = 'document-preview-container';
             previewContainer.dataset.index = i;
             
             // Create the preview element based on document type
-            if (document.type === 'image') {
+            if (docItem.type === 'image') {
                 // Create thumbnail for image
-                const img = document.createElement('img');
+                const img = window.document.createElement('img');
                 img.className = 'document-preview-thumbnail';
-                img.src = document.url;
-                img.alt = document.name || `Image ${i+1}`;
+                img.src = docItem.url;
+                img.alt = docItem.name || `Image ${i+1}`;
                 previewContainer.appendChild(img);
-            } else if (document.type === 'pdf') {
+            } else if (docItem.type === 'pdf') {
                 // Create PDF icon for PDF
-                const pdfPreview = document.createElement('div');
+                const pdfPreview = window.document.createElement('div');
                 pdfPreview.className = 'pdf-preview-thumbnail';
                 pdfPreview.innerHTML = `
                     <i class="fa-solid fa-file-pdf"></i>
-                    <span class="pdf-filename">${document.name}</span>
+                    <span class="pdf-filename">${docItem.name}</span>
                 `;
                 previewContainer.appendChild(pdfPreview);
             }
             
             // Add a remove button for each document
-            const removeBtn = document.createElement('button');
+            const removeBtn = window.document.createElement('button');
             removeBtn.className = 'remove-document-btn';
             removeBtn.innerHTML = '×';
             removeBtn.setAttribute('data-index', i);
@@ -1233,7 +1241,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // If there are more documents than we're showing, add a count indicator
         if (attachedDocuments.length > displayLimit) {
-            const moreIndicator = document.createElement('div');
+            const moreIndicator = window.document.createElement('div');
             moreIndicator.className = 'more-documents-indicator';
             moreIndicator.textContent = `+${attachedDocuments.length - displayLimit} more`;
             documentPreviewArea.appendChild(moreIndicator);
@@ -1241,7 +1249,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add a "clear all" button if we have multiple documents
         if (attachedDocuments.length > 1) {
-            const clearAllBtn = document.createElement('button');
+            const clearAllBtn = window.document.createElement('button');
             clearAllBtn.className = 'clear-all-documents-btn';
             clearAllBtn.textContent = 'Clear All';
             clearAllBtn.addEventListener('click', () => {
