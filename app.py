@@ -26,6 +26,7 @@ from PIL import Image  # For image processing
 from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory # Added send_from_directory
 from urllib.parse import urlparse # For URL analysis in image handling
 from werkzeug.datastructures import FileStorage # For file handling in upload routes
+from werkzeug.middleware.proxy_fix import ProxyFix # For handling proxies in Replit deployment
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from flask_wtf.csrf import CSRFProtect
 from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure Blob Storage
@@ -66,6 +67,16 @@ from database import db
 
 # Create Flask app
 app = Flask(__name__)
+
+# Apply ProxyFix to handle Replit proxy settings
+app.wsgi_app = ProxyFix(
+    app.wsgi_app,
+    x_proto=1,  # Number of values to trust for X-Forwarded-Proto
+    x_host=1,   # Number of values to trust for X-Forwarded-Host
+    x_prefix=1, # Number of values to trust for X-Forwarded-Prefix
+    x_for=1     # Number of values to trust for X-Forwarded-For
+)
+
 app.secret_key = os.environ.get("SESSION_SECRET", "developmentsecretkey")
 if not app.secret_key:
      logger.warning("SESSION_SECRET environment variable not set. Using default for development.")

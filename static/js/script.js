@@ -931,15 +931,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update the document preview area
                 updateDocumentPreviews();
                 
-                // Also keep the legacy indicator for backward compatibility
+                // Update the upload indicator to show success
                 uploadIndicator.innerHTML = `
-                    <i class="fa-solid fa-file-pdf"></i>
-                    <span class="pdf-filename">${attachedPdfName}</span>
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>PDF ready: ${attachedPdfName}</span>
                     <button class="remove-file-btn" title="Remove PDF">
                         <i class="fa-solid fa-times"></i>
                     </button>
                 `;
                 uploadIndicator.classList.add('pdf-indicator');
+                uploadIndicator.classList.add('pdf-upload');
+                uploadIndicator.classList.add('success');
+                
+                // Show success message for 3 seconds then fade out
+                setTimeout(() => {
+                    uploadIndicator.style.opacity = '0';
+                    setTimeout(() => {
+                        uploadIndicator.style.display = 'none';
+                        uploadIndicator.style.opacity = '1';
+                        uploadIndicator.classList.remove('pdf-upload');
+                        uploadIndicator.classList.remove('success');
+                    }, 500); // Fade out transition duration
+                }, 3000);
                 
                 // Make sure the indicator is visible
                 uploadIndicator.style.display = 'flex';
@@ -952,6 +965,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         e.stopPropagation();
                         console.log('PDF remove button clicked');
                         clearAttachedPdf();
+                        
+                        // Remove the success indicator
+                        uploadIndicator.remove();
                     });
                 }
                 

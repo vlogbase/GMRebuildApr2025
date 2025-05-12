@@ -1,6 +1,7 @@
-[default]
-pattern = "*"
-ignore = "replit.nix"
+[deployment]
+run = "python app_workflow.py"
+entrypoint = "app_workflow.py"
 
-[default.processes]
-flask_app = ["python", "app_workflow.py"]
+[env]
+PORT = "3000"
+PYTHONUNBUFFERED = "1"
