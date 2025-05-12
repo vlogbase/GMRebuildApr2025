@@ -1,10 +1,7 @@
-[nix]
-channel = "stable-23_05"
+[billing]
+run = "python workflows/billing_workflow.py"
+onBoot = false
 
-[deployment]
-run = ["python", "app_workflow.py"]
-deploymentTarget = "cloudrun"
-
-[[ports]]
-localPort = 5000
-externalPort = 80
+[test-sorting]
+run = "python workflows/test_sorting_workflow.py"
+onBoot = false
