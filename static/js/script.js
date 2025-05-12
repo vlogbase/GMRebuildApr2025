@@ -305,16 +305,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const modelSearch = document.getElementById('model-search');
     const closeSelector = document.getElementById('close-selector');
     
-    // Document upload elements
-    const uploadDocumentsBtn = document.getElementById('upload-documents-btn');
+    // Document upload elements - Legacy RAG system elements are now null
+    const uploadDocumentsBtn = null; // Removed button - replaced with unified upload
     const refreshPricesBtn = document.getElementById('refresh-prices-btn');
-    const documentUploadModal = document.getElementById('document-upload-modal');
-    const closeUploadModal = document.getElementById('close-upload-modal');
-    const uploadDropzone = document.getElementById('upload-dropzone');
-    const fileUploadInput = document.getElementById('file-upload-input');
-    const uploadFileList = document.getElementById('upload-file-list');
-    const uploadFilesBtn = document.getElementById('upload-files-btn');
-    const uploadStatus = document.getElementById('upload-status');
+    const documentUploadModal = null; // Removed modal - using unified file upload instead
+    const closeUploadModal = null; // Removed with modal
+    const uploadDropzone = null; // Removed with modal
+    const uploadFileList = null; // Removed with modal
+    const uploadFilesBtn = null; // Removed with modal
+    const uploadStatus = null; // Removed with modal
     
     // Image upload and camera elements
     const imageUploadInput = document.getElementById('file-upload-input');
@@ -651,13 +650,26 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get the active model
             const activeModel = document.querySelector('.model-btn.active, .model-preset-btn.active');
             const modelId = activeModel ? activeModel.getAttribute('data-model-id') : null;
+            console.log(`🧠 Active model ID: ${modelId || 'null'}`);
             
-            // Check if selected model supports PDF if PDF support is enabled
-            const supportsPdf = checkModelCapabilities('supports_pdf');
+            // Debug all available models
+            if (allModels && allModels.length > 0) {
+                console.log(`📚 Available models:`, allModels.map(m => `${m.id} (PDF: ${m.supports_pdf})`));
+            }
+            
+            // Check if selected model supports PDF
+            const supportsPdf = checkModelCapabilities('pdf');
+            console.log(`📄 Model supports PDF: ${supportsPdf}`);
             
             // Update the file input's accept attribute based on model capabilities
             if (imageUploadInput) {
-                imageUploadInput.accept = supportsPdf ? "image/*,.pdf" : "image/*";
+                if (supportsPdf) {
+                    imageUploadInput.accept = "image/*,.pdf";
+                    imageUploadButton.title = "Upload images or PDF documents";
+                } else {
+                    imageUploadInput.accept = "image/*";
+                    imageUploadButton.title = "Upload images (current model doesn't support PDFs)";
+                }
             }
             
             imageUploadInput.click();
@@ -667,13 +679,38 @@ document.addEventListener('DOMContentLoaded', function() {
     if (imageUploadInput) {
         imageUploadInput.addEventListener('change', event => {
             const file = event.target.files[0];
-            if (file && file.type.startsWith('image/')) {
-                // Check premium access before processing the image
-                if (!checkPremiumAccess('image_upload')) {
-                    return; // Stop if access check failed
-                }
-                handleImageFile(file);
+            if (!file) return;
+            
+            // Check premium access before processing the file
+            if (!checkPremiumAccess('image_upload')) {
+                return; // Stop if access check failed
             }
+            
+            console.log(`📂 File selected: ${file.name}, type: ${file.type}`);
+            
+            // Check if it's a PDF file
+            if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                console.log('📄 PDF file detected');
+                
+                // Check if model supports PDF
+                if (!checkModelCapabilities('pdf')) {
+                    alert('The current model does not support PDF documents. Please select a model with PDF support or upload an image instead.');
+                    return;
+                }
+                
+                // Handle PDF file with dedicated PDF handler
+                handleFileUpload(file, 'pdf');
+                
+            } else if (file.type.startsWith('image/')) {
+                // Handle image file
+                handleImageFile(file);
+            } else {
+                // Unsupported file type
+                console.warn(`Unsupported file type: ${file.type}`);
+                alert(`Unsupported file type: ${file.type}. Please upload an image or PDF document.`);
+                return;
+            }
+            
             // Reset the input so the same file can be selected again
             event.target.value = null;
         });
@@ -1551,6 +1588,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const modelId = userPreferences[presetId];
             const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
             if (button) {
+                // Set the data-model-id attribute required for capability checks
+                button.setAttribute('data-model-id', modelId);
+                
                 const nameSpan = button.querySelector('.model-name');
                 if (nameSpan) {
                     // Remove any existing cost band indicators
@@ -3699,46 +3739,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // Store selected files
     let selectedFiles = [];
     
-    // Toggle upload modal with premium access check
-    if (uploadDocumentsBtn) {
-        uploadDocumentsBtn.addEventListener('click', function() {
-            // Check premium access before allowing document upload
-            if (!checkPremiumAccess('document_upload')) {
-                return; // Stop if access check failed
-            }
-            
-            // Debug the current model and capability check
-            const activeModel = document.querySelector('.model-btn.active, .model-preset-btn.active');
-            const modelId = activeModel ? activeModel.getAttribute('data-model-id') : null;
-            console.log(`🔍 Checking PDF capability for model ${modelId}`);
-            
-            // Log all models that support PDFs for debugging
-            const pdfModels = allModels.filter(m => m.supports_pdf === true).map(m => m.id);
-            console.log(`📚 Models supporting PDFs:`, pdfModels);
-            
-            // Check if model supports PDFs
-            if (!checkModelCapabilities('pdf')) {
-                alert('The current model does not support PDF documents. Please select a model with PDF support first.');
-                return;
-            }
-            
-            // Either show the document upload modal or trigger a direct file input
-            if (imageUploadInput) {
-                // Set accept attribute to PDF only
-                imageUploadInput.setAttribute('accept', '.pdf');
-                imageUploadInput.click();
-                
-                // Reset accept attribute after click
-                setTimeout(() => {
-                    imageUploadInput.setAttribute('accept', 'image/*,.pdf');
-                }, 500);
-            } else {
-                // Fall back to the old upload modal if needed
-                documentUploadModal.style.display = 'flex';
-            }
-        });
-    }
+    // Legacy document upload button - disabled
+    // The uploadDocumentsBtn has been removed in favor of the unified file upload button
+    // All this functionality has been moved to the imageUploadButton click handler
     
+    // Note: This code was previously encapsulated in a false condition block
+    // to disable it, but this caused syntax errors. Now it's properly commented out.
+    
+    // Legacy document upload modal functionality - all disabled
+    // The following code was managing the old RAG documents upload modal
+    // This has been replaced with the unified file upload approach
+    
+    /* Legacy code - disabled
     // Close upload modal
     if (closeUploadModal) {
         closeUploadModal.addEventListener('click', function() {
@@ -3760,8 +3772,10 @@ document.addEventListener('DOMContentLoaded', function() {
         uploadDropzone.addEventListener('click', function() {
             fileUploadInput.click();
         });
+    }
         
-        // Handle file drag over
+    // Handle file drag over
+    if (uploadDropzone) {
         uploadDropzone.addEventListener('dragover', function(e) {
             e.preventDefault();
             e.stopPropagation();
@@ -3778,15 +3792,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Handle file drop
         uploadDropzone.addEventListener('drop', function(e) {
             e.preventDefault();
-            e.stopPropagation();
-            this.classList.remove('dragover');
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFileSelection(files);
-            }
-        });
-    }
+    */
+    
+    // Handle file selection - now handled through the unified upload approach
+    // Keeping this code is no longer necessary as we'll use the unified file upload functionality
     
     // Handle file input change
     if (fileUploadInput) {

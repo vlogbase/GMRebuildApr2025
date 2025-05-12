@@ -1,4 +1,5 @@
-# App workflow configuration
-command = "python app_workflow.py"
-language = "python3"
-patterns = ["*.py"]
+[workflow]
+name = "app"
+description = "Run the Flask application"
+run = "python app_workflow.py"
+persistent = true

@@ -26,11 +26,12 @@ from PIL import Image  # For image processing
 from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory # Added send_from_directory
 from urllib.parse import urlparse # For URL analysis in image handling
 from werkzeug.datastructures import FileStorage # For file handling in upload routes
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from flask_wtf.csrf import CSRFProtect
 from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure Blob Storage
 from apscheduler.schedulers.background import BackgroundScheduler
-from database import db, init_app
 from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
 
 # Check if we should enable advanced memory features
@@ -61,8 +62,11 @@ else:
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Import SQLAlchemy from database module
-from database import db
+# SQLAlchemy setup
+class Base(DeclarativeBase):
+    pass
+
+db = SQLAlchemy(model_class=Base)
 
 # Create Flask app
 app = Flask(__name__)
@@ -115,12 +119,19 @@ except Exception as e:
 
 
 # Configure database
-init_app(app)  # Initialize database with the app (from database.py)
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
 if not app.config["SQLALCHEMY_DATABASE_URI"]:
     logger.error("DATABASE_URL environment variable not set.")
     # Handle this critical error appropriately
 
+app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+    "pool_recycle": 300,
+    "pool_pre_ping": True,
+}
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+# Initialize SQLAlchemy with the app
+db.init_app(app)
 
 # Create or update database tables for models
 with app.app_context():
@@ -423,10 +434,8 @@ try:
     from price_updater import fetch_and_store_openrouter_prices
     from models import OpenRouterModel
     
-    # Create an application context for database operations
-    with app.app_context():
-        # Check if we have models in the database
-        model_count = OpenRouterModel.query.count()
+    # Check if we have models in the database
+    model_count = OpenRouterModel.query.count()
     
     if model_count > 0:
         logger.info(f"Found {model_count} OpenRouter models in database at startup")
@@ -440,8 +449,7 @@ try:
         
         if price_success:
             # Check if models were stored in the database
-            with app.app_context():
-                model_count = OpenRouterModel.query.count()
+            model_count = OpenRouterModel.query.count()
             logger.info(f"Successfully fetched and stored {model_count} OpenRouter models in database")
         else:
             # If that fails, log a warning - we'll rely on the scheduler to retry soon

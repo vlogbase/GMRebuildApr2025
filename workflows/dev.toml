@@ -1,0 +1,4 @@
+[workflow]
+name = "Flask Application"
+run = "python app_server.py"
+language = "python3"

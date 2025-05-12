@@ -1,0 +1,5 @@
+[workflow]
+name = "Flask App Server"
+description = "Run the Flask web application"
+run = "python app_workflow.py"
+persistent = true

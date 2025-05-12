@@ -152,48 +152,16 @@
                             <span class="button-overlay"></span>
                         </button>
                     </div>
-                    <button id="upload-documents-btn" class="upload-documents-btn" title="Upload documents to enhance responses with your data">
-                        <i class="fa-solid fa-file-upload"></i>
-                        <span class="button-overlay"></span>
-                    </button>
+                    <!-- Document upload button removed in favor of unified file upload button -->
+                    <!-- Button previously used for old RAG system -->
                     <button id="refresh-prices-btn" class="upload-documents-btn" title="Reset models to defaults">
                         <i class="fa-solid fa-sync-alt"></i>
                         <span class="button-overlay"></span>
                     </button>
                 </div>
                 
-                <!-- Document Upload UI -->
-                <div id="document-upload-modal" class="document-upload-modal">
-                    <div class="document-upload-content">
-                        <div class="document-upload-header">
-                            <h3>Upload Documents</h3>
-                            <button id="close-upload-modal" class="close-upload-modal">
-                                <i class="fa-solid fa-times"></i>
-                            </button>
-                        </div>
-                        <div class="document-upload-body">
-                            <p>Upload documents to enhance the AI's responses with your own data.</p>
-                            <p>Supported formats: PDF, Word, Text, HTML, CSV, and more.</p>
-                            
-                            <div id="upload-dropzone" class="upload-dropzone">
-                                <i class="fa-solid fa-file-arrow-up upload-icon"></i>
-                                <p>Drag files here or click to upload</p>
-                                <input type="file" id="document-upload-input" multiple accept=".txt,.pdf,.docx,.md,.html,.json,.csv,.tsv,.xml,.yaml,.yml,.rtf,.srt,.vtt,.log,.py,.js,.java,.c,.cpp,.cs,.rb,.php">
-                            </div>
-                            
-                            <div id="upload-file-list" class="upload-file-list">
-                                <!-- File list will be populated dynamically -->
-                            </div>
-                            
-                            <div id="upload-status" class="upload-status">
-                                <!-- Upload status will be shown here -->
-                            </div>
-                        </div>
-                        <div class="document-upload-footer">
-                            <button id="upload-files-btn" class="upload-files-btn">Upload Files</button>
-                        </div>
-                    </div>
-                </div>
+                <!-- Document Upload UI removed - using unified file upload approach instead -->
+                <!-- Legacy RAG document upload UI removed in favor of direct PDF handling via OpenRouter -->
                 
                 <!-- Model Selector UI -->
                 <div id="model-selector" class="model-selector">
@@ -215,13 +183,13 @@
                     <textarea id="message-input" placeholder="Message GloriaMundo..."></textarea>
                     <div class="message-actions">
                         <input type="file" id="file-upload-input" name="file" accept="image/*,.pdf" style="display: none;">
-                        <button id="file-upload-button" class="btn btn-secondary" style="display: none;" title="Upload image or PDF">
+                        <button id="file-upload-button" class="btn btn-secondary" title="Upload image or PDF">
                             <i class="fa-solid fa-file-circle-plus"></i>
                         </button>
-                        <button id="camera-button" class="btn btn-secondary" style="display: none;">
+                        <button id="camera-button" class="btn btn-secondary">
                             <i class="fa-solid fa-camera"></i>
                         </button>
-                        <!-- Removed redundant PDF upload button - using unified file upload button above -->
+                        <!-- Unified file upload button handles both images and PDFs based on model capabilities -->
                         <button id="send-btn" class="send-btn">
                             <i class="fa-solid fa-paper-plane"></i>
                         </button>
