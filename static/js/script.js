@@ -720,6 +720,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!fileOrBlob) return;
 
         try {
+            // Ensure we have a conversation ID before uploading
+            await ensureConversationId();
+            
             // Increment upload counter
             uploadingImageCount++;
             
@@ -785,12 +788,45 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Ensure we have a valid conversation ID
+    async function ensureConversationId() {
+        if (!currentConversationId) {
+            // This shouldn't normally happen since we create a conversation when the page loads
+            console.warn("No current conversation ID, creating a new one");
+            try {
+                const response = await fetch('/conversations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to create conversation: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                currentConversationId = data.id;
+                console.log(`Generated new conversation ID: ${currentConversationId}`);
+                return currentConversationId;
+            } catch (error) {
+                console.error('Error creating conversation:', error);
+                return null;
+            }
+        }
+        return currentConversationId;
+    }
+    
     // PDF handling function
     async function handlePdfFile(file) {
         console.log("📄 handlePdfFile()", file);
         if (!file) return;
         
         try {
+            // Ensure we have a conversation ID before uploading
+            await ensureConversationId();
+            
             // Set upload flag to true - this will disable the send button
             isUploadingImage = true;
             
@@ -828,9 +864,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 throw new Error(data.error);
             }
             
-            // Store the PDF URL and filename
+            // Store the PDF data URL (base64-encoded) and filename
+            // This is critical for OpenRouter - we must use the data URL, not the regular URL
             attachedPdfUrl = data.pdf_data_url;
-            attachedPdfName = file.name;
+            attachedPdfName = file.name || data.filename;
+            
+            // For debugging: verify we have a proper data URL starting with data:application/pdf;base64,
+            if (!attachedPdfUrl.startsWith('data:application/pdf;base64,')) {
+                console.error('Invalid PDF data URL format:', attachedPdfUrl.substring(0, 50) + '...');
+            } else {
+                console.log('Valid base64 PDF data URL received (truncated):', attachedPdfUrl.substring(0, 50) + '...');
+            }
             
             // Update the indicator to show success
             uploadIndicator.innerHTML = `<i class="fa-solid fa-file-pdf"></i> PDF ready: ${file.name} <button class="remove-file-btn"><i class="fa-solid fa-times"></i></button>`;
@@ -845,7 +889,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
             
-            console.log(`PDF uploaded successfully:`, attachedPdfName, attachedPdfUrl);
+            console.log(`PDF uploaded successfully:`, attachedPdfName, 'Base64 data URL available');
         } catch (error) {
             console.error('Error uploading PDF:', error);
             alert(`PDF upload failed: ${error.message}`);
