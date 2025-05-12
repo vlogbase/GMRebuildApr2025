@@ -1175,10 +1175,21 @@ def upload_file():
         - Stores PDFs in 'gloriamundopdfs' Azure Blob Storage container
         - Returns pdf_data_url as base64 data URL for OpenRouter document handling
         
+    Query Parameters:
+        conversation_id (str, optional): The ID of the current conversation for metadata tracking
+        model (str, optional): The ID of the model being used (affects URL generation)
+        
     Returns:
         JSON with appropriate URLs based on file type
     """
     try:
+        # Get conversation ID if provided (useful for tracking uploads)
+        conversation_id = request.args.get('conversation_id')
+        if conversation_id:
+            logger.info(f"File upload associated with conversation: {conversation_id}")
+        else:
+            logger.info(f"File upload with no conversation ID")
+        
         # Verify a file was uploaded
         if 'file' not in request.files:
             return jsonify({"error": "No file provided"}), 400
@@ -1193,7 +1204,7 @@ def upload_file():
         
         # Route to appropriate handler based on file type
         if extension in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
-            # Handle image uploads
+            # Handle image uploads (pass through the request as-is)
             return upload_image()
         elif extension == '.pdf':
             # Handle PDF uploads

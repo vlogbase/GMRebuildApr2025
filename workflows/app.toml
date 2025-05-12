@@ -1,4 +1,4 @@
-[workflow]
-run = ["python", "app_workflow.py"]
+# App workflow configuration
+command = "python app_workflow.py"
 language = "python3"
-onBoot = "true"
+patterns = ["*.py"]

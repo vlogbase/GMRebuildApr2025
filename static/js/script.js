@@ -93,8 +93,10 @@ document.addEventListener('DOMContentLoaded', function() {
         // Check for the requested capability
         switch (capabilityType) {
             case 'image':
+            case 'is_multimodal':
                 return modelInfo.is_multimodal === true;
             case 'pdf':
+            case 'supports_pdf':
                 return modelInfo.supports_pdf === true;
             default:
                 console.warn(`Unknown capability type: ${capabilityType}`);
@@ -114,7 +116,23 @@ document.addEventListener('DOMContentLoaded', function() {
             if (supportsImages) {
                 imageUploadButton.style.display = 'inline-flex';
                 imageUploadButton.classList.remove('disabled');
-                imageUploadButton.title = 'Upload an image or PDF';
+                
+                // Update button title based on supported file types
+                if (supportsPDFs) {
+                    imageUploadButton.title = 'Upload an image or PDF';
+                    
+                    // Update file input accept attribute to include PDFs
+                    if (fileUploadInput) {
+                        fileUploadInput.accept = "image/*,.pdf";
+                    }
+                } else {
+                    imageUploadButton.title = 'Upload an image';
+                    
+                    // Update file input accept attribute to only accept images
+                    if (fileUploadInput) {
+                        fileUploadInput.accept = "image/*";
+                    }
+                }
             } else {
                 imageUploadButton.style.display = 'none';
                 // Alternative: Keep visible but disabled with explanation
@@ -819,8 +837,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
             console.log(`📤 Uploading ${fileType} to server...`);
             
-            // Upload to server - use the unified endpoint
-            const response = await fetch('/upload_file', {
+            // Get the current conversation ID if available
+            const conversationId = currentConversationId || '';
+            console.log(`🔗 Current conversation ID: ${conversationId}`);
+            
+            // Upload to server - use the unified endpoint with conversation ID
+            const uploadUrl = `/upload_file${conversationId ? `?conversation_id=${conversationId}` : ''}`;
+            console.log(`📤 Uploading to: ${uploadUrl}`);
+            
+            const response = await fetch(uploadUrl, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCSRFToken()
@@ -3681,6 +3706,15 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!checkPremiumAccess('document_upload')) {
                 return; // Stop if access check failed
             }
+            
+            // Debug the current model and capability check
+            const activeModel = document.querySelector('.model-btn.active, .model-preset-btn.active');
+            const modelId = activeModel ? activeModel.getAttribute('data-model-id') : null;
+            console.log(`🔍 Checking PDF capability for model ${modelId}`);
+            
+            // Log all models that support PDFs for debugging
+            const pdfModels = allModels.filter(m => m.supports_pdf === true).map(m => m.id);
+            console.log(`📚 Models supporting PDFs:`, pdfModels);
             
             // Check if model supports PDFs
             if (!checkModelCapabilities('pdf')) {

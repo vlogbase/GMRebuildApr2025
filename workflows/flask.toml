@@ -1,0 +1,4 @@
+# Flask application workflow configuration
+command = "python flask_app_workflow.py"
+language = "python3"
+patterns = ["*.py"]
