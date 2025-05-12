@@ -3472,26 +3472,27 @@ def rag_diagnostics():
     Diagnostic endpoint to check the state of document processing.
     This endpoint now returns information about direct PDF handling capabilities.
     """
-    # Get models that support PDF handling
-    pdf_capable_models = []
-    
     try:
-        models = _fetch_openrouter_models()
-        for model_id, model_info in models.items():
-            if model_info.get('pdf', False) or model_info.get('supports_pdf', False):
-                pdf_capable_models.append(model_id)
-    except Exception as e:
-        logger.error(f"Error fetching PDF-capable models: {e}")
-    
-    return jsonify({
-        "status": "transitioned",
-        "message": "RAG system replaced with direct PDF handling through OpenRouter",
-        "pdf_handling": {
-            "enabled": True,
-            "container": os.environ.get("AZURE_STORAGE_PDF_CONTAINER_NAME", "gloriamundopdfs"),
-            "supported_models": pdf_capable_models
-        }
-    })
+        # Get models that support PDF handling
+        pdf_capable_models = []
+        
+        try:
+            models = _fetch_openrouter_models()
+            for model_id, model_info in models.items():
+                if model_info.get('pdf', False) or model_info.get('supports_pdf', False):
+                    pdf_capable_models.append(model_id)
+        except Exception as e:
+            logger.error(f"Error fetching PDF-capable models: {e}")
+        
+        return jsonify({
+            "status": "transitioned",
+            "message": "RAG system replaced with direct PDF handling through OpenRouter",
+            "pdf_handling": {
+                "enabled": True,
+                "container": os.environ.get("AZURE_STORAGE_PDF_CONTAINER_NAME", "gloriamundopdfs"),
+                "supported_models": pdf_capable_models
+            }
+        })
     except Exception as e:
         logger.exception(f"Error in RAG diagnostics: {e}")
         return jsonify({"error": str(e)}), 500
