@@ -338,9 +338,10 @@ document.addEventListener('DOMContentLoaded', function() {
     let attachedPdfUrl = null; // URL for attached PDF
     let attachedPdfName = null; // Name of attached PDF
     
-    // Image upload state
+    // Document handling state
     let attachedImageBlob = null;
     let attachedImageUrls = []; // Array to hold multiple image URLs
+    let attachedDocuments = []; // Array to hold all document metadata (both images and PDFs)
     let isUploadingFile = false; // Track if a file (image or PDF) is currently being uploaded
     let uploadingImageCount = 0; // Track number of images currently uploading
     let cameras = [];
@@ -906,6 +907,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Handle image response
                 attachedImageUrls.push(data.image_url);
                 updateImagePreviews();
+                updateDocumentPreviews(); // Update unified document display
                 console.log(`📸 Image uploaded successfully (${attachedImageUrls.length} total):`, data.image_url);
                 
                 // Remove the indicator for images - we show them in the preview area
@@ -922,7 +924,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log('Valid base64 PDF data URL received (truncated):', attachedPdfUrl.substring(0, 50) + '...');
                 }
                 
-                // Update the indicator to show success with a more prominent styling
+                // Update the document preview area
+                updateDocumentPreviews();
+                
+                // Also keep the legacy indicator for backward compatibility
                 uploadIndicator.innerHTML = `
                     <i class="fa-solid fa-file-pdf"></i>
                     <span class="pdf-filename">${attachedPdfName}</span>
@@ -1015,7 +1020,45 @@ document.addEventListener('DOMContentLoaded', function() {
     // PDF handling function (now using the unified uploader)
     async function handlePdfFile(file) {
         console.log("📄 handlePdfFile() - delegating to handleFileUpload");
-        return handleFileUpload(file, 'pdf');
+        
+        // Show upload indicator specifically for PDF
+        const uploadIndicator = document.getElementById('upload-indicator') || createUploadIndicator();
+        uploadIndicator.style.display = 'block';
+        uploadIndicator.textContent = 'Processing PDF document...';
+        uploadIndicator.className = 'upload-indicator pdf-upload';
+        
+        const result = await handleFileUpload(file, 'pdf');
+        
+        // Update indicator based on result
+        if (result && result.success) {
+            uploadIndicator.textContent = 'PDF ready for chat!';
+            uploadIndicator.className = 'upload-indicator pdf-upload success';
+            
+            // Show success message for 3 seconds then fade out
+            setTimeout(() => {
+                uploadIndicator.style.opacity = '0';
+                setTimeout(() => {
+                    uploadIndicator.style.display = 'none';
+                    uploadIndicator.style.opacity = '1';
+                    uploadIndicator.className = 'upload-indicator';
+                }, 500); // Fade out transition duration
+            }, 3000);
+        } else {
+            uploadIndicator.textContent = 'Error processing PDF: ' + (result?.error || 'Unknown error');
+            uploadIndicator.className = 'upload-indicator pdf-upload error';
+            
+            // Show error for 5 seconds then fade out
+            setTimeout(() => {
+                uploadIndicator.style.opacity = '0';
+                setTimeout(() => {
+                    uploadIndicator.style.display = 'none';
+                    uploadIndicator.style.opacity = '1';
+                    uploadIndicator.className = 'upload-indicator';
+                }, 500); // Fade out transition duration
+            }, 5000);
+        }
+        
+        return result;
     }
     
     // Add a new function to update all image previews based on the attached URLs
@@ -1087,13 +1130,129 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Add a "clear all" button
-        const clearAllBtn = document.createElement('button');
-        clearAllBtn.className = 'clear-all-images-btn';
-        clearAllBtn.textContent = 'Clear All';
-        clearAllBtn.addEventListener('click', clearAttachedImages);
-        imagePreviewArea.appendChild(clearAllBtn);
+    }
+    
+    // Function to generate the unified document preview area containing both images and PDFs
+    function updateDocumentPreviews() {
+        const documentPreviewArea = document.getElementById('document-preview-area');
+        if (!documentPreviewArea) {
+            console.warn('Document preview area not found');
+            return;
+        }
         
-        console.log(`🖼️ Updated image previews: ${attachedImageUrls.length} images`);
+        // Build combined documents array from both images and PDF (if present)
+        let attachedDocuments = [];
+        
+        // Add image documents
+        attachedImageUrls.forEach((url, index) => {
+            attachedDocuments.push({
+                type: 'image',
+                url: url,
+                name: `Image ${index + 1}`
+            });
+        });
+        
+        // Add PDF document if present
+        if (attachedPdfUrl && attachedPdfName) {
+            attachedDocuments.push({
+                type: 'pdf',
+                url: attachedPdfUrl,
+                name: attachedPdfName
+            });
+        }
+        
+        // Clear existing previews
+        documentPreviewArea.innerHTML = '';
+        
+        // If no documents, hide the preview area
+        if (attachedDocuments.length === 0) {
+            documentPreviewArea.style.display = 'none';
+            return;
+        }
+        
+        // Show the preview area
+        documentPreviewArea.style.display = 'flex';
+        documentPreviewArea.classList.add('document-preview-area');
+        
+        // Create header with document count
+        const header = document.createElement('div');
+        header.className = 'document-preview-header';
+        header.textContent = `${attachedDocuments.length} document${attachedDocuments.length > 1 ? 's' : ''}`;
+        documentPreviewArea.appendChild(header);
+        
+        // Add previews for each document (limit display to first 4)
+        const displayLimit = Math.min(attachedDocuments.length, 4);
+        
+        for (let i = 0; i < displayLimit; i++) {
+            const document = attachedDocuments[i];
+            
+            // Create a container for each preview
+            const previewContainer = document.createElement('div');
+            previewContainer.className = 'document-preview-container';
+            previewContainer.dataset.index = i;
+            
+            // Create the preview element based on document type
+            if (document.type === 'image') {
+                // Create thumbnail for image
+                const img = document.createElement('img');
+                img.className = 'document-preview-thumbnail';
+                img.src = document.url;
+                img.alt = document.name || `Image ${i+1}`;
+                previewContainer.appendChild(img);
+            } else if (document.type === 'pdf') {
+                // Create PDF icon for PDF
+                const pdfPreview = document.createElement('div');
+                pdfPreview.className = 'pdf-preview-thumbnail';
+                pdfPreview.innerHTML = `
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span class="pdf-filename">${document.name}</span>
+                `;
+                previewContainer.appendChild(pdfPreview);
+            }
+            
+            // Add a remove button for each document
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'remove-document-btn';
+            removeBtn.innerHTML = '×';
+            removeBtn.setAttribute('data-index', i);
+            removeBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                // Remove this specific document
+                removeDocument(i);
+            });
+            
+            // Make the whole container clickable to open/preview the document
+            previewContainer.addEventListener('click', () => {
+                openDocumentViewer(i);
+            });
+            
+            // Add remove button to container
+            previewContainer.appendChild(removeBtn);
+            documentPreviewArea.appendChild(previewContainer);
+        }
+        
+        // If there are more documents than we're showing, add a count indicator
+        if (attachedDocuments.length > displayLimit) {
+            const moreIndicator = document.createElement('div');
+            moreIndicator.className = 'more-documents-indicator';
+            moreIndicator.textContent = `+${attachedDocuments.length - displayLimit} more`;
+            documentPreviewArea.appendChild(moreIndicator);
+        }
+        
+        // Add a "clear all" button if we have multiple documents
+        if (attachedDocuments.length > 1) {
+            const clearAllBtn = document.createElement('button');
+            clearAllBtn.className = 'clear-all-documents-btn';
+            clearAllBtn.textContent = 'Clear All';
+            clearAllBtn.addEventListener('click', () => {
+                clearAttachedImages();
+                clearAttachedPdf();
+            });
+            documentPreviewArea.appendChild(clearAllBtn);
+        }
+        
+        // Store the documents array globally for reference in other functions
+        window.attachedDocuments = attachedDocuments;
     }
     
     // Function to remove a specific image by index
@@ -1102,6 +1261,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (index >= 0 && index < attachedImageUrls.length) {
             attachedImageUrls.splice(index, 1);
             updateImagePreviews();
+            updateDocumentPreviews(); // Update unified document display
         }
     }
     
@@ -1121,6 +1281,7 @@ document.addEventListener('DOMContentLoaded', function() {
         attachedImageBlob = null;
         attachedImageUrls = [];
         updateImagePreviews();
+        updateDocumentPreviews(); // Update unified document display
     }
     
     // Legacy function for backward compatibility
@@ -1137,8 +1298,88 @@ document.addEventListener('DOMContentLoaded', function() {
         const pdfIndicators = document.querySelectorAll('.pdf-indicator');
         pdfIndicators.forEach(indicator => indicator.remove());
         
+        // Update document previews
+        updateDocumentPreviews();
+        
         // Update send button state
         updateSendButtonState();
+    }
+    
+    // Function to remove a document from the unified display
+    function removeDocument(index) {
+        if (index >= 0 && index < attachedDocuments.length) {
+            const document = attachedDocuments[index];
+            
+            if (document.type === 'image') {
+                // Find the corresponding image in the image URLs array
+                const imageIndex = attachedImageUrls.indexOf(document.url);
+                if (imageIndex !== -1) {
+                    attachedImageUrls.splice(imageIndex, 1);
+                    updateImagePreviews();
+                }
+            } else if (document.type === 'pdf') {
+                // Clear the PDF
+                clearAttachedPdf();
+            }
+            
+            // Update the document display
+            updateDocumentPreviews();
+            
+            // Update send button state
+            updateSendButtonState();
+        }
+    }
+    
+    // Function to open document viewer for both images and PDFs
+    function openDocumentViewer(index) {
+        if (index >= 0 && index < attachedDocuments.length) {
+            const document = attachedDocuments[index];
+            
+            if (document.type === 'image') {
+                // For images, open in a new tab
+                window.open(document.url, '_blank');
+            } else if (document.type === 'pdf') {
+                // For PDFs, display in our modal
+                const pdfViewerModal = document.getElementById('pdf-viewer-modal');
+                const pdfIframe = document.getElementById('pdf-iframe');
+                const pdfTitle = document.getElementById('pdf-viewer-title');
+                
+                if (pdfViewerModal && pdfIframe) {
+                    // Set the PDF source - if it's a data URL, use it directly
+                    pdfIframe.src = document.url;
+                    
+                    // Set the title
+                    if (pdfTitle) {
+                        pdfTitle.textContent = document.name || 'Document Viewer';
+                    }
+                    
+                    // Show the modal
+                    pdfViewerModal.style.display = 'flex';
+                    
+                    // Add close event listener if not already added
+                    const closeButton = document.getElementById('close-pdf-viewer');
+                    if (closeButton) {
+                        // Use once: true to ensure we don't add multiple listeners
+                        closeButton.addEventListener('click', function() {
+                            pdfViewerModal.style.display = 'none';
+                            // Clear the iframe src when closing to prevent memory issues
+                            pdfIframe.src = '';
+                        }, { once: true });
+                    }
+                    
+                    // Also close when clicking outside the modal
+                    pdfViewerModal.addEventListener('click', function(event) {
+                        if (event.target === pdfViewerModal) {
+                            pdfViewerModal.style.display = 'none';
+                            // Clear the iframe src when closing to prevent memory issues
+                            pdfIframe.src = '';
+                        }
+                    }, { once: true });
+                } else {
+                    console.error('PDF viewer modal or iframe not found');
+                }
+            }
+        }
     }
     
     // Function to update send button state based on image upload status

@@ -5,82 +5,60 @@ This is a wrapper script to start the app.py Flask application.
 import os
 import sys
 import logging
-
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-logger = logging.getLogger(__name__)
+import time
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 def ensure_app_context():
     """
     Push the application context if needed, ensuring database operations work correctly
     """
-    from app import app
-    
     try:
-        # Try to access configuration which requires app context
-        app.config["SQLALCHEMY_DATABASE_URI"]
-        logger.info("Application context is already active")
-        return True
-    except RuntimeError:
-        # Push the application context
-        logger.info("Pushing Flask application context")
-        app.app_context().push()
-        logger.info("Application context is now active")
-        return True
+        from app import app, db
+        with app.app_context():
+            db.session.execute(db.select(db.text('1'))).scalar()  # Test DB connection
+            print("Database connection successful")
     except Exception as e:
-        logger.error(f"Error ensuring app context: {e}")
-        return False
+        print(f"Error during app context test: {e}")
+        # Continue anyway, as the app might handle this internally
 
 def run():
     """
     Run the Flask application with error handling and logging.
     """
     try:
-        logger.info("Starting Flask application for testing")
+        # Configure logging
+        logging.basicConfig(
+            level=logging.DEBUG,
+            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            filename='app_workflow.log',
+            filemode='a'
+        )
+        print(f"Logging configured. Logs will be written to 'app_workflow.log'")
         
-        # Import the Flask app from app.py
-        from app import app, db
+        # Import local modules only when needed
+        from app import app
         
-        # Set debug mode
-        app.config['DEBUG'] = True
+        # Apply the ProxyFix to make url_for generate https URLs
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
         
-        # Ensure application context is pushed
+        # Ensure we have an app context for database operations
         ensure_app_context()
         
-        # Test database connection to verify it works in this context
-        from sqlalchemy import text
-        try:
-            with db.engine.connect() as conn:
-                result = conn.execute(text("SELECT 1"))
-                row = result.fetchone()
-                if row and row[0] == 1:
-                    logger.info("Database connection test successful")
-                else:
-                    logger.warning("Database connection test failed with unexpected result")
-        except Exception as e:
-            logger.error(f"Database connection test failed: {e}")
+        # Run the app - use environment variable for port if available
+        port = int(os.environ.get('PORT', 5000))
+        print(f"Starting Flask application on port {port}...")
         
-        # Log CSRF protection status
-        if app.config.get('WTF_CSRF_ENABLED', True):
-            logger.info("CSRF protection is ENABLED")
-        else:
-            logger.warning("CSRF protection is DISABLED")
-            
-        # Log protection settings
-        logger.info(f"CSRF methods: {app.config.get('WTF_CSRF_METHODS', ['POST', 'PUT', 'PATCH', 'DELETE'])}")
-        logger.info(f"CSRF headers: {app.config.get('WTF_CSRF_HEADERS', ['X-CSRFToken', 'X-CSRF-Token'])}")
+        # Write PID to a file for easier management
+        with open('flask.pid', 'w') as f:
+            f.write(str(os.getpid()))
         
-        # Start the Flask server
-        logger.info("Starting Flask application. Access it via http://localhost:5000")
-        app.run(host='0.0.0.0', port=5000)
-        
-    except Exception as e:
-        logger.error(f"Error starting Flask application: {e}")
-        raise
+        # Run the app
+        app.run(host='0.0.0.0', port=port, debug=True)
 
-if __name__ == "__main__":
+    except Exception as e:
+        logging.error(f"Error running Flask application: {e}", exc_info=True)
+        print(f"Error running Flask application: {e}")
+        sys.exit(1)
+
+if __name__ == '__main__':
     run()

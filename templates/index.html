@@ -196,11 +196,32 @@
                     </div>
                 </div>
                 
+                <!-- Unified document preview area for both images and PDFs -->
+                <div id="document-preview-area" style="display: none;">
+                    <!-- Will be populated dynamically with document previews -->
+                </div>
+                
+                <!-- Legacy image preview area - kept for backward compatibility -->
                 <div id="image-preview-area" style="display: none;">
                     <img id="image-preview" src="" alt="Preview">
                     <button id="remove-image-button">
                         <i class="fa-solid fa-times"></i> Remove
                     </button>
+                </div>
+                
+                <!-- PDF Viewer Modal -->
+                <div id="pdf-viewer-modal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="pdf-viewer-title">Document Viewer</h3>
+                            <button id="close-pdf-viewer" class="close-button">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body">
+                            <iframe id="pdf-iframe" src="" width="100%" height="500px"></iframe>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="camera-modal" style="display: none;">
