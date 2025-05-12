@@ -172,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 
                 // Set upload flag to true and disable send button
-                isUploadingImage = true;
+                isUploadingFile = true;
                 updateSendButtonState();
                 
                 // Show upload indicator
@@ -324,7 +324,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Image upload state
     let attachedImageBlob = null;
     let attachedImageUrls = []; // Array to hold multiple image URLs
-    let isUploadingImage = false; // Track if an image is currently being uploaded
+    let isUploadingFile = false; // Track if a file (image or PDF) is currently being uploaded
     let uploadingImageCount = 0; // Track number of images currently uploading
     let cameras = [];
     let currentCameraIndex = 0;
@@ -716,119 +716,39 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Image handling functions
     async function handleImageFile(fileOrBlob) {
-        console.log("✅ handleImageFile()", fileOrBlob);
+        console.log("✅ handleImageFile() - delegating to handleFileUpload");
         if (!fileOrBlob) return;
+        
+        // Use the unified file upload handler with type 'image'
+        return handleFileUpload(fileOrBlob, 'image');
+    }
+    
 
-        try {
-            // Ensure we have a conversation ID before uploading
-            await ensureConversationId();
-            
-            // Increment upload counter
-            uploadingImageCount++;
-            
-            // Set upload flag to true - this will disable the send button
-            isUploadingImage = true;
-            
-            // Update send button state
-            updateSendButtonState();
-            
-            // Show loading state
-            imageUploadButton.classList.add('loading');
-            
-            // Create FormData and append file
-            const formData = new FormData();
-            formData.append('file', fileOrBlob, fileOrBlob.name || 'photo.jpg');
-            
-            console.log("📤 Uploading image to server...");
-            
-            // Upload to server
-            const response = await fetch('/upload_image', {
-                method: 'POST',
-                headers: {
-                    'X-CSRFToken': getCSRFToken()
-                },
-                body: formData
-            });
-            
-            if (!response.ok) {
-                throw new Error(`Upload failed: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            console.log("↩️ upload response:", data);
-            
-            if (data.error) {
-                throw new Error(data.error);
-            }
-            
-            // Store the image URL in the array
-            attachedImageUrls.push(data.image_url);
-            
-            // Show previews
-            updateImagePreviews();
-            
-            console.log(`Image uploaded successfully (${attachedImageUrls.length} total):`, data.image_url);
-        } catch (error) {
-            console.error('Error uploading image:', error);
-            alert(`Upload failed: ${error.message}`);
-        } finally {
-            // Decrement upload counter
-            uploadingImageCount--;
-            
-            // Only disable uploading flag if all uploads are complete
-            if (uploadingImageCount === 0) {
-                isUploadingImage = false;
-                
-                // Update send button state
-                updateSendButtonState();
-                
-                // Hide loading state
-                imageUploadButton.classList.remove('loading');
-            }
-        }
-    }
     
-    // Ensure we have a valid conversation ID
-    async function ensureConversationId() {
-        if (!currentConversationId) {
-            // This shouldn't normally happen since we create a conversation when the page loads
-            console.warn("No current conversation ID, creating a new one");
-            try {
-                const response = await fetch('/conversations', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Failed to create conversation: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                currentConversationId = data.id;
-                console.log(`Generated new conversation ID: ${currentConversationId}`);
-                return currentConversationId;
-            } catch (error) {
-                console.error('Error creating conversation:', error);
-                return null;
-            }
-        }
-        return currentConversationId;
-    }
-    
-    // PDF handling function
-    async function handlePdfFile(file) {
-        console.log("📄 handlePdfFile()", file);
+    // Unified file upload handler for both images and PDFs
+    async function handleFileUpload(file, fileType = 'auto') {
+        console.log(`🔄 handleFileUpload(), file:`, file, `fileType: ${fileType}`);
         if (!file) return;
         
+        // Check if already uploading
+        if (isUploadingFile) {
+            console.warn('Already uploading a file, please wait');
+            return false;
+        }
+        
         try {
-            // Ensure we have a conversation ID before uploading
-            await ensureConversationId();
-            
             // Set upload flag to true - this will disable the send button
-            isUploadingImage = true;
+            isUploadingFile = true;
+            
+            // For images, track the count of uploading images
+            if (fileType === 'image' || 
+                (fileType === 'auto' && file.type && file.type.startsWith('image/'))) {
+                uploadingImageCount++;
+                // Update image button UI
+                if (imageUploadButton) {
+                    imageUploadButton.classList.add('loading');
+                }
+            }
             
             // Update send button state
             updateSendButtonState();
@@ -836,16 +756,58 @@ document.addEventListener('DOMContentLoaded', function() {
             // Create an upload indicator
             const uploadIndicator = document.getElementById('upload-indicator') || createUploadIndicator();
             uploadIndicator.style.display = 'flex';
-            uploadIndicator.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading PDF: ${file.name}...`;
+            
+            // Determine file type if set to auto
+            if (fileType === 'auto') {
+                if (file.type) {
+                    // Use MIME type if available
+                    if (file.type.startsWith('image/')) {
+                        fileType = 'image';
+                    } else if (file.type === 'application/pdf') {
+                        fileType = 'pdf';
+                    } else {
+                        throw new Error(`Unsupported file type: ${file.type}`);
+                    }
+                } else if (file.name) {
+                    // Use file extension as fallback
+                    const extension = file.name.split('.').pop().toLowerCase();
+                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
+                        fileType = 'image';
+                    } else if (extension === 'pdf') {
+                        fileType = 'pdf';
+                    } else {
+                        throw new Error(`Unsupported file extension: .${extension}`);
+                    }
+                } else {
+                    // Default to image for blobs without type/name (e.g., camera captures)
+                    fileType = 'image';
+                }
+            }
+            
+            // Set appropriate indicator text
+            if (file.name) {
+                uploadIndicator.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading ${fileType}: ${file.name}...`;
+            } else {
+                uploadIndicator.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading ${fileType}...`;
+            }
             
             // Create FormData and append file
             const formData = new FormData();
-            formData.append('file', file, file.name);
+            formData.append('file', file, file.name || `photo.${fileType === 'pdf' ? 'pdf' : 'jpg'}`);
             
-            console.log("📤 Uploading PDF to server...");
+            // Add current model as a hint to optimize file processing
+            const activeModel = document.querySelector('.model-btn.active, .model-preset-btn.active');
+            if (activeModel) {
+                const modelId = activeModel.getAttribute('data-model-id');
+                if (modelId) {
+                    formData.append('model', modelId);
+                }
+            }
             
-            // Upload to server
-            const response = await fetch('/upload_pdf', {
+            console.log(`📤 Uploading ${fileType} to server...`);
+            
+            // Upload to server - use the unified endpoint
+            const response = await fetch('/upload_file', {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCSRFToken()
@@ -858,47 +820,95 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             const data = await response.json();
-            console.log("↩️ PDF upload response:", data);
+            console.log(`↩️ ${fileType} upload response:`, data);
             
             if (data.error) {
                 throw new Error(data.error);
             }
             
-            // Store the PDF data URL (base64-encoded) and filename
-            // This is critical for OpenRouter - we must use the data URL, not the regular URL
-            attachedPdfUrl = data.pdf_data_url;
-            attachedPdfName = file.name || data.filename;
-            
-            // For debugging: verify we have a proper data URL starting with data:application/pdf;base64,
-            if (!attachedPdfUrl.startsWith('data:application/pdf;base64,')) {
-                console.error('Invalid PDF data URL format:', attachedPdfUrl.substring(0, 50) + '...');
+            // Process based on response type
+            if (data.image_url) {
+                // Handle image response
+                attachedImageUrls.push(data.image_url);
+                updateImagePreviews();
+                console.log(`📸 Image uploaded successfully (${attachedImageUrls.length} total):`, data.image_url);
+                
+                // Remove the indicator for images - we show them in the preview area
+                uploadIndicator.remove();
+            } else if (data.pdf_data_url) {
+                // Handle PDF response
+                attachedPdfUrl = data.pdf_data_url;
+                attachedPdfName = file.name || data.filename || 'document.pdf';
+                
+                // For debugging: verify we have a proper data URL starting with data:application/pdf;base64,
+                if (!attachedPdfUrl.startsWith('data:application/pdf;base64,')) {
+                    console.error('Invalid PDF data URL format:', attachedPdfUrl.substring(0, 50) + '...');
+                } else {
+                    console.log('Valid base64 PDF data URL received (truncated):', attachedPdfUrl.substring(0, 50) + '...');
+                }
+                
+                // Update the indicator to show success
+                uploadIndicator.innerHTML = `<i class="fa-solid fa-file-pdf"></i> PDF ready: ${attachedPdfName} <button class="remove-file-btn"><i class="fa-solid fa-times"></i></button>`;
+                uploadIndicator.classList.add('pdf-indicator');
+                
+                // Add event listener to remove button
+                const removeBtn = uploadIndicator.querySelector('.remove-file-btn');
+                if (removeBtn) {
+                    removeBtn.addEventListener('click', function() {
+                        clearAttachedPdf();
+                        uploadIndicator.remove();
+                    });
+                }
+                
+                console.log(`📄 PDF uploaded successfully:`, attachedPdfName, 'Base64 data URL available');
             } else {
-                console.log('Valid base64 PDF data URL received (truncated):', attachedPdfUrl.substring(0, 50) + '...');
+                console.warn('Response did not contain expected image_url or pdf_data_url');
+                uploadIndicator.remove();
             }
             
-            // Update the indicator to show success
-            uploadIndicator.innerHTML = `<i class="fa-solid fa-file-pdf"></i> PDF ready: ${file.name} <button class="remove-file-btn"><i class="fa-solid fa-times"></i></button>`;
-            uploadIndicator.classList.add('pdf-indicator');
-            
-            // Add event listener to remove button
-            const removeBtn = uploadIndicator.querySelector('.remove-file-btn');
-            if (removeBtn) {
-                removeBtn.addEventListener('click', function() {
-                    clearAttachedPdf();
-                    uploadIndicator.remove();
-                });
-            }
-            
-            console.log(`PDF uploaded successfully:`, attachedPdfName, 'Base64 data URL available');
+            return true;
         } catch (error) {
-            console.error('Error uploading PDF:', error);
-            alert(`PDF upload failed: ${error.message}`);
-            clearAttachedPdf();
+            console.error(`Error uploading ${fileType}:`, error);
+            alert(`Upload failed: ${error.message}`);
+            
+            // Clear attachments based on type
+            if (fileType === 'pdf') {
+                clearAttachedPdf();
+            }
+            
+            // Remove the indicator
+            const uploadIndicator = document.getElementById('upload-indicator');
+            if (uploadIndicator) uploadIndicator.remove();
+            
+            return false;
         } finally {
-            // Reset upload flag
-            isUploadingImage = false;
+            // Reset flags based on file type
+            if (fileType === 'image' || 
+                (fileType === 'auto' && file.type && file.type.startsWith('image/'))) {
+                // Decrement upload counter for images
+                uploadingImageCount--;
+                
+                // Only disable uploading flag if all uploads are complete
+                if (uploadingImageCount === 0) {
+                    // Reset image button UI
+                    if (imageUploadButton) {
+                        imageUploadButton.classList.remove('loading');
+                    }
+                }
+            }
+            
+            // Reset the overall upload flag
+            isUploadingFile = false;
+            
+            // Update send button state
             updateSendButtonState();
         }
+    }
+    
+    // PDF handling function (now using the unified uploader)
+    async function handlePdfFile(file) {
+        console.log("📄 handlePdfFile() - delegating to handleFileUpload");
+        return handleFileUpload(file, 'pdf');
     }
     
     // Add a new function to update all image previews based on the attached URLs
@@ -1434,6 +1444,11 @@ document.addEventListener('DOMContentLoaded', function() {
             clearAttachedImage();
         }
         
+        // If switching to a model that doesn't support PDFs, clear any attached PDF
+        if (!supportsPDF) {
+            clearAttachedPdf();
+        }
+        
         return isMultimodalModel; // Return for testing purposes
     }
     
@@ -1683,6 +1698,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             is_reasoning: modelData.is_reasoning || modelId.includes('o4') || modelId.includes('claude'),
                             // Add perplexity flag based on model ID
                             is_perplexity: modelId.includes('perplexity'),
+                            // Add PDF support flag from pricing data
+                            supports_pdf: modelData.supports_pdf || false,
                             // Include context length for display elsewhere
                             context_length: modelData.context_length,
                             // Store pricing info if needed elsewhere
@@ -3021,16 +3038,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log(`📄 Including PDF document in message: ${attachedPdfName}`);
             }
             
-            // Check if the model supports images
+            // Check if the model supports images and PDFs
             const model = allModels.find(m => m.id === modelId);
             const isMultimodalModel = model && model.is_multimodal === true;
+            const supportsPdf = model && model.supports_pdf === true;
             
-            if (!isMultimodalModel) {
+            // Warn if trying to send images to a non-multimodal model
+            if (hasImages && !isMultimodalModel) {
                 console.warn(`⚠️ Warning: Model ${modelId} does not support images, but images are being sent`);
+            }
+            
+            // Warn if trying to send PDFs to a model that doesn't support them
+            if (hasPdf && !supportsPdf) {
+                console.warn(`⚠️ Warning: Model ${modelId} does not support PDF documents, but a PDF is being sent`);
             }
             
             // Clear all images after sending
             clearAttachedImages();
+            
+            // Clear PDF if attached
+            if (hasPdf) {
+                clearAttachedPdf();
+            }
         }
         
         // Add user message to history with standardized content array format

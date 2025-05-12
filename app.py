@@ -25,6 +25,7 @@ from pathlib import Path
 from PIL import Image  # For image processing
 from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory # Added send_from_directory
 from urllib.parse import urlparse # For URL analysis in image handling
+from werkzeug.datastructures import FileStorage # For file handling in upload routes
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.orm import DeclarativeBase
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
@@ -256,21 +257,34 @@ MULTIMODAL_MODELS = {
 
 # Models that support PDF documents (document processing)
 DOCUMENT_MODELS = {
+    # Google models with document support
     "google/gemini-pro-vision", 
     "google/gemini-1.5-pro-latest",
     "google/gemini-2.0-pro",
     "google/gemini-2.5-pro-preview",
+    
+    # Anthropic models with document support
     "anthropic/claude-3-opus-20240229",
     "anthropic/claude-3-sonnet-20240229", 
     "anthropic/claude-3-haiku-20240307",
     "anthropic/claude-3.5-sonnet-20240620",
     "anthropic/claude-3.7-sonnet-20240910",
+    
+    # OpenAI models with document support
     "openai/gpt-4-turbo",
     "openai/gpt-4-vision-preview",
+    "openai/gpt-4o",  # Base model ID
     "openai/gpt-4o-2024-05-13",
     "openai/gpt-4o-2024-08-06",
+    "openai/gpt-4o-2024-11-20",  # Latest model
     "openai/o1-mini-2024-09-12",
-    "perplexity/sonar-pro"
+    "openai/o1-preview-2024-09-12",
+    
+    # Perplexity models with document support
+    "perplexity/sonar-small-online",
+    "perplexity/sonar-medium-online",
+    "perplexity/sonar-pro",
+    "perplexity/sonar-pro-2024-05-15"
 }
 
 # Initialize the scheduler for background tasks with enhanced configuration
@@ -1142,6 +1156,54 @@ def upload_image():
         
     except Exception as e:
         logger.exception(f"Error handling image upload: {e}")
+        return jsonify({
+            "error": f"Server error: {str(e)}"
+        }), 500
+
+@app.route('/upload_file', methods=['POST'])
+@login_required
+def upload_file():
+    """
+    Unified file upload route that handles both images and PDFs based on file type.
+    This allows a single upload button in the UI to handle different file types.
+    
+    For images:
+        - Processes and stores in Azure 'gloriamundoblobs' container
+        - Returns image_url suitable for multimodal models
+        
+    For PDFs:
+        - Stores PDFs in 'gloriamundopdfs' Azure Blob Storage container
+        - Returns pdf_data_url as base64 data URL for OpenRouter document handling
+        
+    Returns:
+        JSON with appropriate URLs based on file type
+    """
+    try:
+        # Verify a file was uploaded
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+            
+        # Detect file type from extension
+        filename = file.filename
+        extension = Path(filename).suffix.lower()
+        
+        # Route to appropriate handler based on file type
+        if extension in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
+            # Handle image uploads
+            return upload_image()
+        elif extension == '.pdf':
+            # Handle PDF uploads
+            return upload_pdf()
+        else:
+            return jsonify({
+                "error": f"File type {extension} is not supported. Please upload an image (jpg, png, gif, webp) or PDF file."
+            }), 400
+    except Exception as e:
+        logger.exception(f"Error handling file upload: {e}")
         return jsonify({
             "error": f"Server error: {str(e)}"
         }), 500
@@ -2278,6 +2340,28 @@ def chat(): # Synchronous function
             'include_reasoning': True  # Enable reasoning tokens for all models that support it
         }
         
+        # Add PDF plugin configuration if this model supports documents (native engine for PDFs)
+        # This ensures PDFs are processed by the native model capabilities instead of falling back to OCR
+        has_pdf_content = False
+        for msg in processed_messages:
+            content = msg.get('content', '')
+            if isinstance(content, list):
+                for item in content:
+                    if item.get('type') == 'file' and 'file_data' in item.get('file', {}):
+                        has_pdf_content = True
+                        break
+        
+        if has_pdf_content and openrouter_model in DOCUMENT_MODELS:
+            logger.info(f"PDF content detected for document-capable model {openrouter_model}, adding native PDF plugin config")
+            payload['plugins'] = [
+                {
+                    "id": "file-parser",
+                    "pdf": {
+                        "engine": "native"
+                    }
+                }
+            ]
+        
         # Note: We don't need to add image_url separately as it's now included in the messages content
         # for multimodal models when an image is provided
         
@@ -2298,15 +2382,16 @@ def chat(): # Synchronous function
                             logger.info(f"  Content item {i}: type=text, text={content_item.get('text', '')[:50]}...")
                         elif item_type == 'image_url':
                             image_url_obj = content_item.get('image_url', {})
-                            url = image_url_obj.get('url', 'none')
+                        elif item_type == 'file':
+                            file_obj = content_item.get('file', {})
+                            filename = file_obj.get('filename', 'unknown')
+                            file_data = file_obj.get('file_data', '')
+                            is_valid_data_url = file_data.startswith('data:application/pdf;base64,')
+                            logger.info(f"  Content item {i}: type=file, filename={filename}, valid_data_url={is_valid_data_url}")
+                            if not is_valid_data_url:
+                                logger.error(f"❌ INVALID PDF DATA FORMAT: PDF data must be in data:application/pdf;base64,... format")
                             
-                            # Double-check URL format - must be a valid public URL for OpenRouter
-                            is_valid_url = url.startswith(('http://', 'https://'))
-                            if not is_valid_url:
-                                logger.error(f"❌ INVALID URL FORMAT DETECTED in payload: {url[:50]}...")
-                                logger.error("This will cause the image to be ignored by the model.")
-                            else:
-                                logger.info(f"  Content item {i}: type=image_url, url={url[:50]}...")
+                            # For image_url type, we'll check URL format in the next section
             
             # Now compare what was in the original vs what's in the processed payload
             original_has_multimodal = any(isinstance(msg.get('content'), list) for msg in messages)
