@@ -42,37 +42,14 @@ ENABLE_RAG = os.environ.get('ENABLE_RAG', 'true').lower() == 'true'
 if ENABLE_MEMORY_SYSTEM:
     try:
         from memory_integration import save_message_with_memory, enrich_prompt_with_memory
-        logging.info("Advanced memory system enabled with annotations support")
+        logging.info("Advanced memory system enabled")
     except ImportError as e:
         logging.warning(f"Failed to import memory integration: {e}")
         ENABLE_MEMORY_SYSTEM = False
 else:
     # Define dummy functions if memory system is disabled to avoid errors later
-    def save_message_with_memory(session_id=None, user_id=None, role=None, content=None, message_obj=None, response_metadata=None):
-        """
-        Save message with additional metadata including annotations for context persistence.
-        This function handles storing OpenRouter annotations for RAG context preservation.
-        
-        This function supports two calling modes:
-        1. Traditional mode: Pass session_id, user_id, role, content
-        2. Enhanced mode: Pass message_obj, user_id, session_id, response_metadata
-        
-        Args:
-            session_id (str, optional): The conversation session ID
-            user_id (str, optional): The user ID
-            role (str, optional): Either "user" or "assistant"
-            content (str, optional): The message content
-            message_obj (Message, optional): The database Message object (enhanced mode)
-            response_metadata (dict, optional): Additional metadata including annotations
-        """
-        # Check if we're in enhanced mode with a message object
-        if message_obj is not None:
-            # Check if we have annotations in the response metadata
-            if response_metadata and 'annotations' in response_metadata:
-                # Store annotations for context persistence
-                message_obj.annotations = response_metadata['annotations']
-                logging.info(f"Stored annotations for message {message_obj.id} for context persistence")
-    
+    def save_message_with_memory(*args, **kwargs):
+        pass # No-op
     def enrich_prompt_with_memory(session_id, user_id, user_message, conversation_history):
         return conversation_history # Return original history
         
@@ -288,8 +265,8 @@ def init_scheduler():
     from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
     
     try:
-        # No need to import the price updater function here anymore
-        # We'll use the scheduled_price_update_job wrapper function
+        # Import the price updater function
+        from price_updater import fetch_and_store_openrouter_prices
         
         # Create scheduler with enhanced config for better reliability in web environments
         scheduler = BackgroundScheduler(
@@ -304,9 +281,8 @@ def init_scheduler():
         )
         
         # Add the OpenRouter price fetching job with enhanced configuration
-        # Now using our wrapper function that establishes application context
         scheduler.add_job(
-            func=scheduled_price_update_job,  # Using wrapper function instead of direct call 
+            func=fetch_and_store_openrouter_prices, 
             trigger='interval', 
             minutes=30,  
             id='fetch_model_prices_job',
@@ -316,9 +292,8 @@ def init_scheduler():
         )
         
         # Run the price fetching job immediately at scheduler startup to ensure we have fresh data
-        # Now using our wrapper function that establishes application context
         scheduler.add_job(
-            func=scheduled_price_update_job,  # Using wrapper function instead of direct call
+            func=fetch_and_store_openrouter_prices,
             trigger='date',  # Run once at a specific time
             run_date=datetime.datetime.now() + datetime.timedelta(seconds=15),  # Run 15 seconds after startup
             id='initial_fetch_model_prices_job',
@@ -342,7 +317,7 @@ def init_scheduler():
             if job_id == 'fetch_model_prices_job':
                 logger.info(f"Scheduling retry for failed job {job_id} in 5 minutes")
                 scheduler.add_job(
-                    func=scheduled_price_update_job,  # Using the wrapper function instead of direct call
+                    func=fetch_and_store_openrouter_prices,
                     trigger='date',
                     run_date=datetime.datetime.now() + datetime.timedelta(minutes=5),
                     id='retry_fetch_model_prices_job',
@@ -406,108 +381,49 @@ def init_scheduler():
 # Replaced by the consolidated fetch_and_store_openrouter_prices function from price_updater.py
 # which now handles both pricing and model data in one place
 
-# Create a wrapper function for scheduled price update job
-def scheduled_price_update_job():
-    """
-    Wrapper function that establishes application context before calling price_updater.
-    This resolves the "Working outside of application context" errors when called by APScheduler.
-    """
-    logger.info("Starting scheduled_price_update_job with app context")
-    try:
-        from price_updater import fetch_and_store_openrouter_prices
-        
-        logger.info("Pushing app context for price update job")
-        with app.app_context():
-            logger.info("App context established, calling fetch_and_store_openrouter_prices")
-            success = fetch_and_store_openrouter_prices(app_instance=app, db_instance=db)
-            
-            if success:
-                logger.info("Price update job completed successfully")
-            else:
-                logger.warning("Price update job failed to complete successfully")
-        
-        logger.info("App context exited, scheduled_price_update_job complete")
-        return success
-    except Exception as e:
-        logger.error(f"Error in scheduled_price_update_job: {e}")
-        logger.error(traceback.format_exc())
-        return False
-
 # Initialize scheduler with improved implementation
 scheduler = init_scheduler()
 if not scheduler or not scheduler.running:
     logger.critical("Failed to initialize the scheduler! This may affect model data availability.")
 
-# Initial check for model data at startup - with non-blocking fetch for better performance
-logger.info("Checking for OpenRouter models at startup")
-# First ensure proper Python imports
-import traceback
-from models import OpenRouterModel
-import threading
-
-# Define a function to run the initial model fetch in a background thread
-def fetch_models_in_background():
-    """
-    Performs the initial model fetch in a background thread to avoid blocking app startup.
-    This significantly improves page load time while still ensuring models get loaded.
-    
-    Note: This function must not be called within an existing app context.
-    It creates its own context to avoid nesting contexts which can cause issues.
-    """
-    # Important: Sleep briefly to ensure the main thread has fully released
-    # This prevents context collisions during application startup
-    time.sleep(2)
-    
-    logger.info("Starting background thread for initial model fetch")
-    try:
-        from price_updater import fetch_and_store_openrouter_prices
-        
-        # Create our own app context rather than relying on the wrapper function
-        # This is safer for background threads
-        with app.app_context():
-            logger.info("Background thread: App context established, calling fetch_and_store_openrouter_prices")
-            success = fetch_and_store_openrouter_prices(app_instance=app, db_instance=db)
-            
-            if success:
-                logger.info("Background model fetch completed successfully")
-            else:
-                logger.warning("Background model fetch failed. The scheduler will retry later.")
-    except Exception as e:
-        logger.error(f"Error in background model fetch: {e}")
-        logger.error(traceback.format_exc())
-
-# Safely check for models in database and set up background fetching
+# Initial fetch of model data at startup - crucial for application functionality
+logger.info("Performing initial fetch of OpenRouter models at startup")
 try:
-    # First check model count in the database, using context manager to ensure proper cleanup
-    model_count = 0
-    with app.app_context():
-        logger.info("Establishing app context for initial model count check")
-        # Check if we have models in the database
-        model_count = OpenRouterModel.query.count()
-        logger.info(f"Found {model_count} OpenRouter models in database at startup")
+    # First ensure proper Python imports
+    import traceback
+    from price_updater import fetch_and_store_openrouter_prices
+    from models import OpenRouterModel
     
-    # Important: Create background threads OUTSIDE of any app context
-    # This prevents nested contexts which cause the "Working outside of application context" errors
+    # Check if we have models in the database
+    model_count = OpenRouterModel.query.count()
+    
     if model_count > 0:
-        # Even if we have models, schedule a background refresh to ensure we have the latest data
-        # This runs async and won't block the application startup
-        logger.info("Scheduling background refresh of model data")
-        refresh_thread = threading.Thread(target=fetch_models_in_background)
-        refresh_thread.daemon = True  # Thread will exit when main thread exits
-        refresh_thread.start()
+        logger.info(f"Found {model_count} OpenRouter models in database at startup")
     else:
-        logger.info("No OpenRouter models found in database")
+        logger.info("No OpenRouter models found in database, fetching from API...")
         
-        # Start a background thread to fetch models without blocking app startup
-        logger.info("Starting background thread to fetch initial model data")
-        fetch_thread = threading.Thread(target=fetch_models_in_background)
-        fetch_thread.daemon = True  # Thread will exit when main thread exits
-        fetch_thread.start()
+        # Attempt to fetch model prices directly (which includes model info)
+        # This bypasses the scheduler to ensure we get data at startup
+        logger.info("Fetching initial model data directly...")
+        price_success = fetch_and_store_openrouter_prices()
+        
+        if price_success:
+            # Check if models were stored in the database
+            model_count = OpenRouterModel.query.count()
+            logger.info(f"Successfully fetched and stored {model_count} OpenRouter models in database")
+        else:
+            # If that fails, log a warning - we'll rely on the scheduler to retry soon
+            logger.warning("Initial model fetching failed. The scheduler will retry shortly.")
     
-    # Log that we'll continue startup without waiting
-    logger.info("Application continuing startup without waiting for model fetch to complete")
+    # Final verification of database state
+    model_count = OpenRouterModel.query.count()
+    if model_count > 0:
+        logger.info(f"OpenRouter model database initialized with {model_count} models")
+    else:
+        logger.warning("No models available in the database. Application may have limited functionality.")
+        
 except Exception as e:
-    logger.error(f"Error checking for models at startup: {e}")
+    logger.error(f"Critical error fetching model data at startup: {e}")
     logger.error(traceback.format_exc())
     logger.warning("Application may have limited functionality until models are fetched.")
 
@@ -979,176 +895,6 @@ def test_multimodal():
         else:
             return f"<h1>Error</h1><p>{error_msg}</p>", 500
 
-@app.route('/api/attach_file_for_rag', methods=['POST'])
-@login_required
-def attach_file_for_rag():
-    """
-    Route to handle files uploaded for RAG functionality.
-    Processes and stores PDFs or images in designated Azure Blob Storage containers.
-    
-    This endpoint is exclusively for files from the RAG attachment button and
-    validates that the selected model actually supports the file type.
-    
-    Success Response:
-        {
-            "results": [
-                {
-                    "filename": "document.pdf",
-                    "url": "https://gloriamundoblobs.blob.core.windows.net/gloriamundopdfs/abc123.pdf",
-                    "status": "success", 
-                    "id_in_db": 123
-                },
-                ...
-            ]
-        }
-        
-    Error Response:
-        {
-            "error": "No files provided"
-        }
-        
-        or
-        
-        {
-            "results": [
-                {
-                    "filename": "document.txt", 
-                    "status": "error", 
-                    "message": "File type not supported by selected model"
-                },
-                ...
-            ]
-        }
-    """
-    try:
-        # Verify file(s) were uploaded
-        if 'files[]' not in request.files:
-            return jsonify({"error": "No files provided"}), 400
-            
-        files = request.files.getlist('files[]')
-        if not files or len(files) == 0:
-            return jsonify({"error": "No files selected"}), 400
-            
-        # Get conversation UUID and current model ID from form data
-        conversation_uuid = request.form.get('conversation_uuid')
-        current_model_id = request.form.get('current_model_id')
-        
-        if not conversation_uuid or not current_model_id:
-            return jsonify({"error": "Missing conversation UUID or model ID"}), 400
-            
-        # Import the model and helper methods
-        from models import UploadedDocument, OpenRouterModel
-        
-        # Prepare a list to store results for the client
-        processed_files_info = []
-        
-        # Get Azure Storage connection string
-        azure_connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
-        if not azure_connection_string:
-            return jsonify({"error": "Azure Storage not configured"}), 500
-            
-        # Create the BlobServiceClient
-        blob_service_client = BlobServiceClient.from_connection_string(azure_connection_string)
-        
-        for file in files:
-            # Basic validation
-            if not file or file.filename == '':
-                processed_files_info.append({
-                    "filename": "unknown",
-                    "status": "error",
-                    "message": "Empty file provided"
-                })
-                continue
-                
-            filename = file.filename
-            
-            # Check if it's a PDF or image
-            is_pdf = filename.lower().endswith('.pdf')
-            is_image = file.content_type.startswith('image/')
-            
-            if not is_pdf and not is_image:
-                processed_files_info.append({
-                    "filename": filename,
-                    "status": "error",
-                    "message": "Only PDF and image files are supported"
-                })
-                continue
-                
-            # Verify the model supports this file type
-            is_supported = False
-            if is_pdf:
-                is_supported = OpenRouterModel.is_model_pdf_capable(current_model_id)
-            elif is_image:
-                is_supported = OpenRouterModel.is_model_multimodal(current_model_id)
-                
-            if not is_supported:
-                processed_files_info.append({
-                    "filename": filename,
-                    "status": "error",
-                    "message": "File type not supported by selected model"
-                })
-                continue
-                
-            try:
-                # Determine target Azure container
-                target_container_name = "gloriamundopdfs" if is_pdf else "gloriamundoimages"
-                
-                # Get a reference to the container
-                container_client = blob_service_client.get_container_client(target_container_name)
-                
-                # Create a unique blob name with the conversation UUID prefix
-                unique_blob_name = f"{conversation_uuid}/{uuid.uuid4().hex}{os.path.splitext(filename)[1]}"
-                
-                # Get a blob client for the new blob
-                blob_client = container_client.get_blob_client(unique_blob_name)
-                
-                # Upload the file to Azure Blob Storage
-                blob_client.upload_blob(
-                    file.stream, 
-                    content_settings=ContentSettings(content_type=file.content_type)
-                )
-                
-                # Generate URL for the uploaded file
-                azure_blob_url = blob_client.url
-                
-                # Create and save a new UploadedDocument record
-                new_doc = UploadedDocument(
-                    user_id=current_user.id,
-                    conversation_uuid=conversation_uuid,
-                    file_name=filename,
-                    storage_path=azure_blob_url,
-                    mime_type=file.content_type,
-                    status='active_for_rag'
-                )
-                
-                db.session.add(new_doc)
-                db.session.commit()
-                
-                # Add success entry to processed_files_info
-                processed_files_info.append({
-                    "filename": filename,
-                    "url": azure_blob_url,
-                    "status": "success",
-                    "id_in_db": new_doc.id
-                })
-                
-                logger.info(f"Successfully uploaded file for RAG: {filename}")
-                
-            except Exception as e:
-                logger.exception(f"Error processing file {filename}: {e}")
-                processed_files_info.append({
-                    "filename": filename,
-                    "status": "error",
-                    "message": str(e)
-                })
-        
-        return jsonify({"results": processed_files_info})
-        
-    except Exception as e:
-        logger.exception(f"Error handling RAG file attachment: {e}")
-        return jsonify({"error": str(e)}), 500
-
-
 @app.route('/upload_image', methods=['POST'])
 @login_required
 def upload_image():
@@ -1616,20 +1362,6 @@ def chat(): # Synchronous function
             # Initialize RAG content flag
             has_rag_content = False
             relevant_chunks = []
-            rag_documents = []
-            
-            # Check if RAG documents were included in the request
-            if 'rag_documents' in data and isinstance(data['rag_documents'], list) and len(data['rag_documents']) > 0:
-                rag_documents = data['rag_documents']
-                has_rag_content = True
-                logger.info(f"RAG: Received {len(rag_documents)} documents from request")
-                
-                # Log the document info for debugging
-                for doc in rag_documents:
-                    doc_id = doc.get('id')
-                    filename = doc.get('filename')
-                    url = doc.get('url')
-                    logger.info(f"RAG Document: id={doc_id}, filename={filename}, url={url}")
             
             # Global document_processor is already declared at the function start
             
@@ -1637,11 +1369,7 @@ def chat(): # Synchronous function
             if ENABLE_RAG and user_message and len(user_message.strip()) > 0:
                 # Get user ID for retrieving documents
                 rag_user_id = str(current_user.id) if current_user and current_user.is_authenticated else get_user_identifier()
-                
-                if rag_documents:
-                    logger.info(f"RAG: Processing specific documents for user_id: {rag_user_id}")
-                else:
-                    logger.info(f"RAG: Pre-checking for document availability for user_id: {rag_user_id}")
+                logger.info(f"RAG: Pre-checking for document availability for user_id: {rag_user_id}")
                 
                 # Check if the user has any documents before attempting retrieval
                 try:
@@ -1659,29 +1387,13 @@ def chat(): # Synchronous function
                         logger.error("RAG: Azure OpenAI credentials are missing or incomplete.")
                         # Skip RAG retrieval when credentials are missing
                     else:
-                        if rag_documents:
-                            # We have specific documents from the request - use them
-                            # Fetch the actual document records from the database if needed
-                            from models import UploadedDocument
-                            doc_ids = [doc.get('id') for doc in rag_documents if doc.get('id')]
-                            
-                            if doc_ids:
-                                db_documents = UploadedDocument.query.filter(
-                                    UploadedDocument.user_id == current_user.id,
-                                    UploadedDocument.id.in_(doc_ids)
-                                ).all()
-                                
-                                if db_documents:
-                                    has_rag_content = True
-                                    logger.info(f"RAG: Found {len(db_documents)} matching documents in database")
+                        # Do a preliminary check to see if the user has any documents
+                        has_documents = document_processor.user_has_documents(rag_user_id)
+                        if has_documents:
+                            has_rag_content = True
+                            logger.info("Detected RAG usage - user has documents - marking as requiring advanced model")
                         else:
-                            # No specific documents requested - check if user has any
-                            has_documents = document_processor.user_has_documents(rag_user_id)
-                            if has_documents:
-                                has_rag_content = True
-                                logger.info("Detected RAG usage - user has documents - marking as requiring advanced model")
-                            else:
-                                logger.info("No documents found for user - not marking as RAG content")
+                            logger.info("No documents found for user - not marking as RAG content")
                 except Exception as e:
                     logger.error(f"Error checking for user documents: {e}")
                     # If we can't determine, assume no RAG to avoid using expensive models unnecessarily
@@ -2059,44 +1771,20 @@ def chat(): # Synchronous function
                         if 'document_processor' not in globals() or document_processor is None:
                             from document_processor import DocumentProcessor
                             document_processor = DocumentProcessor()
-                        
-                        # Check if specific RAG documents were included in the request
-                        if rag_documents and len(rag_documents) > 0:
-                            # Use specific documents from the request - DIRECT PASS-THROUGH APPROACH
-                            # We will directly include document URLs in the OpenRouter request
-                            # rather than doing our own document processing and text extraction
-                            logger.info(f"RAG: Using {len(rag_documents)} specific documents with direct pass-through")
                             
-                            # Reset relevant_chunks as we're not using document_processor.py anymore
-                            # We'll handle documents differently with direct URL pass-through
-                            relevant_chunks = []
-                            
-                            # Log the document URLs for debugging
-                            for doc in rag_documents:
-                                doc_url = doc.get('url')
-                                doc_filename = doc.get('filename', 'unnamed')
-                                if doc_url:
-                                    logger.info(f"RAG Document for direct pass-through: {doc_filename} at {doc_url}")
-                                else:
-                                    logger.warning(f"RAG Document missing URL: {doc_filename}")
-                            
-                            # We'll add these documents to the user message content later in the code
-                            # No need to extract document content or retrieve chunks
-                            has_rag_content = True
+                        # Double-check if the user has documents (should be true if has_rag_content was set)
+                        if document_processor.user_has_documents(rag_user_id):
+                            # User has documents, proceed with retrieval
+                            relevant_chunks = document_processor.retrieve_relevant_chunks(
+                                query_text=user_message,
+                                user_id=rag_user_id,
+                                limit=5  # Retrieve top 5 most relevant chunks
+                            )
+                            logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks using Azure embeddings.")
                         else:
-                            # Double-check if the user has documents (should be true if has_rag_content was set)
-                            if document_processor.user_has_documents(rag_user_id):
-                                # User has documents, proceed with retrieval
-                                relevant_chunks = document_processor.retrieve_relevant_chunks(
-                                    query_text=user_message,
-                                    user_id=rag_user_id,
-                                    limit=5  # Retrieve top 5 most relevant chunks
-                                )
-                                logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks using Azure embeddings.")
-                            else:
-                                # User doesn't have documents, skip retrieval
-                                logger.info("RAG: User has no documents, skipping retrieval")
-                                relevant_chunks = []
+                            # User doesn't have documents, skip retrieval
+                            logger.info("RAG: User has no documents, skipping retrieval")
+                            relevant_chunks = []
                 except Exception as retrieval_error:
                     logger.error(f"RAG: Error retrieving document chunks: {retrieval_error}")
                     
@@ -2112,13 +1800,8 @@ def chat(): # Synchronous function
                     relevant_chunks = []
                     logger.info("RAG: Continuing without document context due to retrieval error.")
                 
-                # For the direct pass-through approach, we don't use relevant_chunks anymore
-                # Instead, we'll modify the last user message to include document URLs directly
-                # We'll handle this later in the message processing pipeline
-                
                 if relevant_chunks and len(relevant_chunks) > 0:
-                    # If we have relevant chunks from the old approach, still use them
-                    # This is a fallback case and won't be used for the new RAG document URLs approach
+                    # Format document chunks as context
                     context_text = "Below is relevant information from your documents:\n\n"
                     
                     for i, chunk in enumerate(relevant_chunks):
@@ -2214,25 +1897,9 @@ def chat(): # Synchronous function
         
         # Transform messages if needed to match model capabilities
         processed_messages = []
-        
-        # Flag to identify if we need to inject RAG documents into user message
-        need_to_inject_rag_documents = False
-        last_user_message_index = -1
-        
-        # First pass: process all messages and find the last user message for RAG doc injection
-        for i, msg in enumerate(messages):
+        for msg in messages:
             role = msg.get('role', '')
             content = msg.get('content', '')
-            
-            # Track the last user message index for RAG document injection
-            if role == 'user':
-                last_user_message_index = i
-                
-                # If we have RAG documents to inject, mark this message for processing in second pass
-                if rag_documents and len(rag_documents) > 0:
-                    need_to_inject_rag_documents = True
-                    # Don't process this message yet, we'll do it in the second pass
-                    continue
             
             # Only user and assistant messages need content format adaptation
             if role in ['user', 'assistant']:
@@ -2271,108 +1938,10 @@ def chat(): # Synchronous function
                 # System messages and others pass through unchanged
                 processed_messages.append(msg)
         
-        # Second pass: Inject RAG documents into last user message if needed
-        if need_to_inject_rag_documents and last_user_message_index >= 0:
-            logger.info(f"RAG: Injecting document URLs into user message (message index {last_user_message_index})")
-            
-            # Get the last user message
-            last_user_msg = messages[last_user_message_index]
-            
-            # Create content array for the user message with text and documents
-            content_array = []
-            
-            # Add text content first
-            user_text = last_user_msg.get('content', '')
-            if isinstance(user_text, list):
-                # If content is already an array, use it as a starting point
-                content_array = user_text
-                logger.info(f"RAG: Message already has structured content with {len(content_array)} items")
-            else:
-                # If content is a string, convert to structured format
-                content_array.append({
-                    'type': 'text',
-                    'text': user_text
-                })
-                logger.info(f"RAG: Converted text content to structured format")
-            
-            # Add document URLs to content array
-            for doc in rag_documents:
-                doc_url = doc.get('url')
-                if not doc_url:
-                    continue
-                    
-                # Determine document type based on URL or filename
-                filename = doc.get('filename', '').lower()
-                is_pdf = '.pdf' in filename
-                is_image = any(ext in filename for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'])
-                
-                if is_pdf:
-                    # Add as file type for PDFs
-                    content_array.append({
-                        'type': 'file',
-                        'file': {'url': doc_url}
-                    })
-                    logger.info(f"RAG: Added PDF file: {filename} to user message")
-                elif is_image:
-                    # Add as image_url type for images
-                    content_array.append({
-                        'type': 'image_url',
-                        'image_url': {'url': doc_url}
-                    })
-                    logger.info(f"RAG: Added image: {filename} to user message")
-                else:
-                    # For other file types, default to file type
-                    content_array.append({
-                        'type': 'file',
-                        'file': {'url': doc_url}
-                    })
-                    logger.info(f"RAG: Added file with unknown type: {filename} to user message")
-            
-            # Create the modified user message with RAG documents
-            modified_user_msg = {
-                'role': 'user',
-                'content': content_array
-            }
-            
-            # Add the modified message to processed_messages
-            processed_messages.append(modified_user_msg)
-            logger.info(f"RAG: Successfully injected {len(rag_documents)} document URLs into user message")
-        
         # Log the transformation summary
         logger.info(f"Message format adaptation: {len(messages)} original messages → {len(processed_messages)} processed messages")
         if len(messages) != len(processed_messages):
             logger.warning(f"Message count changed during format adaptation! Original: {len(messages)}, Processed: {len(processed_messages)}")
-        
-        # Get annotations from the last assistant message (if any) for context persistence
-        # This enhanced implementation looks for the most recent message with annotations
-        # to ensure robust context persistence across conversation turns
-        last_annotations = None
-        try:
-            # Find the most recent assistant message with annotations in this conversation
-            from models import Message
-            last_annotated_msg = Message.query.filter_by(
-                conversation_id=conversation.id,
-                role='assistant'
-            ).filter(Message.annotations.isnot(None)).order_by(Message.created_at.desc()).first()
-            
-            if last_annotated_msg and last_annotated_msg.annotations:
-                last_annotations = last_annotated_msg.annotations
-                logger.info(f"Found annotations from previous assistant message (ID: {last_annotated_msg.id}) for context persistence")
-                logger.debug(f"Annotation structure type: {type(last_annotations)}, length: {len(str(last_annotations)) if last_annotations else 0} bytes")
-            else:
-                # If no assistant message has annotations, we can also check user messages
-                # This is useful when a document was just uploaded and we haven't yet 
-                # received an assistant response with annotations
-                last_user_msg_with_annotations = Message.query.filter_by(
-                    conversation_id=conversation.id,
-                    role='user'
-                ).filter(Message.annotations.isnot(None)).order_by(Message.created_at.desc()).first()
-                
-                if last_user_msg_with_annotations and last_user_msg_with_annotations.annotations:
-                    last_annotations = last_user_msg_with_annotations.annotations
-                    logger.info(f"No assistant annotations found, using annotations from user message (ID: {last_user_msg_with_annotations.id})")
-        except Exception as e:
-            logger.warning(f"Error retrieving annotations from previous messages: {e}")
         
         # Create payload with the processed messages
         payload = {
@@ -2381,11 +1950,6 @@ def chat(): # Synchronous function
             'stream': True,
             'include_reasoning': True  # Enable reasoning tokens for all models that support it
         }
-        
-        # Add annotations if available for context persistence
-        if last_annotations:
-            payload['annotations'] = last_annotations
-            logger.info("Added annotations from previous message for context persistence")
         
         # Note: We don't need to add image_url separately as it's now included in the messages content
         # for multimodal models when an image is provided
@@ -2650,22 +2214,6 @@ def chat(): # Synchronous function
                                         if delta.get('reasoning') is not None:
                                             reasoning_chunk = delta['reasoning']
                                             logger.debug(f"Received reasoning chunk: {reasoning_chunk[:50]}...")
-                                            
-                                        # Extract annotations if available (for OpenRouter context persistence)
-                                        # Enhanced logic to capture and store annotations for RAG context persistence
-                                        if 'annotations' in json_data:
-                                            # Only capture annotations once per response (they shouldn't change during streaming)
-                                            # But update if they do change to ensure we have the latest context
-                                            current_annotations = json_data.get('annotations')
-                                            
-                                            # Check if we already have annotations or if they've changed
-                                            if not hasattr(generate, 'captured_annotations') or generate.captured_annotations != current_annotations:
-                                                generate.captured_annotations = current_annotations
-                                                logger.debug(f"Captured annotations for context persistence (size: {len(str(current_annotations)) if current_annotations else 0} bytes)")
-                                                
-                                                # Store size limits for debugging
-                                                if current_annotations and len(str(current_annotations)) > 10000:
-                                                    logger.warning(f"Large annotations detected: {len(str(current_annotations))} bytes")
 
                                     # Handle content chunk
                                     if content_chunk:
@@ -2715,9 +2263,6 @@ def chat(): # Synchronous function
                 if full_response_text: # Only save if there was actual content
                     try:
                         from models import Message 
-                        # Get captured annotations if available
-                        annotations = getattr(generate, 'captured_annotations', None)
-                        
                         assistant_db_message = Message(
                             conversation_id=current_conv_id, 
                             role='assistant', 
@@ -2726,7 +2271,6 @@ def chat(): # Synchronous function
                             model_id_used=final_model_id_used, 
                             prompt_tokens=final_prompt_tokens, 
                             completion_tokens=final_completion_tokens,
-                            annotations=annotations,
                             rating=None 
                         )
                         db.session.add(assistant_db_message)
@@ -2769,41 +2313,10 @@ def chat(): # Synchronous function
                         if ENABLE_MEMORY_SYSTEM:
                              try:
                                  memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{current_conv_id}"
-                                 
-                                 # Enhanced version with annotations support for context persistence
-                                 from models import Message
-                                 assistant_message = None
-                                 if assistant_message_id:
-                                     assistant_message = Message.query.get(assistant_message_id)
-                                     
-                                 # Create metadata with annotations
-                                 memory_metadata = {
-                                     'model': requested_model_id,
-                                     'model_id_used': final_model_id_used,
-                                     'prompt_tokens': final_prompt_tokens,
-                                     'completion_tokens': final_completion_tokens,
-                                     'message_id': assistant_message_id,
-                                     'annotations': getattr(generate, 'captured_annotations', None)
-                                 }
-                                 
-                                 if assistant_message and hasattr(save_message_with_memory, '__code__') and 'message_obj' in save_message_with_memory.__code__.co_varnames:
-                                     # Use the enhanced version if available
-                                     logger.info(f"Using enhanced memory integration with annotations support")
-                                     save_message_with_memory(
-                                         message_obj=assistant_message,
-                                         user_id=memory_user_id,
-                                         session_id=str(current_conv_id),
-                                         response_metadata=memory_metadata
-                                     )
-                                 else:
-                                     # Fallback to traditional approach
-                                     logger.info(f"Using traditional memory integration")
-                                     save_message_with_memory(
-                                         session_id=str(current_conv_id), 
-                                         user_id=memory_user_id, 
-                                         role='assistant', 
-                                         content=full_response_text
-                                     )
+                                 save_message_with_memory(
+                                     session_id=str(current_conv_id), user_id=memory_user_id, 
+                                     role='assistant', content=full_response_text
+                                 )
                              except Exception as e:
                                  logger.error(f"Error saving assistant message to memory: {e}")
                         
@@ -2845,29 +2358,22 @@ def chat(): # Synchronous function
                             'completion_tokens': final_completion_tokens
                         }
                         
-                        # Add document info if RAG was used (either via old system or new direct pass-through)
-                        if ('has_rag_documents' in locals() and has_rag_documents) or (rag_documents and len(rag_documents) > 0):
+                        # Add document info if RAG was used
+                        if 'has_rag_documents' in locals() and has_rag_documents:
                             metadata_payload['using_documents'] = True
-                            
-                            # Add document sources from either method
                             if 'unique_sources' in locals() and unique_sources:
-                                # Traditional RAG with document chunks
                                 metadata_payload['document_sources'] = unique_sources
-                                metadata_payload['rag_method'] = 'chunks'
-                            elif rag_documents and len(rag_documents) > 0:
-                                # Direct pass-through RAG with URLs
-                                doc_filenames = [doc.get('filename', 'Unnamed document') for doc in rag_documents if doc.get('url')]
-                                metadata_payload['document_sources'] = doc_filenames
-                                metadata_payload['rag_method'] = 'direct_passthrough'
                             
                             # Enhanced debug logging for metadata payload with RAG info
                             print(f"DEBUG-RAG-METADATA: Adding RAG info to metadata_payload")
                             print(f"DEBUG-RAG-METADATA: using_documents = {metadata_payload.get('using_documents')}")
                             print(f"DEBUG-RAG-METADATA: document_sources = {metadata_payload.get('document_sources', [])}")
-                            print(f"DEBUG-RAG-METADATA: rag_method = {metadata_payload.get('rag_method', 'unknown')}")
                         else:
                             print(f"DEBUG-RAG-METADATA: Not adding RAG info (has_rag_documents={('has_rag_documents' in locals() and has_rag_documents)})")
-                            print(f"DEBUG-RAG-METADATA: Direct RAG documents: {bool(rag_documents and len(rag_documents) > 0)}")
+                            if 'has_rag_documents' in locals():
+                                print(f"DEBUG-RAG-METADATA: has_rag_documents explicitly set to {has_rag_documents}")
+                            else:
+                                print(f"DEBUG-RAG-METADATA: has_rag_documents variable not defined in this scope")
                                 
                         # Send the metadata
                         yield f"data: {json.dumps({'type': 'metadata', 'metadata': metadata_payload})}\n\n"
@@ -3335,7 +2841,6 @@ def get_models():
                         'completion': str(db_model.output_price_usd_million / 1000000)
                     },
                     'is_multimodal': db_model.is_multimodal,
-                    'supports_pdf': db_model.supports_pdf,  # Added supports_pdf flag
                     'is_free': db_model.input_price_usd_million == 0 and db_model.output_price_usd_million == 0,
                     'is_perplexity': 'perplexity/' in db_model.model_id.lower(),
                     'is_reasoning': any(keyword in db_model.model_id.lower() or 

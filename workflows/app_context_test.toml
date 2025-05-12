@@ -1,6 +1,0 @@
-[app_context_test]
-entrypoint = "python app_context_test.py"
-language = "python3"
-run = "python app_context_test.py"
-onBoot = true
-deploymentTarget = "cloudrun"

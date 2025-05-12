@@ -152,25 +152,10 @@
                             <span class="button-overlay"></span>
                         </button>
                     </div>
-                    <!-- Replaced document upload button with new RAG attach file button -->
-                    <button id="attach-rag-file-button" title="Attach PDF or Image for RAG">
-                        <i class="fas fa-paperclip"></i> Attach File for RAG
+                    <button id="upload-documents-btn" class="upload-documents-btn" title="Upload documents to enhance responses with your data">
+                        <i class="fa-solid fa-file-upload"></i>
+                        <span class="button-overlay"></span>
                     </button>
-                    <input type="file" id="rag-file-input" style="display: none;" multiple /> 
-                    <small id="rag-file-support-tooltip" class="form-text text-muted"></small>
-                    
-                    <!-- Active RAG Documents Display -->
-                    <div id="active-rag-documents" class="active-rag-documents-container" style="display: none;">
-                        <div class="active-rag-header">
-                            <span class="active-rag-title">Active Documents:</span>
-                            <button id="clear-all-rag-docs" class="clear-all-rag-docs-btn" title="Clear all documents">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </div>
-                        <div id="rag-documents-list" class="rag-documents-list">
-                            <!-- Active documents will be inserted here by JavaScript -->
-                        </div>
-                    </div>
                     <button id="refresh-prices-btn" class="upload-documents-btn" title="Reset models to defaults">
                         <i class="fa-solid fa-sync-alt"></i>
                         <span class="button-overlay"></span>

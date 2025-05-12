@@ -1,73 +1,49 @@
 """
-Enhanced wrapper script to run the Flask application for testing in the Replit environment.
-This script provides improved logging and error handling for app.py startup.
+Simple script to run the Flask application for testing in the Replit environment.
+This is a wrapper script to start the app.py Flask application.
 """
-
 import os
 import sys
 import logging
-import time
-import traceback
-from datetime import datetime
 
-# Configure more detailed logging
-log_filename = f"app_workflow_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+# Configure logging
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler(log_filename)
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 logger = logging.getLogger(__name__)
 
 def run():
     """
-    Run the Flask application with enhanced error handling and logging.
-    This function implements best practices for application context management
-    and prevents the common "Working outside of application context" errors.
+    Run the Flask application with error handling and logging.
     """
-    logger.info("Starting enhanced app_workflow.py")
-    
     try:
-        # We delay importing app until after logging is configured
-        # to capture any startup errors in the log
-        logger.info("Importing Flask application...")
-        start_time = time.time()
+        logger.info("Starting Flask application for testing")
         
-        # Use a timeout to prevent indefinite hanging during import
-        # if there are blocking operations
-        import_timeout = 30  # seconds
+        # Import the Flask app from app.py
+        from app import app
         
-        # Import the Flask app with timeout protection
-        try:
-            # The actual import
-            from app import app
-            import_duration = time.time() - start_time
-            logger.info(f"Flask application imported successfully in {import_duration:.2f} seconds")
+        # Set debug mode
+        app.config['DEBUG'] = True
+        
+        # Log CSRF protection status
+        if app.config.get('WTF_CSRF_ENABLED', True):
+            logger.info("CSRF protection is ENABLED")
+        else:
+            logger.warning("CSRF protection is DISABLED")
             
-            # Start the web server
-            logger.info("Starting Flask web server on port 5000...")
-            app.run(host='0.0.0.0', port=5000, debug=True)
-        except Exception as import_error:
-            logger.error(f"Error importing or starting Flask application: {import_error}")
-            logger.error(traceback.format_exc())
-            
-            # Provide helpful diagnostics for common errors
-            if "Working outside of application context" in str(import_error):
-                logger.error("CONTEXT ERROR: This is likely due to accessing Flask objects outside of an application context.")
-                logger.error("Fix: Make sure all Flask operations occur within 'with app.app_context():' blocks")
-                logger.error("     or use separate background threads for database operations.")
-            
-            # Attempt to recover by directly running the app module
-            logger.info("Attempting alternate startup method...")
-            os.system(f"{sys.executable} -m flask --app app run --host=0.0.0.0 --port=5000")
-            
+        # Log protection settings
+        logger.info(f"CSRF methods: {app.config.get('WTF_CSRF_METHODS', ['POST', 'PUT', 'PATCH', 'DELETE'])}")
+        logger.info(f"CSRF headers: {app.config.get('WTF_CSRF_HEADERS', ['X-CSRFToken', 'X-CSRF-Token'])}")
+        
+        # Start the Flask server
+        logger.info("Starting Flask application. Access it via http://localhost:5000")
+        app.run(host='0.0.0.0', port=5000)
+        
     except Exception as e:
-        logger.error(f"Critical error in app_workflow.py: {e}")
-        logger.error(traceback.format_exc())
-        sys.exit(1)
+        logger.error(f"Error starting Flask application: {e}")
+        raise
 
 if __name__ == "__main__":
     run()

@@ -1,87 +1,76 @@
+#!/usr/bin/env python3
 """
-Script to test the price_updater.py functionality.
-This verifies that the fix for "Working outside of application context" error is effective.
+Test script for the price_updater module.
 """
 import os
 import sys
+import json
 import logging
-from flask import Flask
+from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 
-def create_test_app():
-    """Create a minimal Flask app for testing."""
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
-    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-        "pool_recycle": 300,
-        "pool_pre_ping": True,
-    }
-    return app
-
-def test_price_updater():
-    """
-    Test the price_updater.py module with properly set application context.
-    """
-    try:
-        # First, override the app import in price_updater
-        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-        
-        # Create a test app
-        test_app = create_test_app()
-        
-        # Explicitly import our app first to avoid circular imports
-        import app as original_app
-        
-        # Now import price_updater
-        import price_updater
-        
-        # Override app and db in price_updater
-        price_updater.app = original_app.app
-        price_updater.db = original_app.db
-        
-        # Test fetching and storing prices
-        logger.info("Testing fetch_and_store_openrouter_prices()...")
-        success = price_updater.fetch_and_store_openrouter_prices()
-        
-        if success:
-            logger.info("✅ Successfully fetched and stored OpenRouter prices!")
-        else:
-            logger.error("❌ Failed to fetch and store OpenRouter prices")
-        
-        # Test get_model_cost
-        logger.info("Testing get_model_cost()...")
-        test_models = [
-            "anthropic/claude-3-opus-20240229", 
-            "openai/gpt-4o-2024-11-20",
-            "google/gemini-2.5-pro-preview"
-        ]
-        
-        for model_id in test_models:
-            model_cost = price_updater.get_model_cost(model_id)
-            logger.info(f"Model: {model_id}")
-            logger.info(f"  Prompt cost: {model_cost.get('prompt_cost_per_million', 'N/A')}")
-            logger.info(f"  Completion cost: {model_cost.get('completion_cost_per_million', 'N/A')}")
-            logger.info(f"  Cost band: {model_cost.get('cost_band', 'N/A')}")
-            logger.info(f"  Source: {model_cost.get('source', 'fallback')}")
-            logger.info("---")
-        
-        return True
-        
-    except Exception as e:
-        logger.error(f"Error testing price_updater: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+def main():
+    """Test the price_updater module functionality."""
+    print("Testing OpenRouter price updater...")
+    
+    # Check for API key
+    api_key = os.environ.get('OPENROUTER_API_KEY')
+    if not api_key:
+        print("ERROR: OPENROUTER_API_KEY environment variable not set!")
         return False
+    
+    print(f"Using API key: {api_key[:5]}...{api_key[-5:]}")
+    
+    # Fetch prices
+    print("Fetching prices from OpenRouter API...")
+    success = fetch_and_store_openrouter_prices()
+    
+    if not success:
+        print("ERROR: Failed to fetch prices from OpenRouter API!")
+        return False
+    
+    # Print cached data
+    print(f"Successfully fetched prices for {len(model_prices_cache['prices'])} models")
+    print(f"Last updated: {model_prices_cache['last_updated']}")
+    
+    # Print sample data (first 3 models)
+    print("\nSample price data (first 3 models):")
+    sample_models = list(model_prices_cache['prices'].items())[:3]
+    
+    for model_id, model_data in sample_models:
+        print(f"\nModel: {model_id}")
+        print(f"  Model Name: {model_data.get('model_name', 'N/A')}")
+        print(f"  Input Price (per million tokens): ${model_data['input_price']:.4f}")
+        print(f"  Output Price (per million tokens): ${model_data['output_price']:.4f}")
+        print(f"  Context Length: {model_data['context_length']}")
+        print(f"  Multimodal: {model_data['is_multimodal']}")
+    
+    # Check how many zero-cost models are available
+    zero_cost_models = [model_id for model_id, data in model_prices_cache['prices'].items() 
+                       if data['input_price'] == 0 and data['output_price'] == 0]
+    
+    print(f"\nZero-cost models available: {len(zero_cost_models)} out of {len(model_prices_cache['prices'])}")
+    
+    # Sample zero-cost models (up to 3)
+    if zero_cost_models:
+        print("Sample zero-cost models:")
+        for model_id in zero_cost_models[:3]:
+            model_data = model_prices_cache['prices'][model_id]
+            print(f"  {model_id} ({model_data.get('model_name', 'Unknown')})")
+    
+    return True
 
 if __name__ == "__main__":
-    logger.info("Testing price_updater.py...")
-    success = test_price_updater()
-    if success:
-        logger.info("✅ Successfully tested price_updater.py!")
-        sys.exit(0)
+    if main():
+        print("\nTest completed successfully!")
     else:
-        logger.error("❌ Failed to test price_updater.py")
+        print("\nTest failed!")
         sys.exit(1)

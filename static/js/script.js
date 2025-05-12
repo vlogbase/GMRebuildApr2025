@@ -13,83 +13,6 @@ function getCSRFToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content;
 }
 
-// Global variables for RAG file attachments
-let currentModelCapabilitiesForRAG = { is_multimodal: false, supports_pdf: false };
-let activeRagDocuments = [];
-
-// Global variables for models
-let allModels = [];  // Will be populated by fetchAvailableModels
-let loadedModels = []; // Alias to allModels for compatibility
-
-// Function to update RAG capabilities for a model
-function updateRagCapabilitiesForModel(modelId) {
-    if (!modelId) {
-        console.error("No model ID provided to updateRagCapabilitiesForModel");
-        return;
-    }
-    
-    // Find the model in the loaded models list
-    const selectedModel = loadedModels.find(model => model.id === modelId);
-    
-    if (selectedModel) {
-        // Update the global capabilities object
-        currentModelCapabilitiesForRAG.is_multimodal = !!selectedModel.is_multimodal;
-        currentModelCapabilitiesForRAG.supports_pdf = !!selectedModel.supports_pdf;
-        
-        console.log(`RAG capabilities updated for ${modelId}: multimodal=${currentModelCapabilitiesForRAG.is_multimodal}, pdf=${currentModelCapabilitiesForRAG.supports_pdf}`);
-        
-        // Update the RAG file attachment button state
-        updateRagAttachButtonState();
-    } else {
-        console.warn(`Model ${modelId} not found in loaded models list`);
-    }
-}
-
-// Function to update RAG attach button state
-function updateRagAttachButtonState() {
-    if (!attachRagFileButton || !ragFileInput || !ragFileSupportTooltip) {
-        return;
-    }
-    
-    // Determine which file types are supported by the current model
-    let acceptTypes = "";
-    let tooltipMessage = "";
-    
-    if (currentModelCapabilitiesForRAG.supports_pdf && currentModelCapabilitiesForRAG.is_multimodal) {
-        // Model supports both PDFs and images
-        acceptTypes = ".pdf,image/png,image/jpeg,image/webp";
-        tooltipMessage = "Supports PDFs & Images for RAG";
-        attachRagFileButton.disabled = false;
-    } else if (currentModelCapabilitiesForRAG.supports_pdf) {
-        // Model supports only PDFs
-        acceptTypes = ".pdf";
-        tooltipMessage = "Supports PDFs only for RAG";
-        attachRagFileButton.disabled = false;
-    } else if (currentModelCapabilitiesForRAG.is_multimodal) {
-        // Model supports only images
-        acceptTypes = "image/png,image/jpeg,image/webp";
-        tooltipMessage = "Supports Images only for RAG";
-        attachRagFileButton.disabled = false;
-    } else {
-        // Model doesn't support any RAG attachments
-        acceptTypes = "";
-        tooltipMessage = "File attachments for RAG not supported";
-        attachRagFileButton.disabled = true;
-    }
-    
-    // Update file input accept attribute
-    ragFileInput.accept = acceptTypes;
-    
-    // Update tooltip message
-    ragFileSupportTooltip.textContent = tooltipMessage;
-}
-
-// Function to get the current model ID
-function getCurrentModelId() {
-    const activeModel = document.querySelector('.model-preset-btn.active');
-    return activeModel ? activeModel.getAttribute('data-model-id') : null;
-}
-
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
@@ -293,8 +216,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const closeSelector = document.getElementById('close-selector');
     
     // Document upload elements
-    // Old document upload elements - commented out but kept for reference
-    // const uploadDocumentsBtn = document.getElementById('upload-documents-btn');
+    const uploadDocumentsBtn = document.getElementById('upload-documents-btn');
     const refreshPricesBtn = document.getElementById('refresh-prices-btn');
     const documentUploadModal = document.getElementById('document-upload-modal');
     const closeUploadModal = document.getElementById('close-upload-modal');
@@ -303,11 +225,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadFileList = document.getElementById('upload-file-list');
     const uploadFilesBtn = document.getElementById('upload-files-btn');
     const uploadStatus = document.getElementById('upload-status');
-    
-    // New RAG file attachment elements
-    const attachRagFileButton = document.getElementById('attach-rag-file-button');
-    const ragFileInput = document.getElementById('rag-file-input');
-    const ragFileSupportTooltip = document.getElementById('rag-file-support-tooltip');
     
     // Image upload and camera elements
     const imageUploadInput = document.getElementById('image-upload-input');
@@ -550,8 +467,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
         
-        // Comment out old document upload button handling
-        /*
         // Lock document upload button
         if (uploadDocumentsBtn) {
             // Clean up existing classes
@@ -619,126 +534,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Reassign uploadDocumentsBtn for subsequent operations
             uploadDocumentsBtn = uploadBtn;
-        }
-        */
-
-        // ****** New RAG File Attachment Functionality ******
-        
-        // Setup RAG file attachment button
-        if (attachRagFileButton && ragFileInput) {
-            // Set initial state - will be updated when models are loaded
-            attachRagFileButton.disabled = true;
-            ragFileSupportTooltip.textContent = "Loading model capabilities...";
-            
-            // Click handler for the attach button
-            attachRagFileButton.addEventListener('click', function() {
-                if (!attachRagFileButton.disabled) {
-                    ragFileInput.click();
-                }
-            });
-            
-            // File selection handler
-            ragFileInput.addEventListener('change', function(event) {
-                const files = event.target.files;
-                if (!files || files.length === 0) {
-                    return;
-                }
-                
-                // Get the current conversation UUID
-                const conversationUuid = currentConversationId;
-                if (!conversationUuid) {
-                    showNotification('Cannot attach files - no active conversation', 'error');
-                    return;
-                }
-                
-                // Get current model ID
-                const currentModelId = getCurrentModelId();
-                
-                // Create FormData object
-                const formData = new FormData();
-                formData.append('conversation_uuid', conversationUuid);
-                formData.append('current_model_id', currentModelId);
-                
-                // Filter files that match the accept attribute
-                const acceptedTypes = ragFileInput.accept.split(',');
-                let validFiles = 0;
-                
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    
-                    // Check if file is a PDF
-                    const isPdf = file.name.toLowerCase().endsWith('.pdf');
-                    
-                    // Check if file is an image
-                    const isImage = file.type.startsWith('image/');
-                    
-                    // Validate against current model capabilities
-                    if ((isPdf && currentModelCapabilitiesForRAG.supports_pdf) || 
-                        (isImage && currentModelCapabilitiesForRAG.is_multimodal)) {
-                        formData.append('files[]', file);
-                        validFiles++;
-                    } else {
-                        console.warn(`File ${file.name} rejected - not supported by current model`);
-                    }
-                }
-                
-                if (validFiles === 0) {
-                    showNotification('No compatible files selected for the current model', 'error');
-                    event.target.value = null;
-                    return;
-                }
-                
-                // Show loading indicator
-                showNotification(`Uploading ${validFiles} file(s) for RAG...`, 'info');
-                
-                // Send files to the new endpoint
-                fetch('/api/attach_file_for_rag', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRFToken': getCSRFToken()
-                    }
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Server returned ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.results && Array.isArray(data.results)) {
-                        // Process each file result
-                        const successCount = data.results.filter(result => result.status === 'success').length;
-                        
-                        if (successCount > 0) {
-                            showNotification(`Successfully attached ${successCount} file(s) for RAG`, 'success');
-                            
-                            // Add successful files to activeRagDocuments array
-                            data.results.forEach(result => {
-                                if (result.status === 'success') {
-                                    activeRagDocuments.push({
-                                        url: result.url,
-                                        original_filename: result.filename,
-                                        type: result.filename.toLowerCase().endsWith('.pdf') ? 'pdf' : 'image'
-                                    });
-                                }
-                            });
-                        } else {
-                            showNotification('Failed to attach any files for RAG', 'error');
-                        }
-                    } else {
-                        showNotification('Invalid response from server', 'error');
-                    }
-                })
-                .catch(error => {
-                    console.error('Error uploading files for RAG:', error);
-                    showNotification(`Error: ${error.message}`, 'error');
-                })
-                .finally(() => {
-                    // Reset the file input
-                    event.target.value = null;
-                });
-            });
         }
         
         // Lock image upload and camera buttons
@@ -1323,12 +1118,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update multimodal controls based on the selected model
             updateMultimodalControls(currentModel);
             
-            // Update RAG capabilities for the selected model
-            updateRagCapabilitiesForModel(currentModel);
-            
-            // Update the RAG indicator state based on any active documents
-            updateRagIndicatorState();
-            
             // Update the cost indicator for the selected model
             updateSelectedModelCostIndicator(currentModel);
             
@@ -1385,136 +1174,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to update multimodal controls (image upload, camera) based on model capability
-    function updateRagCapabilitiesForModel(modelId) {
-        // Find the model in allModels
-        const model = allModels.find(m => m.id === modelId);
-        
-        // Get RAG capabilities from model data
-        const supportsPdf = model && model.supports_pdf === true;
-        const supportsImages = model && model.is_multimodal === true;
-        
-        // Get reference to RAG UI elements
-        const ragAttachButton = document.getElementById('attach-rag-file-button');
-        const ragFileInput = document.getElementById('rag-file-input');
-        const ragTooltip = document.getElementById('rag-file-support-tooltip');
-        
-        // Enable/disable RAG attachment button based on capabilities
-        if (!supportsPdf && !supportsImages) {
-            // Model doesn't support any RAG attachments
-            ragAttachButton.disabled = true;
-            ragAttachButton.classList.add('disabled');
-            ragTooltip.textContent = "Current model doesn't support document or image attachments";
-            ragTooltip.style.display = 'block';
-        } else {
-            // Model supports at least one type of attachment
-            ragAttachButton.disabled = false;
-            ragAttachButton.classList.remove('disabled');
-            
-            // Update tooltip with supported formats
-            let tooltipText = "Supported formats: ";
-            if (supportsPdf) tooltipText += "PDF";
-            if (supportsPdf && supportsImages) tooltipText += ", ";
-            if (supportsImages) tooltipText += "Images (JPG, PNG)";
-            
-            ragTooltip.textContent = tooltipText;
-            ragTooltip.style.display = 'block';
-            
-            // Store capabilities as data attributes for file validation
-            ragFileInput.dataset.supportsPdf = supportsPdf;
-            ragFileInput.dataset.supportsImages = supportsImages;
-        }
-        
-        console.log(`📄 RAG capabilities for ${modelId}: PDF=${supportsPdf}, Images=${supportsImages}`);
-    }
-    
-    // Global variable to track active RAG documents
-    let activeRagDocuments = [];
-    
-    function updateRagIndicatorState() {
-        // Check if we have any active RAG documents
-        const hasActiveDocuments = activeRagDocuments.length > 0;
-        
-        // Get reference to RAG indicator elements
-        const ragAttachButton = document.getElementById('attach-rag-file-button');
-        const activeRagDocumentsContainer = document.getElementById('active-rag-documents');
-        const ragDocumentsList = document.getElementById('rag-documents-list');
-        
-        // Update UI to indicate RAG is active
-        if (hasActiveDocuments) {
-            // RAG is active - highlight attachment button and show document count
-            ragAttachButton.classList.add('rag-active');
-            
-            // Optionally add a counter badge to the button
-            if (!document.getElementById('rag-file-counter')) {
-                const counterBadge = document.createElement('span');
-                counterBadge.id = 'rag-file-counter';
-                counterBadge.className = 'badge badge-pill badge-primary';
-                counterBadge.textContent = activeRagDocuments.length;
-                ragAttachButton.appendChild(counterBadge);
-            } else {
-                document.getElementById('rag-file-counter').textContent = activeRagDocuments.length;
-            }
-            
-            // Display the active RAG documents container
-            if (activeRagDocumentsContainer) {
-                activeRagDocumentsContainer.style.display = 'block';
-                
-                // Clear the documents list
-                if (ragDocumentsList) {
-                    ragDocumentsList.innerHTML = '';
-                    
-                    // Add each active document to the list
-                    activeRagDocuments.forEach((doc, index) => {
-                        const docItem = document.createElement('div');
-                        docItem.className = 'rag-document-item';
-                        docItem.dataset.index = index;
-                        
-                        // Determine icon based on file type
-                        const filename = doc.filename || '';
-                        const isPdf = filename.toLowerCase().endsWith('.pdf');
-                        const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(ext => 
-                            filename.toLowerCase().endsWith(ext));
-                            
-                        const iconClass = isPdf ? 'fa-file-pdf' : isImage ? 'fa-file-image' : 'fa-file-alt';
-                        
-                        // Create document item content
-                        docItem.innerHTML = `
-                            <i class="fas ${iconClass} rag-doc-icon"></i>
-                            <span class="rag-doc-name" title="${filename}">${filename}</span>
-                            <button class="rag-doc-remove" title="Remove document">
-                                <i class="fas fa-times"></i>
-                            </button>
-                        `;
-                        
-                        // Add event listener for remove button
-                        const removeBtn = docItem.querySelector('.rag-doc-remove');
-                        if (removeBtn) {
-                            removeBtn.addEventListener('click', function() {
-                                removeRagDocument(index);
-                            });
-                        }
-                        
-                        ragDocumentsList.appendChild(docItem);
-                    });
-                }
-            }
-        } else {
-            // RAG is not active - remove highlights
-            ragAttachButton.classList.remove('rag-active');
-            
-            // Remove counter badge if it exists
-            const counter = document.getElementById('rag-file-counter');
-            if (counter) {
-                counter.remove();
-            }
-            
-            // Hide the active RAG documents container
-            if (activeRagDocumentsContainer) {
-                activeRagDocumentsContainer.style.display = 'none';
-            }
-        }
-    }
-    
     function updateMultimodalControls(modelId) {
         // Find the model in allModels
         const model = allModels.find(m => m.id === modelId);
@@ -1786,8 +1445,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             is_free: (modelData.input_price === 0 && modelData.output_price === 0),
                             // Get multimodal status from pricing data
                             is_multimodal: modelData.is_multimodal || false,
-                            // Include supports_pdf flag from pricing data
-                            supports_pdf: modelData.supports_pdf || false,
                             // Add reasoning flag if available or detect from model ID
                             is_reasoning: modelData.is_reasoning || modelId.includes('o4') || modelId.includes('claude'),
                             // Add perplexity flag based on model ID
@@ -1807,26 +1464,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Assign the fully processed data to the global variable
                     allModels = modelDataArray;
                     
-                    // Ensure loadedModels is also set to the same data
-                    loadedModels = allModels;
-                    
-                    // Log the models and their capabilities for debugging
-                    console.log('[Debug] Models loaded with PDF support:', allModels.filter(m => m.supports_pdf).map(m => m.id).join(', '));
-                    
-                    // Explicitly update RAG capabilities for current model after models are loaded
-                    console.log(`[Debug] allModels populated. Count: ${allModels.length}. Updating RAG capabilities for current model.`);
-                    const currentModelIdForUpdate = getCurrentModelId(); // Get current model ID
-                    if (currentModelIdForUpdate) {
-                        updateRagCapabilitiesForModel(currentModelIdForUpdate); // Explicitly update for current model
-                    } else {
-                        // If no model is current, maybe update for the default preset '1' or '6'
-                        const defaultPresetToUpdate = isAuthenticated ? '1' : '6';
-                        const defaultModelForUpdate = userPreferences[defaultPresetToUpdate] || defaultModels[defaultPresetToUpdate];
-                        if (defaultModelForUpdate) {
-                            updateRagCapabilitiesForModel(defaultModelForUpdate);
-                        }
-                    }
-                    
                     // For non-authenticated users, ensure we have at least the default free models available
                     if (!isAuthenticated) {
                         console.log('[Debug] User is not authenticated, ensuring fallback free models are available');
@@ -1844,7 +1481,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     name: 'Gemini 2.0 Flash',
                                     is_free: true,
                                     is_multimodal: false,
-                                    supports_pdf: false,
                                     pricing: { prompt: 0, completion: 0 },
                                     cost_band: ''
                                 },
@@ -1853,7 +1489,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     name: 'Qwen 32B',
                                     is_free: true,
                                     is_multimodal: false,
-                                    supports_pdf: false,
                                     pricing: { prompt: 0, completion: 0 },
                                     cost_band: ''
                                 },
@@ -1861,7 +1496,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                     id: 'deepseek/deepseek-r1-distill-qwen-32b:free',
                                     name: 'Deepseek R1 Qwen 32B', 
                                     is_free: true,
-                                    supports_pdf: false,
                                     is_multimodal: false,
                                     pricing: { prompt: 0, completion: 0 },
                                     cost_band: ''
@@ -1870,10 +1504,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             
                             // Add the fallback free models to allModels
                             allModels = allModels.concat(fallbackFreeModels);
-                            
-                            // Make sure loadedModels is also updated with fallback models
-                            loadedModels = allModels;
-                            
                             console.log(`[Debug] Added ${fallbackFreeModels.length} fallback free models. New total: ${allModels.length}`);
                         }
                     }
@@ -1918,7 +1548,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 name: 'Gemini 2.0 Flash',
                                 is_free: true,
                                 is_multimodal: false,
-                                supports_pdf: false,
                                 pricing: { prompt: 0, completion: 0 },
                                 cost_band: ''
                             },
@@ -1927,7 +1556,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 name: 'Qwen 32B',
                                 is_free: true,
                                 is_multimodal: false,
-                                supports_pdf: false,
                                 pricing: { prompt: 0, completion: 0 },
                                 cost_band: ''
                             },
@@ -1936,7 +1564,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 name: 'Deepseek R1 Qwen 32B', 
                                 is_free: true,
                                 is_multimodal: false,
-                                supports_pdf: false,
                                 pricing: { prompt: 0, completion: 0 },
                                 cost_band: ''
                             }
@@ -1959,7 +1586,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             name: 'Gemini 2.0 Flash',
                             is_free: true,
                             is_multimodal: false,
-                            supports_pdf: false,
                             pricing: { prompt: 0, completion: 0 },
                             cost_band: ''
                         },
@@ -1968,7 +1594,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             name: 'Qwen 32B',
                             is_free: true,
                             is_multimodal: false,
-                            supports_pdf: false,
                             pricing: { prompt: 0, completion: 0 },
                             cost_band: ''
                         },
@@ -1977,7 +1602,6 @@ document.addEventListener('DOMContentLoaded', function() {
                             name: 'Deepseek R1 Qwen 32B', 
                             is_free: true,
                             is_multimodal: false,
-                            supports_pdf: false,
                             pricing: { prompt: 0, completion: 0 },
                             cost_band: ''
                         }
@@ -3082,9 +2706,6 @@ document.addEventListener('DOMContentLoaded', function() {
         // Check if we need to make a multimodal message
         const isMultimodalMessage = attachedImageUrls.length > 0;
         
-        // Check if we have active RAG documents to include
-        const isRagMessage = activeRagDocuments.length > 0;
-        
         // Always create a content array (OpenRouter's unified format)
         // Even for text-only messages, this ensures consistent payload structure
         let userMessageContent = [
@@ -3098,19 +2719,6 @@ document.addEventListener('DOMContentLoaded', function() {
             message: message,
             conversation_id: currentConversationId
         };
-        
-        // Add RAG document information if available
-        if (isRagMessage) {
-            // Add document metadata to the payload
-            payload.rag_documents = activeRagDocuments.map(doc => ({
-                id: doc.id,
-                filename: doc.filename,
-                url: doc.url
-            }));
-            
-            console.log(`📄 Including ${activeRagDocuments.length} RAG documents with message:`, 
-                activeRagDocuments.map(d => d.filename).join(', '));
-        }
         
         // Add image objects to content array if available
         if (isMultimodalMessage) {
@@ -3953,396 +3561,4 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     `;
     document.head.appendChild(style);
-    
-    // Add CSS for RAG file attachment UI
-    const ragStyle = document.createElement('style');
-    ragStyle.textContent = `
-        /* RAG attachment button styles */
-        #attach-rag-file-button {
-            display: inline-flex;
-            align-items: center;
-            background-color: #f0f0f0;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            padding: 6px 12px;
-            cursor: pointer;
-            margin-right: 10px;
-            transition: background-color 0.2s, border-color 0.2s;
-        }
-        
-        #attach-rag-file-button:hover:not(:disabled) {
-            background-color: #e3e3e3;
-            border-color: #aaa;
-        }
-        
-        #attach-rag-file-button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-        
-        #attach-rag-file-button.loading {
-            position: relative;
-            color: transparent !important;
-        }
-        
-        #attach-rag-file-button.loading::after {
-            content: '';
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            top: 50%;
-            left: 50%;
-            margin-top: -8px;
-            margin-left: -8px;
-            border-radius: 50%;
-            border: 2px solid #ccc;
-            border-top-color: #333;
-            animation: rag-spinner .6s linear infinite;
-        }
-        
-        #attach-rag-file-button.rag-active {
-            background-color: #e6f7ff;
-            border-color: #69c0ff;
-            color: #1890ff;
-        }
-        
-        #rag-file-counter {
-            background-color: #1890ff;
-            color: white;
-            border-radius: 10px;
-            padding: 2px 6px;
-            font-size: 11px;
-            margin-left: 6px;
-        }
-        
-        #rag-file-support-tooltip {
-            font-size: 11px;
-            margin-top: 4px;
-            display: block;
-            color: #666;
-        }
-        
-        @keyframes rag-spinner {
-            to {transform: rotate(360deg);}
-        }
-        
-        /* Active RAG documents display styles */
-        .active-rag-documents-container {
-            margin: 10px 0;
-            border: 1px solid #e6f7ff;
-            border-radius: 4px;
-            background-color: #f9fcff;
-            padding: 8px;
-            width: 100%;
-        }
-        
-        .active-rag-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 8px;
-        }
-        
-        .active-rag-title {
-            font-size: 12px;
-            font-weight: bold;
-            color: #555;
-        }
-        
-        .clear-all-rag-docs-btn {
-            background: none;
-            border: none;
-            color: #ff4d4f;
-            cursor: pointer;
-            padding: 2px 5px;
-            font-size: 12px;
-            border-radius: 3px;
-        }
-        
-        .clear-all-rag-docs-btn:hover {
-            background-color: #fff1f0;
-        }
-        
-        .rag-documents-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        
-        .rag-document-item {
-            display: flex;
-            align-items: center;
-            background-color: #e6f7ff;
-            border: 1px solid #91d5ff;
-            border-radius: 16px;
-            padding: 4px 10px;
-            font-size: 12px;
-            max-width: 250px;
-        }
-        
-        .rag-doc-icon {
-            margin-right: 5px;
-            color: #1890ff;
-        }
-        
-        .rag-doc-name {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            margin-right: 5px;
-        }
-        
-        .rag-doc-remove {
-            background: none;
-            border: none;
-            color: #ff4d4f;
-            cursor: pointer;
-            padding: 2px;
-            margin-left: 3px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 10px;
-        }
-        
-        .rag-doc-remove:hover {
-            background-color: #fff1f0;
-        }
-        
-        /* System message for RAG notifications */
-        .system-message {
-            background-color: #f0f7ff;
-            border-left: 3px solid #69c0ff;
-            font-style: italic;
-            color: #666;
-            padding: 8px 12px;
-            margin: 10px 0;
-            font-size: 0.9em;
-        }
-    `;
-    document.head.appendChild(ragStyle);
-    
-    // Set up RAG file attachment functionality event listeners
-    const ragFileInputElement = document.getElementById('rag-file-input');
-    const attachRagFileButtonElement = document.getElementById('attach-rag-file-button');
-    const clearAllRagDocsButtonElement = document.getElementById('clear-all-rag-docs');
-    const newChatButtonElement = document.getElementById('new-chat-btn');
-    
-    // Add event listener for RAG file attachment button
-    if (attachRagFileButtonElement) {
-        attachRagFileButtonElement.addEventListener('click', function() {
-            // Check if button is disabled
-            if (this.disabled) return;
-            
-            // Trigger file input click
-            if (ragFileInputElement) {
-                ragFileInputElement.click();
-            }
-        });
-    }
-    
-    // Add event listener for Clear All RAG documents button
-    if (clearAllRagDocsButtonElement) {
-        clearAllRagDocsButtonElement.addEventListener('click', function() {
-            clearActiveRagDocuments();
-        });
-    }
-    
-    // Add event listener for RAG file input change
-    if (ragFileInputElement) {
-        ragFileInputElement.addEventListener('change', function() {
-            if (this.files && this.files.length > 0) {
-                handleRagFileAttachment();
-            }
-        });
-    }
-    
-    // Add event listener for clearing RAG documents on new chat
-    if (newChatButtonElement) {
-        newChatButtonElement.addEventListener('click', function() {
-            // Clear active RAG documents when starting a new chat
-            clearActiveRagDocuments();
-        });
-    }
-    
-    // Helper function to handle RAG file attachments
-    function handleRagFileAttachment() {
-        // Use the element variables we already defined
-        const messageInputElement = document.getElementById('message-input');
-        
-        // Get the file(s) from the input
-        const files = ragFileInputElement.files;
-        if (!files || files.length === 0) {
-            console.log('No files selected');
-            return;
-        }
-        
-        // Get model capabilities from data attributes
-        const supportsPdf = ragFileInputElement.dataset.supportsPdf === 'true';
-        const supportsImages = ragFileInputElement.dataset.supportsImages === 'true';
-        
-        // Create form data for the upload
-        const formData = new FormData();
-        let hasValidFiles = false;
-        let hasInvalidFiles = false;
-        let invalidFilesMessage = '';
-        
-        // Get the current conversation UUID
-        const currentConversationUuid = getCurrentConversationUuid();
-        
-        // Add each file to the form data, validating as we go
-        for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            const isPdf = file.name.toLowerCase().endsWith('.pdf');
-            const isImage = file.type.startsWith('image/');
-            
-            // Validate file type against model capabilities
-            if ((isPdf && supportsPdf) || (isImage && supportsImages)) {
-                formData.append('files[]', file);
-                hasValidFiles = true;
-            } else {
-                hasInvalidFiles = true;
-                invalidFilesMessage += `• ${file.name} (${isPdf ? 'PDF' : 'Image'}) is not supported by the current model\n`;
-            }
-        }
-        
-        // Add current conversation UUID and model ID to form data
-        formData.append('conversation_uuid', currentConversationUuid);
-        formData.append('current_model_id', currentModel);
-        
-        // Show error if no valid files
-        if (!hasValidFiles) {
-            alert('No compatible files selected. Please select files that are supported by the current model:\n' + invalidFilesMessage);
-            return;
-        }
-        
-        // If we have at least one valid file, proceed with upload
-        // Show loading state
-        attachRagFileButtonElement.disabled = true;
-        attachRagFileButtonElement.classList.add('loading');
-        
-        // Make the fetch request to upload files
-        fetch('/api/attach_file_for_rag', {
-            method: 'POST',
-            body: formData,
-            // No need to set Content-Type, it's automatically set with the correct boundary
-        })
-        .then(response => response.json())
-        .then(data => {
-            // Hide loading state
-            attachRagFileButtonElement.disabled = false;
-            attachRagFileButtonElement.classList.remove('loading');
-            
-            if (data.error) {
-                alert('Error: ' + data.error);
-                return;
-            }
-            
-            // Process results
-            let successCount = 0;
-            let errorCount = 0;
-            let errorMessages = '';
-            
-            data.results.forEach(result => {
-                if (result.status === 'success') {
-                    // Add to active RAG documents
-                    activeRagDocuments.push({
-                        id: result.id_in_db,
-                        filename: result.filename,
-                        url: result.url
-                    });
-                    successCount++;
-                } else {
-                    errorCount++;
-                    errorMessages += `• ${result.filename}: ${result.message}\n`;
-                }
-            });
-            
-            // Update RAG indicator
-            updateRagIndicatorState();
-            
-            // Show feedback
-            let message = `${successCount} file(s) attached successfully.`;
-            if (errorCount > 0) {
-                message += `\n${errorCount} file(s) had errors:\n${errorMessages}`;
-            }
-            
-            // Only alert if there were errors
-            if (errorCount > 0) {
-                alert(message);
-            }
-            
-            // Set focus back to the message input
-            messageInputElement.focus();
-            
-            // Warning message if some files were invalid but others succeeded
-            if (hasInvalidFiles && successCount > 0) {
-                alert('Some files were incompatible with the current model and were skipped:\n' + invalidFilesMessage);
-            }
-            
-            // Generate a system message about attached documents
-            if (successCount > 0) {
-                const fileNames = activeRagDocuments.map(doc => doc.filename).join(', ');
-                appendSystemMessage(`${successCount} document(s) attached: ${fileNames}. The AI will use these for context.`);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            attachRagFileButtonElement.disabled = false;
-            attachRagFileButtonElement.classList.remove('loading');
-            alert('An error occurred while uploading the files. Please try again.');
-        });
-        
-        // Reset file input
-        ragFileInputElement.value = '';
-    }
-    
-    // Helper function to remove a specific RAG document
-    function removeRagDocument(index) {
-        if (index >= 0 && index < activeRagDocuments.length) {
-            const removedDoc = activeRagDocuments.splice(index, 1)[0];
-            console.log(`Removed RAG document: ${removedDoc.filename}`);
-            
-            // Update the UI to reflect the change
-            updateRagIndicatorState();
-            
-            // If there are no more active documents, notify the user
-            if (activeRagDocuments.length === 0) {
-                appendSystemMessage("All context documents have been removed.");
-            }
-        }
-    }
-    
-    // Helper function to clear all active RAG documents
-    function clearActiveRagDocuments() {
-        if (activeRagDocuments.length > 0) {
-            activeRagDocuments = [];
-            updateRagIndicatorState();
-            appendSystemMessage("All context documents have been removed.");
-        }
-    }
-    
-    // Helper function to get current conversation UUID
-    function getCurrentConversationUuid() {
-        return currentConversationId || ('temp-' + Date.now());
-    }
-    
-    // Helper function to append a system message
-    function appendSystemMessage(content) {
-        const messagesContainer = document.getElementById('messages-container');
-        
-        const messageElement = document.createElement('div');
-        messageElement.className = 'message system-message';
-        
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        messageContent.innerHTML = `<p>${content}</p>`;
-        
-        messageElement.appendChild(messageContent);
-        messagesContainer.appendChild(messageElement);
-        
-        // Scroll to bottom
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
-    }
 });

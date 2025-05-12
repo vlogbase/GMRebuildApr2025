@@ -1,7 +1,7 @@
-workflows:
-  - name: app_workflow
-    path: app_workflow.py
-    type: backend
-    persistent: true
-    onOpen: true
-    interpreter: python3
+[billing]
+run = "python workflows/billing_workflow.py"
+onBoot = false
+
+[test-sorting]
+run = "python workflows/test_sorting_workflow.py"
+onBoot = false
