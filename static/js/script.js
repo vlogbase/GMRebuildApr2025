@@ -922,16 +922,26 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log('Valid base64 PDF data URL received (truncated):', attachedPdfUrl.substring(0, 50) + '...');
                 }
                 
-                // Update the indicator to show success
-                uploadIndicator.innerHTML = `<i class="fa-solid fa-file-pdf"></i> PDF ready: ${attachedPdfName} <button class="remove-file-btn"><i class="fa-solid fa-times"></i></button>`;
+                // Update the indicator to show success with a more prominent styling
+                uploadIndicator.innerHTML = `
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span class="pdf-filename">${attachedPdfName}</span>
+                    <button class="remove-file-btn" title="Remove PDF">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                `;
                 uploadIndicator.classList.add('pdf-indicator');
+                
+                // Make sure the indicator is visible
+                uploadIndicator.style.display = 'flex';
                 
                 // Add event listener to remove button
                 const removeBtn = uploadIndicator.querySelector('.remove-file-btn');
                 if (removeBtn) {
-                    removeBtn.addEventListener('click', function() {
+                    removeBtn.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
                         clearAttachedPdf();
-                        uploadIndicator.remove();
                     });
                 }
                 
@@ -2524,30 +2534,17 @@ document.addEventListener('DOMContentLoaded', function() {
         const typingIndicator = addTypingIndicator();
         
         // IMPORTANT: Keep the PDF/image data available until AFTER sending to backend
-        // Store current attachment states
+        // Store current attachment states but DO NOT clear visual indicators
+        // This ensures users see what they're sending while it's being sent
         const storedImageUrls = [...attachedImageUrls];
         const storedPdfUrl = attachedPdfUrl;
         const storedPdfName = attachedPdfName;
         
-        // Clear UI indicators (we've already displayed them in the message)
-        // But preserve the actual data for the backend call
-        if (attachedImageUrls.length > 0) {
-            // Just clear the UI indicators
-            const uploadIndicators = document.querySelectorAll('.image-preview-container');
-            uploadIndicators.forEach(indicator => indicator.remove());
-        }
-        
-        // Clear PDF UI indicators but keep the data
-        if (attachedPdfUrl) {
-            // Just clear the UI indicator
-            const pdfIndicators = document.querySelectorAll('.pdf-indicator');
-            pdfIndicators.forEach(indicator => indicator.remove());
-        }
-        
         // Send message to backend with the data still intact
+        // We want to keep the visual indicators while the message is being sent
         sendMessageToBackend(message, currentModel, typingIndicator);
         
-        // NOW we can clear the actual attachment data after sending
+        // NOW we can clear the actual attachment data and indicators after sending
         clearAttachedImages();
         clearAttachedPdf();
     }
