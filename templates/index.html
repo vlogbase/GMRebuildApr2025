@@ -214,12 +214,15 @@
                 <div class="input-group">
                     <textarea id="message-input" placeholder="Message GloriaMundo..."></textarea>
                     <div class="message-actions">
-                        <input type="file" id="image-upload-input" name="file" accept="image/*" style="display: none;">
-                        <button id="image-upload-button" class="btn btn-secondary" style="display: none;">
+                        <input type="file" id="image-upload-input" name="file" accept="image/*,.pdf" style="display: none;">
+                        <button id="image-upload-button" class="btn btn-secondary" style="display: none;" title="Upload image or PDF">
                             <i class="fa-solid fa-image"></i>
                         </button>
                         <button id="camera-button" class="btn btn-secondary" style="display: none;">
                             <i class="fa-solid fa-camera"></i>
+                        </button>
+                        <button id="upload-documents-btn" class="btn btn-secondary" style="display: none;" title="Upload PDF document">
+                            <i class="fa-solid fa-file-pdf"></i>
                         </button>
                         <button id="send-btn" class="send-btn">
                             <i class="fa-solid fa-paper-plane"></i>

@@ -66,6 +66,78 @@ document.addEventListener('DOMContentLoaded', function() {
         return true;
     }
     
+    // Function to check if current model supports specific capabilities
+    function checkModelCapabilities(capabilityType) {
+        // Get current model ID
+        const activeModel = document.querySelector('.model-btn.active, .model-preset-btn.active');
+        if (!activeModel) {
+            console.warn('No active model found when checking capabilities');
+            return false;
+        }
+        
+        const modelId = activeModel.getAttribute('data-model-id');
+        if (!modelId) {
+            console.warn('Active model has no model ID attribute');
+            return false;
+        }
+        
+        console.log(`Checking ${capabilityType} capability for model: ${modelId}`);
+        
+        // Find the model in our allModels array
+        const modelInfo = allModels.find(m => m.id === modelId);
+        if (!modelInfo) {
+            console.warn(`Model ${modelId} not found in allModels array`);
+            return false;
+        }
+        
+        // Check for the requested capability
+        switch (capabilityType) {
+            case 'image':
+                return modelInfo.is_multimodal === true;
+            case 'pdf':
+                return modelInfo.supports_pdf === true;
+            default:
+                console.warn(`Unknown capability type: ${capabilityType}`);
+                return false;
+        }
+    }
+    
+    // Function to update UI based on current model capabilities
+    function updateUIForModelCapabilities() {
+        const supportsImages = checkModelCapabilities('image');
+        const supportsPDFs = checkModelCapabilities('pdf');
+        
+        console.log(`Current model capabilities - Images: ${supportsImages}, PDFs: ${supportsPDFs}`);
+        
+        // Update upload buttons visibility/state based on capabilities
+        if (imageUploadButton) {
+            if (supportsImages) {
+                imageUploadButton.style.display = 'inline-flex';
+                imageUploadButton.classList.remove('disabled');
+                imageUploadButton.title = 'Upload an image';
+            } else {
+                imageUploadButton.style.display = 'none';
+                // Alternative: Keep visible but disabled with explanation
+                // imageUploadButton.classList.add('disabled');
+                // imageUploadButton.title = 'Current model does not support images';
+            }
+        }
+        
+        // Update file upload interface for PDFs if we have a document upload button
+        if (uploadDocumentsBtn) {
+            if (supportsPDFs) {
+                uploadDocumentsBtn.style.display = 'inline-flex';
+                uploadDocumentsBtn.classList.remove('disabled');
+                uploadDocumentsBtn.title = 'Upload documents to enhance responses';
+            } else {
+                uploadDocumentsBtn.style.display = 'none';
+                // Alternative: Keep visible but disabled with explanation
+                // uploadDocumentsBtn.classList.add('disabled');
+                // uploadDocumentsBtn.title = 'Current model does not support documents';
+            }
+        }
+    }
+    
     // Setup clipboard paste event listener for the entire document
     document.addEventListener('paste', handlePaste);
     
@@ -246,6 +318,8 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentPresetId = '1'; // Default to first preset
     let currentConversationId = null;
     let messageHistory = [];
+    let attachedPdfUrl = null; // URL for attached PDF
+    let attachedPdfName = null; // Name of attached PDF
     
     // Image upload state
     let attachedImageBlob = null;
@@ -710,6 +784,79 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
+    
+    // PDF handling function
+    async function handlePdfFile(file) {
+        console.log("📄 handlePdfFile()", file);
+        if (!file) return;
+        
+        try {
+            // Set upload flag to true - this will disable the send button
+            isUploadingImage = true;
+            
+            // Update send button state
+            updateSendButtonState();
+            
+            // Create an upload indicator
+            const uploadIndicator = document.getElementById('upload-indicator') || createUploadIndicator();
+            uploadIndicator.style.display = 'flex';
+            uploadIndicator.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading PDF: ${file.name}...`;
+            
+            // Create FormData and append file
+            const formData = new FormData();
+            formData.append('file', file, file.name);
+            
+            console.log("📤 Uploading PDF to server...");
+            
+            // Upload to server
+            const response = await fetch('/upload_pdf', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: formData
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Upload failed: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log("↩️ PDF upload response:", data);
+            
+            if (data.error) {
+                throw new Error(data.error);
+            }
+            
+            // Store the PDF URL and filename
+            attachedPdfUrl = data.pdf_data_url;
+            attachedPdfName = file.name;
+            
+            // Update the indicator to show success
+            uploadIndicator.innerHTML = `<i class="fa-solid fa-file-pdf"></i> PDF ready: ${file.name} <button class="remove-file-btn"><i class="fa-solid fa-times"></i></button>`;
+            uploadIndicator.classList.add('pdf-indicator');
+            
+            // Add event listener to remove button
+            const removeBtn = uploadIndicator.querySelector('.remove-file-btn');
+            if (removeBtn) {
+                removeBtn.addEventListener('click', function() {
+                    clearAttachedPdf();
+                    uploadIndicator.remove();
+                });
+            }
+            
+            console.log(`PDF uploaded successfully:`, attachedPdfName, attachedPdfUrl);
+        } catch (error) {
+            console.error('Error uploading PDF:', error);
+            alert(`PDF upload failed: ${error.message}`);
+            clearAttachedPdf();
+        } finally {
+            // Reset upload flag
+            isUploadingImage = false;
+            updateSendButtonState();
+        }
+    }
+    
     // Add a new function to update all image previews based on the attached URLs
     function updateImagePreviews() {
         // Check if the preview area exists
@@ -820,19 +967,35 @@ document.addEventListener('DOMContentLoaded', function() {
         clearAttachedImages();
     }
     
+    // Function to clear attached PDF
+    function clearAttachedPdf() {
+        attachedPdfUrl = null;
+        attachedPdfName = null;
+        
+        // Remove any PDF indicators from the UI
+        const pdfIndicators = document.querySelectorAll('.pdf-indicator');
+        pdfIndicators.forEach(indicator => indicator.remove());
+        
+        // Update send button state
+        updateSendButtonState();
+    }
+    
     // Function to update send button state based on image upload status
     function updateSendButtonState() {
         const uploadIndicator = document.getElementById('upload-indicator') || createUploadIndicator();
+        const messageText = messageInput.value.trim();
+        const hasImages = attachedImageUrls.length > 0;
+        const hasPdf = attachedPdfUrl !== null;
         
         if (isUploadingImage) {
             // Disable send button while image is uploading
             sendButton.disabled = true;
             sendButton.classList.add('disabled');
-            sendButton.title = 'Please wait for image to finish uploading';
+            sendButton.title = 'Please wait for file to finish uploading';
             
             // Show upload indicator with spinner icon
             uploadIndicator.style.display = 'flex';
-            uploadIndicator.innerHTML = '<i class="fa-solid fa-spinner"></i> Uploading image...';
+            uploadIndicator.innerHTML = '<i class="fa-solid fa-spinner"></i> Uploading file...';
             
             // Also disable the image upload button during upload
             if (imageUploadButton) {
@@ -845,11 +1008,24 @@ document.addEventListener('DOMContentLoaded', function() {
                 cameraButton.disabled = true;
                 cameraButton.classList.add('disabled');
             }
+            
+            // Disable PDF upload button during upload
+            if (uploadDocumentsBtn) {
+                uploadDocumentsBtn.disabled = true;
+                uploadDocumentsBtn.classList.add('disabled');
+            }
         } else {
-            // Enable send button when image upload is complete
-            sendButton.disabled = false;
-            sendButton.classList.remove('disabled');
-            sendButton.title = '';
+            // Enable or disable send button based on content
+            const canSend = messageText !== '' || hasImages || hasPdf;
+            sendButton.disabled = !canSend;
+            
+            if (canSend) {
+                sendButton.classList.remove('disabled');
+                sendButton.title = '';
+            } else {
+                sendButton.classList.add('disabled');
+                sendButton.title = 'Please enter a message or upload an image/document';
+            }
             
             // Hide the upload indicator
             uploadIndicator.style.display = 'none';
@@ -1175,24 +1351,38 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to update multimodal controls (image upload, camera) based on model capability
     function updateMultimodalControls(modelId) {
+        // Store the current model ID globally for capability checks
+        currentModel = modelId;
+        
         // Find the model in allModels
         const model = allModels.find(m => m.id === modelId);
+        if (!model) {
+            console.warn(`Model ${modelId} not found in allModels array`);
+            return;
+        }
         
-        // Check if model is multimodal - preset 4 (GPT-4o) is always treated as multimodal
-        const isPreset4 = modelId === defaultModels['4']; // GPT-4o is preset 4
-        const isMultimodalModel = (model && model.is_multimodal === true) || isPreset4;
+        // Get model capabilities
+        const isMultimodalModel = model.is_multimodal === true;
+        const supportsPDF = model.supports_pdf === true;
         
-        console.log(`🖼️ Multimodal UI check for ${modelId}: isMultimodalModel=${isMultimodalModel}, isPreset4=${isPreset4}`);
+        console.log(`🖼️ Model capabilities for ${modelId}: 
+            - Multimodal/images: ${isMultimodalModel ? 'Yes' : 'No'}
+            - PDF documents: ${supportsPDF ? 'Yes' : 'No'}`);
         
-        // Show/hide upload and camera buttons
+        // Show/hide image upload and camera buttons based on multimodal capability
         if (imageUploadButton) {
             imageUploadButton.style.display = isMultimodalModel ? 'inline-flex' : 'none';
         }
         
-        // Only show camera button if browser supports it
+        // Only show camera button if browser supports it and model supports images
         const hasCamera = !!navigator.mediaDevices?.getUserMedia;
         if (cameraButton) {
             cameraButton.style.display = isMultimodalModel && hasCamera ? 'inline-flex' : 'none';
+        }
+        
+        // Show/hide document upload button based on PDF capability
+        if (uploadDocumentsBtn) {
+            uploadDocumentsBtn.style.display = supportsPDF ? 'inline-flex' : 'none';
         }
         
         // If switching to a non-multimodal model, clear any attached image
@@ -2142,7 +2332,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         const message = messageInput.value.trim();
-        if (!message && (!attachedImageUrls || attachedImageUrls.length === 0)) return;
+        const hasAttachments = (attachedImageUrls && attachedImageUrls.length > 0) || attachedPdfUrl;
+        
+        // Don't send empty messages with no attachments
+        if (!message && !hasAttachments) return;
         
         // Clear input and reset textarea height to initial state
         messageInput.value = '';
@@ -2153,22 +2346,35 @@ document.addEventListener('DOMContentLoaded', function() {
             chatMessages.innerHTML = '';
         }
         
-        // Check if we're sending a multimodal message with images
-        if (attachedImageUrls && attachedImageUrls.length > 0) {
-            // Create a standardized content array for user messages with images
+        // Check if we're sending a message with attachments (images or PDF)
+        if (hasAttachments) {
+            // Create a standardized content array for user messages with attachments
             const userContent = [
-                { type: 'text', text: message || 'Image:' }
+                { type: 'text', text: message || (attachedPdfUrl ? 'Document:' : 'Image:') }
             ];
             
             // Add all image URLs to the content array
-            for (const imageUrl of attachedImageUrls) {
+            if (attachedImageUrls && attachedImageUrls.length > 0) {
+                for (const imageUrl of attachedImageUrls) {
+                    userContent.push({
+                        type: 'image_url',
+                        image_url: { url: imageUrl }
+                    });
+                }
+            }
+            
+            // Add PDF to content array if present
+            if (attachedPdfUrl) {
                 userContent.push({
-                    type: 'image_url',
-                    image_url: { url: imageUrl }
+                    type: 'file',
+                    file: { 
+                        filename: attachedPdfName || 'document.pdf',
+                        file_data: attachedPdfUrl
+                    }
                 });
             }
             
-            // Add user message with images to chat
+            // Add user message with attachments to chat
             addMessage(userContent, 'user');
         } else {
             // Add text-only user message to chat
@@ -2177,6 +2383,17 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Show typing indicator
         const typingIndicator = addTypingIndicator();
+        
+        // Clear attachments after sending
+        // This prevents duplicate attachments in subsequent messages
+        if (attachedImageUrls.length > 0) {
+            clearAttachedImages();
+        }
+        
+        // Clear PDF if attached
+        if (attachedPdfUrl) {
+            clearAttachedPdf();
+        }
         
         // Send message to backend
         sendMessageToBackend(message, currentModel, typingIndicator);
@@ -2703,8 +2920,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to send message to backend and process streaming response
     function sendMessageToBackend(message, modelId, typingIndicator) {
-        // Check if we need to make a multimodal message
-        const isMultimodalMessage = attachedImageUrls.length > 0;
+        // Check if we need to make a multimodal message or have any attachments
+        const hasImages = attachedImageUrls && attachedImageUrls.length > 0;
+        const hasPdf = attachedPdfUrl !== null;
+        const hasAttachments = hasImages || hasPdf;
         
         // Always create a content array (OpenRouter's unified format)
         // Even for text-only messages, this ensures consistent payload structure
@@ -2720,26 +2939,43 @@ document.addEventListener('DOMContentLoaded', function() {
             conversation_id: currentConversationId
         };
         
-        // Add image objects to content array if available
-        if (isMultimodalMessage) {
+        // Add attachments to content array if available
+        if (hasAttachments) {
             // Add each image URL to the content array
-            for (const imageUrl of attachedImageUrls) {
-                userMessageContent.push({ 
-                    type: 'image_url', 
-                    image_url: { url: imageUrl } 
-                });
-            }
-            
-            // Add first image URL separately for backward compatibility with backend
-            // This ensures older endpoints still work
-            if (attachedImageUrls.length > 0) {
+            if (hasImages) {
+                for (const imageUrl of attachedImageUrls) {
+                    userMessageContent.push({ 
+                        type: 'image_url', 
+                        image_url: { url: imageUrl } 
+                    });
+                }
+                
+                // Add first image URL separately for backward compatibility with backend
+                // This ensures older endpoints still work
                 payload.image_url = attachedImageUrls[0];
+                
+                // Add an array of all image URLs as well
+                payload.image_urls = attachedImageUrls;
+                
+                console.log(`📸 Including ${attachedImageUrls.length} images in message`);
             }
             
-            // Add an array of all image URLs as well
-            payload.image_urls = attachedImageUrls;
-            
-            console.log(`📸 Creating multimodal message with ${attachedImageUrls.length} images`);
+            // Add PDF to content array if present
+            if (hasPdf) {
+                userMessageContent.push({
+                    type: 'file',
+                    file: { 
+                        filename: attachedPdfName || 'document.pdf',
+                        file_data: attachedPdfUrl
+                    }
+                });
+                
+                // Add PDF URL to payload for backend compatibility
+                payload.pdf_url = attachedPdfUrl;
+                payload.pdf_filename = attachedPdfName;
+                
+                console.log(`📄 Including PDF document in message: ${attachedPdfName}`);
+            }
             
             // Check if the model supports images
             const model = allModels.find(m => m.id === modelId);
@@ -3359,7 +3595,27 @@ document.addEventListener('DOMContentLoaded', function() {
             if (!checkPremiumAccess('document_upload')) {
                 return; // Stop if access check failed
             }
-            documentUploadModal.style.display = 'flex';
+            
+            // Check if model supports PDFs
+            if (!checkModelCapabilities('pdf')) {
+                alert('The current model does not support PDF documents. Please select a model with PDF support first.');
+                return;
+            }
+            
+            // Either show the document upload modal or trigger a direct file input
+            if (imageUploadInput) {
+                // Set accept attribute to PDF only
+                imageUploadInput.setAttribute('accept', '.pdf');
+                imageUploadInput.click();
+                
+                // Reset accept attribute after click
+                setTimeout(() => {
+                    imageUploadInput.setAttribute('accept', 'image/*,.pdf');
+                }, 500);
+            } else {
+                // Fall back to the old upload modal if needed
+                documentUploadModal.style.display = 'flex';
+            }
         });
     }
     
@@ -3415,7 +3671,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle file input change
     if (fileUploadInput) {
         fileUploadInput.addEventListener('change', function() {
-            handleFileSelection(this.files);
+            // Only process if we have files
+            if (this.files && this.files.length > 0) {
+                // Get the first file
+                const file = this.files[0];
+                const fileExt = file.name.split('.').pop().toLowerCase();
+                
+                // Determine file type and check if the model supports it
+                const isPDF = fileExt === 'pdf';
+                const supportsPDF = checkModelCapabilities('pdf');
+                const supportsImages = checkModelCapabilities('image');
+                
+                // Validate file type against model capabilities
+                if (isPDF && !supportsPDF) {
+                    console.warn('PDF file upload attempted but current model does not support PDFs');
+                    alert('The current model does not support PDF documents. Please select a model with PDF support first.');
+                    return;
+                } else if (!isPDF && !supportsImages) {
+                    console.warn('Image file upload attempted but current model does not support images');
+                    alert('The current model does not support images. Please select a model with image support first.');
+                    return;
+                }
+                
+                // Process different file types
+                if (isPDF) {
+                    // Handle PDF file
+                    handlePdfFile(file);
+                } else {
+                    // Handle image file using existing function
+                    handleImageFile(file);
+                }
+            }
         });
     }
     

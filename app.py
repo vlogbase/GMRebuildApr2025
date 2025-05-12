@@ -1146,6 +1146,249 @@ def upload_image():
             "error": f"Server error: {str(e)}"
         }), 500
 
+@app.route('/upload_pdf', methods=['POST'])
+@login_required
+def upload_pdf():
+    """
+    Route to handle PDF uploads for models that support documents.
+    Stores PDFs in the 'gloriamundopdfs' Azure Blob Storage container.
+    
+    The returned PDF URL will be included in the message content as:
+    {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "User's message text"},
+            {"type": "file", "file": {"filename": "document.pdf", "file_data": "DATA_URL_FROM_THIS_ENDPOINT"}}
+        ]
+    }
+    
+    Returns:
+        JSON with pdf_data_url containing the base64 data URL needed for OpenRouter's PDF handling
+    """
+    try:
+        # Verify a file was uploaded
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+            
+        # Validate file type
+        filename = file.filename
+        extension = Path(filename).suffix.lower()
+        allowed_extensions = {'.pdf'}
+        
+        if extension not in allowed_extensions:
+            return jsonify({
+                "error": f"File type {extension} is not supported. Please upload a PDF file."
+            }), 400
+            
+        # Generate a unique filename to avoid collisions
+        unique_filename = f"{uuid.uuid4().hex}{extension}"
+        
+        # Read the PDF into memory
+        pdf_data = file.read()
+        pdf_stream = io.BytesIO(pdf_data)
+        
+        # Storage path for Azure Blob Storage
+        storage_path = unique_filename
+        
+        # PDF container name - use the dedicated PDFs container
+        pdf_container_name = os.environ.get("AZURE_STORAGE_PDF_CONTAINER_NAME", "gloriamundopdfs")
+        
+        # Store the PDF in Azure Blob Storage or fallback to local storage
+        if 'USE_AZURE_STORAGE' in globals() and USE_AZURE_STORAGE and 'blob_service_client' in globals() and blob_service_client:
+            try:
+                # Create a container client for the PDF container
+                pdf_container_client = blob_service_client.get_container_client(pdf_container_name)
+                
+                # Check if container exists, if not create it
+                try:
+                    pdf_container_client.get_container_properties()
+                    logger.info(f"Container {pdf_container_name} exists")
+                except Exception as container_error:
+                    logger.info(f"Container {pdf_container_name} does not exist, creating it...")
+                    pdf_container_client = blob_service_client.create_container(pdf_container_name)
+                    logger.info(f"Container {pdf_container_name} created successfully")
+                
+                # Get PDF data from the stream
+                pdf_stream.seek(0)
+                pdf_bytes = pdf_stream.read()
+                
+                # Create a blob client for the specific blob
+                blob_client = pdf_container_client.get_blob_client(storage_path)
+                
+                # Set content settings (MIME type)
+                content_settings = ContentSettings(content_type='application/pdf')
+                
+                # Upload the PDF data to Azure Blob Storage
+                blob_client.upload_blob(
+                    data=pdf_bytes,
+                    content_settings=content_settings,
+                    overwrite=True
+                )
+                
+                # For OpenRouter, we need to use base64 encoded data URL
+                pdf_stream.seek(0)
+                base64_pdf = base64.b64encode(pdf_stream.read()).decode('utf-8')
+                pdf_data_url = f"data:application/pdf;base64,{base64_pdf}"
+                
+                logger.info(f"Uploaded PDF to Azure Blob Storage: {unique_filename}")
+                
+                return jsonify({
+                    "success": True,
+                    "pdf_url": blob_client.url,
+                    "pdf_data_url": pdf_data_url,
+                    "filename": filename
+                })
+            except Exception as e:
+                logger.exception(f"Error uploading to Azure Blob Storage: {e}")
+                # Fallback to local storage if Azure Blob Storage fails
+                upload_dir = Path('static/uploads/pdfs')
+                upload_dir.mkdir(parents=True, exist_ok=True)
+                file_path = upload_dir / unique_filename
+                
+                with open(file_path, 'wb') as f:
+                    pdf_stream.seek(0)
+                    f.write(pdf_stream.read())
+                
+                pdf_url = url_for('static', filename=f'uploads/pdfs/{unique_filename}', _external=True)
+                
+                # For OpenRouter, we need to use base64 encoded data URL
+                pdf_stream.seek(0)
+                base64_pdf = base64.b64encode(pdf_stream.read()).decode('utf-8')
+                pdf_data_url = f"data:application/pdf;base64,{base64_pdf}"
+                
+                logger.info(f"Fallback: Saved PDF to local filesystem: {file_path}")
+                
+                return jsonify({
+                    "success": True,
+                    "pdf_url": pdf_url,
+                    "pdf_data_url": pdf_data_url,
+                    "filename": filename
+                })
+        else:
+            # Azure Blob Storage not available, use local filesystem
+            upload_dir = Path('static/uploads/pdfs')
+            upload_dir.mkdir(parents=True, exist_ok=True)
+            file_path = upload_dir / unique_filename
+            
+            with open(file_path, 'wb') as f:
+                pdf_stream.seek(0)
+                f.write(pdf_stream.read())
+            
+            pdf_url = url_for('static', filename=f'uploads/pdfs/{unique_filename}', _external=True)
+            
+            # For OpenRouter, we need to use base64 encoded data URL
+            pdf_stream.seek(0)
+            base64_pdf = base64.b64encode(pdf_stream.read()).decode('utf-8')
+            pdf_data_url = f"data:application/pdf;base64,{base64_pdf}"
+            
+            logger.info(f"Saved PDF to local filesystem: {file_path}")
+            
+            return jsonify({
+                "success": True,
+                "pdf_url": pdf_url,
+                "pdf_data_url": pdf_data_url,
+                "filename": filename
+            })
+    except Exception as e:
+        logger.exception(f"Error handling PDF upload: {e}")
+        return jsonify({
+            "error": f"Server error: {str(e)}"
+        }), 500
+
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    """
+    Unified file upload route that handles both images and PDFs based on file type.
+    This allows a single upload button in the UI to handle different file types.
+    """
+    try:
+        # Verify a file was uploaded
+        if 'file' not in request.files:
+            return jsonify({"error": "No file provided"}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+        
+        # Get requested model ID if specified
+        model_id = request.args.get('model', None)
+        
+        # Determine file type
+        filename = file.filename
+        extension = Path(filename).suffix.lower()
+        
+        # Image extensions
+        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
+        # PDF extension
+        pdf_extensions = {'.pdf'}
+        
+        # Check model capabilities if a model ID was provided
+        if model_id:
+            # If it's a PDF, verify the model supports documents
+            if extension in pdf_extensions and model_id not in DOCUMENT_MODELS:
+                return jsonify({
+                    "error": f"The selected model '{model_id}' does not support PDF documents.",
+                    "model_capability": "pdf_not_supported"
+                }), 400
+            
+            # If it's an image, verify the model supports multimodal
+            if extension in image_extensions and model_id not in MULTIMODAL_MODELS:
+                return jsonify({
+                    "error": f"The selected model '{model_id}' does not support images.",
+                    "model_capability": "image_not_supported"
+                }), 400
+        
+        # Route based on file type
+        if extension in image_extensions:
+            # Save the file to temp storage
+            temp_file = io.BytesIO()
+            file.save(temp_file)
+            temp_file.seek(0)
+            
+            # Create a new file-like object from the bytes
+            file_obj = FileStorage(
+                stream=temp_file,
+                filename=filename,
+                content_type=file.content_type
+            )
+            
+            # Pass to image upload handler
+            request.files['file'] = file_obj
+            return upload_image()
+            
+        elif extension in pdf_extensions:
+            # Save the file to temp storage
+            temp_file = io.BytesIO()
+            file.save(temp_file)
+            temp_file.seek(0)
+            
+            # Create a new file-like object from the bytes
+            file_obj = FileStorage(
+                stream=temp_file,
+                filename=filename,
+                content_type=file.content_type
+            )
+            
+            # Pass to PDF upload handler
+            request.files['file'] = file_obj
+            return upload_pdf()
+            
+        else:
+            # Unsupported file type
+            return jsonify({
+                "error": f"File type {extension} is not supported. Please upload an image (.jpg, .png, .gif, .webp) or PDF (.pdf) file."
+            }), 400
+            
+    except Exception as e:
+        logger.exception(f"Error handling file upload: {e}")
+        return jsonify({
+            "error": f"Server error: {str(e)}"
+        }), 500
+
 @app.route('/clear-conversations', methods=['POST'])
 @login_required
 def clear_conversations():
@@ -1284,6 +1527,9 @@ def chat(): # Synchronous function
         user_message = ""
         image_url = None   # For backward compatibility
         image_urls = []    # Array of all image URLs
+        pdf_url = None     # For backward compatibility
+        pdf_urls = []      # Array of all PDF URLs
+        pdf_filename = "document.pdf"  # Default PDF filename
         
         if frontend_messages:
             # Process the latest user message to extract text and images
@@ -1315,6 +1561,17 @@ def chat(): # Synchronous function
                                 if not image_url:
                                     image_url = url
                                 logger.info(f"Extracted image URL from messages array: {url[:50]}...")
+                        elif item.get('type') == 'file':
+                            file_obj = item.get('file', {})
+                            file_data = file_obj.get('file_data')
+                            filename = file_obj.get('filename', 'document.pdf')
+                            if file_data:
+                                pdf_urls.append(file_data)
+                                # Set pdf_url to the first PDF for backward compatibility
+                                if not pdf_url:
+                                    pdf_url = file_data
+                                    pdf_filename = filename
+                                logger.info(f"Extracted PDF data from messages array: {filename}")
         
         # Fallback to top-level fields if messages array wasn't processed successfully
         if not user_message:
@@ -1618,7 +1875,15 @@ def chat(): # Synchronous function
         # Following OpenRouter's unified multimodal format that works across all models:
         # https://openrouter.ai/docs#multimodal
                 
-        if (image_url or (image_urls and len(image_urls) > 0)) and model_supports_multimodal:
+        # Check if we have images or PDFs to include
+        has_images = image_url or (image_urls and len(image_urls) > 0)
+        has_pdfs = pdf_url or (pdf_urls and len(pdf_urls) > 0)
+        
+        # Check if model supports multimodal content or PDF documents
+        model_supports_documents = openrouter_model in DOCUMENT_MODELS
+        
+        # Include multimedia content if we have images or PDFs and the model supports them
+        if (has_images and model_supports_multimodal) or (has_pdfs and model_supports_documents):
             # Create a multimodal content array with the text message
             multimodal_content = [
                 {"type": "text", "text": user_message}
@@ -1707,10 +1972,42 @@ def chat(): # Synchronous function
                     "image_url": {"url": processed_url}
                 })
             
-            # Add the multimodal content to messages if we have at least one valid image
+            # Add PDFs to the multimodal content if available and model supports it
+            if has_pdfs and model_supports_documents:
+                # Process all PDFs in the pdf_urls array
+                pdf_to_process = []
+                if pdf_url:
+                    pdf_to_process.append((pdf_url, pdf_filename))
+                if pdf_urls:
+                    # Assuming pdf_urls contains data URLs
+                    for idx, pdf_data in enumerate(pdf_urls):
+                        filename = f"document_{idx+1}.pdf"
+                        pdf_to_process.append((pdf_data, filename))
+                
+                for pdf_data_url, filename in pdf_to_process:
+                    # Validate that this is a data URL (required for OpenRouter PDF handling)
+                    if pdf_data_url.startswith('data:application/pdf;base64,'):
+                        # Add this PDF to the multimodal content
+                        multimodal_content.append({
+                            "type": "file",
+                            "file": {
+                                "filename": filename,
+                                "file_data": pdf_data_url
+                            }
+                        })
+                        logger.info(f"Added PDF document to message: {filename}")
+                    else:
+                        logger.error(f"❌ INVALID PDF DATA URL FORMAT: PDF URLs must be data:application/pdf;base64,... format")
+            
+            # Add the multimodal content to messages if we have at least one valid image or PDF
             if len(multimodal_content) > 1:  # First item is text, so we need more than 1 item
                 messages.append({'role': 'user', 'content': multimodal_content})
-                logger.info(f"✅ Added multimodal message with {len(multimodal_content) - 1} images to {openrouter_model}")
+                
+                # Count the number of images and PDFs
+                image_count = sum(1 for item in multimodal_content if item.get('type') == 'image_url')
+                pdf_count = sum(1 for item in multimodal_content if item.get('type') == 'file')
+                
+                logger.info(f"✅ Added multimodal message with {image_count} images and {pdf_count} PDFs to {openrouter_model}")
                 
                 # Model-specific guidance for multiple images
                 if "gemini" in openrouter_model.lower():
@@ -1749,8 +2046,12 @@ def chat(): # Synchronous function
             messages.append({'role': 'user', 'content': user_message})
         
         # Log if image was provided but model doesn't support it
-        if (image_url or (image_urls and len(image_urls) > 0)) and not model_supports_multimodal:
+        if has_images and not model_supports_multimodal:
             logger.warning(f"⚠️ Image URL(s) provided but model {openrouter_model} doesn't support multimodal input. Images ignored.")
+            
+        # Log if PDF was provided but model doesn't support it    
+        if has_pdfs and not model_supports_documents:
+            logger.warning(f"⚠️ PDF document(s) provided but model {openrouter_model} doesn't support PDF handling. PDFs ignored.")
 
         # --- Enrich with memory if needed ---
         if ENABLE_MEMORY_SYSTEM:
@@ -2468,6 +2769,7 @@ def _fetch_openrouter_models():
                     },
                     'is_free': model.is_free,
                     'is_multimodal': model.is_multimodal,
+                    'supports_pdf': model.model_id in DOCUMENT_MODELS,
                     'is_perplexity': 'perplexity/' in model.model_id.lower(),
                     'is_reasoning': model.supports_reasoning,
                     'created_at': model.created_at.isoformat() if model.created_at else None,
@@ -2506,6 +2808,7 @@ def _fetch_openrouter_models():
                         },
                         'is_free': model.is_free,
                         'is_multimodal': model.is_multimodal,
+                        'supports_pdf': model.model_id in DOCUMENT_MODELS,
                         'is_perplexity': 'perplexity/' in model.model_id.lower(),
                         'is_reasoning': model.supports_reasoning,
                         'created_at': model.created_at.isoformat() if model.created_at else None,
@@ -2867,6 +3170,7 @@ def get_models():
                         'completion': str(db_model.output_price_usd_million / 1000000)
                     },
                     'is_multimodal': db_model.is_multimodal,
+                    'supports_pdf': db_model.model_id in DOCUMENT_MODELS,
                     'is_free': db_model.input_price_usd_million == 0 and db_model.output_price_usd_million == 0,
                     'is_perplexity': 'perplexity/' in db_model.model_id.lower(),
                     'is_reasoning': any(keyword in db_model.model_id.lower() or 

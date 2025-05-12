@@ -1,57 +1,54 @@
 """
-Migration script to add the supports_pdf column to the open_router_model table.
+Database migration to add pdf_url and pdf_filename columns to Message table.
+This is needed for PDF document handling functionality.
 """
+from app import app, db
+from sqlalchemy import Column, String, text
 
-import os
-import logging
-import psycopg2
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-def add_pdf_support_column():
-    """Add the supports_pdf column to the open_router_model table"""
+def migrate_database():
+    """
+    Apply database migration to add pdf_url and pdf_filename columns to Message table.
+    
+    This function should be run in the Flask application context.
+    """
     try:
-        database_url = os.environ.get('DATABASE_URL')
-        if not database_url:
-            logger.error("DATABASE_URL not found in environment variables")
-            return False
-        
-        logger.info("Connecting to database...")
-        conn = psycopg2.connect(database_url)
-        cursor = conn.cursor()
-        
-        # Check if the column already exists
-        logger.info("Checking if supports_pdf column exists...")
-        cursor.execute("""
-            SELECT column_name 
-            FROM information_schema.columns 
-            WHERE table_name = 'open_router_model' 
-            AND column_name = 'supports_pdf'
-        """)
-        column_exists = cursor.fetchone() is not None
-        
-        if column_exists:
-            logger.info("supports_pdf column already exists, skipping migration")
-            return True
-        
-        # Add the column
-        logger.info("Adding supports_pdf column to open_router_model table")
-        cursor.execute("ALTER TABLE open_router_model ADD COLUMN supports_pdf BOOLEAN DEFAULT FALSE")
-        
-        # Commit the changes
-        conn.commit()
-        logger.info("Migration completed successfully")
-        
-        cursor.close()
-        conn.close()
-        
-        return True
-        
+        print("Starting migration to add PDF support columns to Message table...")
+        with app.app_context():
+            # Check if columns already exist to avoid errors
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            columns = [column['name'] for column in inspector.get_columns('message')]
+            
+            changes_made = False
+            
+            if 'pdf_url' not in columns:
+                # Add pdf_url column
+                with db.engine.connect() as conn:
+                    conn.execute(text('ALTER TABLE message ADD COLUMN pdf_url VARCHAR(512)'))
+                    conn.commit()
+                print("Migration step 1 successful: Added pdf_url column to Message table")
+                changes_made = True
+            else:
+                print("Column pdf_url already exists in Message table, skipping")
+                
+            if 'pdf_filename' not in columns:
+                # Add pdf_filename column
+                with db.engine.connect() as conn:
+                    conn.execute(text('ALTER TABLE message ADD COLUMN pdf_filename VARCHAR(256)'))
+                    conn.commit()
+                print("Migration step 2 successful: Added pdf_filename column to Message table")
+                changes_made = True
+            else:
+                print("Column pdf_filename already exists in Message table, skipping")
+                
+            if changes_made:
+                print("PDF support migration completed successfully!")
+            else:
+                print("No changes needed - PDF support columns already exist")
     except Exception as e:
-        logger.error(f"Error migrating database: {e}")
-        return False
+        print(f"Migration error: {e}")
+        raise
 
 if __name__ == "__main__":
-    add_pdf_support_column()
+    # Run migration directly if executed as a script
+    migrate_database()
