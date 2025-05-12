@@ -1978,41 +1978,27 @@ def chat(): # Synchronous function
                         
                         # Check if specific RAG documents were included in the request
                         if rag_documents and len(rag_documents) > 0:
-                            # Use specific documents from the request
-                            logger.info(f"RAG: Using {len(rag_documents)} specific documents from request")
+                            # Use specific documents from the request - DIRECT PASS-THROUGH APPROACH
+                            # We will directly include document URLs in the OpenRouter request
+                            # rather than doing our own document processing and text extraction
+                            logger.info(f"RAG: Using {len(rag_documents)} specific documents with direct pass-through")
                             
-                            # Get document IDs from the request
-                            doc_ids = [doc.get('id') for doc in rag_documents if doc.get('id')]
+                            # Reset relevant_chunks as we're not using document_processor.py anymore
+                            # We'll handle documents differently with direct URL pass-through
+                            relevant_chunks = []
                             
-                            if doc_ids:
-                                try:
-                                    # Retrieve chunks from the specific documents
-                                    relevant_chunks = document_processor.retrieve_chunks_from_documents(
-                                        query_text=user_message,
-                                        user_id=rag_user_id,
-                                        document_ids=doc_ids,
-                                        limit=5  # Retrieve top 5 most relevant chunks
-                                    )
-                                    logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks from specific documents")
-                                except AttributeError:
-                                    # Fall back to regular retrieval if document processor doesn't support document-specific retrieval
-                                    logger.warning("RAG: Document processor doesn't support document-specific retrieval, falling back to regular retrieval")
-                                    relevant_chunks = document_processor.retrieve_relevant_chunks(
-                                        query_text=user_message,
-                                        user_id=rag_user_id,
-                                        limit=5
-                                    )
-                            else:
-                                logger.warning("RAG: No valid document IDs in request, falling back to regular retrieval")
-                                # Fall back to regular retrieval
-                                if document_processor.user_has_documents(rag_user_id):
-                                    relevant_chunks = document_processor.retrieve_relevant_chunks(
-                                        query_text=user_message,
-                                        user_id=rag_user_id,
-                                        limit=5
-                                    )
+                            # Log the document URLs for debugging
+                            for doc in rag_documents:
+                                doc_url = doc.get('url')
+                                doc_filename = doc.get('filename', 'unnamed')
+                                if doc_url:
+                                    logger.info(f"RAG Document for direct pass-through: {doc_filename} at {doc_url}")
                                 else:
-                                    relevant_chunks = []
+                                    logger.warning(f"RAG Document missing URL: {doc_filename}")
+                            
+                            # We'll add these documents to the user message content later in the code
+                            # No need to extract document content or retrieve chunks
+                            has_rag_content = True
                         else:
                             # Double-check if the user has documents (should be true if has_rag_content was set)
                             if document_processor.user_has_documents(rag_user_id):
@@ -2042,8 +2028,13 @@ def chat(): # Synchronous function
                     relevant_chunks = []
                     logger.info("RAG: Continuing without document context due to retrieval error.")
                 
+                # For the direct pass-through approach, we don't use relevant_chunks anymore
+                # Instead, we'll modify the last user message to include document URLs directly
+                # We'll handle this later in the message processing pipeline
+                
                 if relevant_chunks and len(relevant_chunks) > 0:
-                    # Format document chunks as context
+                    # If we have relevant chunks from the old approach, still use them
+                    # This is a fallback case and won't be used for the new RAG document URLs approach
                     context_text = "Below is relevant information from your documents:\n\n"
                     
                     for i, chunk in enumerate(relevant_chunks):
@@ -2139,9 +2130,25 @@ def chat(): # Synchronous function
         
         # Transform messages if needed to match model capabilities
         processed_messages = []
-        for msg in messages:
+        
+        # Flag to identify if we need to inject RAG documents into user message
+        need_to_inject_rag_documents = False
+        last_user_message_index = -1
+        
+        # First pass: process all messages and find the last user message for RAG doc injection
+        for i, msg in enumerate(messages):
             role = msg.get('role', '')
             content = msg.get('content', '')
+            
+            # Track the last user message index for RAG document injection
+            if role == 'user':
+                last_user_message_index = i
+                
+                # If we have RAG documents to inject, mark this message for processing in second pass
+                if rag_documents and len(rag_documents) > 0:
+                    need_to_inject_rag_documents = True
+                    # Don't process this message yet, we'll do it in the second pass
+                    continue
             
             # Only user and assistant messages need content format adaptation
             if role in ['user', 'assistant']:
@@ -2179,6 +2186,73 @@ def chat(): # Synchronous function
             else:
                 # System messages and others pass through unchanged
                 processed_messages.append(msg)
+        
+        # Second pass: Inject RAG documents into last user message if needed
+        if need_to_inject_rag_documents and last_user_message_index >= 0:
+            logger.info(f"RAG: Injecting document URLs into user message (message index {last_user_message_index})")
+            
+            # Get the last user message
+            last_user_msg = messages[last_user_message_index]
+            
+            # Create content array for the user message with text and documents
+            content_array = []
+            
+            # Add text content first
+            user_text = last_user_msg.get('content', '')
+            if isinstance(user_text, list):
+                # If content is already an array, use it as a starting point
+                content_array = user_text
+                logger.info(f"RAG: Message already has structured content with {len(content_array)} items")
+            else:
+                # If content is a string, convert to structured format
+                content_array.append({
+                    'type': 'text',
+                    'text': user_text
+                })
+                logger.info(f"RAG: Converted text content to structured format")
+            
+            # Add document URLs to content array
+            for doc in rag_documents:
+                doc_url = doc.get('url')
+                if not doc_url:
+                    continue
+                    
+                # Determine document type based on URL or filename
+                filename = doc.get('filename', '').lower()
+                is_pdf = '.pdf' in filename
+                is_image = any(ext in filename for ext in ['.jpg', '.jpeg', '.png', '.gif', '.webp'])
+                
+                if is_pdf:
+                    # Add as file type for PDFs
+                    content_array.append({
+                        'type': 'file',
+                        'file': {'url': doc_url}
+                    })
+                    logger.info(f"RAG: Added PDF file: {filename} to user message")
+                elif is_image:
+                    # Add as image_url type for images
+                    content_array.append({
+                        'type': 'image_url',
+                        'image_url': {'url': doc_url}
+                    })
+                    logger.info(f"RAG: Added image: {filename} to user message")
+                else:
+                    # For other file types, default to file type
+                    content_array.append({
+                        'type': 'file',
+                        'file': {'url': doc_url}
+                    })
+                    logger.info(f"RAG: Added file with unknown type: {filename} to user message")
+            
+            # Create the modified user message with RAG documents
+            modified_user_msg = {
+                'role': 'user',
+                'content': content_array
+            }
+            
+            # Add the modified message to processed_messages
+            processed_messages.append(modified_user_msg)
+            logger.info(f"RAG: Successfully injected {len(rag_documents)} document URLs into user message")
         
         # Log the transformation summary
         logger.info(f"Message format adaptation: {len(messages)} original messages → {len(processed_messages)} processed messages")
@@ -2600,22 +2674,29 @@ def chat(): # Synchronous function
                             'completion_tokens': final_completion_tokens
                         }
                         
-                        # Add document info if RAG was used
-                        if 'has_rag_documents' in locals() and has_rag_documents:
+                        # Add document info if RAG was used (either via old system or new direct pass-through)
+                        if ('has_rag_documents' in locals() and has_rag_documents) or (rag_documents and len(rag_documents) > 0):
                             metadata_payload['using_documents'] = True
+                            
+                            # Add document sources from either method
                             if 'unique_sources' in locals() and unique_sources:
+                                # Traditional RAG with document chunks
                                 metadata_payload['document_sources'] = unique_sources
+                                metadata_payload['rag_method'] = 'chunks'
+                            elif rag_documents and len(rag_documents) > 0:
+                                # Direct pass-through RAG with URLs
+                                doc_filenames = [doc.get('filename', 'Unnamed document') for doc in rag_documents if doc.get('url')]
+                                metadata_payload['document_sources'] = doc_filenames
+                                metadata_payload['rag_method'] = 'direct_passthrough'
                             
                             # Enhanced debug logging for metadata payload with RAG info
                             print(f"DEBUG-RAG-METADATA: Adding RAG info to metadata_payload")
                             print(f"DEBUG-RAG-METADATA: using_documents = {metadata_payload.get('using_documents')}")
                             print(f"DEBUG-RAG-METADATA: document_sources = {metadata_payload.get('document_sources', [])}")
+                            print(f"DEBUG-RAG-METADATA: rag_method = {metadata_payload.get('rag_method', 'unknown')}")
                         else:
                             print(f"DEBUG-RAG-METADATA: Not adding RAG info (has_rag_documents={('has_rag_documents' in locals() and has_rag_documents)})")
-                            if 'has_rag_documents' in locals():
-                                print(f"DEBUG-RAG-METADATA: has_rag_documents explicitly set to {has_rag_documents}")
-                            else:
-                                print(f"DEBUG-RAG-METADATA: has_rag_documents variable not defined in this scope")
+                            print(f"DEBUG-RAG-METADATA: Direct RAG documents: {bool(rag_documents and len(rag_documents) > 0)}")
                                 
                         # Send the metadata
                         yield f"data: {json.dumps({'type': 'metadata', 'metadata': metadata_payload})}\n\n"
