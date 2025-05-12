@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>PDF Indicator Debug Test</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 2rem;
+        }
+        .test-button {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        .instructions {
+            background: #f0f0f0;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF Indicator Debug Test</h1>
+    
+    <div class="instructions">
+        <p>This page helps diagnose the PDF indicator issue with simplified test cases.</p>
+        <p>To test:</p>
+        <ol>
+            <li>Click "Upload PDF Test" to simulate a PDF upload</li>
+            <li>See indicator appear</li>
+            <li>Watch browser console for diagnostic information when indicator disappears</li>
+        </ol>
+    </div>
+    
+    <button id="test-upload" class="test-button">Upload PDF Test</button>
+    <button id="test-clear" class="test-button">Clear Indicators</button>
+    
+    <div class="chat-input-container">
+        <div id="upload-indicator" style="display: none;"></div>
+        <textarea id="message-input" placeholder="Type your message here..."></textarea>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const testUploadBtn = document.getElementById('test-upload');
+            const testClearBtn = document.getElementById('test-clear');
+            const uploadIndicator = document.getElementById('upload-indicator');
+            
+            // Create PDF indicator
+            testUploadBtn.addEventListener('click', function() {
+                console.log('Simulating PDF upload...');
+                uploadIndicator.innerHTML = `
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span class="pdf-filename">test-document.pdf</span>
+                    <button class="remove-file-btn" title="Remove PDF">X</button>
+                `;
+                uploadIndicator.classList.add('pdf-indicator');
+                uploadIndicator.style.display = 'block';
+                
+                // Add observer to track when/why indicator is removed
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.type === 'childList' && mutation.removedNodes.length > 0) {
+                            for (let i = 0; i < mutation.removedNodes.length; i++) {
+                                const node = mutation.removedNodes[i];
+                                if (node.classList && node.classList.contains('pdf-indicator')) {
+                                    console.warn('PDF indicator was removed by:', 
+                                        new Error().stack.split('\n')[2].trim());
+                                }
+                            }
+                        }
+                    });
+                });
+                
+                const chatInputContainer = document.querySelector('.chat-input-container');
+                observer.observe(chatInputContainer, { childList: true, subtree: true });
+                
+                // Add click handler for remove button
+                const removeBtn = uploadIndicator.querySelector('.remove-file-btn');
+                if (removeBtn) {
+                    removeBtn.addEventListener('click', function() {
+                        console.log('Remove button clicked');
+                        uploadIndicator.remove();
+                    });
+                }
+            });
+            
+            // Clear indicator 
+            testClearBtn.addEventListener('click', function() {
+                console.log('Clearing PDF indicator');
+                uploadIndicator.innerHTML = '';
+                uploadIndicator.classList.remove('pdf-indicator');
+                uploadIndicator.style.display = 'none';
+            });
+            
+            // Test automatic clearing behavior when focusing input
+            const messageInput = document.getElementById('message-input');
+            messageInput.addEventListener('focus', function() {
+                console.log('Message input focused');
+                // We don't clear here, but this is to test if focus might be related
+            });
+        });
+    </script>
+</body>
+</html>
