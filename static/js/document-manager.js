@@ -15,7 +15,7 @@ function removeDocument(documentId, element) {
     }
     
     // Send a request to remove the document
-    fetch(`/remove-document/${documentId}`, {
+    fetch(`/document/${documentId}/remove`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -98,7 +98,7 @@ function loadConversationDocuments(conversationId) {
         return;
     }
     
-    fetch(`/conversation-documents/${conversationId}`)
+    fetch(`/conversation/${conversationId}/documents`)
         .then(response => response.json())
         .then(data => {
             if (data.success && data.documents && data.documents.length > 0) {

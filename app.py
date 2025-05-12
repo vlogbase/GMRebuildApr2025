@@ -3716,32 +3716,39 @@ def get_conversation_documents(conversation_id):
 @app.route('/document/<int:document_id>/remove', methods=['POST'])
 @login_required
 def remove_document(document_id):
-    """Remove a document from a conversation."""
+    """Mark a document as inactive to remove it from the conversation context"""
     try:
         from models import DocumentReference, Conversation
         
-        # Get the document
-        document = db.session.get(DocumentReference, document_id)
+        # Find the document
+        document = DocumentReference.query.get(document_id)
         if not document:
-            abort(404, description="Document not found")
+            return jsonify({"success": False, "error": "Document not found"}), 404
         
-        # Check if the user has permission to remove this document
-        conversation = db.session.get(Conversation, document.conversation_id)
-        if not conversation or conversation.user_id != current_user.id:
-            abort(403, description="You don't have permission to remove this document")
+        # Check if the user has access to the document's conversation
+        conversation = Conversation.query.get(document.conversation_id)
+        if not conversation:
+            return jsonify({"success": False, "error": "Conversation not found"}), 404
+            
+        # If the conversation belongs to a user, verify it's the current user
+        if conversation.user_id and current_user.is_authenticated and conversation.user_id != current_user.id:
+            return jsonify({"success": False, "error": "Access denied"}), 403
         
-        # Mark the document as inactive rather than deleting it
+        # Mark document as inactive (soft delete)
         document.is_active = False
         db.session.commit()
         
+        logger.info(f"Document {document_id} marked as inactive")
+        
         return jsonify({
-            "success": True,
-            "message": "Document removed successfully"
+            "success": True, 
+            "message": "Document removed",
+            "document_id": document_id
         })
     except Exception as e:
-        logger.exception(f"Error removing document: {e}")
+        logger.exception(f"Error removing document {document_id}: {e}")
         db.session.rollback()
-        abort(500, description=str(e))
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route('/conversation/<int:conversation_id>/share', methods=['POST']) 

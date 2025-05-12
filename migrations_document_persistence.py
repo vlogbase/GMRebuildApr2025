@@ -1,87 +1,85 @@
 """
-Migration script to add the DocumentReference model for document persistence in chat sessions.
-This allows documents to be attached to conversations and remain visible throughout the session.
+Migrations for document persistence feature.
+This script creates the document_reference table and adds the relationship to conversations.
 """
 import os
 import logging
 import sys
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, ForeignKey, inspect
-from sqlalchemy.sql import func
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, relationship
+import time
 from datetime import datetime
+from sqlalchemy import text, Column, Integer, String, Text, Boolean, DateTime, ForeignKey
 
-# Set up logging
-logging.basicConfig(level=logging.INFO, 
-                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler("migrations_document_persistence.log"),
+        logging.StreamHandler(sys.stdout)
+    ]
+)
 logger = logging.getLogger(__name__)
-
-# Get the database URL from the environment variables
-db_url = os.environ.get('DATABASE_URL')
-if not db_url:
-    logger.error("DATABASE_URL not found in environment variables")
-    sys.exit(1)
-
-# Create the base class for declarative models
-Base = declarative_base()
-
-# Define the Conversation model minimal schema (only what we need for references)
-class Conversation(Base):
-    __tablename__ = 'conversation'
-    
-    id = Column(Integer, primary_key=True)
-    # We don't need to define all fields, just the primary key for foreign key reference
-
-# Define the DocumentReference model to match our current model definition
-class DocumentReference(Base):
-    __tablename__ = 'document_reference'
-    
-    id = Column(Integer, primary_key=True)
-    conversation_id = Column(Integer, ForeignKey('conversation.id'), nullable=False)
-    document_type = Column(String(20), nullable=False)  # 'image', 'pdf', etc.
-    document_url = Column(Text, nullable=False)  # URL or data URL for the document
-    document_name = Column(String(255), nullable=True)  # Name of the document
-    is_active = Column(Boolean, default=True)  # Whether this document is currently in context
-    created_at = Column(DateTime, default=datetime.utcnow)
 
 def run_migrations():
     """
-    Run the migration to create the DocumentReference table
-    and add any other necessary changes to support document persistence.
+    Run database migrations for document persistence.
+    Creates document_reference table if it doesn't exist.
     """
     try:
-        # Create the database engine
-        engine = create_engine(db_url)
+        logger.info("Starting document persistence migrations")
         
-        # Check if the table already exists
-        if not inspect(engine).has_table('document_reference'):
-            # Create the table
-            logger.info("Creating document_reference table...")
-            Base.metadata.create_all(engine, tables=[DocumentReference.__table__])
-            logger.info("document_reference table created successfully.")
+        # Import the app and database
+        from app import app, db
+        from sqlalchemy import inspect
+        
+        # Push the application context
+        with app.app_context():
+            inspector = inspect(db.engine)
+            tables = inspector.get_table_names()
+            # Check if document_reference table already exists
+            if 'document_reference' not in tables:
+                logger.info("Creating document_reference table")
+                
+                # Create the document_reference table
+                with db.engine.connect() as conn:
+                    conn.execute(text("""
+                    CREATE TABLE document_reference (
+                        id SERIAL PRIMARY KEY,
+                        conversation_id INTEGER NOT NULL,
+                        document_type VARCHAR(20) NOT NULL,
+                        document_url TEXT NOT NULL,
+                        document_name VARCHAR(255),
+                        is_active BOOLEAN DEFAULT TRUE,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (conversation_id) REFERENCES conversation (id) ON DELETE CASCADE
+                    )
+                    """))
+                    conn.commit()
+                
+                logger.info("document_reference table created successfully")
+            else:
+                logger.info("document_reference table already exists, skipping creation")
             
-            # Create a session
-            Session = sessionmaker(bind=engine)
-            session = Session()
+            # Add index to improve query performance
+            with db.engine.connect() as conn:
+                conn.execute(text("""
+                CREATE INDEX IF NOT EXISTS idx_document_reference_conversation_active 
+                ON document_reference (conversation_id, is_active)
+                """))
+                conn.commit()
             
-            # Close the session
-            session.close()
-            
-            return True
-        else:
-            logger.info("document_reference table already exists.")
+            logger.info("Document persistence migrations completed successfully")
             return True
     
     except Exception as e:
-        logger.error(f"Error during migration: {e}")
+        logger.error(f"Error during document persistence migrations: {e}", exc_info=True)
         return False
 
 if __name__ == "__main__":
-    # Run the migrations when the script is executed directly
     success = run_migrations()
     if success:
-        logger.info("Document persistence migrations completed successfully!")
+        print("Document persistence migrations completed successfully")
+        sys.exit(0)
     else:
-        logger.error("Document persistence migrations failed.")
+        print("Document persistence migrations failed")
         sys.exit(1)

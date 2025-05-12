@@ -1,13 +1,6 @@
-[default.tasks]
+[default]
+pattern = "*"
+ignore = "replit.nix"
 
-[default.tasks.server]
-command = ["python", "run_app.py"]
-dependencies = []
-
-[default.tasks.fix-pdf]
-command = ["python", "fix_pdf_support.py"]
-dependencies = []
-
-[default.tasks.test-pdf]
-command = ["python", "test_pdf_handling.py"]
-dependencies = []
+[default.processes]
+flask_app = ["python", "app_workflow.py"]
