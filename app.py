@@ -1779,13 +1779,15 @@ def chat(): # Synchronous function
                 logger.info(f"✅ Valid image URL format: {image_url[:50]}...")
         
         # Log what we're saving to the database
-        logger.info(f"Saving user message to DB. Text: '{message_text[:50]}...' Image URL: {image_url[:50] if image_url else 'None'}")
+        logger.info(f"Saving user message to DB. Text: '{message_text[:50]}...' Image URL: {image_url[:50] if image_url else 'None'} PDF URL: {'Present' if pdf_url else 'None'}")
         
         user_db_message = Message(
             conversation_id=conversation.id, 
             role='user', 
             content=message_text,  # Store the text component
-            image_url=image_url    # Still store the image URL separately
+            image_url=image_url,   # Store the image URL separately
+            pdf_url=pdf_url,       # Store the PDF URL separately
+            pdf_filename=pdf_filename if pdf_url else None  # Store the PDF filename if we have a PDF
         )
         db.session.add(user_db_message)
         try:

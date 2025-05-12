@@ -1,0 +1,6 @@
+{
+  "commandName": "app_workflow",
+  "command": "python app_workflow.py",
+  "port": 5000,
+  "autostart": true
+}

@@ -109,6 +109,8 @@ class Message(db.Model):
     prompt_tokens = db.Column(db.Integer, nullable=True)  # Number of prompt tokens used
     completion_tokens = db.Column(db.Integer, nullable=True)  # Number of completion tokens used
     image_url = db.Column(db.String(512), nullable=True)  # URL to an image for multimodal messages
+    pdf_url = db.Column(db.Text, nullable=True)  # URL or data URL for PDF document (can be large)
+    pdf_filename = db.Column(db.String(255), nullable=True)  # Name of the PDF file
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     def __repr__(self):
