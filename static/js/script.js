@@ -1083,23 +1083,29 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Build combined documents array from both images and PDF (if present)
-        let attachedDocuments = [];
+        // This is a global variable that can be accessed by other functions
+        window.attachedDocuments = [];
         
         // Add image documents
         attachedImageUrls.forEach((url, index) => {
-            attachedDocuments.push({
+            // Check if this image has a document ID (from loaded conversation)
+            const documentId = url.document_id || null;
+            
+            window.attachedDocuments.push({
                 type: 'image',
-                url: url,
-                name: `Image ${index + 1}`
+                url: url.url || url,  // Handle both object and string formats
+                name: url.name || `Image ${index + 1}`,
+                document_id: documentId
             });
         });
         
         // Add PDF document if present
         if (attachedPdfUrl && attachedPdfName) {
-            attachedDocuments.push({
+            window.attachedDocuments.push({
                 type: 'pdf',
                 url: attachedPdfUrl,
-                name: attachedPdfName
+                name: attachedPdfName,
+                document_id: attachedPdfDocumentId || null
             });
         }
         
@@ -1163,10 +1169,17 @@ document.addEventListener('DOMContentLoaded', function() {
             removeBtn.className = 'remove-document-btn';
             removeBtn.innerHTML = '×';
             removeBtn.setAttribute('data-index', i);
+            
+            // Check if document has an ID (for persistence)
+            if (docItem.document_id) {
+                removeBtn.setAttribute('data-document-id', docItem.document_id);
+            }
+            
             removeBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
-                // Remove this specific document
-                removeDocument(i);
+                // Remove this specific document with its ID (if available)
+                const documentId = docItem.document_id;
+                removeDocument(i, documentId);
             });
             
             // Make the whole container clickable to open/preview the document
@@ -1254,28 +1267,69 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to remove a document from the unified display
-    function removeDocument(index) {
+    function removeDocument(index, documentId) {
         if (index >= 0 && index < attachedDocuments.length) {
             const docItem = attachedDocuments[index]; // Renamed to avoid shadowing global 'document' object
             
-            if (docItem.type === 'image') {
-                // Find the corresponding image in the image URLs array
-                const imageIndex = attachedImageUrls.indexOf(docItem.url);
-                if (imageIndex !== -1) {
-                    attachedImageUrls.splice(imageIndex, 1);
-                    // updateImagePreviews(); // Removed in favor of unified document preview
-                    updateDocumentPreviews(); // Update unified document display
+            // If a document ID is provided and we have a valid conversation, use the API to remove it
+            if (documentId && currentConversationId) {
+                // Send request to the server to mark the document as inactive
+                fetch(`/document/${documentId}/remove`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log(`Document ${documentId} removed successfully`);
+                        
+                        // Remove from local state as well
+                        if (docItem.type === 'image') {
+                            // Remove this image from the list
+                            const imageIndex = attachedImageUrls.indexOf(docItem.url);
+                            if (imageIndex !== -1) {
+                                attachedImageUrls.splice(imageIndex, 1);
+                            }
+                        } else if (docItem.type === 'pdf') {
+                            // Clear the PDF
+                            clearAttachedPdf();
+                        }
+                        
+                        // Update the document display
+                        updateDocumentPreviews();
+                        
+                        // Update send button state
+                        updateSendButtonState();
+                    } else {
+                        console.error('Error removing document:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error removing document:', error);
+                });
+            } else {
+                // Fallback to local removal if no document ID or conversation ID
+                if (docItem.type === 'image') {
+                    // Find the corresponding image in the image URLs array
+                    const imageIndex = attachedImageUrls.indexOf(docItem.url);
+                    if (imageIndex !== -1) {
+                        attachedImageUrls.splice(imageIndex, 1);
+                        updateDocumentPreviews(); // Update unified document display
+                    }
+                } else if (docItem.type === 'pdf') {
+                    // Clear the PDF
+                    clearAttachedPdf();
                 }
-            } else if (docItem.type === 'pdf') {
-                // Clear the PDF
-                clearAttachedPdf();
+                
+                // Update the document display
+                updateDocumentPreviews();
+                
+                // Update send button state
+                updateSendButtonState();
             }
-            
-            // Update the document display
-            updateDocumentPreviews();
-            
-            // Update send button state
-            updateSendButtonState();
         }
     }
     
@@ -3194,7 +3248,69 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
-    // Function to load a specific conversation
+    // Function to load documents for a conversation
+    function loadConversationDocuments(conversationId) {
+        console.log(`Loading documents for conversation ID: ${conversationId}`);
+        
+        if (!conversationId) {
+            console.warn('No conversation ID provided for loading documents');
+            return;
+        }
+        
+        // Clear existing document states
+        clearAttachedImages();
+        clearAttachedPdf();
+        
+        // Fetch documents from the server
+        fetch(`/conversation/${conversationId}/documents`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error loading documents! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success && data.documents && data.documents.length > 0) {
+                    console.log(`Found ${data.documents.length} active documents for conversation ${conversationId}`);
+                    
+                    // Process each document
+                    data.documents.forEach(doc => {
+                        if (doc.document_type === 'image') {
+                            // Add to attached images with document ID for persistence
+                            if (doc.document_url) {
+                                // Check if we already have this URL to avoid duplicates
+                                const existingIndex = attachedImageUrls.findIndex(img => 
+                                    typeof img === 'string' ? img === doc.document_url : img.url === doc.document_url
+                                );
+                                
+                                if (existingIndex === -1) {
+                                    // Add as an object with document_id
+                                    attachedImageUrls.push({
+                                        url: doc.document_url,
+                                        name: doc.document_name || 'Image',
+                                        document_id: doc.id
+                                    });
+                                }
+                            }
+                        } else if (doc.document_type === 'pdf') {
+                            // Set as attached PDF with document ID
+                            attachedPdfUrl = doc.document_url;
+                            attachedPdfName = doc.document_name || 'Document.pdf';
+                            attachedPdfDocumentId = doc.id; // Store document ID for persistence
+                        }
+                    });
+                    
+                    // Update document preview
+                    updateDocumentPreviews();
+                } else {
+                    console.log(`No active documents found for conversation ${conversationId}`);
+                }
+            })
+            .catch(error => {
+                console.error(`Error loading documents for conversation ${conversationId}:`, error);
+            });
+    }
+
     function loadConversation(conversationId) {
         // Make sure chatMessages exists
         if (!chatMessages) {
@@ -3202,10 +3318,14 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Clear the current chat
+        // Clear the current chat and documents
         chatMessages.innerHTML = '';
         messageHistory = [];
         currentConversationId = conversationId;
+        
+        // Reset document states
+        clearAttachedImages();
+        clearAttachedPdf();
         
         console.log(`Loading conversation ID: ${conversationId}`);
         
@@ -3226,7 +3346,10 @@ document.addEventListener('DOMContentLoaded', function() {
         loadingMessage.textContent = 'Loading conversation...';
         chatMessages.appendChild(loadingMessage);
         
-        // Fetch conversation messages from the server
+        // First fetch and load the conversation documents
+        loadConversationDocuments(conversationId);
+        
+        // Then fetch conversation messages from the server
         fetch(`/conversation/${conversationId}/messages`)
             .then(response => {
                 if (!response.ok) {

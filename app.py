@@ -1142,9 +1142,78 @@ def upload_image():
             image_url = url_for('static', filename=f'uploads/{unique_filename}', _external=True)
             logger.info(f"Saved image to local filesystem: {file_path}")
         
+        # Get or create a conversation for this image if conversation_id is provided
+        from models import Conversation, DocumentReference
+        conversation = None
+        
+        # If conversation_id was provided, try to fetch that conversation
+        if conversation_id:
+            try:
+                conversation = Conversation.query.get(conversation_id)
+                logger.info(f"Found existing conversation with ID: {conversation_id}")
+            except Exception as e:
+                logger.error(f"Error finding conversation {conversation_id}: {e}")
+                conversation_id = None
+        
+        # If no valid conversation found, create a new one
+        if not conversation and current_user and current_user.is_authenticated:
+            # Create a new conversation for this image upload
+            try:
+                from ensure_app_context import ensure_app_context
+                
+                # Use a descriptive title for image-initiated conversations
+                title = f"Image: {filename}"
+                share_id = generate_share_id()
+                
+                # Create with app context to avoid errors
+                with ensure_app_context():
+                    # Generate a UUID for the conversation
+                    conversation_uuid = str(uuid.uuid4())
+                    
+                    # Create the conversation
+                    conversation = Conversation(
+                        title=title, 
+                        share_id=share_id,
+                        conversation_uuid=conversation_uuid
+                    )
+                    
+                    # Associate conversation with the authenticated user
+                    conversation.user_id = current_user.id
+                    logger.info(f"Associating new image conversation with user ID: {current_user.id}")
+                    
+                    db.session.add(conversation)
+                    db.session.commit()
+                    conversation_id = conversation.id
+                    logger.info(f"Created new conversation for image with ID: {conversation_id}")
+            except Exception as e:
+                logger.exception(f"Error creating conversation for image: {e}")
+                # Continue even if conversation creation fails
+        
+        # If we have a valid conversation, create a DocumentReference record
+        if conversation:
+            try:
+                from ensure_app_context import ensure_app_context
+                
+                with ensure_app_context():
+                    # Create a DocumentReference record for persistence
+                    document_ref = DocumentReference(
+                        conversation_id=conversation.id,
+                        document_type='image',
+                        document_url=image_url,
+                        document_name=filename,
+                        is_active=True
+                    )
+                    db.session.add(document_ref)
+                    db.session.commit()
+                    logger.info(f"Created document reference for image in conversation {conversation.id}")
+            except Exception as e:
+                logger.exception(f"Error creating document reference: {e}")
+                # Continue even if document reference creation fails
+        
         return jsonify({
             "success": True,
-            "image_url": image_url
+            "image_url": image_url,
+            "conversation_id": conversation.id if conversation else None
         })
         
     except Exception as e:
@@ -1364,7 +1433,7 @@ def upload_pdf():
                 
                 # Now save a Message record with the PDF URL so it's properly associated with the conversation
                 try:
-                    from models import Message
+                    from models import Message, DocumentReference
                     from ensure_app_context import ensure_app_context
                     
                     # Create a placeholder message to hold the PDF data
@@ -1378,8 +1447,19 @@ def upload_pdf():
                             pdf_filename=filename
                         )
                         db.session.add(pdf_message)
+                        
+                        # Create a DocumentReference record for persistence
+                        document_ref = DocumentReference(
+                            conversation_id=conversation.id,
+                            document_type='pdf',
+                            document_url=pdf_data_url,
+                            document_name=filename,
+                            is_active=True
+                        )
+                        db.session.add(document_ref)
+                        
                         db.session.commit()
-                        logger.info(f"Saved PDF message {pdf_message.id} for conversation {conversation.id}")
+                        logger.info(f"Saved PDF message {pdf_message.id} and document reference for conversation {conversation.id}")
                 except Exception as e:
                     logger.exception(f"Error saving PDF message to database: {e}")
                     # Continue even if this fails - we'll at least return the PDF URL
@@ -1414,7 +1494,7 @@ def upload_pdf():
                 
                 # Save a Message record with the PDF URL so it's properly associated with the conversation
                 try:
-                    from models import Message
+                    from models import Message, DocumentReference
                     from ensure_app_context import ensure_app_context
                     
                     # Create a placeholder message to hold the PDF data
@@ -1428,8 +1508,19 @@ def upload_pdf():
                             pdf_filename=filename
                         )
                         db.session.add(pdf_message)
+                        
+                        # Create a DocumentReference record for persistence
+                        document_ref = DocumentReference(
+                            conversation_id=conversation.id,
+                            document_type='pdf',
+                            document_url=pdf_data_url,
+                            document_name=filename,
+                            is_active=True
+                        )
+                        db.session.add(document_ref)
+                        
                         db.session.commit()
-                        logger.info(f"Saved PDF message {pdf_message.id} for conversation {conversation.id}")
+                        logger.info(f"Saved PDF message {pdf_message.id} and document reference for conversation {conversation.id}")
                 except Exception as e:
                     logger.exception(f"Error saving PDF message to database: {e}")
                     # Continue even if this fails - we'll at least return the PDF URL
@@ -1463,7 +1554,7 @@ def upload_pdf():
             
             # Save a Message record with the PDF URL so it's properly associated with the conversation
             try:
-                from models import Message
+                from models import Message, DocumentReference
                 from ensure_app_context import ensure_app_context
                 
                 # Create a placeholder message to hold the PDF data
@@ -1477,8 +1568,19 @@ def upload_pdf():
                         pdf_filename=filename
                     )
                     db.session.add(pdf_message)
+                    
+                    # Create a DocumentReference record for persistence
+                    document_ref = DocumentReference(
+                        conversation_id=conversation.id,
+                        document_type='pdf',
+                        document_url=pdf_data_url,
+                        document_name=filename,
+                        is_active=True
+                    )
+                    db.session.add(document_ref)
+                    
                     db.session.commit()
-                    logger.info(f"Saved PDF message {pdf_message.id} for conversation {conversation.id}")
+                    logger.info(f"Saved PDF message {pdf_message.id} and document reference for conversation {conversation.id}")
             except Exception as e:
                 logger.exception(f"Error saving PDF message to database: {e}")
                 # Continue even if this fails - we'll at least return the PDF URL
@@ -3563,6 +3665,81 @@ def rate_message(message_id):
         return jsonify({"success": True, "message": "Rating saved"})
     except Exception as e:
         logger.exception(f"Error saving rating for message {message_id}")
+        db.session.rollback()
+        abort(500, description=str(e))
+
+
+@app.route('/conversation/<int:conversation_id>/documents', methods=['GET'])
+@login_required
+def get_conversation_documents(conversation_id):
+    """Get all active documents for a conversation."""
+    try:
+        from models import Conversation, DocumentReference
+        
+        # Check if conversation exists
+        conversation = db.session.get(Conversation, conversation_id)
+        if not conversation:
+            abort(404, description="Conversation not found")
+            
+        # Verify the conversation belongs to the current user
+        if conversation.user_id != current_user.id:
+            abort(403, description="You don't have permission to access this conversation")
+            
+        # Get all active documents for this conversation
+        documents = DocumentReference.query.filter_by(
+            conversation_id=conversation_id,
+            is_active=True
+        ).all()
+        
+        # Format documents for the frontend
+        document_list = []
+        for doc in documents:
+            document_list.append({
+                "id": doc.id,
+                "document_type": doc.document_type,
+                "document_url": doc.document_url,
+                "document_name": doc.document_name,
+                "created_at": doc.created_at.isoformat() if doc.created_at else None
+            })
+        
+        return jsonify({
+            "success": True,
+            "conversation_id": conversation_id,
+            "documents": document_list
+        })
+    except Exception as e:
+        logger.exception(f"Error getting conversation documents: {e}")
+        db.session.rollback()
+        abort(500, description=str(e))
+
+
+@app.route('/document/<int:document_id>/remove', methods=['POST'])
+@login_required
+def remove_document(document_id):
+    """Remove a document from a conversation."""
+    try:
+        from models import DocumentReference, Conversation
+        
+        # Get the document
+        document = db.session.get(DocumentReference, document_id)
+        if not document:
+            abort(404, description="Document not found")
+        
+        # Check if the user has permission to remove this document
+        conversation = db.session.get(Conversation, document.conversation_id)
+        if not conversation or conversation.user_id != current_user.id:
+            abort(403, description="You don't have permission to remove this document")
+        
+        # Mark the document as inactive rather than deleting it
+        document.is_active = False
+        db.session.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Document removed successfully"
+        })
+    except Exception as e:
+        logger.exception(f"Error removing document: {e}")
         db.session.rollback()
         abort(500, description=str(e))
 

@@ -93,6 +93,7 @@ class Conversation(db.Model):
     
     # Relationships
     messages = db.relationship('Message', backref='conversation', lazy='dynamic', cascade='all, delete-orphan')
+    documents = db.relationship('DocumentReference', backref='conversation', lazy='dynamic', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Conversation {self.id}: {self.title}>'
@@ -318,6 +319,20 @@ class CustomerReferral(db.Model):
     
     def __repr__(self):
         return f'<CustomerReferral {self.id}: User {self.customer_user_id} referred by Affiliate {self.affiliate_id}>'
+
+
+class DocumentReference(db.Model):
+    """Document reference model to store documents attached to conversations"""
+    id = db.Column(db.Integer, primary_key=True)
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
+    document_type = db.Column(db.String(20), nullable=False)  # 'image', 'pdf', etc.
+    document_url = db.Column(db.Text, nullable=False)  # URL or data URL for the document
+    document_name = db.Column(db.String(255), nullable=True)  # Name of the document
+    is_active = db.Column(db.Boolean, default=True)  # Whether this document is currently in context
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<DocumentReference {self.id}: {self.document_type} - {self.document_name}>'
 
 
 class OpenRouterModel(db.Model):
