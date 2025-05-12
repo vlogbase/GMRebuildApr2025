@@ -1,7 +1,13 @@
-[deployment]
-run = "python app_workflow.py"
-entrypoint = "app_workflow.py"
+[default.tasks]
 
-[env]
-PORT = "3000"
-PYTHONUNBUFFERED = "1"
+[default.tasks.server]
+command = ["python", "run_app.py"]
+dependencies = []
+
+[default.tasks.fix-pdf]
+command = ["python", "fix_pdf_support.py"]
+dependencies = []
+
+[default.tasks.test-pdf]
+command = ["python", "test_pdf_handling.py"]
+dependencies = []

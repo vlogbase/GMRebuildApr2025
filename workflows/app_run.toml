@@ -1,3 +1,0 @@
-[run]
-command = ["python", "app_workflow.py"]
-env = { "PORT" = "3000", "PYTHONUNBUFFERED" = "1" }

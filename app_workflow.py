@@ -15,21 +15,8 @@ def ensure_app_context():
     try:
         from app import app, db
         with app.app_context():
-            # Test DB connection
-            db.session.execute(db.select(db.text('1'))).scalar()
+            db.session.execute(db.select(db.text('1'))).scalar()  # Test DB connection
             print("Database connection successful")
-            
-            # Verify document models are ready
-            from models import DocumentReference
-            print("Document models loaded successfully")
-            
-            # Ensure document routes are initialized
-            print("Document handling routes initialized")
-            
-            # Check for required API connection keys
-            if not os.environ.get('AZURE_STORAGE_CONNECTION_STRING'):
-                print("Warning: AZURE_STORAGE_CONNECTION_STRING not set. Document uploads may not work correctly.")
-                
     except Exception as e:
         print(f"Error during app context test: {e}")
         # Continue anyway, as the app might handle this internally
@@ -52,21 +39,13 @@ def run():
         from app import app
         
         # Apply the ProxyFix to make url_for generate https URLs
-        # Enhanced settings for Replit deployments
-        app.wsgi_app = ProxyFix(
-            app.wsgi_app,
-            x_proto=1,  # Number of values to trust for X-Forwarded-Proto
-            x_host=1,   # Number of values to trust for X-Forwarded-Host
-            x_prefix=1, # Number of values to trust for X-Forwarded-Prefix
-            x_for=1     # Number of values to trust for X-Forwarded-For
-        )
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
         
         # Ensure we have an app context for database operations
         ensure_app_context()
         
         # Run the app - use environment variable for port if available
-        # Default to port 3000 for Replit deployments instead of 5000
-        port = int(os.environ.get('PORT', 3000))
+        port = int(os.environ.get('PORT', 5000))
         print(f"Starting Flask application on port {port}...")
         
         # Write PID to a file for easier management

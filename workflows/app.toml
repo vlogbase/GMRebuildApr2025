@@ -1,5 +1,2 @@
-[workflow]
-onStart = "python app_workflow.py"
-showBackgroundOutput = true
-persistent = true
-restartPolicy = "always"
+# This is a workflow for running the app
+run = "python app_workflow.py"

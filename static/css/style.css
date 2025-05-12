@@ -2353,22 +2353,9 @@ body.account-page .tab-pane {
     border-radius: 3px;
     max-width: 95%;
     word-wrap: break-word;
-    white-space: normal;
-    overflow: hidden;
-    text-overflow: ellipsis;
     display: block;
     text-align: center;
     margin-top: 4px;
-}
-
-/* Style for document name in document-manager.js */
-.document-name {
-    font-size: 12px;
-    white-space: normal;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 80%;
-    display: inline-block;
 }
 
 .remove-document-btn {

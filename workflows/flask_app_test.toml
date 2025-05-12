@@ -1,5 +1,2 @@
-[workflow]
-onStart = "python app_workflow.py"
-showBackgroundOutput = true
-persistent = true
-restartPolicy = "always"
+# Flask app to test document handling
+run = "python app_flask.py"
