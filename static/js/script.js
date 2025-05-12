@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (supportsImages) {
                 imageUploadButton.style.display = 'inline-flex';
                 imageUploadButton.classList.remove('disabled');
-                imageUploadButton.title = 'Upload an image';
+                imageUploadButton.title = 'Upload an image or PDF';
             } else {
                 imageUploadButton.style.display = 'none';
                 // Alternative: Keep visible but disabled with explanation
@@ -178,7 +178,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Show upload indicator
                 const uploadIndicator = document.getElementById('upload-indicator') || createUploadIndicator();
                 uploadIndicator.style.display = 'block';
-                uploadIndicator.textContent = 'Uploading image from clipboard...';
+                uploadIndicator.textContent = 'Uploading file from clipboard...';
                 
                 // Create FormData and upload the image
                 const formData = new FormData();
@@ -204,7 +204,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(response => response.json())
                 .then(data => {
                     // Set upload flag to false and re-enable send button
-                    isUploadingImage = false;
+                    isUploadingFile = false;
                     updateSendButtonState();
                     
                     if (data.success && data.image_url) {
@@ -233,7 +233,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.error('Error uploading image:', error);
                     
                     // Set upload flag to false and re-enable send button
-                    isUploadingImage = false;
+                    isUploadingFile = false;
                     updateSendButtonState();
                     
                     uploadIndicator.textContent = 'Error uploading image';
@@ -299,8 +299,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const uploadStatus = document.getElementById('upload-status');
     
     // Image upload and camera elements
-    const imageUploadInput = document.getElementById('image-upload-input');
-    const imageUploadButton = document.getElementById('image-upload-button');
+    const imageUploadInput = document.getElementById('file-upload-input');
+    const imageUploadButton = document.getElementById('file-upload-button');
     const cameraButton = document.getElementById('camera-button');
     const cameraModal = document.getElementById('camera-modal');
     const cameraStream = document.getElementById('camera-stream');
@@ -625,10 +625,23 @@ document.addEventListener('DOMContentLoaded', function() {
     // Image upload and camera event listeners with premium access checks
     if (imageUploadButton) {
         imageUploadButton.addEventListener('click', () => {
-            // Check premium access before allowing image upload
+            // Check premium access before allowing file upload
             if (!checkPremiumAccess('image_upload')) {
                 return; // Stop if access check failed
             }
+            
+            // Get the active model
+            const activeModel = document.querySelector('.model-btn.active, .model-preset-btn.active');
+            const modelId = activeModel ? activeModel.getAttribute('data-model-id') : null;
+            
+            // Check if selected model supports PDF if PDF support is enabled
+            const supportsPdf = checkModelCapabilities('supports_pdf');
+            
+            // Update the file input's accept attribute based on model capabilities
+            if (imageUploadInput) {
+                imageUploadInput.accept = supportsPdf ? "image/*,.pdf" : "image/*";
+            }
+            
             imageUploadInput.click();
         });
     }
@@ -1041,8 +1054,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const hasImages = attachedImageUrls.length > 0;
         const hasPdf = attachedPdfUrl !== null;
         
-        if (isUploadingImage) {
-            // Disable send button while image is uploading
+        if (isUploadingFile) {
+            // Disable send button while file is uploading
             sendButton.disabled = true;
             sendButton.classList.add('disabled');
             sendButton.title = 'Please wait for file to finish uploading';

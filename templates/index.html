@@ -178,7 +178,7 @@
                             <div id="upload-dropzone" class="upload-dropzone">
                                 <i class="fa-solid fa-file-arrow-up upload-icon"></i>
                                 <p>Drag files here or click to upload</p>
-                                <input type="file" id="file-upload-input" multiple accept=".txt,.pdf,.docx,.md,.html,.json,.csv,.tsv,.xml,.yaml,.yml,.rtf,.srt,.vtt,.log,.py,.js,.java,.c,.cpp,.cs,.rb,.php">
+                                <input type="file" id="document-upload-input" multiple accept=".txt,.pdf,.docx,.md,.html,.json,.csv,.tsv,.xml,.yaml,.yml,.rtf,.srt,.vtt,.log,.py,.js,.java,.c,.cpp,.cs,.rb,.php">
                             </div>
                             
                             <div id="upload-file-list" class="upload-file-list">
@@ -214,16 +214,14 @@
                 <div class="input-group">
                     <textarea id="message-input" placeholder="Message GloriaMundo..."></textarea>
                     <div class="message-actions">
-                        <input type="file" id="image-upload-input" name="file" accept="image/*,.pdf" style="display: none;">
-                        <button id="image-upload-button" class="btn btn-secondary" style="display: none;" title="Upload image or PDF">
-                            <i class="fa-solid fa-image"></i>
+                        <input type="file" id="file-upload-input" name="file" accept="image/*,.pdf" style="display: none;">
+                        <button id="file-upload-button" class="btn btn-secondary" style="display: none;" title="Upload image or PDF">
+                            <i class="fa-solid fa-file-circle-plus"></i>
                         </button>
                         <button id="camera-button" class="btn btn-secondary" style="display: none;">
                             <i class="fa-solid fa-camera"></i>
                         </button>
-                        <button id="upload-documents-btn" class="btn btn-secondary" style="display: none;" title="Upload PDF document">
-                            <i class="fa-solid fa-file-pdf"></i>
-                        </button>
+                        <!-- Removed redundant PDF upload button - using unified file upload button above -->
                         <button id="send-btn" class="send-btn">
                             <i class="fa-solid fa-paper-plane"></i>
                         </button>

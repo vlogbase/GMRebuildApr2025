@@ -1362,94 +1362,12 @@ def upload_pdf():
         }), 500
 
 @app.route('/upload', methods=['POST'])
-def upload_file():
+def redirect_to_upload_file():
     """
-    Unified file upload route that handles both images and PDFs based on file type.
-    This allows a single upload button in the UI to handle different file types.
+    Route handler that redirects to the main upload_file function
+    to maintain compatibility with any existing code using the /upload endpoint.
     """
-    try:
-        # Verify a file was uploaded
-        if 'file' not in request.files:
-            return jsonify({"error": "No file provided"}), 400
-            
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({"error": "No file selected"}), 400
-        
-        # Get requested model ID if specified
-        model_id = request.args.get('model', None)
-        
-        # Determine file type
-        filename = file.filename
-        extension = Path(filename).suffix.lower()
-        
-        # Image extensions
-        image_extensions = {'.jpg', '.jpeg', '.png', '.gif', '.webp'}
-        # PDF extension
-        pdf_extensions = {'.pdf'}
-        
-        # Check model capabilities if a model ID was provided
-        if model_id:
-            # If it's a PDF, verify the model supports documents
-            if extension in pdf_extensions and model_id not in DOCUMENT_MODELS:
-                return jsonify({
-                    "error": f"The selected model '{model_id}' does not support PDF documents.",
-                    "model_capability": "pdf_not_supported"
-                }), 400
-            
-            # If it's an image, verify the model supports multimodal
-            if extension in image_extensions and model_id not in MULTIMODAL_MODELS:
-                return jsonify({
-                    "error": f"The selected model '{model_id}' does not support images.",
-                    "model_capability": "image_not_supported"
-                }), 400
-        
-        # Route based on file type
-        if extension in image_extensions:
-            # Save the file to temp storage
-            temp_file = io.BytesIO()
-            file.save(temp_file)
-            temp_file.seek(0)
-            
-            # Create a new file-like object from the bytes
-            file_obj = FileStorage(
-                stream=temp_file,
-                filename=filename,
-                content_type=file.content_type
-            )
-            
-            # Pass to image upload handler
-            request.files['file'] = file_obj
-            return upload_image()
-            
-        elif extension in pdf_extensions:
-            # Save the file to temp storage
-            temp_file = io.BytesIO()
-            file.save(temp_file)
-            temp_file.seek(0)
-            
-            # Create a new file-like object from the bytes
-            file_obj = FileStorage(
-                stream=temp_file,
-                filename=filename,
-                content_type=file.content_type
-            )
-            
-            # Pass to PDF upload handler
-            request.files['file'] = file_obj
-            return upload_pdf()
-            
-        else:
-            # Unsupported file type
-            return jsonify({
-                "error": f"File type {extension} is not supported. Please upload an image (.jpg, .png, .gif, .webp) or PDF (.pdf) file."
-            }), 400
-            
-    except Exception as e:
-        logger.exception(f"Error handling file upload: {e}")
-        return jsonify({
-            "error": f"Server error: {str(e)}"
-        }), 500
+    return upload_file()
 
 @app.route('/clear-conversations', methods=['POST'])
 @login_required

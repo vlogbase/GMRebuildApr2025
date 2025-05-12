@@ -1,30 +1,29 @@
-#!/usr/bin/env python3
 """
-Simple script to run the Flask application for testing.
+Simple script to run the Flask application.
+This serves as the entry point for the workflow.
 """
-
 import os
-import sys
 import logging
 from app import app
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
 def run():
     """
-    Run the Flask application with error handling and logging.
+    Run the Flask application with proper configuration.
     """
-    try:
-        logger.info("Starting Flask application...")
-        app.run(host='0.0.0.0', port=5000)
-    except Exception as e:
-        logger.error(f"Error running Flask application: {e}")
-        sys.exit(1)
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        filename='app_workflow.log'
+    )
+    
+    # Print startup message
+    print("Starting Flask application with unified file upload support...")
+    print("Server will be available at http://0.0.0.0:5000")
+    
+    # Run the application
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)
 
 if __name__ == "__main__":
     run()
