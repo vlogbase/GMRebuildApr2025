@@ -17,6 +17,10 @@ function getCSRFToken() {
 let currentModelCapabilitiesForRAG = { is_multimodal: false, supports_pdf: false };
 let activeRagDocuments = [];
 
+// Global variables for models
+let allModels = [];  // Will be populated by fetchAvailableModels
+let loadedModels = []; // Alias to allModels for compatibility
+
 // Function to update RAG capabilities for a model
 function updateRagCapabilitiesForModel(modelId) {
     if (!modelId) {
@@ -1803,6 +1807,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Assign the fully processed data to the global variable
                     allModels = modelDataArray;
                     
+                    // Ensure loadedModels is also set to the same data
+                    loadedModels = allModels;
+                    
+                    // Log the models and their capabilities for debugging
+                    console.log('[Debug] Models loaded with PDF support:', allModels.filter(m => m.supports_pdf).map(m => m.id).join(', '));
+                    
                     // Explicitly update RAG capabilities for current model after models are loaded
                     console.log(`[Debug] allModels populated. Count: ${allModels.length}. Updating RAG capabilities for current model.`);
                     const currentModelIdForUpdate = getCurrentModelId(); // Get current model ID
@@ -1860,6 +1870,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             
                             // Add the fallback free models to allModels
                             allModels = allModels.concat(fallbackFreeModels);
+                            
+                            // Make sure loadedModels is also updated with fallback models
+                            loadedModels = allModels;
+                            
                             console.log(`[Debug] Added ${fallbackFreeModels.length} fallback free models. New total: ${allModels.length}`);
                         }
                     }

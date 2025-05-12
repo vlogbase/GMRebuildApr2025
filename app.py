@@ -288,8 +288,8 @@ def init_scheduler():
     from apscheduler.events import EVENT_JOB_EXECUTED, EVENT_JOB_ERROR
     
     try:
-        # Import the price updater function
-        from price_updater import fetch_and_store_openrouter_prices
+        # No need to import the price updater function here anymore
+        # We'll use the scheduled_price_update_job wrapper function
         
         # Create scheduler with enhanced config for better reliability in web environments
         scheduler = BackgroundScheduler(
@@ -304,8 +304,9 @@ def init_scheduler():
         )
         
         # Add the OpenRouter price fetching job with enhanced configuration
+        # Now using our wrapper function that establishes application context
         scheduler.add_job(
-            func=fetch_and_store_openrouter_prices, 
+            func=scheduled_price_update_job,  # Using wrapper function instead of direct call 
             trigger='interval', 
             minutes=30,  
             id='fetch_model_prices_job',
@@ -315,8 +316,9 @@ def init_scheduler():
         )
         
         # Run the price fetching job immediately at scheduler startup to ensure we have fresh data
+        # Now using our wrapper function that establishes application context
         scheduler.add_job(
-            func=fetch_and_store_openrouter_prices,
+            func=scheduled_price_update_job,  # Using wrapper function instead of direct call
             trigger='date',  # Run once at a specific time
             run_date=datetime.datetime.now() + datetime.timedelta(seconds=15),  # Run 15 seconds after startup
             id='initial_fetch_model_prices_job',
@@ -340,7 +342,7 @@ def init_scheduler():
             if job_id == 'fetch_model_prices_job':
                 logger.info(f"Scheduling retry for failed job {job_id} in 5 minutes")
                 scheduler.add_job(
-                    func=fetch_and_store_openrouter_prices,
+                    func=scheduled_price_update_job,  # Using the wrapper function instead of direct call
                     trigger='date',
                     run_date=datetime.datetime.now() + datetime.timedelta(minutes=5),
                     id='retry_fetch_model_prices_job',
@@ -404,49 +406,108 @@ def init_scheduler():
 # Replaced by the consolidated fetch_and_store_openrouter_prices function from price_updater.py
 # which now handles both pricing and model data in one place
 
+# Create a wrapper function for scheduled price update job
+def scheduled_price_update_job():
+    """
+    Wrapper function that establishes application context before calling price_updater.
+    This resolves the "Working outside of application context" errors when called by APScheduler.
+    """
+    logger.info("Starting scheduled_price_update_job with app context")
+    try:
+        from price_updater import fetch_and_store_openrouter_prices
+        
+        logger.info("Pushing app context for price update job")
+        with app.app_context():
+            logger.info("App context established, calling fetch_and_store_openrouter_prices")
+            success = fetch_and_store_openrouter_prices(app_instance=app, db_instance=db)
+            
+            if success:
+                logger.info("Price update job completed successfully")
+            else:
+                logger.warning("Price update job failed to complete successfully")
+        
+        logger.info("App context exited, scheduled_price_update_job complete")
+        return success
+    except Exception as e:
+        logger.error(f"Error in scheduled_price_update_job: {e}")
+        logger.error(traceback.format_exc())
+        return False
+
 # Initialize scheduler with improved implementation
 scheduler = init_scheduler()
 if not scheduler or not scheduler.running:
     logger.critical("Failed to initialize the scheduler! This may affect model data availability.")
 
-# Initial fetch of model data at startup - crucial for application functionality
-logger.info("Performing initial fetch of OpenRouter models at startup")
+# Initial check for model data at startup - with non-blocking fetch for better performance
+logger.info("Checking for OpenRouter models at startup")
+# First ensure proper Python imports
+import traceback
+from models import OpenRouterModel
+import threading
+
+# Define a function to run the initial model fetch in a background thread
+def fetch_models_in_background():
+    """
+    Performs the initial model fetch in a background thread to avoid blocking app startup.
+    This significantly improves page load time while still ensuring models get loaded.
+    
+    Note: This function must not be called within an existing app context.
+    It creates its own context to avoid nesting contexts which can cause issues.
+    """
+    # Important: Sleep briefly to ensure the main thread has fully released
+    # This prevents context collisions during application startup
+    time.sleep(2)
+    
+    logger.info("Starting background thread for initial model fetch")
+    try:
+        from price_updater import fetch_and_store_openrouter_prices
+        
+        # Create our own app context rather than relying on the wrapper function
+        # This is safer for background threads
+        with app.app_context():
+            logger.info("Background thread: App context established, calling fetch_and_store_openrouter_prices")
+            success = fetch_and_store_openrouter_prices(app_instance=app, db_instance=db)
+            
+            if success:
+                logger.info("Background model fetch completed successfully")
+            else:
+                logger.warning("Background model fetch failed. The scheduler will retry later.")
+    except Exception as e:
+        logger.error(f"Error in background model fetch: {e}")
+        logger.error(traceback.format_exc())
+
+# Safely check for models in database and set up background fetching
 try:
-    # First ensure proper Python imports
-    import traceback
-    from price_updater import fetch_and_store_openrouter_prices
-    from models import OpenRouterModel
-    
-    # Check if we have models in the database
-    model_count = OpenRouterModel.query.count()
-    
-    if model_count > 0:
+    # First check model count in the database, using context manager to ensure proper cleanup
+    model_count = 0
+    with app.app_context():
+        logger.info("Establishing app context for initial model count check")
+        # Check if we have models in the database
+        model_count = OpenRouterModel.query.count()
         logger.info(f"Found {model_count} OpenRouter models in database at startup")
-    else:
-        logger.info("No OpenRouter models found in database, fetching from API...")
-        
-        # Attempt to fetch model prices directly (which includes model info)
-        # This bypasses the scheduler to ensure we get data at startup
-        logger.info("Fetching initial model data directly...")
-        price_success = fetch_and_store_openrouter_prices()
-        
-        if price_success:
-            # Check if models were stored in the database
-            model_count = OpenRouterModel.query.count()
-            logger.info(f"Successfully fetched and stored {model_count} OpenRouter models in database")
-        else:
-            # If that fails, log a warning - we'll rely on the scheduler to retry soon
-            logger.warning("Initial model fetching failed. The scheduler will retry shortly.")
     
-    # Final verification of database state
-    model_count = OpenRouterModel.query.count()
+    # Important: Create background threads OUTSIDE of any app context
+    # This prevents nested contexts which cause the "Working outside of application context" errors
     if model_count > 0:
-        logger.info(f"OpenRouter model database initialized with {model_count} models")
+        # Even if we have models, schedule a background refresh to ensure we have the latest data
+        # This runs async and won't block the application startup
+        logger.info("Scheduling background refresh of model data")
+        refresh_thread = threading.Thread(target=fetch_models_in_background)
+        refresh_thread.daemon = True  # Thread will exit when main thread exits
+        refresh_thread.start()
     else:
-        logger.warning("No models available in the database. Application may have limited functionality.")
+        logger.info("No OpenRouter models found in database")
         
+        # Start a background thread to fetch models without blocking app startup
+        logger.info("Starting background thread to fetch initial model data")
+        fetch_thread = threading.Thread(target=fetch_models_in_background)
+        fetch_thread.daemon = True  # Thread will exit when main thread exits
+        fetch_thread.start()
+    
+    # Log that we'll continue startup without waiting
+    logger.info("Application continuing startup without waiting for model fetch to complete")
 except Exception as e:
-    logger.error(f"Critical error fetching model data at startup: {e}")
+    logger.error(f"Error checking for models at startup: {e}")
     logger.error(traceback.format_exc())
     logger.warning("Application may have limited functionality until models are fetched.")
 
