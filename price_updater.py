@@ -3,24 +3,31 @@ Price Updater Module for GloriaMundo Chatbot
 
 This module handles background fetching and caching of OpenRouter model prices,
 ensuring model information is stored in the database for reliability.
+
+This module can be run as a standalone script:
+    python price_updater.py
+
+Or its functions can be imported and used by app.py:
+    from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
 """
 
 import os
 import time
 import logging
 import requests
-from datetime import datetime
+import sys
+from datetime import datetime, timedelta
 from sqlalchemy.exc import SQLAlchemyError
-from flask import current_app
+from flask import Flask, current_app
+from contextlib import contextmanager
 
 # Set up logging - MUST BE BEFORE ANY OTHER CODE USES LOGGER
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-# Initialize globals
-app = None
-db = None
+logger.setLevel(logging.INFO)
 
 # Initialize a cache dict to store model prices (kept for backward compatibility)
 model_prices_cache = {
@@ -28,38 +35,76 @@ model_prices_cache = {
     'last_updated': None
 }
 
-# We won't import app and db directly to avoid circular imports
-# Instead, we'll use Flask's application context when needed
-
-def get_db():
+def get_db(app_instance=None):
     """
-    Get the database object from the current application context.
-    This avoids circular imports and works within an application context.
+    Get the database object.
+    
+    Args:
+        app_instance: Optional Flask app instance. If provided, gets db from this app.
+                     If None, tries to get db from current_app.
+    
+    Returns:
+        SQLAlchemy db instance or None if not available
     """
     try:
-        from flask import current_app
-        return current_app.extensions['sqlalchemy'].db
+        if app_instance:
+            # Use provided app instance
+            return app_instance.extensions['sqlalchemy'].db
+        else:
+            # Try to get from current Flask app context
+            from flask import current_app
+            return current_app.extensions['sqlalchemy'].db
     except (RuntimeError, KeyError, ImportError) as e:
-        logger.error(f"Failed to get db from current app: {e}")
+        logger.error(f"Failed to get db: {e}")
         return None
 
-# We'll use Flask's application context when needed instead of importing directly
+@contextmanager
+def get_app_context(app_instance=None):
+    """
+    Context manager for Flask application context.
+    If app_instance is provided, uses its context.
+    Otherwise, returns a dummy context manager.
+    
+    Args:
+        app_instance: Optional Flask app instance
+        
+    Yields:
+        The application context
+    """
+    if app_instance:
+        with app_instance.app_context() as ctx:
+            yield ctx
+    else:
+        # Dummy context manager that does nothing
+        class DummyContext:
+            def __enter__(self):
+                return None
+                
+            def __exit__(self, exc_type, exc_val, exc_tb):
+                return False
+                
+        with DummyContext() as dummy:
+            yield dummy
 
-def fetch_and_store_openrouter_prices() -> bool:
+def fetch_and_store_openrouter_prices(app_instance=None, db_instance=None) -> bool:
     """
     Fetch current model prices from OpenRouter API and store them in the database.
     
-    This function now:
+    This function:
     1. Fetches models from the OpenRouter API
     2. Stores them in the database using the OpenRouterModel model
     3. Also updates the legacy cache for backward compatibility
+    
+    Args:
+        app_instance: Optional Flask app instance for context management
+        db_instance: Optional SQLAlchemy db instance
     
     Returns:
         bool: True if successful, False otherwise
     """
     # Mark the start time for performance tracking
     start_time = time.time()
-    logger.info("Scheduled job: fetch_and_store_openrouter_prices started")
+    logger.info("fetch_and_store_openrouter_prices started")
     
     try:
         api_key = os.environ.get('OPENROUTER_API_KEY')
@@ -98,7 +143,7 @@ def fetch_and_store_openrouter_prices() -> bool:
         
         # Log response data (limited for brevity)
         data_count = len(models_data.get('data', []))
-        logger.debug(f"Received data for {data_count} models from OpenRouter API")
+        logger.info(f"Received data for {data_count} models from OpenRouter API")
         
         # Process model data to extract pricing
         prices = {}
@@ -193,7 +238,7 @@ def fetch_and_store_openrouter_prices() -> bool:
             model['is_reasoning'] = any(keyword in model_id_lower or keyword in model_name or keyword in model_description 
                                     for keyword in ['reasoning', 'opus', 'o1', 'o3'])
             
-            # Add to processed models for OPENROUTER_MODELS_INFO
+            # Add to processed models
             processed_models.append(model)
         
         # Update the cache with the new prices (kept for backward compatibility)
@@ -202,20 +247,24 @@ def fetch_and_store_openrouter_prices() -> bool:
         
         # Store models in the database (This is the new primary storage method)
         db_success = False
+
+        # Import here to avoid circular imports
+        from models import OpenRouterModel
         
-        try:
-            # Import here to avoid circular imports
-            from models import OpenRouterModel
-            from flask import current_app
-            
-            # Get the database from the current app context
-            db = get_db()
-            
-            if db is None:
-                logger.error("Cannot store models in database: db is None or not in application context")
-                return False
-                
-            # We're already in an application context provided by the calling function
+        # Determine which database and app objects to use
+        db = db_instance
+        app = app_instance
+        
+        # If no db was provided directly, try to get it
+        if db is None:
+            db = get_db(app)
+        
+        if db is None:
+            logger.error("Cannot store models in database: db is None or not accessible")
+            return False
+        
+        # Use application context for all database operations
+        with get_app_context(app):
             updated_count = 0
             new_count = 0
             
@@ -223,6 +272,7 @@ def fetch_and_store_openrouter_prices() -> bool:
             try:
                 # Mark all existing models as inactive before updating
                 OpenRouterModel.query.update({OpenRouterModel.model_is_active: False})
+                db.session.flush()
                 logger.info("Marked all existing models as inactive")
             except Exception as e:
                 logger.error(f"Error marking models as inactive: {e}")
@@ -232,256 +282,193 @@ def fetch_and_store_openrouter_prices() -> bool:
                 try:
                     # Try to get existing model from the database
                     db_model = db.session.get(OpenRouterModel, model_id)
+                    
+                    if db_model:
+                        # Update existing model
+                        db_model.name = model_data['model_name']
                         
-                        if db_model:
-                            # Update existing model
-                            db_model.name = model_data['model_name']
-                            
-                            # Find the original model object to get description
-                            original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
-                            db_model.description = original_model.get('description', '')
-                            
-                            # Update pricing and other details
-                            db_model.context_length = model_data['context_length'] if isinstance(model_data['context_length'], int) else None
-                            db_model.input_price_usd_million = model_data['input_price']
-                            db_model.output_price_usd_million = model_data['output_price']
-                            db_model.is_multimodal = model_data['is_multimodal']
-                            db_model.supports_pdf = model_data['supports_pdf']
-                            db_model.cost_band = model_data['cost_band']
-                            
-                            # Update additional fields
-                            # Check for free models based on price or special tags
-                            db_model.is_free = model_data['input_price'] < 0.01 or ':free' in model_id.lower()
-                            
-                            # Check for reasoning support based on model ID and description
-                            model_name = original_model.get('name', '').lower()
-                            model_description = original_model.get('description', '').lower()
-                            db_model.supports_reasoning = any(keyword in model_id.lower() or keyword in model_name or keyword in model_description 
-                                                         for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
-                            
-                            # Since we found this model in the API response, mark it as active
-                            db_model.model_is_active = True
-                            
-                            # Update timestamps
-                            db_model.last_fetched_at = datetime.utcnow()
-                            db_model.updated_at = datetime.utcnow()
-                            updated_count += 1
-                        else:
-                            # Create new model
-                            original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
-                            context_length = model_data['context_length']
-                            if not isinstance(context_length, int):
-                                try:
-                                    context_length = int(context_length)
-                                except (ValueError, TypeError):
-                                    context_length = None
-                            
-                            # Check for free models based on price or special tags
-                            is_free = model_data['input_price'] < 0.01 or ':free' in model_id.lower()
-                            
-                            # Check for reasoning support based on model ID and description
-                            model_name = original_model.get('name', '').lower()
-                            model_description = original_model.get('description', '').lower()
-                            supports_reasoning = any(keyword in model_id.lower() or keyword in model_name or keyword in model_description 
-                                                for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
-                            
-                            # Create a new model instance
-                            new_model = OpenRouterModel()
-                            new_model.model_id = model_id
-                            new_model.name = model_data['model_name']
-                            new_model.description = original_model.get('description', '')
-                            new_model.context_length = context_length
-                            new_model.input_price_usd_million = model_data['input_price']
-                            new_model.output_price_usd_million = model_data['output_price']
-                            new_model.is_multimodal = model_data['is_multimodal']
-                            new_model.supports_pdf = model_data['supports_pdf']
-                            new_model.is_free = is_free
-                            new_model.supports_reasoning = supports_reasoning
-                            new_model.cost_band = model_data['cost_band']
-                            new_model.model_is_active = True
-                            new_model.created_at = datetime.utcnow()
-                            new_model.updated_at = datetime.utcnow()
-                            new_model.last_fetched_at = datetime.utcnow()
-                            db.session.add(new_model)
-                            new_count += 1
-                            
-                    except Exception as model_error:
-                        logger.error(f"Error updating model {model_id} in database: {model_error}")
-                        continue
-                
-                # Commit all changes in one transaction
+                        # Find the original model object to get description
+                        original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
+                        db_model.description = original_model.get('description', '')
+                        
+                        # Update pricing and other details
+                        db_model.context_length = model_data['context_length'] if isinstance(model_data['context_length'], int) else None
+                        db_model.input_price_usd_million = model_data['input_price']
+                        db_model.output_price_usd_million = model_data['output_price']
+                        db_model.is_multimodal = model_data['is_multimodal']
+                        db_model.supports_pdf = model_data['supports_pdf']
+                        db_model.cost_band = model_data['cost_band']
+                        
+                        # Update additional fields
+                        # Check for free models based on price or special tags
+                        db_model.is_free = model_data['input_price'] < 0.01 or ':free' in model_id.lower()
+                        
+                        # Check for reasoning support based on model ID and description
+                        model_name = original_model.get('name', '').lower()
+                        model_description = original_model.get('description', '').lower()
+                        db_model.supports_reasoning = any(keyword in model_id.lower() or keyword in model_name or keyword in model_description 
+                                                     for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
+                        
+                        # Since we found this model in the API response, mark it as active
+                        db_model.model_is_active = True
+                        
+                        # Update timestamps
+                        db_model.last_fetched_at = datetime.utcnow()
+                        db_model.updated_at = datetime.utcnow()
+                        updated_count += 1
+                    else:
+                        # Create new model
+                        original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
+                        context_length = model_data['context_length']
+                        if not isinstance(context_length, int):
+                            try:
+                                context_length = int(context_length)
+                            except (ValueError, TypeError):
+                                context_length = None
+                        
+                        # Check for free models based on price or special tags
+                        is_free = model_data['input_price'] < 0.01 or ':free' in model_id.lower()
+                        
+                        # Check for reasoning support based on model ID and description
+                        model_name = original_model.get('name', '').lower()
+                        model_description = original_model.get('description', '').lower()
+                        supports_reasoning = any(keyword in model_id.lower() or keyword in model_name or keyword in model_description 
+                                            for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
+                        
+                        # Create a new model instance
+                        new_model = OpenRouterModel(
+                            model_id=model_id,
+                            name=model_data['model_name'],
+                            description=original_model.get('description', ''),
+                            context_length=context_length,
+                            input_price_usd_million=model_data['input_price'],
+                            output_price_usd_million=model_data['output_price'],
+                            is_multimodal=model_data['is_multimodal'],
+                            supports_pdf=model_data['supports_pdf'],
+                            cost_band=model_data['cost_band'],
+                            is_free=is_free,
+                            supports_reasoning=supports_reasoning,
+                            model_is_active=True,
+                            created_at=datetime.utcnow(),
+                            updated_at=datetime.utcnow(),
+                            last_fetched_at=datetime.utcnow()
+                        )
+                        
+                        # Add to database
+                        db.session.add(new_model)
+                        new_count += 1
+                except Exception as model_error:
+                    logger.error(f"Error processing model {model_id}: {model_error}")
+            
+            # Commit all changes
+            try:
+                db.session.commit()
+                db_success = True
+                logger.info(f"Database updated: {updated_count} models updated, {new_count} new models added")
+            except Exception as commit_error:
+                logger.error(f"Error committing changes to database: {commit_error}")
                 try:
-                    db.session.commit()
-                    logger.info(f"Database updated: {updated_count} models updated, {new_count} new models added")
-                    db_success = True
-                except Exception as commit_error:
                     db.session.rollback()
-                    logger.error(f"Error committing changes to database: {commit_error}")
-                    db_success = False
+                except Exception:
+                    logger.error("Error during rollback")
+                db_success = False
         
-        except ImportError as e:
-            logger.error(f"Failed to import database modules: {e}")
-            db_success = False
-        except SQLAlchemyError as e:
-            logger.error(f"Database error storing models: {e}")
-            db_success = False
-        except Exception as e:
-            logger.error(f"Unexpected error storing models in database: {e}")
-            db_success = False
-                
-        # Database is now the single source of truth, no need to update global caches
-        
-        # Log successful completion
+        # Calculate elapsed time
         elapsed_time = time.time() - start_time
-        logger.info(f"Successfully processed {len(prices)} models in {elapsed_time:.2f} seconds")
-        if db_success:
-            logger.info("Successfully updated database with model information")
-        else:
-            logger.warning("Database update failed, but cache was updated")
-        logger.info("Scheduled job: fetch_and_store_openrouter_prices completed")
-        return True
+        logger.info(f"fetch_and_store_openrouter_prices completed in {elapsed_time:.2f} seconds")
         
+        # Return True if either the cache update or database update was successful
+        return True
     except requests.exceptions.RequestException as e:
-        logger.error(f"Request error fetching model prices: {e}")
-        logger.info("Scheduled job: fetch_and_store_openrouter_prices failed")
+        logger.error(f"Error fetching models from OpenRouter API: {e}")
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+        logger.info(f"fetch_and_store_openrouter_prices failed after {elapsed_time:.2f} seconds")
         return False
     except Exception as e:
-        logger.error(f"Error fetching or processing model prices: {e}")
-        logger.info("Scheduled job: fetch_and_store_openrouter_prices failed")
+        logger.error(f"Unexpected error in fetch_and_store_openrouter_prices: {e}")
+        # Calculate elapsed time
+        elapsed_time = time.time() - start_time
+        logger.info(f"fetch_and_store_openrouter_prices failed after {elapsed_time:.2f} seconds")
         return False
 
-def get_model_cost(model_id: str) -> dict:
+def should_refresh_prices():
     """
-    Get the cost per million tokens and cost band for a specific model.
-    This function now primarily uses the database but falls back to cache and then to defaults.
-    
-    Args:
-        model_id (str): The ID of the model
-        
-    Returns:
-        dict: Dictionary containing prompt_cost_per_million, completion_cost_per_million, and cost_band
+    Check if prices need to be refreshed.
+    Returns True if prices are older than 24 hours or have not been fetched yet.
     """
-    # Try to get model info from the database first (most reliable)
-    db_result = None
+    if model_prices_cache.get('last_updated') is None:
+        return True
     
-    # Ensure app and db are available
-    if not import_success:
-        import_app_and_db()
-    
-    if app is not None:
-        try:
-            # Import here to avoid circular imports
-            from models import OpenRouterModel
-            
-            with app.app_context():
-                db_model = OpenRouterModel.query.get(model_id)
-                if db_model:
-                    db_result = {
-                        'prompt_cost_per_million': db_model.input_price_usd_million,
-                        'completion_cost_per_million': db_model.output_price_usd_million,
-                        'cost_band': db_model.cost_band or '',
-                        'source': 'database'  # For debugging
-                    }
-        except Exception as db_error:
-            logger.warning(f"Failed to get model cost from database: {db_error}")
-    
-    # If database lookup returned a result, use it
-    if db_result:
-        return db_result
-    
-    # If database lookup failed, try to fetch fresh data from API
     try:
-        # Attempt to update the database with fresh data from the API
-        fetch_and_store_openrouter_prices()
-        
-        # Check if app is available
-        if app is not None:
-            try:
-                # Import here to avoid circular imports
-                from models import OpenRouterModel
-                
-                with app.app_context():
-                    # Try database lookup again after the fresh fetch
-                    db_model = OpenRouterModel.query.get(model_id)
-                    if db_model:
-                        return {
-                            'prompt_cost_per_million': db_model.input_price_usd_million,
-                            'completion_cost_per_million': db_model.output_price_usd_million,
-                            'cost_band': db_model.cost_band or '',
-                            'source': 'database_refresh'  # For debugging
-                        }
-            except Exception as refresh_db_error:
-                logger.warning(f"Failed to get model cost from database after refresh: {refresh_db_error}")
-    except Exception as refresh_error:
-        logger.warning(f"Failed to refresh model data from API: {refresh_error}")
+        last_updated = datetime.fromisoformat(model_prices_cache['last_updated'])
+        now = datetime.now()
+        elapsed = now - last_updated
+        return elapsed > timedelta(hours=24)
+    except (ValueError, TypeError):
+        return True
+
+def create_app():
+    """
+    Create a minimal Flask application for standalone execution.
+    This is only used when this script is run directly.
+    """
+    app = Flask(__name__)
     
-    # If we still don't have data, check the cache
-    if model_id in model_prices_cache['prices']:
-        model_data = model_prices_cache['prices'][model_id]
-        return {
-            'prompt_cost_per_million': model_data['input_price'],
-            'completion_cost_per_million': model_data['output_price'],
-            'cost_band': model_data.get('cost_band', ''),
-            'source': 'cache'  # For debugging
-        }
+    # Configure the database
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///openrouter_models.db")
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     
-    # If still no data, use fallback logic
-    # Approximate fallback costs based on model name
-    model_name = model_id.lower()
+    # Import and initialize the database
+    from flask_sqlalchemy import SQLAlchemy
+    from sqlalchemy.orm import DeclarativeBase
     
-    # Define prompt and completion costs with fallback values
-    prompt_cost = 0.0
-    completion_cost = 0.0
+    class Base(DeclarativeBase):
+        pass
     
-    if "gpt-4" in model_name:
-        if "turbo" in model_name:
-            prompt_cost = 6.0
-            completion_cost = 12.0
-            cost_band = "$$"
-        else:
-            prompt_cost = 30.0
-            completion_cost = 60.0
-            cost_band = "$$$"
-    elif "gpt-3.5" in model_name:
-        prompt_cost = 0.5
-        completion_cost = 1.5
-        cost_band = "$"
-    elif "claude-3" in model_name:
-        if "opus" in model_name:
-            prompt_cost = 15.0
-            completion_cost = 75.0
-            cost_band = "$$$"
-        elif "sonnet" in model_name:
-            prompt_cost = 3.0
-            completion_cost = 15.0
-            cost_band = "$$$"
-        elif "haiku" in model_name:
-            prompt_cost = 0.5
-            completion_cost = 1.5
-            cost_band = "$"
-        else:
-            prompt_cost = 3.0
-            completion_cost = 15.0
-            cost_band = "$$$"
-    elif "gemini" in model_name:
-        if "pro" in model_name or "ultra" in model_name:
-            prompt_cost = 3.5
-            completion_cost = 10.5
-            cost_band = "$$$"
-        else:
-            prompt_cost = 0.35
-            completion_cost = 1.05
-            cost_band = "$"
-    else:
-        # Very conservative default for unrecognized models
-        prompt_cost = 3.0
-        completion_cost = 10.0
-        cost_band = "$$"
+    db = SQLAlchemy(model_class=Base)
+    db.init_app(app)
     
-    # Return the fallback costs
-    return {
-        'prompt_cost_per_million': prompt_cost,
-        'completion_cost_per_million': completion_cost,
-        'cost_band': cost_band,
-        'source': 'fallback'  # For debugging
-    }
+    return app, db
+
+if __name__ == "__main__":
+    """
+    Standalone execution mode.
+    When run directly, this script creates its own Flask app and DB connection.
+    """
+    logger.info("Starting price_updater.py in standalone mode")
+    
+    # Check if we have the required environment variables
+    if not os.environ.get('DATABASE_URL'):
+        logger.warning("DATABASE_URL environment variable not set. Using SQLite by default.")
+    
+    if not os.environ.get('OPENROUTER_API_KEY'):
+        logger.error("OPENROUTER_API_KEY environment variable not set. Cannot fetch prices.")
+        sys.exit(1)
+    
+    # Create a minimal Flask app for this execution
+    app, db = create_app()
+    
+    # Create tables if they don't exist
+    with app.app_context():
+        # Import models here to avoid circular imports
+        try:
+            from models import OpenRouterModel
+            db.create_all()
+            
+            # Now fetch and store prices using this app context
+            success = fetch_and_store_openrouter_prices(app_instance=app, db_instance=db)
+            
+            if success:
+                logger.info("Successfully updated model prices")
+                sys.exit(0)
+            else:
+                logger.error("Failed to update model prices")
+                sys.exit(1)
+        except ImportError as e:
+            logger.error(f"Error importing models: {e}")
+            logger.error("If running in standalone mode, ensure models.py exists and contains OpenRouterModel")
+            sys.exit(1)
+        except Exception as e:
+            logger.error(f"Unexpected error in standalone execution: {e}")
+            sys.exit(1)
