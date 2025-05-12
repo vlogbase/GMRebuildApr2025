@@ -28,22 +28,22 @@ model_prices_cache = {
     'last_updated': None
 }
 
-def import_app_and_db():
-    """
-    Import app and db safely.
-    Returns True if successful, False otherwise.
-    """
-    global app, db
-    try:
-        from app import app, db
-        logger.info("Successfully imported app and db from app module")
-        return True
-    except ImportError as e:
-        logger.error(f"Failed to import app or db: {e}")
-        return False
+# We won't import app and db directly to avoid circular imports
+# Instead, we'll use Flask's application context when needed
 
-# Try to import app and db at module level
-import_success = import_app_and_db()
+def get_db():
+    """
+    Get the database object from the current application context.
+    This avoids circular imports and works within an application context.
+    """
+    try:
+        from flask import current_app
+        return current_app.extensions['sqlalchemy'].db
+    except (RuntimeError, KeyError, ImportError) as e:
+        logger.error(f"Failed to get db from current app: {e}")
+        return None
+
+# We'll use Flask's application context when needed instead of importing directly
 
 def fetch_and_store_openrouter_prices() -> bool:
     """
@@ -202,40 +202,36 @@ def fetch_and_store_openrouter_prices() -> bool:
         
         # Store models in the database (This is the new primary storage method)
         db_success = False
-        # Ensure app and db are available
-        if not import_success:
-            import_success = import_app_and_db()
         
-        if not import_success:
-            logger.error("Cannot store models in database: Failed to import app or db")
-            return False
-            
-        if app is None or db is None:
-            logger.error("Cannot store models in database: app or db is None")
-            return False
-
         try:
             # Import here to avoid circular imports
             from models import OpenRouterModel
+            from flask import current_app
             
-            # Use application context for all database operations
-            with app.app_context():
-                updated_count = 0
-                new_count = 0
+            # Get the database from the current app context
+            db = get_db()
+            
+            if db is None:
+                logger.error("Cannot store models in database: db is None or not in application context")
+                return False
                 
-                # First, mark all models as inactive - we'll re-activate the ones we find in the API response
+            # We're already in an application context provided by the calling function
+            updated_count = 0
+            new_count = 0
+            
+            # First, mark all models as inactive - we'll re-activate the ones we find in the API response
+            try:
+                # Mark all existing models as inactive before updating
+                OpenRouterModel.query.update({OpenRouterModel.model_is_active: False})
+                logger.info("Marked all existing models as inactive")
+            except Exception as e:
+                logger.error(f"Error marking models as inactive: {e}")
+            
+            # Use a single database session for all operations
+            for model_id, model_data in prices.items():
                 try:
-                    # Mark all existing models as inactive before updating
-                    OpenRouterModel.query.update({OpenRouterModel.model_is_active: False})
-                    logger.info("Marked all existing models as inactive")
-                except Exception as e:
-                    logger.error(f"Error marking models as inactive: {e}")
-                
-                # Use a single database session for all operations
-                for model_id, model_data in prices.items():
-                    try:
-                        # Try to get existing model from the database
-                        db_model = db.session.get(OpenRouterModel, model_id)
+                    # Try to get existing model from the database
+                    db_model = db.session.get(OpenRouterModel, model_id)
                         
                         if db_model:
                             # Update existing model

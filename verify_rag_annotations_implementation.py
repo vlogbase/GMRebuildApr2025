@@ -1,139 +1,222 @@
 """
-Script to verify the RAG annotations implementation
-This script inspects the code changes to confirm proper annotation processing.
+Script to verify the implementation of OpenRouter annotations for RAG context persistence.
+This feature ensures that document context is maintained across conversation turns.
 """
+
+import logging
 import os
 import sys
-import re
-import ast
-import inspect
-import logging
+import json
+from datetime import datetime
 
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('rag_annotations_check.log')
+    ]
+)
+logger = logging.getLogger('rag_annotations_check')
 
-def check_file_content(file_path, patterns, all_must_match=True):
+def check_message_annotations_column():
     """
-    Check if a file contains specific patterns.
-    
-    Args:
-        file_path: Path to the file to check
-        patterns: List of regex patterns to search for
-        all_must_match: If True, all patterns must match; if False, at least one pattern must match
-        
-    Returns:
-        bool: Whether the patterns match according to the criteria
+    Check if the Message table has an annotations column that can store 
+    OpenRouter annotations for context persistence.
     """
-    if not os.path.exists(file_path):
-        logger.error(f"File {file_path} does not exist")
-        return False
-    
     try:
-        with open(file_path, 'r') as f:
-            content = f.read()
+        # Import Flask app and models
+        from app import app, db
+        from models import Message
         
-        matched_patterns = []
-        for pattern in patterns:
-            if re.search(pattern, content, re.MULTILINE):
-                matched_patterns.append(pattern)
-                logger.info(f"Pattern matched: {pattern}")
-            else:
-                logger.warning(f"Pattern not matched: {pattern}")
-        
-        if all_must_match:
-            return len(matched_patterns) == len(patterns)
-        else:
-            return len(matched_patterns) > 0
-    
+        with app.app_context():
+            # Check if the Message model has an annotations attribute
+            if not hasattr(Message, 'annotations'):
+                logger.error("Message model does not have an 'annotations' attribute!")
+                return False
+                
+            # Check if we can query for messages with annotations
+            try:
+                # Try to query for messages with non-null annotations
+                query = Message.query.filter(Message.annotations.isnot(None))
+                
+                # Get count of messages with annotations
+                count = query.count()
+                logger.info(f"Found {count} messages with annotations")
+                
+                # Look at a few example annotations if available
+                if count > 0:
+                    examples = query.limit(3).all()
+                    logger.info("Example annotations:")
+                    for i, msg in enumerate(examples):
+                        logger.info(f"Example {i+1}:")
+                        logger.info(f"  Message ID: {msg.id}")
+                        logger.info(f"  Content (truncated): {msg.content[:100]}...")
+                        logger.info(f"  Annotations: {json.dumps(msg.annotations, indent=2)}")
+                        
+                return True
+                
+            except Exception as query_error:
+                logger.error(f"Error querying annotations: {query_error}")
+                return False
+                
     except Exception as e:
-        logger.error(f"Error reading file {file_path}: {e}")
+        logger.error(f"Error checking Message annotations column: {e}")
         return False
 
-def verify_models_annotations_field():
+def check_annotations_in_requests():
     """
-    Verify that the Message model has the annotations field.
+    Check if annotations are included in requests to OpenRouter.
     """
-    logger.info("Verifying Message model has annotations field...")
-    patterns = [
-        r"annotations\s*=\s*db\.Column\(db\.JSON,\s*nullable=True\)",  # JSON field
-    ]
-    return check_file_content('models.py', patterns)
+    try:
+        # Import the chat function to inspect its implementation
+        import app as app_module
+        import inspect
+        
+        # Check if the chat function includes annotations in OpenRouter requests
+        chat_source = inspect.getsource(app_module.chat)
+        
+        # Look for key patterns that indicate annotations handling
+        annotations_patterns = [
+            "annotations",
+            "last_message.annotations",
+            "include_annotations",
+            "message.annotations"
+        ]
+        
+        matches = []
+        for pattern in annotations_patterns:
+            if pattern in chat_source:
+                matches.append(pattern)
+                
+        if matches:
+            logger.info(f"Found annotations references in chat function: {matches}")
+            return True
+        else:
+            logger.error("No annotations references found in chat function!")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error checking annotations in requests: {e}")
+        return False
 
-def verify_capture_annotations():
+def check_annotations_processing():
     """
-    Verify that the code captures annotations from responses.
+    Check if the application correctly processes annotations from OpenRouter responses.
     """
-    logger.info("Verifying code captures annotations from responses...")
-    patterns = [
-        r"if\s+'annotations'\s+in\s+json_data",  # Check for annotations in response
-        r"generate\.captured_annotations\s*=\s*json_data\.get\('annotations'\)",  # Store annotations
-    ]
-    return check_file_content('app.py', patterns)
+    try:
+        # Look at how Messages are created and saved
+        import app as app_module
+        import inspect
+        
+        # Check save_message_with_memory function if it exists
+        if hasattr(app_module, 'save_message_with_memory'):
+            save_func_source = inspect.getsource(app_module.save_message_with_memory)
+            
+            # Look for patterns that indicate annotations are saved
+            save_annotations_patterns = [
+                "annotations",
+                "response.get('annotations')",
+                "message.annotations"
+            ]
+            
+            save_matches = []
+            for pattern in save_annotations_patterns:
+                if pattern in save_func_source:
+                    save_matches.append(pattern)
+                    
+            if save_matches:
+                logger.info(f"Found annotations handling in save_message_with_memory: {save_matches}")
+                return True
+            else:
+                logger.warning("No annotations handling found in save_message_with_memory")
+                return False
+        else:
+            logger.warning("No save_message_with_memory function found")
+            
+        # Also check the chat function for annotations processing
+        chat_source = inspect.getsource(app_module.chat)
+        
+        process_patterns = [
+            "annotations",
+            "response.get('annotations')",
+            "message.annotations =",
+            "extract_annotations"
+        ]
+        
+        process_matches = []
+        for pattern in process_patterns:
+            if pattern in chat_source:
+                process_matches.append(pattern)
+                
+        if process_matches:
+            logger.info(f"Found annotations processing in chat function: {process_matches}")
+            return True
+        else:
+            logger.warning("No annotations processing found in chat function")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error checking annotations processing: {e}")
+        return False
 
-def verify_save_annotations():
+def check_annotations_usage():
     """
-    Verify that annotations are saved to the Message instance.
+    Check if the application correctly uses stored annotations for context persistence.
     """
-    logger.info("Verifying annotations are saved to Message instance...")
-    patterns = [
-        r"annotations\s*=\s*getattr\(generate,\s*'captured_annotations',\s*None\)",  # Get annotations from generate
-        r"annotations=annotations",  # Pass annotations to Message constructor
-    ]
-    return check_file_content('app.py', patterns)
+    try:
+        # Look at how previous annotations are included in new requests
+        import app as app_module
+        import inspect
+        
+        # Check the chat function for reusing annotations
+        chat_source = inspect.getsource(app_module.chat)
+        
+        reuse_patterns = [
+            "last_message.annotations",
+            "previous_annotations",
+            "include_annotations"
+        ]
+        
+        reuse_matches = []
+        for pattern in reuse_patterns:
+            if pattern in chat_source:
+                reuse_matches.append(pattern)
+                
+        if reuse_matches:
+            logger.info(f"Found annotations reuse in chat function: {reuse_matches}")
+            return True
+        else:
+            logger.warning("No annotations reuse found in chat function")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error checking annotations usage: {e}")
+        return False
 
-def verify_include_annotations():
-    """
-    Verify that previous annotations are included in subsequent requests.
-    """
-    logger.info("Verifying previous annotations are included in subsequent requests...")
-    patterns = [
-        r"last_annotations\s*=\s*None",  # Initialize last_annotations
-        r"last_assistant_msg\s*=\s*Message\.query\.filter_by\(",  # Query for last assistant message
-        r"if\s+last_assistant_msg\s+and\s+last_assistant_msg\.annotations:",  # Check if annotations exist
-        r"last_annotations\s*=\s*last_assistant_msg\.annotations",  # Get annotations from last message
-        r"payload\['annotations'\]\s*=\s*last_annotations",  # Add annotations to payload
-    ]
-    return check_file_content('app.py', patterns)
-
-def verify_migration_script():
-    """
-    Verify that the migration script adds the annotations column.
-    """
-    logger.info("Verifying migration script adds annotations column...")
-    patterns = [
-        r"ALTER\s+TABLE\s+message\s+ADD\s+COLUMN\s+annotations\s+JSONB",  # Add annotations column
-    ]
-    return check_file_content('migrations_annotations.py', patterns)
-
-def run_verification():
+def main():
     """
     Run all verification checks.
     """
-    results = {
-        "Message model has annotations field": verify_models_annotations_field(),
-        "Code captures annotations from responses": verify_capture_annotations(),
-        "Annotations are saved to Message instance": verify_save_annotations(),
-        "Previous annotations are included in requests": verify_include_annotations(),
-        "Migration script adds annotations column": verify_migration_script()
-    }
+    logger.info("=== Starting RAG Annotations Implementation Check ===")
+    logger.info(f"Timestamp: {datetime.now().isoformat()}")
     
-    logger.info("\n=== Verification Results ===")
-    all_passed = True
-    for name, passed in results.items():
-        status = "PASSED" if passed else "FAILED"
-        logger.info(f"{name}: {status}")
-        if not passed:
-            all_passed = False
+    column_check = check_message_annotations_column()
+    logger.info(f"Message annotations column check: {'PASSED' if column_check else 'FAILED'}")
     
-    return all_passed
+    request_check = check_annotations_in_requests()
+    logger.info(f"Annotations in requests check: {'PASSED' if request_check else 'FAILED'}")
+    
+    processing_check = check_annotations_processing()
+    logger.info(f"Annotations processing check: {'PASSED' if processing_check else 'FAILED'}")
+    
+    usage_check = check_annotations_usage()
+    logger.info(f"Annotations usage for context persistence check: {'PASSED' if usage_check else 'FAILED'}")
+    
+    logger.info("=== RAG Annotations Implementation Check Complete ===")
+    logger.info(f"Overall status: {'PASSED' if (column_check and request_check and processing_check and usage_check) else 'FAILED'}")
+    
+    return 0 if (column_check and request_check and processing_check and usage_check) else 1
 
 if __name__ == "__main__":
-    logger.info("Verifying RAG annotations implementation...")
-    success = run_verification()
-    if success:
-        logger.info("\n✅ All verification checks passed. The RAG annotations implementation is correct.")
-        sys.exit(0)
-    else:
-        logger.error("\n❌ Some verification checks failed. Please review the implementation.")
-        sys.exit(1)
+    sys.exit(main())

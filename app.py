@@ -42,14 +42,37 @@ ENABLE_RAG = os.environ.get('ENABLE_RAG', 'true').lower() == 'true'
 if ENABLE_MEMORY_SYSTEM:
     try:
         from memory_integration import save_message_with_memory, enrich_prompt_with_memory
-        logging.info("Advanced memory system enabled")
+        logging.info("Advanced memory system enabled with annotations support")
     except ImportError as e:
         logging.warning(f"Failed to import memory integration: {e}")
         ENABLE_MEMORY_SYSTEM = False
 else:
     # Define dummy functions if memory system is disabled to avoid errors later
-    def save_message_with_memory(*args, **kwargs):
-        pass # No-op
+    def save_message_with_memory(session_id=None, user_id=None, role=None, content=None, message_obj=None, response_metadata=None):
+        """
+        Save message with additional metadata including annotations for context persistence.
+        This function handles storing OpenRouter annotations for RAG context preservation.
+        
+        This function supports two calling modes:
+        1. Traditional mode: Pass session_id, user_id, role, content
+        2. Enhanced mode: Pass message_obj, user_id, session_id, response_metadata
+        
+        Args:
+            session_id (str, optional): The conversation session ID
+            user_id (str, optional): The user ID
+            role (str, optional): Either "user" or "assistant"
+            content (str, optional): The message content
+            message_obj (Message, optional): The database Message object (enhanced mode)
+            response_metadata (dict, optional): Additional metadata including annotations
+        """
+        # Check if we're in enhanced mode with a message object
+        if message_obj is not None:
+            # Check if we have annotations in the response metadata
+            if response_metadata and 'annotations' in response_metadata:
+                # Store annotations for context persistence
+                message_obj.annotations = response_metadata['annotations']
+                logging.info(f"Stored annotations for message {message_obj.id} for context persistence")
+    
     def enrich_prompt_with_memory(session_id, user_id, user_message, conversation_history):
         return conversation_history # Return original history
         
@@ -2260,18 +2283,33 @@ def chat(): # Synchronous function
             logger.warning(f"Message count changed during format adaptation! Original: {len(messages)}, Processed: {len(processed_messages)}")
         
         # Get annotations from the last assistant message (if any) for context persistence
+        # This enhanced implementation looks for the most recent message with annotations
+        # to ensure robust context persistence across conversation turns
         last_annotations = None
         try:
-            # Find the most recent assistant message in this conversation
+            # Find the most recent assistant message with annotations in this conversation
             from models import Message
-            last_assistant_msg = Message.query.filter_by(
+            last_annotated_msg = Message.query.filter_by(
                 conversation_id=conversation.id,
                 role='assistant'
-            ).order_by(Message.created_at.desc()).first()
+            ).filter(Message.annotations.isnot(None)).order_by(Message.created_at.desc()).first()
             
-            if last_assistant_msg and last_assistant_msg.annotations:
-                last_annotations = last_assistant_msg.annotations
-                logger.info(f"Found annotations from previous assistant message: {type(last_annotations)}")
+            if last_annotated_msg and last_annotated_msg.annotations:
+                last_annotations = last_annotated_msg.annotations
+                logger.info(f"Found annotations from previous assistant message (ID: {last_annotated_msg.id}) for context persistence")
+                logger.debug(f"Annotation structure type: {type(last_annotations)}, length: {len(str(last_annotations)) if last_annotations else 0} bytes")
+            else:
+                # If no assistant message has annotations, we can also check user messages
+                # This is useful when a document was just uploaded and we haven't yet 
+                # received an assistant response with annotations
+                last_user_msg_with_annotations = Message.query.filter_by(
+                    conversation_id=conversation.id,
+                    role='user'
+                ).filter(Message.annotations.isnot(None)).order_by(Message.created_at.desc()).first()
+                
+                if last_user_msg_with_annotations and last_user_msg_with_annotations.annotations:
+                    last_annotations = last_user_msg_with_annotations.annotations
+                    logger.info(f"No assistant annotations found, using annotations from user message (ID: {last_user_msg_with_annotations.id})")
         except Exception as e:
             logger.warning(f"Error retrieving annotations from previous messages: {e}")
         
@@ -2553,10 +2591,20 @@ def chat(): # Synchronous function
                                             logger.debug(f"Received reasoning chunk: {reasoning_chunk[:50]}...")
                                             
                                         # Extract annotations if available (for OpenRouter context persistence)
-                                        if 'annotations' in json_data and not hasattr(generate, 'captured_annotations'):
+                                        # Enhanced logic to capture and store annotations for RAG context persistence
+                                        if 'annotations' in json_data:
                                             # Only capture annotations once per response (they shouldn't change during streaming)
-                                            generate.captured_annotations = json_data.get('annotations')
-                                            logger.debug(f"Captured annotations for context persistence: {generate.captured_annotations}")
+                                            # But update if they do change to ensure we have the latest context
+                                            current_annotations = json_data.get('annotations')
+                                            
+                                            # Check if we already have annotations or if they've changed
+                                            if not hasattr(generate, 'captured_annotations') or generate.captured_annotations != current_annotations:
+                                                generate.captured_annotations = current_annotations
+                                                logger.debug(f"Captured annotations for context persistence (size: {len(str(current_annotations)) if current_annotations else 0} bytes)")
+                                                
+                                                # Store size limits for debugging
+                                                if current_annotations and len(str(current_annotations)) > 10000:
+                                                    logger.warning(f"Large annotations detected: {len(str(current_annotations))} bytes")
 
                                     # Handle content chunk
                                     if content_chunk:
@@ -2660,10 +2708,41 @@ def chat(): # Synchronous function
                         if ENABLE_MEMORY_SYSTEM:
                              try:
                                  memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{current_conv_id}"
-                                 save_message_with_memory(
-                                     session_id=str(current_conv_id), user_id=memory_user_id, 
-                                     role='assistant', content=full_response_text
-                                 )
+                                 
+                                 # Enhanced version with annotations support for context persistence
+                                 from models import Message
+                                 assistant_message = None
+                                 if assistant_message_id:
+                                     assistant_message = Message.query.get(assistant_message_id)
+                                     
+                                 # Create metadata with annotations
+                                 memory_metadata = {
+                                     'model': requested_model_id,
+                                     'model_id_used': final_model_id_used,
+                                     'prompt_tokens': final_prompt_tokens,
+                                     'completion_tokens': final_completion_tokens,
+                                     'message_id': assistant_message_id,
+                                     'annotations': getattr(generate, 'captured_annotations', None)
+                                 }
+                                 
+                                 if assistant_message and hasattr(save_message_with_memory, '__code__') and 'message_obj' in save_message_with_memory.__code__.co_varnames:
+                                     # Use the enhanced version if available
+                                     logger.info(f"Using enhanced memory integration with annotations support")
+                                     save_message_with_memory(
+                                         message_obj=assistant_message,
+                                         user_id=memory_user_id,
+                                         session_id=str(current_conv_id),
+                                         response_metadata=memory_metadata
+                                     )
+                                 else:
+                                     # Fallback to traditional approach
+                                     logger.info(f"Using traditional memory integration")
+                                     save_message_with_memory(
+                                         session_id=str(current_conv_id), 
+                                         user_id=memory_user_id, 
+                                         role='assistant', 
+                                         content=full_response_text
+                                     )
                              except Exception as e:
                                  logger.error(f"Error saving assistant message to memory: {e}")
                         

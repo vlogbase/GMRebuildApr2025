@@ -1,2 +1,2 @@
-rag-annotations = "python rag_annotations_workflow.py"
-rag-test-app = "python app.py"
+[app]
+run = "python app_workflow.py"

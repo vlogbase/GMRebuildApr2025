@@ -48,27 +48,118 @@ def async_task(f):
     return wrapper
 
 @async_task
-def save_message_with_memory(session_id: str, user_id: str, role: str, content: str):
+def save_message_with_memory(session_id=None, user_id=None, role=None, content=None, message_obj=None, response_metadata=None):
     """
-    Save a message to the memory system.
+    Save a message to the memory system with enhanced support for annotations.
     This runs asynchronously to avoid blocking the response stream.
     
+    This function supports two calling modes:
+    1. Traditional mode: Pass session_id, user_id, role, content
+    2. Enhanced mode: Pass message_obj, user_id, session_id, response_metadata
+    
     Args:
-        session_id (str): The conversation session ID
-        user_id (str): The user ID
-        role (str): Either "user" or "assistant"
-        content (str): The message content
+        session_id (str, optional): The conversation session ID
+        user_id (str, optional): The user ID
+        role (str, optional): Either "user" or "assistant"
+        content (str, optional): The message content
+        message_obj (Message, optional): The database Message object (enhanced mode)
+        response_metadata (dict, optional): Additional metadata including annotations
     """
-    logger.info(f"MEMORY_INTEGRATION: Saving {role} message to memory for session {session_id}, user {user_id}")
+    # Determine which mode we're using
+    enhanced_mode = message_obj is not None
+    
+    if enhanced_mode:
+        logger.info(f"MEMORY_INTEGRATION: Saving message with enhanced mode (annotations support)")
+        session_id = session_id or str(message_obj.conversation_id)
+        role = message_obj.role
+        content = message_obj.content
+        
+        # Handle annotations if present in the metadata
+        if response_metadata and 'annotations' in response_metadata:
+            annotations = response_metadata.get('annotations')
+            logger.info(f"MEMORY_INTEGRATION: Updating message with annotations (size: {len(str(annotations)) if annotations else 0} bytes)")
+            
+            # Store annotations in the message object for persistence
+            message_obj.annotations = annotations
+            
+            # If we're in a SQLAlchemy session, commit the changes
+            try:
+                from app import db
+                db.session.commit()
+                logger.info(f"MEMORY_INTEGRATION: Successfully saved annotations to message {message_obj.id}")
+            except Exception as db_error:
+                logger.error(f"MEMORY_INTEGRATION: Error saving annotations to database: {db_error}")
+    else:
+        logger.info(f"MEMORY_INTEGRATION: Saving {role} message to memory for session {session_id}, user {user_id} (traditional mode)")
     
     memory_manager = get_memory_manager()
     if not memory_manager:
         logger.warning("MEMORY_INTEGRATION: Message not saved - memory manager not initialized")
         return
     
-    # Save the message
+    # Save the message to chat memory manager
     logger.info(f"MEMORY_INTEGRATION: Sending message to ChatMemoryManager.add_message")
-    result = memory_manager.add_message(session_id, user_id, role, content)
+    
+    # We need session_id, user_id, role, and content for add_message
+    if not all([session_id, user_id, role, content]):
+        logger.error("MEMORY_INTEGRATION: Missing required parameters for memory storage")
+        return False
+    
+    # Check if our add_message supports metadata parameter for annotations
+    import inspect
+    add_message_params = inspect.signature(memory_manager.add_message).parameters
+    
+    # Check for valid parameters before proceeding
+    session_id_valid = session_id is not None and isinstance(session_id, str)
+    user_id_valid = user_id is not None and isinstance(user_id, str)
+    role_valid = role is not None and isinstance(role, str)
+    content_valid = content is not None and isinstance(content, str)
+    
+    # Check if we can handle annotations safely
+    use_annotations = (response_metadata is not None and 
+                       isinstance(response_metadata, dict) and 
+                       'annotations' in response_metadata)
+    
+    # Use enhanced handling with annotations if available
+    if use_annotations:
+        # Use basic add_message for the content
+        logger.info(f"MEMORY_INTEGRATION: Using add_message with annotations awareness")
+        result = memory_manager.add_message(
+            session_id=str(session_id) if session_id_valid else "", 
+            user_id=str(user_id) if user_id_valid else "",
+            role=str(role) if role_valid else "", 
+            content=str(content) if content_valid else ""
+        )
+        
+        # Save annotations to database if we have a Message object
+        if result and message_obj is not None and hasattr(message_obj, 'annotations'):
+            try:
+                # Store annotations in the message object directly
+                message_obj.annotations = response_metadata.get('annotations')
+                logger.info(f"MEMORY_INTEGRATION: Stored annotations in message object")
+            except Exception as annotation_error:
+                logger.error(f"MEMORY_INTEGRATION: Error storing annotations: {annotation_error}")
+    else:
+        # Standard approach without annotations support
+        logger.info(f"MEMORY_INTEGRATION: Using standard add_message without annotations")
+        
+        # Use standard version with proper type checking
+        try:
+            safe_session_id = str(session_id) if session_id_valid else ""
+            safe_user_id = str(user_id) if user_id_valid else ""
+            safe_role = str(role) if role_valid else ""
+            safe_content = str(content) if content_valid else ""
+            
+            # Make the call with validated parameters
+            result = memory_manager.add_message(
+                session_id=safe_session_id,
+                user_id=safe_user_id,
+                role=safe_role,
+                content=safe_content
+            )
+        except Exception as add_error:
+            logger.error(f"MEMORY_INTEGRATION: Error in add_message: {add_error}")
+            result = False
     
     if result:
         logger.info(f"MEMORY_INTEGRATION: Successfully saved message to memory system")
@@ -76,28 +167,35 @@ def save_message_with_memory(session_id: str, user_id: str, role: str, content: 
         logger.error(f"MEMORY_INTEGRATION: Failed to save message to memory system")
     
     # For user messages, extract information and update the user profile
-    if role == "user" and result:
+    # Only proceed if we have a valid result and role is "user"
+    if result and role_valid and role == "user" and content_valid and user_id_valid:
         try:
             logger.info(f"MEMORY_INTEGRATION: Extracting structured information from user message")
-            extracted_info = memory_manager.extract_structured_info(content)
             
-            if extracted_info:
-                logger.info(f"MEMORY_INTEGRATION: Extracted information: {list(extracted_info.keys())}")
+            # Make sure we have valid content
+            if content:
+                extracted_info = memory_manager.extract_structured_info(content)
                 
-                # Check for non-empty fields
-                non_empty_fields = []
-                for key, value in extracted_info.items():
-                    if value and (not isinstance(value, list) or len(value) > 0):
-                        non_empty_fields.append(key)
-                
-                if non_empty_fields:
-                    logger.info(f"MEMORY_INTEGRATION: Updating user profile with fields: {non_empty_fields}")
-                    memory_manager.update_user_profile(user_id, extracted_info)
-                    logger.info(f"MEMORY_INTEGRATION: Successfully updated user profile")
+                if extracted_info:
+                    logger.info(f"MEMORY_INTEGRATION: Extracted information: {list(extracted_info.keys())}")
+                    
+                    # Check for non-empty fields
+                    non_empty_fields = []
+                    for key, value in extracted_info.items():
+                        if value and (not isinstance(value, list) or len(value) > 0):
+                            non_empty_fields.append(key)
+                    
+                    # Only update if we have valid user_id and non-empty fields
+                    if non_empty_fields and user_id:
+                        logger.info(f"MEMORY_INTEGRATION: Updating user profile with fields: {non_empty_fields}")
+                        memory_manager.update_user_profile(user_id, extracted_info)
+                        logger.info(f"MEMORY_INTEGRATION: Successfully updated user profile")
+                    else:
+                        logger.info(f"MEMORY_INTEGRATION: No meaningful information extracted, skipping profile update")
                 else:
-                    logger.info(f"MEMORY_INTEGRATION: No meaningful information extracted, skipping profile update")
+                    logger.info(f"MEMORY_INTEGRATION: No structured information extracted from message")
             else:
-                logger.info(f"MEMORY_INTEGRATION: No structured information extracted from message")
+                logger.info(f"MEMORY_INTEGRATION: Empty content, skipping information extraction")
                 
         except Exception as e:
             logger.error(f"MEMORY_INTEGRATION: Error extracting and saving user information: {e}")

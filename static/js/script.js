@@ -1782,6 +1782,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             is_free: (modelData.input_price === 0 && modelData.output_price === 0),
                             // Get multimodal status from pricing data
                             is_multimodal: modelData.is_multimodal || false,
+                            // Include supports_pdf flag from pricing data
+                            supports_pdf: modelData.supports_pdf || false,
                             // Add reasoning flag if available or detect from model ID
                             is_reasoning: modelData.is_reasoning || modelId.includes('o4') || modelId.includes('claude'),
                             // Add perplexity flag based on model ID
@@ -1801,6 +1803,20 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Assign the fully processed data to the global variable
                     allModels = modelDataArray;
                     
+                    // Explicitly update RAG capabilities for current model after models are loaded
+                    console.log(`[Debug] allModels populated. Count: ${allModels.length}. Updating RAG capabilities for current model.`);
+                    const currentModelIdForUpdate = getCurrentModelId(); // Get current model ID
+                    if (currentModelIdForUpdate) {
+                        updateRagCapabilitiesForModel(currentModelIdForUpdate); // Explicitly update for current model
+                    } else {
+                        // If no model is current, maybe update for the default preset '1' or '6'
+                        const defaultPresetToUpdate = isAuthenticated ? '1' : '6';
+                        const defaultModelForUpdate = userPreferences[defaultPresetToUpdate] || defaultModels[defaultPresetToUpdate];
+                        if (defaultModelForUpdate) {
+                            updateRagCapabilitiesForModel(defaultModelForUpdate);
+                        }
+                    }
+                    
                     // For non-authenticated users, ensure we have at least the default free models available
                     if (!isAuthenticated) {
                         console.log('[Debug] User is not authenticated, ensuring fallback free models are available');
@@ -1818,6 +1834,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     name: 'Gemini 2.0 Flash',
                                     is_free: true,
                                     is_multimodal: false,
+                                    supports_pdf: false,
                                     pricing: { prompt: 0, completion: 0 },
                                     cost_band: ''
                                 },
@@ -1826,6 +1843,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     name: 'Qwen 32B',
                                     is_free: true,
                                     is_multimodal: false,
+                                    supports_pdf: false,
                                     pricing: { prompt: 0, completion: 0 },
                                     cost_band: ''
                                 },
@@ -1833,6 +1851,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                     id: 'deepseek/deepseek-r1-distill-qwen-32b:free',
                                     name: 'Deepseek R1 Qwen 32B', 
                                     is_free: true,
+                                    supports_pdf: false,
                                     is_multimodal: false,
                                     pricing: { prompt: 0, completion: 0 },
                                     cost_band: ''
@@ -1885,6 +1904,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 name: 'Gemini 2.0 Flash',
                                 is_free: true,
                                 is_multimodal: false,
+                                supports_pdf: false,
                                 pricing: { prompt: 0, completion: 0 },
                                 cost_band: ''
                             },
@@ -1893,6 +1913,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 name: 'Qwen 32B',
                                 is_free: true,
                                 is_multimodal: false,
+                                supports_pdf: false,
                                 pricing: { prompt: 0, completion: 0 },
                                 cost_band: ''
                             },
@@ -1901,6 +1922,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 name: 'Deepseek R1 Qwen 32B', 
                                 is_free: true,
                                 is_multimodal: false,
+                                supports_pdf: false,
                                 pricing: { prompt: 0, completion: 0 },
                                 cost_band: ''
                             }
@@ -1923,6 +1945,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             name: 'Gemini 2.0 Flash',
                             is_free: true,
                             is_multimodal: false,
+                            supports_pdf: false,
                             pricing: { prompt: 0, completion: 0 },
                             cost_band: ''
                         },
@@ -1931,6 +1954,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             name: 'Qwen 32B',
                             is_free: true,
                             is_multimodal: false,
+                            supports_pdf: false,
                             pricing: { prompt: 0, completion: 0 },
                             cost_band: ''
                         },
@@ -1939,6 +1963,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             name: 'Deepseek R1 Qwen 32B', 
                             is_free: true,
                             is_multimodal: false,
+                            supports_pdf: false,
                             pricing: { prompt: 0, completion: 0 },
                             cost_band: ''
                         }

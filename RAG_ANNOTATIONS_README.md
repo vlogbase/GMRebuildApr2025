@@ -1,66 +1,181 @@
-# RAG Context Persistence with OpenRouter Annotations
+# RAG System with OpenRouter Annotations
 
-This implementation enhances the RAG (Retrieval-Augmented Generation) system to support context persistence across multiple messages using OpenRouter's annotations mechanism.
+This document provides details on the implementation of our Retrieval Augmented Generation (RAG) system using OpenRouter Annotations for context persistence.
 
-## Key Features
+## Overview
 
-1. **Context Persistence**: OpenRouter annotations are captured, stored, and reused in subsequent requests to maintain context across chat messages.
-2. **Database Support**: The Message model has been extended with an `annotations` field to store annotations from OpenRouter responses.
-3. **Automated Context Chain**: Annotations from previous assistant messages are automatically included in new requests.
+The RAG system allows users to upload documents (PDFs) and images that the AI can reference during the conversation. OpenRouter's annotations mechanism is used to maintain context across conversation turns, so users can continue to ask questions about previously uploaded documents without re-uploading them.
+
+## Key Components
+
+### 1. Database Storage
+
+- **Message.annotations**: A JSON column that stores the annotations from OpenRouter responses.
+- **OpenRouterModel.supports_pdf**: A boolean flag that indicates which models support PDF processing.
+
+### 2. Frontend Implementation
+
+The frontend UI has been enhanced to:
+
+- Show an "Attach File for RAG" button only for models that support PDFs
+- Display UI indicators when documents are being processed
+- Support both PDFs and images for multimodal models
+
+### 3. Context Persistence
+
+The system uses OpenRouter's annotations feature to:
+
+- Store document content and context in the annotations field
+- Pass annotations from previous messages to new requests
+- Maintain context across multiple conversation turns
 
 ## Implementation Details
 
-### Database Changes
+### Database Model Updates
 
-1. **New Message Column**: Added `annotations` JSON column to the Message table
-2. **Migration Script**: Created `migrations_annotations.py` to handle the database schema update
+The `Message` model includes an `annotations` column to store the rich context:
 
-### Code Changes
+```python
+class Message(db.Model):
+    # ... existing fields ...
+    annotations = db.Column(JSON, nullable=True)
+```
 
-1. **Capturing Annotations**: Modified streaming handler to extract and store annotations
-2. **Message Storage**: Updated message saving to include captured annotations
-3. **Request Construction**: Added code to include previous annotations in new requests
+The `OpenRouterModel` model includes a `supports_pdf` flag:
 
-## How It Works
+```python
+class OpenRouterModel(db.Model):
+    # ... existing fields ...
+    supports_pdf = db.Column(db.Boolean, default=False)
+```
 
-1. When a message containing documents is sent to OpenRouter, the AI analyzes these documents and creates annotations.
-2. These annotations are returned in the response and stored in the Message record.
-3. In subsequent messages in the same conversation, the annotations are included, allowing the AI to reference the content of previously uploaded documents without reprocessing them.
+### Price Updater Logic
 
-## Testing
+The `price_updater.py` module detects which models support PDFs based on OpenRouter API data:
 
-To test this functionality:
+```python
+supports_pdf = 'file' in input_modalities
+```
 
-1. Run the migration: `python run_annotations_migration.py`
-2. Start the application: `python rag_annotations_workflow.py`
-3. Upload a document and ask a question about it
-4. Ask a follow-up question without uploading the document again - the model should still have context about the previously uploaded document
+### Frontend Model Selection
 
-## Implementation Files
+The JavaScript in `static/js/script.js` includes the `supports_pdf` flag when building model data:
 
-- `migrations_annotations.py`: Database migration for the annotations column
-- `run_annotations_migration.py`: Script to run the migration
-- `rag_annotations_workflow.py`: Workflow to run the Flask app with annotations support
+```javascript
+modelDataArray.push({
+    // ... other properties ...
+    supports_pdf: modelData.supports_pdf || false,
+    // ... other properties ...
+});
+```
 
-## OpenRouter Annotations Format
+### RAG UI Logic
 
-OpenRouter may return annotations in various formats depending on the model and content. Examples:
+The `updateRagCapabilitiesForModel` function checks model capabilities and updates UI elements:
 
-```json
-{
-  "annotations": {
-    "documents": [
-      {
-        "id": "doc_123",
-        "content": "Document content for retrieval",
-        "metadata": {
-          "source": "user_uploaded",
-          "filename": "example.pdf"
-        }
-      }
-    ]
-  }
+```javascript
+function updateRagCapabilitiesForModel(modelId) {
+    // Find the model in loadedModels
+    const selectedModel = loadedModels.find(model => model.id === modelId);
+    
+    if (selectedModel) {
+        // Update the global capabilities object
+        currentModelCapabilitiesForRAG.is_multimodal = !!selectedModel.is_multimodal;
+        currentModelCapabilitiesForRAG.supports_pdf = !!selectedModel.supports_pdf;
+        
+        // Update UI based on capabilities
+        updateRagAttachButtonState();
+    }
 }
 ```
 
-The exact format varies by model, but our implementation preserves these annotations without modifying them, ensuring full compatibility with OpenRouter's context persistence mechanism.
+### Annotations Processing in Backend
+
+When sending chat requests to OpenRouter, the system includes previous annotations:
+
+```python
+# Include annotations from previous message if available
+if last_message and last_message.annotations:
+    openrouter_payload['annotations'] = last_message.annotations
+```
+
+When receiving responses, the system stores returned annotations:
+
+```python
+# Store annotations from the response if available
+if 'annotations' in response:
+    message.annotations = response['annotations']
+```
+
+### Memory System Integration
+
+The annotations are also integrated with the ChatMemoryManager system:
+
+```python
+# Enhanced memory integration with annotations support
+memory_metadata = {
+    'model': requested_model_id,
+    'model_id_used': final_model_id_used,
+    'prompt_tokens': final_prompt_tokens,
+    'completion_tokens': final_completion_tokens,
+    'message_id': assistant_message_id,
+    'annotations': getattr(generate, 'captured_annotations', None)
+}
+
+save_message_with_memory(
+    message_obj=assistant_message,
+    user_id=memory_user_id,
+    session_id=str(current_conv_id),
+    response_metadata=memory_metadata
+)
+```
+
+The save_message_with_memory function has been enhanced to handle annotations:
+
+```python
+if response_metadata and 'annotations' in response_metadata:
+    # Store annotations for context persistence
+    message_obj.annotations = response_metadata['annotations']
+    logging.info(f"Stored annotations for message {message_obj.id} for context persistence")
+```
+
+## Testing and Verification
+
+Two verification scripts are provided:
+
+1. **check_rag_implementation.py**: Verifies the PDF capability detection and UI integration
+2. **verify_rag_annotations_implementation.py**: Verifies the annotations handling for context persistence
+
+## Usage
+
+### For Users
+
+1. Select a model that supports PDFs (like GPT-4o or Gemini 2.5 Pro)
+2. Click the "Attach File for RAG" button
+3. Upload a PDF document
+4. Ask questions about the document
+
+### For Developers
+
+1. Run verification scripts to check implementation:
+   ```
+   python check_rag_implementation.py
+   python verify_rag_annotations_implementation.py
+   ```
+
+2. When adding new models, ensure the `supports_pdf` flag is properly set
+
+## Limitations
+
+- Only certain models support PDFs (typically high-end models like GPT-4o and Gemini 2.5 Pro)
+- Free models typically don't support document processing
+- Very large documents may be truncated due to context length limitations
+
+## Troubleshooting
+
+If the RAG features aren't working correctly:
+
+1. Verify the model has `supports_pdf=True` in the database
+2. Check if annotations are being stored in the messages table
+3. Ensure OpenRouter API key has access to PDF-capable models
+4. Look for annotations in the OpenRouter API responses
