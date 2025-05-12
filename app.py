@@ -1514,6 +1514,9 @@ def chat(): # Synchronous function
         pdf_urls = []      # Array of all PDF URLs
         pdf_filename = "document.pdf"  # Default PDF filename
         
+        # Debug raw frontend messages
+        logger.debug(f"DEBUG: Frontend messages structure: {frontend_messages}")
+        
         if frontend_messages:
             # Process the latest user message to extract text and images
             latest_user_message = None
@@ -1521,9 +1524,16 @@ def chat(): # Synchronous function
                 if msg.get('role') == 'user':
                     latest_user_message = msg
                     break
+            
+            # Log the latest user message structure
+            logger.debug(f"DEBUG: Latest user message structure: {latest_user_message}")
                     
             if latest_user_message:
                 content = latest_user_message.get('content', [])
+                
+                # Debug content structure
+                logger.debug(f"DEBUG: Content structure type: {type(content)}")
+                logger.debug(f"DEBUG: Content value: {content}")
                 
                 # Handle both string content and array content formats
                 if isinstance(content, str):
@@ -1532,6 +1542,7 @@ def chat(): # Synchronous function
                 elif isinstance(content, list):
                     # Extract text and images from the content array
                     for item in content:
+                        logger.debug(f"DEBUG: Processing content item: {item}")
                         if item.get('type') == 'text':
                             user_message = item.get('text', '')
                             logger.info(f"Extracted text from messages array: {user_message[:50]}...")
@@ -1548,6 +1559,7 @@ def chat(): # Synchronous function
                             file_obj = item.get('file', {})
                             file_data = file_obj.get('file_data')
                             filename = file_obj.get('filename', 'document.pdf')
+                            logger.debug(f"DEBUG: Found file item. Filename: {filename}, Data length: {len(file_data) if file_data else 0}")
                             if file_data:
                                 pdf_urls.append(file_data)
                                 # Set pdf_url to the first PDF for backward compatibility
@@ -1970,16 +1982,47 @@ def chat(): # Synchronous function
                     # Validate that this is a data URL (required for OpenRouter PDF handling)
                     if pdf_data_url.startswith('data:application/pdf;base64,'):
                         # Add this PDF to the multimodal content
-                        multimodal_content.append({
+                        pdf_object = {
                             "type": "file",
                             "file": {
                                 "filename": filename,
                                 "file_data": pdf_data_url
                             }
-                        })
+                        }
+                        multimodal_content.append(pdf_object)
+                        
+                        # Debug log entire object structure but truncate the base64 data
+                        debug_object = pdf_object.copy()
+                        if len(pdf_data_url) > 100:
+                            truncated_data = pdf_data_url[:50] + "..." + pdf_data_url[-20:]
+                            debug_object["file"]["file_data"] = truncated_data
+                            
                         logger.info(f"Added PDF document to message: {filename}")
+                        logger.debug(f"DEBUG: PDF object structure: {debug_object}")
                     else:
+                        # Try to clean up the URL if it's not in the expected format
                         logger.error(f"❌ INVALID PDF DATA URL FORMAT: PDF URLs must be data:application/pdf;base64,... format")
+                        logger.debug(f"DEBUG: Received invalid PDF URL format: {pdf_data_url[:30]}... (truncated)")
+                        
+                        # If it doesn't have the proper prefix but contains base64 data, try to fix it
+                        if "base64," in pdf_data_url and not pdf_data_url.startswith("data:application/pdf;base64,"):
+                            try:
+                                # Fix the URL format by adding the proper prefix
+                                base64_part = pdf_data_url.split("base64,")[1] if "base64," in pdf_data_url else pdf_data_url
+                                fixed_url = f"data:application/pdf;base64,{base64_part}"
+                                
+                                # Add the fixed PDF URL
+                                multimodal_content.append({
+                                    "type": "file",
+                                    "file": {
+                                        "filename": filename,
+                                        "file_data": fixed_url
+                                    }
+                                })
+                                logger.info(f"Fixed and added PDF document to message: {filename}")
+                            except Exception as fix_error:
+                                logger.error(f"Failed to fix PDF URL format: {fix_error}")
+                                # Continue without this PDF
             
             # Add the multimodal content to messages if we have at least one valid image or PDF
             if len(multimodal_content) > 1:  # First item is text, so we need more than 1 item
@@ -2259,18 +2302,51 @@ def chat(): # Synchronous function
                 for item in content:
                     if item.get('type') == 'file' and 'file_data' in item.get('file', {}):
                         has_pdf_content = True
+                        logger.debug(f"DEBUG: PDF content found in message: {item.get('file', {}).get('filename', 'unknown.pdf')}")
                         break
         
-        if has_pdf_content and openrouter_model in DOCUMENT_MODELS:
-            logger.info(f"PDF content detected for document-capable model {openrouter_model}, adding native PDF plugin config")
-            payload['plugins'] = [
-                {
-                    "id": "file-parser",
-                    "pdf": {
-                        "engine": "native"
+        # Check if model is in DOCUMENT_MODELS or any string matching in name
+        is_document_capable = False
+        
+        # Exact match in DOCUMENT_MODELS set
+        if openrouter_model in DOCUMENT_MODELS:
+            is_document_capable = True
+            logger.info(f"Model {openrouter_model} is in DOCUMENT_MODELS, using native PDF engine")
+        
+        # Partial match for model name variants
+        if not is_document_capable:
+            model_base = openrouter_model.split('-')[0]  # Extract base model name
+            for doc_model in DOCUMENT_MODELS:
+                if model_base in doc_model:
+                    is_document_capable = True
+                    logger.info(f"Model {openrouter_model} matches document-capable model {doc_model}, using native PDF engine")
+                    break
+        
+        if has_pdf_content:
+            logger.info(f"PDF content detected, model supports PDF: {is_document_capable}")
+            
+            if is_document_capable:
+                # Configure PDF plugin to use native engine for models that support it
+                logger.info(f"Using NATIVE PDF engine for document-capable model {openrouter_model}")
+                payload['plugins'] = [
+                    {
+                        "id": "file-parser",
+                        "pdf": {
+                            "engine": "native"  # Use native model capabilities
+                        }
                     }
-                }
-            ]
+                ]
+            else:
+                # Fallback to pdf-text for models that don't support native PDF processing
+                logger.info(f"Using PDF-TEXT engine as fallback for non-document model {openrouter_model}")
+                payload['plugins'] = [
+                    {
+                        "id": "file-parser",
+                        "pdf": {
+                            "engine": "pdf-text"  # Free text-based fallback
+                        }
+                    }
+                ]
         
         # Note: We don't need to add image_url separately as it's now included in the messages content
         # for multimodal models when an image is provided
