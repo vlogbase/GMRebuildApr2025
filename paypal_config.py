@@ -58,7 +58,7 @@ def get_paypal_client():
         logger.error(f"Error initializing PayPal client: {e}")
         return None
 
-def process_paypal_payout(sender_batch_id, payout_items):
+def process_paypal_payout(sender_batch_id, payout_items, note="GloriaMundo Chat Affiliate Commission Payout"):
     """
     Process a PayPal payout batch using the PayPal Payouts SDK.
     
@@ -74,6 +74,7 @@ def process_paypal_payout(sender_batch_id, payout_items):
                 },
                 ...
             ]
+        note (str, optional): Note to include with the payout. Default is a generic note.
     
     Returns:
         dict: Status and details of the payout

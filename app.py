@@ -178,6 +178,24 @@ try:
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
 
+# Register admin blueprint and initialize Flask-Admin
+try:
+    from admin_panel import admin_bp, init_admin
+    app.register_blueprint(admin_bp, url_prefix='/admin')
+    
+    # Initialize the Flask-Admin interface
+    admin = init_admin(app)
+    logger.info("Admin blueprint and Flask-Admin interface registered successfully")
+except Exception as e:
+    logger.error(f"Error registering Admin blueprint or initializing Flask-Admin: {e}")
+
+# Helper function for admin access control
+def is_admin():
+    """Check if the current user is an admin (specifically andy@sentigral.com)"""
+    # Check if user is authenticated and has the specific email
+    admin_email = os.environ.get('ADMIN_EMAIL', 'andy@sentigral.com').lower()
+    return current_user.is_authenticated and current_user.email.lower() == admin_email
+
 @login_manager.user_loader
 def load_user(user_id):
     from models import User 

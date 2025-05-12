@@ -1,0 +1,375 @@
+{% extends 'admin/master.html' %}
+
+{% block head_css %}
+{{ super() }}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+<style>
+    .filter-bar {
+        background-color: #f8f9fa;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 20px;
+    }
+    
+    .commission-card {
+        margin-bottom: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .commission-card .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background-color: #f8f9fa;
+        padding: 12px 20px;
+    }
+    
+    .commission-card .card-body {
+        padding: 20px;
+    }
+    
+    .commission-status {
+        font-size: 0.9rem;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+    
+    .commission-table th {
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .commission-table tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+    
+    .action-btn {
+        padding: 4px 8px;
+        font-size: 0.85rem;
+    }
+    
+    .select-all-container {
+        margin-bottom: 20px;
+    }
+    
+    .batch-actions {
+        margin-top: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .checkbox-column {
+        width: 40px;
+    }
+    
+    .status-held {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    
+    .status-approved {
+        background-color: #007bff;
+        color: white;
+    }
+    
+    .status-paid {
+        background-color: #28a745;
+        color: white;
+    }
+    
+    .status-rejected {
+        background-color: #dc3545;
+        color: white;
+    }
+    
+    .status-processing {
+        background-color: #17a2b8;
+        color: white;
+    }
+    
+    .no-commissions {
+        padding: 40px 20px;
+        text-align: center;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .no-commissions i {
+        font-size: 3rem;
+        color: #6c757d;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Manage Commissions</h2>
+        <a href="{{ url_for('admin_panel.index') }}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+    
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <form method="get" action="{{ url_for('admin_panel.commissions') }}" class="row g-3">
+            <div class="col-md-3">
+                <label for="status" class="form-label">Status</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="held" {% if status == 'held' %}selected{% endif %}>Held</option>
+                    <option value="approved" {% if status == 'approved' %}selected{% endif %}>Approved</option>
+                    <option value="paid" {% if status == 'paid' %}selected{% endif %}>Paid</option>
+                    <option value="rejected" {% if status == 'rejected' %}selected{% endif %}>Rejected</option>
+                    <option value="processing" {% if status == 'processing' %}selected{% endif %}>Processing</option>
+                    <option value="" {% if status == '' %}selected{% endif %}>All</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="affiliate_id" class="form-label">Affiliate</label>
+                <select class="form-select" id="affiliate_id" name="affiliate_id">
+                    <option value="">All Affiliates</option>
+                    {% for affiliate in affiliates %}
+                    <option value="{{ affiliate.id }}" {% if affiliate_id|int == affiliate.id %}selected{% endif %}>
+                        {{ affiliate.name }} ({{ affiliate.email }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="min_amount" class="form-label">Min Amount</label>
+                <div class="input-group">
+                    <span class="input-group-text">$</span>
+                    <input type="text" class="form-control" id="min_amount" name="min_amount" value="{{ min_amount }}" placeholder="0.00">
+                </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">Apply Filters</button>
+            </div>
+        </form>
+    </div>
+    
+    {% if grouped_commissions %}
+    <!-- Batch Actions -->
+    <form action="{{ url_for('admin_panel.process_payouts') }}" method="post" id="commissionForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <div class="select-all-container d-flex justify-content-between align-items-center">
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="checkbox" id="selectAll">
+                <label class="form-check-label" for="selectAll">Select All</label>
+            </div>
+            <div>
+                <span id="selectedCount">0 commissions selected</span>
+            </div>
+        </div>
+        
+        <!-- Commission Cards -->
+        {% for affiliate_id, data in grouped_commissions.items() %}
+        <div class="card commission-card">
+            <div class="card-header">
+                <div>
+                    <strong>{{ data.affiliate.name }}</strong> 
+                    <span class="text-muted">({{ data.affiliate.email }})</span>
+                </div>
+                <div>
+                    <span class="badge bg-primary">Total: ${{ data.total_amount|round(2) }}</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <table class="table table-hover commission-table">
+                    <thead>
+                        <tr>
+                            <th class="checkbox-column">
+                                <input class="form-check-input affiliate-select-all" type="checkbox" data-affiliate-id="{{ affiliate_id }}">
+                            </th>
+                            <th>ID</th>
+                            <th>Transaction</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Earned Date</th>
+                            <th>Available Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for commission in data.commissions %}
+                        <tr>
+                            <td>
+                                <input class="form-check-input commission-checkbox" type="checkbox" 
+                                       name="commission_ids[]" value="{{ commission.id }}"
+                                       data-affiliate-id="{{ affiliate_id }}"
+                                       data-amount="{{ commission.commission_amount }}">
+                            </td>
+                            <td>{{ commission.id }}</td>
+                            <td>{{ commission.triggering_transaction_id[:8] }}...</td>
+                            <td>${{ commission.commission_amount|round(2) }}</td>
+                            <td>
+                                <span class="commission-status status-{{ commission.status }}">
+                                    {{ commission.status|capitalize }}
+                                </span>
+                            </td>
+                            <td>{{ commission.commission_earned_date.strftime('%Y-%m-%d') }}</td>
+                            <td>{{ commission.commission_available_date.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                {% if commission.status == 'held' %}
+                                <a href="{{ url_for('admin_panel.approve_commission', commission_id=commission.id) }}" 
+                                   class="btn btn-sm btn-success action-btn">Approve</a>
+                                <a href="{{ url_for('admin_panel.reject_commission', commission_id=commission.id) }}" 
+                                   class="btn btn-sm btn-danger action-btn">Reject</a>
+                                {% elif commission.status == 'approved' %}
+                                <button type="submit" class="btn btn-sm btn-primary action-btn" 
+                                        formaction="{{ url_for('admin_panel.process_payouts') }}"
+                                        name="commission_ids[]" value="{{ commission.id }}">
+                                    Pay Now
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+        
+        <!-- Batch Actions Footer -->
+        <div class="batch-actions">
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center h-100">
+                        <h5 class="mb-0">Batch Actions</h5>
+                    </div>
+                </div>
+                <div class="col-md-6 text-end">
+                    {% if status == 'held' %}
+                    <button type="button" id="batchApproveBtn" class="btn btn-success" disabled>
+                        <i class="fas fa-check"></i> Approve Selected
+                    </button>
+                    <button type="button" id="batchRejectBtn" class="btn btn-danger" disabled>
+                        <i class="fas fa-times"></i> Reject Selected
+                    </button>
+                    {% elif status == 'approved' %}
+                    <button type="submit" id="batchPayBtn" class="btn btn-primary" disabled>
+                        <i class="fas fa-money-bill-wave"></i> Pay Selected
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </form>
+    {% else %}
+    <div class="no-commissions">
+        <i class="fas fa-file-invoice-dollar"></i>
+        <h4>No Commissions Found</h4>
+        <p class="text-muted">There are no commissions matching your current filter criteria.</p>
+        <a href="{{ url_for('admin_panel.commissions') }}" class="btn btn-primary mt-3">Reset Filters</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block tail_js %}
+{{ super() }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Select all checkbox
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const commissionCheckboxes = document.querySelectorAll('.commission-checkbox');
+        const affiliateSelectAllCheckboxes = document.querySelectorAll('.affiliate-select-all');
+        const selectedCountDisplay = document.getElementById('selectedCount');
+        const batchApproveBtn = document.getElementById('batchApproveBtn');
+        const batchRejectBtn = document.getElementById('batchRejectBtn');
+        const batchPayBtn = document.getElementById('batchPayBtn');
+        
+        // Update selected count and button states
+        function updateSelectedCount() {
+            const selectedCount = document.querySelectorAll('.commission-checkbox:checked').length;
+            selectedCountDisplay.textContent = selectedCount + ' commissions selected';
+            
+            // Update button states
+            if (batchApproveBtn) batchApproveBtn.disabled = selectedCount === 0;
+            if (batchRejectBtn) batchRejectBtn.disabled = selectedCount === 0;
+            if (batchPayBtn) batchPayBtn.disabled = selectedCount === 0;
+            
+            // Check if all are selected
+            selectAllCheckbox.checked = selectedCount === commissionCheckboxes.length && commissionCheckboxes.length > 0;
+            
+            // Update affiliate checkboxes
+            affiliateSelectAllCheckboxes.forEach(checkbox => {
+                const affiliateId = checkbox.dataset.affiliateId;
+                const affiliateCheckboxes = document.querySelectorAll(`.commission-checkbox[data-affiliate-id="${affiliateId}"]`);
+                const selectedAffiliateCheckboxes = document.querySelectorAll(`.commission-checkbox[data-affiliate-id="${affiliateId}"]:checked`);
+                
+                checkbox.checked = selectedAffiliateCheckboxes.length === affiliateCheckboxes.length && affiliateCheckboxes.length > 0;
+            });
+        }
+        
+        // Select All
+        selectAllCheckbox.addEventListener('change', function() {
+            commissionCheckboxes.forEach(checkbox => {
+                checkbox.checked = this.checked;
+            });
+            updateSelectedCount();
+        });
+        
+        // Affiliate Select All
+        affiliateSelectAllCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const affiliateId = this.dataset.affiliateId;
+                const affiliateCheckboxes = document.querySelectorAll(`.commission-checkbox[data-affiliate-id="${affiliateId}"]`);
+                
+                affiliateCheckboxes.forEach(cb => {
+                    cb.checked = this.checked;
+                });
+                
+                updateSelectedCount();
+            });
+        });
+        
+        // Individual checkboxes
+        commissionCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', updateSelectedCount);
+        });
+        
+        // Batch approve button
+        if (batchApproveBtn) {
+            batchApproveBtn.addEventListener('click', function() {
+                const form = document.getElementById('commissionForm');
+                
+                // Create a hidden input to indicate batch approval
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = 'action';
+                actionInput.value = 'batch_approve';
+                form.appendChild(actionInput);
+                
+                form.action = "{{ url_for('admin_panel.approve_commission', commission_id=0) }}".replace('/0', '');
+                form.submit();
+            });
+        }
+        
+        // Batch reject button
+        if (batchRejectBtn) {
+            batchRejectBtn.addEventListener('click', function() {
+                const form = document.getElementById('commissionForm');
+                
+                // Create a hidden input to indicate batch rejection
+                const actionInput = document.createElement('input');
+                actionInput.type = 'hidden';
+                actionInput.name = 'action';
+                actionInput.value = 'batch_reject';
+                form.appendChild(actionInput);
+                
+                form.action = "{{ url_for('admin_panel.reject_commission', commission_id=0) }}".replace('/0', '');
+                form.submit();
+            });
+        }
+        
+        // Initialize count
+        updateSelectedCount();
+    });
+</script>
+{% endblock %}

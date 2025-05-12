@@ -22,8 +22,11 @@ class CommissionStatus(enum.Enum):
     APPROVED = "approved"
     PAID = "paid"
     REJECTED = "rejected"
-    PAYOUT_FAILED = "payout_failed"
-    PAYOUT_INITIATED = "payout_initiated"
+    PROCESSING = "processing"  # Payment is being processed
+    FAILED = "failed"  # Payment failed
+    UNCLAIMED = "unclaimed"  # Payment unclaimed by recipient
+    PAYOUT_FAILED = "payout_failed"  # Legacy status
+    PAYOUT_INITIATED = "payout_initiated"  # Legacy status
 
 class AffiliateStatus(enum.Enum):
     """Status for affiliate accounts"""
