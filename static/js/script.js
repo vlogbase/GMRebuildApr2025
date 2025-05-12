@@ -2523,19 +2523,33 @@ document.addEventListener('DOMContentLoaded', function() {
         // Show typing indicator
         const typingIndicator = addTypingIndicator();
         
-        // Clear attachments after sending
-        // This prevents duplicate attachments in subsequent messages
+        // IMPORTANT: Keep the PDF/image data available until AFTER sending to backend
+        // Store current attachment states
+        const storedImageUrls = [...attachedImageUrls];
+        const storedPdfUrl = attachedPdfUrl;
+        const storedPdfName = attachedPdfName;
+        
+        // Clear UI indicators (we've already displayed them in the message)
+        // But preserve the actual data for the backend call
         if (attachedImageUrls.length > 0) {
-            clearAttachedImages();
+            // Just clear the UI indicators
+            const uploadIndicators = document.querySelectorAll('.image-preview-container');
+            uploadIndicators.forEach(indicator => indicator.remove());
         }
         
-        // Clear PDF if attached
+        // Clear PDF UI indicators but keep the data
         if (attachedPdfUrl) {
-            clearAttachedPdf();
+            // Just clear the UI indicator
+            const pdfIndicators = document.querySelectorAll('.pdf-indicator');
+            pdfIndicators.forEach(indicator => indicator.remove());
         }
         
-        // Send message to backend
+        // Send message to backend with the data still intact
         sendMessageToBackend(message, currentModel, typingIndicator);
+        
+        // NOW we can clear the actual attachment data after sending
+        clearAttachedImages();
+        clearAttachedPdf();
     }
     
     // Function to add message to chat
@@ -3131,13 +3145,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.warn(`⚠️ Warning: Model ${modelId} does not support PDF documents, but a PDF is being sent`);
             }
             
-            // Clear all images after sending
-            clearAttachedImages();
-            
-            // Clear PDF if attached
-            if (hasPdf) {
-                clearAttachedPdf();
-            }
+            // No longer clearing attachments here
+            // We'll clear them after the full call is complete in sendMessage()
+            // This ensures the data is available during the API call
         }
         
         // Add user message to history with standardized content array format

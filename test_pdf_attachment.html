@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Attachment Fix Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .test-section {
+            border: 1px solid #ccc;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .message-log {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>PDF Attachment Fix Test</h1>
+    
+    <div class="container">
+        <div class="test-section">
+            <h2>Test PDF Attachment</h2>
+            <p>This test validates that PDF data is retained when sending a message and not cleared prematurely.</p>
+            
+            <div>
+                <button id="attachPdfBtn">Attach Sample PDF</button>
+                <button id="sendMsgBtn">Send Message</button>
+                <button id="clearLogBtn">Clear Log</button>
+            </div>
+            
+            <div id="pdfStatus"></div>
+            
+            <h3>Log</h3>
+            <div id="messageLog" class="message-log"></div>
+        </div>
+    </div>
+
+    <script>
+        // Test variables to simulate our application state
+        let attachedPdfUrl = null;
+        let attachedPdfName = null;
+        
+        // DOM elements
+        const attachPdfBtn = document.getElementById('attachPdfBtn');
+        const sendMsgBtn = document.getElementById('sendMsgBtn');
+        const clearLogBtn = document.getElementById('clearLogBtn');
+        const messageLog = document.getElementById('messageLog');
+        const pdfStatus = document.getElementById('pdfStatus');
+        
+        // Logging function
+        function log(message, type = 'info') {
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            messageLog.appendChild(logEntry);
+            messageLog.scrollTop = messageLog.scrollHeight;
+        }
+        
+        // Clear log
+        clearLogBtn.addEventListener('click', () => {
+            messageLog.innerHTML = '';
+            log('Log cleared');
+        });
+        
+        // Function to create a sample base64 PDF
+        function getSamplePdfBase64() {
+            // This is a minimal valid PDF in base64
+            return "JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0ZURlY29kZSA+PgpzdHJlYW0KeAErVAhUKFQwAEJDBTNTQ1MFQxNLBZM0SwVDM3NThVQFQyMLINPY1NTUxNQcKJZcWqJQnFmVa2BkYFCZmVuaCwBV+xCoCmVuZHN0cmVhbQplbmRvYmoKNSAwIG9iagoxMDIKZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAzIDAgUiAvUmVzb3VyY2VzIDYgMCBSIC9Db250ZW50cyA0IDAgUiAvTWVkaWFCb3ggWzAgMCAyNTAgNTBdCj4+CmVuZG9iago2IDAgb2JqCjw8IC9Qcm9jU2V0IFsgL1BERiBdIC9Db2xvclNwYWNlIDw8IC9DczEgNyAwIFIgPj4gPj4KZW5kb2JqCjggMCBvYmoKPDwgL0xlbmd0aCA5IDAgUiAvTiAxIC9BbHRlcm5hdGUgL0RldmljZUdSQiAvRmlsdGVyIC9GbGF0ZURlY29kZSA+PgpzdHJlYW0KeAGFkk9PwkAQxe/7KfZITAw7M9s/YPZQqCUcPJDaREwMB1aRABKhlBh/+yq72JJw2GTfvJnfe9nqz74D7IGigVBjohIVMZIj74hBzH2fkZnkzgIPenaBUeJsLSZ7kV0qfSYNGByyznj7k1aWKnsv+yH5AFRCHEchyIH5m6Ii9jWIAqrn+tGCXxIByWDESCo0n+QYkT8khNSwDZdIzDd/zRi2zY6OKRSYLMcOSMjt6VFNy1oX3QQfCQpx/+P+oj5pPp/+ONFcQgvpB+ZPLNIgfRFEw/UvG8VIiC44kxn8ICd/5WYGGpsHXrDkUJ6k4+T8CQm1Sk+6TfX32Ys8bAQnmPQhBvVL9oXMl+TzA1rPEBRlbmRzdHJlYW0KZW5kb2JqCjkgMCBvYmoKMjYzCmVuZG9iago3IDAgb2JqClsgL0lDQ0Jhc2VkIDggMCBSIF0KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9NZWRpYUJveCBbMCAwIDI1MCA1MF0gL0NvdW50IDEgL0tpZHMgWyAyIDAgUiBdID4+CmVuZG9iagoxMCAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMyAwIFIgPj4KZW5kb2JqCjExIDAgb2JqCihmcmVxKQplbmRvYmoKMTIgMCBvYmoKKGZyZXEpCmVuZG9iagoxMyAwIG9iagooRDoyMDE4MDQwOTE1MTIxMVopCmVuZG9iagoxIDAgb2JqCjw8IC9UaXRsZSAxMSAwIFIgL0F1dGhvciAxMiAwIFIgL0NyZWF0b3IgKHBkZnRleCkgL1Byb2R1Y2VyIChwZGZ0ZXgpCi9DcmVhdGlvbkRhdGUgMTMgMCBSID4+CmVuZG9iagp4cmVmCjAgMTQKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwOTQ3IDAwMDAwIG4gCjAwMDAwMDAyMDYgMDAwMDAgbiAKMDAwMDAwMDczMiAwMDAwMCBuIAowMDAwMDAwMDE1IDAwMDAwIG4gCjAwMDAwMDAxODcgMDAwMDAgbiAKMDAwMDAwMDMxMSAwMDAwMCBuIAowMDAwMDAwNzA0IDAwMDAwIG4gCjAwMDAwMDAzNzkgMDAwMDAgbiAKMDAwMDAwMDY4NSAwMDAwMCBuIAowMDAwMDAwODEyIDAwMDAwIG4gCjAwMDAwMDA4NjIgMDAwMDAgbiAKMDAwMDAwMDg4NyAwMDAwMCBuIAowMDAwMDAwOTEyIDAwMDAwIG4gCnRyYWlsZXIKPDwgL1NpemUgMTQgL1Jvb3QgMTAgMCBSIC9JbmZvIDEgMCBSIC9JRCBbIDw1ZjFmNzdhNGRmYTY1MjgxNmJiNDUyZDJhZjk0YmUwMD4KPDVmMWY3N2E0ZGZhNjUyODE2YmI0NTJkMmFmOTRiZTAwPiBdID4+CnN0YXJ0eHJlZgoxMDcyCiUlRU9GCg==";
+        }
+        
+        // Attach PDF function
+        attachPdfBtn.addEventListener('click', () => {
+            // Set the PDF data
+            attachedPdfUrl = "data:application/pdf;base64," + getSamplePdfBase64();
+            attachedPdfName = "sample_document.pdf";
+            
+            // Update UI
+            pdfStatus.innerHTML = `<p>PDF attached: ${attachedPdfName}</p>`;
+            log('PDF attached successfully', 'success');
+        });
+
+        // Clear PDF function (the one that was called too early in the original bug)
+        function clearAttachedPdf() {
+            attachedPdfUrl = null;
+            attachedPdfName = null;
+            pdfStatus.innerHTML = '';
+            log('PDF cleared', 'info');
+        }
+
+        // This replicates the bug in the original code - clearing PDF before sending
+        function sendMessageBuggy() {
+            log('BUGGY VERSION: Starting to send message', 'error');
+            
+            if (attachedPdfUrl) {
+                log('BUGGY VERSION: PDF is attached: ' + attachedPdfName, 'info');
+                
+                // This is where the bug was - clearing PDF before sending
+                log('BUGGY VERSION: Clearing PDF before sending (BUG)', 'error');
+                clearAttachedPdf();
+                
+                // Now when we try to send, the PDF data is gone
+                log('BUGGY VERSION: Sending message to backend...', 'info');
+                sendMessageToBackend();
+            } else {
+                log('BUGGY VERSION: No PDF attached, just sending text', 'info');
+                sendMessageToBackend();
+            }
+        }
+
+        // This implements our fixed version - keeping PDF data until after sending
+        function sendMessageFixed() {
+            log('FIXED VERSION: Starting to send message', 'success');
+            
+            if (attachedPdfUrl) {
+                log('FIXED VERSION: PDF is attached: ' + attachedPdfName, 'info');
+                
+                // Store PDF data for use in sendMessageToBackend
+                const storedPdfUrl = attachedPdfUrl;
+                const storedPdfName = attachedPdfName;
+                
+                // Clear UI elements only (not the data variables)
+                log('FIXED VERSION: Clearing UI only, keeping data for backend call', 'info');
+                
+                // Now when we try to send, the PDF data is still available
+                log('FIXED VERSION: Sending message to backend...', 'info');
+                sendMessageToBackend(storedPdfUrl, storedPdfName);
+                
+                // Now it's safe to clear the PDF data
+                log('FIXED VERSION: Message sent, now clearing PDF data', 'info');
+                clearAttachedPdf();
+            } else {
+                log('FIXED VERSION: No PDF attached, just sending text', 'info');
+                sendMessageToBackend();
+            }
+        }
+
+        // Simulate sending to backend
+        function sendMessageToBackend(pdfUrl, pdfName) {
+            log('Backend received message' + (pdfUrl ? ' with PDF: ' + pdfName : ' with no PDF'), 'info');
+            
+            // In the real app, here we would make an API call with fetch()
+            const payload = {
+                message: "Test message",
+                model: "anthropic/claude-3-opus-20240229"
+            };
+            
+            if (pdfUrl) {
+                payload.pdf_url = pdfUrl;
+                payload.pdf_filename = pdfName;
+                log('PDF data included in message payload:', 'success');
+                log(JSON.stringify({pdf_filename: pdfName, pdf_url_start: pdfUrl.substring(0, 30) + '...'}), 'info');
+            } else {
+                log('No PDF data in payload', 'error');
+            }
+            
+            return true;
+        }
+        
+        // Toggle between buggy and fixed versions to demonstrate the difference
+        let useFixedVersion = true;
+        
+        // Send message button
+        sendMsgBtn.addEventListener('click', () => {
+            if (!attachedPdfUrl) {
+                log('Please attach a PDF first', 'error');
+                return;
+            }
+            
+            // Demo both versions to show the difference
+            log('-------- DEMONSTRATING BUGGY VERSION --------', 'error');
+            sendMessageBuggy();
+            
+            // Reset for the demo
+            attachedPdfUrl = "data:application/pdf;base64," + getSamplePdfBase64();
+            attachedPdfName = "sample_document.pdf";
+            
+            log('-------- DEMONSTRATING FIXED VERSION --------', 'success');
+            sendMessageFixed();
+        });
+        
+        // Initialize
+        log('Test page loaded. Click "Attach Sample PDF" then "Send Message" to test the fix.');
+    </script>
+</body>
+</html>

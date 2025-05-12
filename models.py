@@ -86,6 +86,7 @@ class Conversation(db.Model):
     title = db.Column(db.String(128), nullable=False, default="New Conversation")
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
     share_id = db.Column(db.String(64), unique=True, index=True)  # Shareable identifier for public access
+    conversation_uuid = db.Column(db.String(36), unique=True, nullable=True)  # UUID for conversation identification
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     is_active = db.Column(db.Boolean, default=True)

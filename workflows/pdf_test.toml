@@ -1,0 +1,2 @@
+# Workflow to serve the PDF attachment test page
+run = "python serve_test_html.py"

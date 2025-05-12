@@ -44,6 +44,9 @@ def test_conversation_creation():
             created_conversation = db.session.get(Conversation, conversation.id)
             logger.info(f"Created conversation ID: {created_conversation.id}, UUID: {created_conversation.conversation_uuid}")
             
+            # Verify the UUID matches what we set
+            assert created_conversation.conversation_uuid == conversation_uuid, "UUID mismatch"
+            
             # Clean up test conversation
             db.session.delete(created_conversation)
             db.session.commit()
