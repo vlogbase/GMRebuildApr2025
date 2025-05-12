@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}GloriaMundo Chat{% endblock %}
+
+{% block content %}
+    <div class="app-container">
+        <!-- Left Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <button id="new-chat-btn" class="new-chat-btn">
+                    <i class="fa-solid fa-plus"></i> New Chat
+                </button>
+            </div>
+            
+            <div id="conversations-list" class="conversation-list">
+                {% if is_logged_in %}
+                    <!-- Loading indicator only shown for logged in users -->
+                    <div class="loading-indicator">
+                        <div class="loading-spinner"></div>
+                        <div class="loading-text">Loading conversations...</div>
+                    </div>
+                {% else %}
+                    <!-- Login prompt for non-authenticated users -->
+                    <div class="login-prompt">
+                        <p>Please sign in to view and save your conversations.</p>
+                        <a href="{{ url_for('google_auth.login') }}" class="auth-btn google-auth-btn">
+                            <i class="fa-brands fa-google"></i> Sign in with Google
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="sidebar-footer">
+                {% if current_user.is_authenticated %}
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <i class="fa-solid fa-user"></i>
+                    </div>
+                    <div class="user-details">
+                        <div class="user-name">{{ current_user.username }}</div>
+                        <div class="user-email">{{ current_user.email }}</div>
+                        <div class="user-actions">
+                            <a href="{{ url_for('billing.account_management') }}" class="account-link">
+                                <i class="fa-solid fa-credit-card"></i> Credits: ${{ current_user.get_balance_usd()|round(2) }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+                <div class="footer-buttons">
+                    {% if current_user.is_authenticated %}
+                    <button id="logout-btn" class="auth-btn" onclick="window.location.href='{{ url_for('google_auth.logout') }}'">
+                        <i class="fa-solid fa-sign-out-alt"></i> Sign out
+                    </button>
+                    {% else %}
+                    <button id="login-btn" class="auth-btn google-auth-btn" onclick="window.location.href='{{ url_for('google_auth.login') }}'">
+                        <i class="fa-brands fa-google"></i> Sign in with Google
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Chat Area -->
+        <div class="chat-container">
+            <!-- App Header -->
+            <div class="app-header">
+                <div class="app-title">
+                    <h1>GloriaMundo Chat</h1>
+                </div>
+                {% if current_user.is_authenticated %}
+                <div class="app-account-access">
+                    <a href="{{ url_for('billing.account_management') }}" class="header-account-link">
+                        <i class="fa-solid fa-user-circle"></i>
+                        <span class="account-link-text">My Account</span>
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="chat-messages" id="chat-messages">
+                <!-- Welcome message -->
+                <div class="welcome-container">
+                    <div class="welcome-icon">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                    </div>
+                    <h1 class="welcome-heading">Welcome to GloriaMundo!</h1>
+                    <p class="welcome-text">
+                        Ask me anything and I'll provide helpful, accurate responses. Sign in to 
+                        save your conversations and access them from any device.
+                    </p>
+                    <button class="example-question-btn" id="example-question-btn">
+                        <i class="fa-regular fa-lightbulb"></i> Try an example question
+                    </button>
+                </div>
+                
+                <!-- Chat messages will be added here dynamically -->
+            </div>
+            
+            <!-- Input Area -->
+            <div class="chat-input-container">
+                <div class="model-buttons">
+                    <div class="model-preset-container">
+                        <button class="model-preset-btn" data-preset-id="1">
+                            <i class="fa-solid fa-robot model-icon"></i>
+                            <span class="model-name">Gemini 2.5</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                        <button class="model-preset-btn" data-preset-id="2">
+                            <i class="fa-solid fa-robot model-icon"></i>
+                            <span class="model-name">Llama 4 Maverick</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                        <button class="model-preset-btn" data-preset-id="3">
+                            <i class="fa-solid fa-brain model-icon"></i>
+                            <span class="model-name">Reasoning</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                        <button class="model-preset-btn" data-preset-id="4">
+                            <i class="fa-solid fa-image model-icon"></i>
+                            <span class="model-name">Multimodal</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                        <button class="model-preset-btn" data-preset-id="5">
+                            <i class="fa-solid fa-search model-icon"></i>
+                            <span class="model-name">Perplexity</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                        <button class="model-preset-btn free-preset" data-preset-id="6">
+                            <i class="fa-solid fa-gift model-icon"></i>
+                            <span class="model-name">Free</span>
+                            <span class="selector-icon-container">
+                                <i class="fa-solid fa-chevron-down selector-icon" aria-label="Select model"></i>
+                            </span>
+                            <span class="button-overlay"></span>
+                        </button>
+                    </div>
+                    <button id="upload-documents-btn" class="upload-documents-btn" title="Upload documents to enhance responses with your data">
+                        <i class="fa-solid fa-file-upload"></i>
+                        <span class="button-overlay"></span>
+                    </button>
+                    <button id="refresh-prices-btn" class="upload-documents-btn" title="Reset models to defaults">
+                        <i class="fa-solid fa-sync-alt"></i>
+                        <span class="button-overlay"></span>
+                    </button>
+                </div>
+                
+                <!-- Document Upload UI -->
+                <div id="document-upload-modal" class="document-upload-modal">
+                    <div class="document-upload-content">
+                        <div class="document-upload-header">
+                            <h3>Upload Documents</h3>
+                            <button id="close-upload-modal" class="close-upload-modal">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="document-upload-body">
+                            <p>Upload documents to enhance the AI's responses with your own data.</p>
+                            <p>Supported formats: PDF, Word, Text, HTML, CSV, and more.</p>
+                            
+                            <div id="upload-dropzone" class="upload-dropzone">
+                                <i class="fa-solid fa-file-arrow-up upload-icon"></i>
+                                <p>Drag files here or click to upload</p>
+                                <input type="file" id="document-upload-input" multiple accept=".txt,.pdf,.docx,.md,.html,.json,.csv,.tsv,.xml,.yaml,.yml,.rtf,.srt,.vtt,.log,.py,.js,.java,.c,.cpp,.cs,.rb,.php">
+                            </div>
+                            
+                            <div id="upload-file-list" class="upload-file-list">
+                                <!-- File list will be populated dynamically -->
+                            </div>
+                            
+                            <div id="upload-status" class="upload-status">
+                                <!-- Upload status will be shown here -->
+                            </div>
+                        </div>
+                        <div class="document-upload-footer">
+                            <button id="upload-files-btn" class="upload-files-btn">Upload Files</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Model Selector UI -->
+                <div id="model-selector" class="model-selector">
+                    <div class="selector-header">
+                        <input type="text" id="model-search" placeholder="Search models...">
+                        <button id="close-selector" class="close-selector"><i class="fa-solid fa-times"></i></button>
+                    </div>
+                    <div class="model-list-container">
+                        <ul id="model-list" class="model-list"></ul>
+                    </div>
+                    <div class="selector-footer">
+                        <button id="reset-to-default" class="reset-to-default-btn">
+                            <i class="fa-solid fa-rotate-left"></i> Reset to Default
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <textarea id="message-input" placeholder="Message GloriaMundo..."></textarea>
+                    <div class="message-actions">
+                        <input type="file" id="file-upload-input" name="file" accept="image/*,.pdf" style="display: none;">
+                        <button id="file-upload-button" class="btn btn-secondary" style="display: none;" title="Upload image or PDF">
+                            <i class="fa-solid fa-file-circle-plus"></i>
+                        </button>
+                        <button id="camera-button" class="btn btn-secondary" style="display: none;">
+                            <i class="fa-solid fa-camera"></i>
+                        </button>
+                        <!-- Removed redundant PDF upload button - using unified file upload button above -->
+                        <button id="send-btn" class="send-btn">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div id="image-preview-area" style="display: none;">
+                    <img id="image-preview" src="" alt="Preview">
+                    <button id="remove-image-button">
+                        <i class="fa-solid fa-times"></i> Remove
+                    </button>
+                </div>
+
+                <div id="camera-modal" style="display: none;">
+                    <div class="camera-modal-content">
+                        <div class="camera-controls">
+                            <button id="close-camera-button">
+                                <i class="fa-solid fa-times"></i>
+                            </button>
+                        </div>
+                        <video id="camera-stream" autoplay playsinline></video>
+                        <canvas id="image-canvas" style="display: none;"></canvas>
+                        <div class="camera-buttons">
+                            <button id="capture-button" class="btn btn-primary">
+                                <i class="fa-solid fa-camera"></i> Take Photo
+                            </button>
+                            <button id="switch-camera-button" class="btn btn-secondary">
+                                <i class="fa-solid fa-sync"></i> Switch Camera
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="disclaimer">
+                    For important decisions, always confirm information with trusted sources.
+                </div>
+                
+                <div class="footer-legal-links">
+                    <a href="{{ url_for('terms_of_service') }}">Terms of Service</a>
+                    <a href="{{ url_for('privacy_policy') }}">Privacy Policy</a>
+                    <a href="{{ url_for('cookie_policy') }}">Cookie Policy</a>
+                    <a href="javascript:void(0)" id="open-cookie-settings">Cookie Settings</a>
+                    <span class="copyright">© {{ now.year }} Sentigral Limited</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script>
+        // Pass the login status to JavaScript
+        const userIsLoggedIn = {{ is_logged_in|tojson }};
+    </script>
+{% endblock %}
