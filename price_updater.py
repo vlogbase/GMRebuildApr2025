@@ -13,33 +13,37 @@ from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 from flask import current_app
 
-# Import the Flask app for application context
-try:
-    from app import app, db
-except ImportError as e:
-    logger.error(f"Failed to import app or db: {e}")
-    app = None
-    db = None
-from flask import current_app
-
-# Set up logging with more details for debugging
+# Set up logging - MUST BE BEFORE ANY OTHER CODE USES LOGGER
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# Import the Flask app for application context
-try:
-    from app import app, db
-except ImportError as e:
-    logger.error(f"Failed to import app or db: {e}")
-    app = None
-    db = None
+# Initialize globals
+app = None
+db = None
 
 # Initialize a cache dict to store model prices (kept for backward compatibility)
 model_prices_cache = {
     'prices': {},
     'last_updated': None
 }
+
+def import_app_and_db():
+    """
+    Import app and db safely.
+    Returns True if successful, False otherwise.
+    """
+    global app, db
+    try:
+        from app import app, db
+        logger.info("Successfully imported app and db from app module")
+        return True
+    except ImportError as e:
+        logger.error(f"Failed to import app or db: {e}")
+        return False
+
+# Try to import app and db at module level
+import_success = import_app_and_db()
 
 def fetch_and_store_openrouter_prices() -> bool:
     """
@@ -49,7 +53,6 @@ def fetch_and_store_openrouter_prices() -> bool:
     1. Fetches models from the OpenRouter API
     2. Stores them in the database using the OpenRouterModel model
     3. Also updates the legacy cache for backward compatibility
-    4. Updates the global OPENROUTER_MODELS_INFO variable for consistency
     
     Returns:
         bool: True if successful, False otherwise
@@ -198,15 +201,23 @@ def fetch_and_store_openrouter_prices() -> bool:
         model_prices_cache['last_updated'] = datetime.now().isoformat()
         
         # Store models in the database (This is the new primary storage method)
+        db_success = False
+        # Ensure app and db are available
+        if not import_success:
+            import_success = import_app_and_db()
+        
+        if not import_success:
+            logger.error("Cannot store models in database: Failed to import app or db")
+            return False
+            
+        if app is None or db is None:
+            logger.error("Cannot store models in database: app or db is None")
+            return False
+
         try:
             # Import here to avoid circular imports
             from models import OpenRouterModel
             
-            # Check if we have valid app and db references
-            if app is None or db is None:
-                logger.error("Cannot store models in database: app or db is None")
-                return False
-                
             # Use application context for all database operations
             with app.app_context():
                 updated_count = 0
@@ -306,27 +317,32 @@ def fetch_and_store_openrouter_prices() -> bool:
                 try:
                     db.session.commit()
                     logger.info(f"Database updated: {updated_count} models updated, {new_count} new models added")
+                    db_success = True
                 except Exception as commit_error:
                     db.session.rollback()
                     logger.error(f"Error committing changes to database: {commit_error}")
-                    return False
-            
+                    db_success = False
+        
         except ImportError as e:
             logger.error(f"Failed to import database modules: {e}")
-            return False
+            db_success = False
         except SQLAlchemyError as e:
             logger.error(f"Database error storing models: {e}")
-            return False
+            db_success = False
         except Exception as e:
             logger.error(f"Unexpected error storing models in database: {e}")
-            return False
+            db_success = False
                 
         # Database is now the single source of truth, no need to update global caches
         
         # Log successful completion
         elapsed_time = time.time() - start_time
         logger.info(f"Successfully processed {len(prices)} models in {elapsed_time:.2f} seconds")
-        logger.info("Scheduled job: fetch_and_store_openrouter_prices completed successfully")
+        if db_success:
+            logger.info("Successfully updated database with model information")
+        else:
+            logger.warning("Database update failed, but cache was updated")
+        logger.info("Scheduled job: fetch_and_store_openrouter_prices completed")
         return True
         
     except requests.exceptions.RequestException as e:
@@ -349,52 +365,71 @@ def get_model_cost(model_id: str) -> dict:
     Returns:
         dict: Dictionary containing prompt_cost_per_million, completion_cost_per_million, and cost_band
     """
-    try:
-        # Try to get model info from the database first (most reliable)
-        from models import OpenRouterModel
-        
-        # Check if we have valid app reference
-        if app is None:
-            logger.warning("Cannot query database: app is None")
-        else:
-            # Use application context for database query
+    # Try to get model info from the database first (most reliable)
+    db_result = None
+    
+    # Ensure app and db are available
+    if not import_success:
+        import_app_and_db()
+    
+    if app is not None:
+        try:
+            # Import here to avoid circular imports
+            from models import OpenRouterModel
+            
             with app.app_context():
                 db_model = OpenRouterModel.query.get(model_id)
                 if db_model:
-                    return {
+                    db_result = {
                         'prompt_cost_per_million': db_model.input_price_usd_million,
                         'completion_cost_per_million': db_model.output_price_usd_million,
                         'cost_band': db_model.cost_band or '',
                         'source': 'database'  # For debugging
                     }
-    except Exception as db_error:
-        logger.warning(f"Failed to get model cost from database: {db_error}")
+        except Exception as db_error:
+            logger.warning(f"Failed to get model cost from database: {db_error}")
+    
+    # If database lookup returned a result, use it
+    if db_result:
+        return db_result
     
     # If database lookup failed, try to fetch fresh data from API
     try:
         # Attempt to update the database with fresh data from the API
         fetch_and_store_openrouter_prices()
         
-        # Check if we have valid app reference
-        if app is None:
-            logger.warning("Cannot query database after refresh: app is None")
-        else:
-            # Use application context for database query
-            with app.app_context():
-                # Try database lookup again after the fresh fetch
+        # Check if app is available
+        if app is not None:
+            try:
+                # Import here to avoid circular imports
                 from models import OpenRouterModel
-                db_model = OpenRouterModel.query.get(model_id)
-                if db_model:
-                    return {
-                        'prompt_cost_per_million': db_model.input_price_usd_million,
-                        'completion_cost_per_million': db_model.output_price_usd_million,
-                        'cost_band': db_model.cost_band or '',
-                        'source': 'database_refresh'  # For debugging
-                    }
+                
+                with app.app_context():
+                    # Try database lookup again after the fresh fetch
+                    db_model = OpenRouterModel.query.get(model_id)
+                    if db_model:
+                        return {
+                            'prompt_cost_per_million': db_model.input_price_usd_million,
+                            'completion_cost_per_million': db_model.output_price_usd_million,
+                            'cost_band': db_model.cost_band or '',
+                            'source': 'database_refresh'  # For debugging
+                        }
+            except Exception as refresh_db_error:
+                logger.warning(f"Failed to get model cost from database after refresh: {refresh_db_error}")
     except Exception as refresh_error:
         logger.warning(f"Failed to refresh model data from API: {refresh_error}")
     
-    # If we still don't have data, use fallback logic
+    # If we still don't have data, check the cache
+    if model_id in model_prices_cache['prices']:
+        model_data = model_prices_cache['prices'][model_id]
+        return {
+            'prompt_cost_per_million': model_data['input_price'],
+            'completion_cost_per_million': model_data['output_price'],
+            'cost_band': model_data.get('cost_band', ''),
+            'source': 'cache'  # For debugging
+        }
+    
+    # If still no data, use fallback logic
     # Approximate fallback costs based on model name
     model_name = model_id.lower()
     
@@ -403,36 +438,51 @@ def get_model_cost(model_id: str) -> dict:
     completion_cost = 0.0
     
     if "gpt-4" in model_name:
-        prompt_cost = 60.0
-        completion_cost = 120.0
-        cost_band = "$$$$"
-    elif "claude-3" in model_name and "opus" in model_name:
-        prompt_cost = 45.0
-        completion_cost = 90.0
-        cost_band = "$$$$"
-    elif "claude-3" in model_name and "sonnet" in model_name:
-        prompt_cost = 15.0
-        completion_cost = 30.0
-        cost_band = "$$$"
-    elif "claude-3" in model_name and "haiku" in model_name:
-        prompt_cost = 3.0
-        completion_cost = 6.0
-        cost_band = "$$"
-    elif "gemini-1.5" in model_name and "pro" in model_name:
-        prompt_cost = 10.0
-        completion_cost = 20.0
-        cost_band = "$$$"
+        if "turbo" in model_name:
+            prompt_cost = 6.0
+            completion_cost = 12.0
+            cost_band = "$$"
+        else:
+            prompt_cost = 30.0
+            completion_cost = 60.0
+            cost_band = "$$$"
     elif "gpt-3.5" in model_name:
-        prompt_cost = 1.0
-        completion_cost = 2.0
-        cost_band = "$$"
+        prompt_cost = 0.5
+        completion_cost = 1.5
+        cost_band = "$"
+    elif "claude-3" in model_name:
+        if "opus" in model_name:
+            prompt_cost = 15.0
+            completion_cost = 75.0
+            cost_band = "$$$"
+        elif "sonnet" in model_name:
+            prompt_cost = 3.0
+            completion_cost = 15.0
+            cost_band = "$$$"
+        elif "haiku" in model_name:
+            prompt_cost = 0.5
+            completion_cost = 1.5
+            cost_band = "$"
+        else:
+            prompt_cost = 3.0
+            completion_cost = 15.0
+            cost_band = "$$$"
+    elif "gemini" in model_name:
+        if "pro" in model_name or "ultra" in model_name:
+            prompt_cost = 3.5
+            completion_cost = 10.5
+            cost_band = "$$$"
+        else:
+            prompt_cost = 0.35
+            completion_cost = 1.05
+            cost_band = "$"
     else:
-        # Default fallback for unknown models
-        prompt_cost = 10.0
-        completion_cost = 20.0
-        cost_band = "$$$"
-        
-    # Return the fallback data with cost band
+        # Very conservative default for unrecognized models
+        prompt_cost = 3.0
+        completion_cost = 10.0
+        cost_band = "$$"
+    
+    # Return the fallback costs
     return {
         'prompt_cost_per_million': prompt_cost,
         'completion_cost_per_million': completion_cost,
