@@ -10,9 +10,9 @@ A critical naming conflict was discovered in the document handling system:
 ## Fix Applied
 We resolved this by:
 
-1. Renaming the local variable from `document` to `docItem` across all occurrences
-2. Using `window.document.createElement()` instead of `document.createElement()` to make the correct reference explicit
-3. Updating all references to the properties of the local document variable
+1. Renaming the local variable from `document` to `docItem` across all occurrences in the function
+2. Keeping the standard `document.createElement()` usage for consistency with the rest of the code
+3. This was a localized fix to just the specific function causing the error
 
 ## Code Changes
 
@@ -39,30 +39,19 @@ for (let i = 0; i < displayLimit; i++) {
     const docItem = attachedDocuments[i];
     
     // Create a container for each preview
-    const previewContainer = window.document.createElement('div');
+    const previewContainer = document.createElement('div');
     previewContainer.className = 'document-preview-container';
     
     // Display based on type
     if (docItem.type === 'image') {
-        const img = window.document.createElement('img');
+        const img = document.createElement('img');
         img.src = docItem.url;
     }
 }
 ```
 
-## Future Prevention
-To avoid similar issues in future development:
-
-1. Avoid using variable names that match global JavaScript objects like:
-   - `document`
-   - `window`
-   - `navigator`
-   - `location`
-   - `console`
-
-2. When working with DOM elements, consider using `window.document` explicitly to avoid ambiguity
-
-3. Use consistent naming conventions like `docItem`, `documentData`, or `documentRecord` for document-related data objects
+## Prevention Tip
+When naming variables, avoid using names that match global JavaScript objects like `document`, `window`, `navigator`, `location`, or `console` to prevent shadowing issues.
 
 ## Testing
 After the changes, the PDF upload functionality works correctly:

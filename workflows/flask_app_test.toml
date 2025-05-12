@@ -1,0 +1,2 @@
+# Flask app to test document handling
+run = "python app_flask.py"

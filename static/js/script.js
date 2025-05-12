@@ -327,9 +327,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const captureButton = document.getElementById('capture-button');
     const switchCameraButton = document.getElementById('switch-camera-button');
     const closeCameraButton = document.getElementById('close-camera-button');
-    const imagePreviewArea = document.getElementById('image-preview-area');
-    const imagePreview = document.getElementById('image-preview');
-    const removeImageButton = document.getElementById('remove-image-button');
+    // Legacy image preview area has been removed in favor of the unified document preview
+    // const imagePreviewArea = document.getElementById('image-preview-area');
+    // const imagePreview = document.getElementById('image-preview');
+    // const removeImageButton = document.getElementById('remove-image-button');
     
     // App state
     let activePresetButton = null; // Currently selected preset button
@@ -772,9 +773,10 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    if (removeImageButton) {
-        removeImageButton.addEventListener('click', clearAttachedImage);
-    }
+    // Legacy removeImageButton event listener removed since we now use the unified document preview
+    // if (removeImageButton) {
+    //     removeImageButton.addEventListener('click', clearAttachedImage);
+    // }
     
     // Add event listener for refresh prices button
     if (refreshPricesBtn) {
@@ -908,7 +910,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.image_url) {
                 // Handle image response
                 attachedImageUrls.push(data.image_url);
-                updateImagePreviews();
+                // updateImagePreviews(); // Removed in favor of unified document preview
                 updateDocumentPreviews(); // Update unified document display
                 console.log(`📸 Image uploaded successfully (${attachedImageUrls.length} total):`, data.image_url);
                 
@@ -1069,76 +1071,8 @@ document.addEventListener('DOMContentLoaded', function() {
         return result;
     }
     
-    // Add a new function to update all image previews based on the attached URLs
-    function updateImagePreviews() {
-        // Check if the preview area exists
-        if (!imagePreviewArea) {
-            console.warn('Image preview area not found');
-            return;
-        }
-        
-        // Clear existing previews
-        imagePreviewArea.innerHTML = '';
-        
-        // If no images, hide the preview area
-        if (attachedImageUrls.length === 0) {
-            imagePreviewArea.style.display = 'none';
-            return;
-        }
-        
-        // Show the preview area
-        imagePreviewArea.style.display = 'flex';
-        imagePreviewArea.classList.add('multi-image');
-        
-        // Create a counter to show total images
-        const counter = document.createElement('div');
-        counter.className = 'image-counter';
-        counter.textContent = `${attachedImageUrls.length} image${attachedImageUrls.length > 1 ? 's' : ''}`;
-        imagePreviewArea.appendChild(counter);
-        
-        // Add previews for each image (limit display to first 4 images)
-        const displayLimit = Math.min(attachedImageUrls.length, 4);
-        
-        for (let i = 0; i < displayLimit; i++) {
-            const imageUrl = attachedImageUrls[i];
-            
-            // Create a container for each preview
-            const previewContainer = document.createElement('div');
-            previewContainer.className = 'image-preview-container';
-            
-            // Create the image element
-            const img = document.createElement('img');
-            img.className = 'image-preview-thumbnail';
-            img.src = imageUrl;
-            img.alt = `Image ${i+1}`;
-            
-            // Add a remove button for each image
-            const removeBtn = document.createElement('button');
-            removeBtn.className = 'remove-image-btn';
-            removeBtn.innerHTML = '×';
-            removeBtn.setAttribute('data-index', i);
-            removeBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                // Remove this specific image
-                removeImage(i);
-            });
-            
-            // Add elements to container
-            previewContainer.appendChild(img);
-            previewContainer.appendChild(removeBtn);
-            imagePreviewArea.appendChild(previewContainer);
-        }
-        
-        // If there are more images than we're showing, add a count indicator
-        if (attachedImageUrls.length > displayLimit) {
-            const moreIndicator = document.createElement('div');
-            moreIndicator.className = 'more-images-indicator';
-            moreIndicator.textContent = `+${attachedImageUrls.length - displayLimit} more`;
-            imagePreviewArea.appendChild(moreIndicator);
-        }
-        
-        // Add a "clear all" button
-    }
+    // Removed updateImagePreviews function as we now use only the unified document preview area
+    // All image previews are now handled by updateDocumentPreviews function
     
     // Function to generate the unified document preview area containing both images and PDFs
     function updateDocumentPreviews() {
@@ -1195,21 +1129,27 @@ document.addEventListener('DOMContentLoaded', function() {
             const docItem = attachedDocuments[i];
             
             // Create a container for each preview
-            const previewContainer = window.document.createElement('div');
+            const previewContainer = document.createElement('div');
             previewContainer.className = 'document-preview-container';
             previewContainer.dataset.index = i;
             
             // Create the preview element based on document type
             if (docItem.type === 'image') {
+                // Add image-specific class to container
+                previewContainer.classList.add('image-document');
+                
                 // Create thumbnail for image
-                const img = window.document.createElement('img');
+                const img = document.createElement('img');
                 img.className = 'document-preview-thumbnail';
                 img.src = docItem.url;
                 img.alt = docItem.name || `Image ${i+1}`;
                 previewContainer.appendChild(img);
             } else if (docItem.type === 'pdf') {
+                // Add PDF-specific class to container
+                previewContainer.classList.add('pdf-document');
+                
                 // Create PDF icon for PDF
-                const pdfPreview = window.document.createElement('div');
+                const pdfPreview = document.createElement('div');
                 pdfPreview.className = 'pdf-preview-thumbnail';
                 pdfPreview.innerHTML = `
                     <i class="fa-solid fa-file-pdf"></i>
@@ -1219,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Add a remove button for each document
-            const removeBtn = window.document.createElement('button');
+            const removeBtn = document.createElement('button');
             removeBtn.className = 'remove-document-btn';
             removeBtn.innerHTML = '×';
             removeBtn.setAttribute('data-index', i);
@@ -1241,7 +1181,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // If there are more documents than we're showing, add a count indicator
         if (attachedDocuments.length > displayLimit) {
-            const moreIndicator = window.document.createElement('div');
+            const moreIndicator = document.createElement('div');
             moreIndicator.className = 'more-documents-indicator';
             moreIndicator.textContent = `+${attachedDocuments.length - displayLimit} more`;
             documentPreviewArea.appendChild(moreIndicator);
@@ -1249,7 +1189,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Add a "clear all" button if we have multiple documents
         if (attachedDocuments.length > 1) {
-            const clearAllBtn = window.document.createElement('button');
+            const clearAllBtn = document.createElement('button');
             clearAllBtn.className = 'clear-all-documents-btn';
             clearAllBtn.textContent = 'Clear All';
             clearAllBtn.addEventListener('click', () => {
@@ -1268,28 +1208,28 @@ document.addEventListener('DOMContentLoaded', function() {
         // Remove the image from the array
         if (index >= 0 && index < attachedImageUrls.length) {
             attachedImageUrls.splice(index, 1);
-            updateImagePreviews();
-            updateDocumentPreviews(); // Update unified document display
+            // Only update unified document display
+            updateDocumentPreviews(); 
         }
     }
     
-    // Legacy function for single image - redirect to new function
+    // Function for adding a single image
     function showImagePreview(imageUrl) {
         // Add the URL to our array if it's not already there
         if (imageUrl && !attachedImageUrls.includes(imageUrl)) {
             attachedImageUrls.push(imageUrl);
         }
         
-        // Update all previews
-        updateImagePreviews();
+        // Update document preview
+        updateDocumentPreviews();
     }
     
     // Clear all attached images
     function clearAttachedImages() {
         attachedImageBlob = null;
         attachedImageUrls = [];
-        updateImagePreviews();
-        updateDocumentPreviews(); // Update unified document display
+        // Only update unified document display
+        updateDocumentPreviews();
     }
     
     // Legacy function for backward compatibility
@@ -1297,16 +1237,16 @@ document.addEventListener('DOMContentLoaded', function() {
         clearAttachedImages();
     }
     
-    // Function to clear attached PDF
+    // Function to clear attached PDF (part of unified document handling)
     function clearAttachedPdf() {
         attachedPdfUrl = null;
         attachedPdfName = null;
         
-        // Remove any PDF indicators from the UI
+        // Remove any standalone PDF indicators from the UI (legacy support)
         const pdfIndicators = document.querySelectorAll('.pdf-indicator');
         pdfIndicators.forEach(indicator => indicator.remove());
         
-        // Update document previews
+        // Update unified document preview area
         updateDocumentPreviews();
         
         // Update send button state
@@ -1316,16 +1256,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to remove a document from the unified display
     function removeDocument(index) {
         if (index >= 0 && index < attachedDocuments.length) {
-            const document = attachedDocuments[index];
+            const docItem = attachedDocuments[index]; // Renamed to avoid shadowing global 'document' object
             
-            if (document.type === 'image') {
+            if (docItem.type === 'image') {
                 // Find the corresponding image in the image URLs array
-                const imageIndex = attachedImageUrls.indexOf(document.url);
+                const imageIndex = attachedImageUrls.indexOf(docItem.url);
                 if (imageIndex !== -1) {
                     attachedImageUrls.splice(imageIndex, 1);
-                    updateImagePreviews();
+                    // updateImagePreviews(); // Removed in favor of unified document preview
+                    updateDocumentPreviews(); // Update unified document display
                 }
-            } else if (document.type === 'pdf') {
+            } else if (docItem.type === 'pdf') {
                 // Clear the PDF
                 clearAttachedPdf();
             }
@@ -1341,12 +1282,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to open document viewer for both images and PDFs
     function openDocumentViewer(index) {
         if (index >= 0 && index < attachedDocuments.length) {
-            const document = attachedDocuments[index];
+            const docItem = attachedDocuments[index]; // Renamed to avoid shadowing global 'document' object
             
-            if (document.type === 'image') {
+            if (docItem.type === 'image') {
                 // For images, open in a new tab
-                window.open(document.url, '_blank');
-            } else if (document.type === 'pdf') {
+                window.open(docItem.url, '_blank');
+            } else if (docItem.type === 'pdf') {
                 // For PDFs, display in our modal
                 const pdfViewerModal = document.getElementById('pdf-viewer-modal');
                 const pdfIframe = document.getElementById('pdf-iframe');
@@ -1354,11 +1295,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 if (pdfViewerModal && pdfIframe) {
                     // Set the PDF source - if it's a data URL, use it directly
-                    pdfIframe.src = document.url;
+                    pdfIframe.src = docItem.url; // Fixed: renamed to avoid shadowing global 'document' object
                     
                     // Set the title
                     if (pdfTitle) {
-                        pdfTitle.textContent = document.name || 'Document Viewer';
+                        pdfTitle.textContent = docItem.name || 'Document Viewer'; // Fixed: renamed to avoid shadowing global 'document' object
                     }
                     
                     // Show the modal
@@ -4088,7 +4029,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle file selection - now handled through the unified upload approach
     // Keeping this code is no longer necessary as we'll use the unified file upload functionality
     
-    // Handle file input change
+    // Get reference to file upload input if it exists
+    const fileUploadInput = document.getElementById('fileUpload');
+    
+    // Handle file input change if element exists
     if (fileUploadInput) {
         fileUploadInput.addEventListener('change', function() {
             // Only process if we have files
