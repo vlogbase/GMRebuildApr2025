@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF-Capable Models Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <style>
+        body {
+            background-color: #212529;
+            color: white;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+        }
+        .pricing-table {
+            margin-top: 20px;
+        }
+        .cost-band-indicator {
+            display: inline-block;
+            font-size: 0.7rem;
+            padding: 0.15rem 0.3rem;
+            margin-left: 8px;
+            border-radius: 3px;
+        }
+        .cost-band-1 {
+            background-color: #198754;
+            color: white;
+        }
+        .cost-band-2 {
+            background-color: #0dcaf0;
+            color: #212529;
+        }
+        .cost-band-3-warn {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        .cost-band-4-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        #modelSearch {
+            background-color: #2c3034;
+            color: white;
+            border-color: #495057;
+        }
+        #modelSearch:focus {
+            box-shadow: 0 0 0 0.25rem rgba(255, 255, 255, 0.2);
+        }
+        .text-highlight {
+            color: #0dcaf0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="mb-4">Model Pricing with PDF Capabilities</h1>
+        
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <input type="text" class="form-control" id="modelSearch" placeholder="Search models...">
+            </div>
+        </div>
+        
+        <div class="table-responsive pricing-table">
+            <table id="pricingTable" class="table table-dark table-hover">
+                <thead class="table-dark sticky-top">
+                    <tr>
+                        <th onclick="sortPricingTable(0)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom py-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                Model <i id="sort-icon-0" class="fas fa-sort-up"></i>
+                            </div>
+                        </th>
+                        <th onclick="sortPricingTable(1)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">
+                            <div class="d-flex justify-content-end align-items-center">
+                                Input Cost <i id="sort-icon-1" class="fas fa-sort"></i>
+                            </div>
+                        </th>
+                        <th onclick="sortPricingTable(2)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">
+                            <div class="d-flex justify-content-end align-items-center">
+                                Output Cost <i id="sort-icon-2" class="fas fa-sort"></i>
+                            </div>
+                        </th>
+                        <th onclick="sortPricingTable(3)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-end py-3">
+                            <div class="d-flex justify-content-end align-items-center">
+                                Context <i id="sort-icon-3" class="fas fa-sort"></i>
+                            </div>
+                        </th>
+                        <th onclick="sortPricingTable(4)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-center py-3">
+                            <div class="d-flex justify-content-center align-items-center">
+                                Multimodal <i id="sort-icon-4" class="fas fa-sort"></i>
+                            </div>
+                        </th>
+                        <th onclick="sortPricingTable(5)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-center py-3">
+                            <div class="d-flex justify-content-center align-items-center">
+                                PDFs <i id="sort-icon-5" class="fas fa-sort"></i>
+                            </div>
+                        </th>
+                        <th onclick="sortPricingTable(6)" style="cursor:pointer; position: sticky; top: 0; z-index: 10; background-color: #212529;" class="border-bottom text-center py-3">
+                            <div class="d-flex justify-content-center align-items-center">
+                                Cost Band <i id="sort-icon-6" class="fas fa-sort"></i>
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="pricingTableBody">
+                    <!-- Table content will be populated by JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-4">
+            <h3>Multi-level Sorting Instructions:</h3>
+            <p>Click on a column header to sort by that column. Then click on another column to add a secondary sort:</p>
+            <ul>
+                <li>Example: Click on "PDFs" column to sort PDF-capable models first, then click on "Input Cost" to sort by price within each group.</li>
+                <li>The sort direction is indicated by arrows (up ▲ for ascending, down ▼ for descending).</li>
+                <li>Previous sort criteria are maintained as secondary sorts and shown with lighter arrows.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Model Pricing Table functionality
+        let pricingData = [];
+        let sortColumn = 0;
+        let sortDirection = 1; // 1 for ascending, -1 for descending
+        let previousSorts = []; // Track previous sort criteria for multi-level sorting
+        
+        // Function to populate test data
+        function loadTestData() {
+            pricingData = [
+                {
+                    model_name: "Gemini 1.5 Pro",
+                    model_id: "google/gemini-1.5-pro",
+                    input_price: "$0.003",
+                    output_price: "$0.009",
+                    context_length: "1000000",
+                    multimodal: "Yes",
+                    pdfs: "Yes",
+                    cost_band: "$$"
+                },
+                {
+                    model_name: "Claude 3 Opus",
+                    model_id: "anthropic/claude-3-opus",
+                    input_price: "$0.015",
+                    output_price: "$0.075",
+                    context_length: "200000",
+                    multimodal: "Yes",
+                    pdfs: "No",
+                    cost_band: "$$$"
+                },
+                {
+                    model_name: "Gemini 2.5 Flash",
+                    model_id: "google/gemini-2.5-flash",
+                    input_price: "$0.0015",
+                    output_price: "$0.007",
+                    context_length: "32000",
+                    multimodal: "Yes",
+                    pdfs: "Yes",
+                    cost_band: "$"
+                },
+                {
+                    model_name: "GPT-4o",
+                    model_id: "openai/gpt-4o",
+                    input_price: "$0.005",
+                    output_price: "$0.015",
+                    context_length: "128000",
+                    multimodal: "Yes",
+                    pdfs: "Yes",
+                    cost_band: "$$"
+                },
+                {
+                    model_name: "GPT-3.5 Turbo",
+                    model_id: "openai/gpt-3.5-turbo",
+                    input_price: "$0.0005",
+                    output_price: "$0.0015",
+                    context_length: "16000",
+                    multimodal: "No",
+                    pdfs: "No",
+                    cost_band: "$"
+                },
+                {
+                    model_name: "Llama 3 70B",
+                    model_id: "meta-llama/llama-3-70b",
+                    input_price: "$0.0009",
+                    output_price: "$0.0009",
+                    context_length: "8192",
+                    multimodal: "No",
+                    pdfs: "No",
+                    cost_band: "$"
+                },
+                {
+                    model_name: "Claude 3 Haiku",
+                    model_id: "anthropic/claude-3-haiku",
+                    input_price: "$0.001",
+                    output_price: "$0.005",
+                    context_length: "200000",
+                    multimodal: "Yes",
+                    pdfs: "No",
+                    cost_band: "$"
+                },
+                {
+                    model_name: "Claude 3 Sonnet",
+                    model_id: "anthropic/claude-3-sonnet",
+                    input_price: "$0.003",
+                    output_price: "$0.015",
+                    context_length: "200000",
+                    multimodal: "Yes",
+                    pdfs: "No",
+                    cost_band: "$$"
+                },
+                {
+                    model_name: "Mistral Large",
+                    model_id: "mistral/mistral-large",
+                    input_price: "$0.002",
+                    output_price: "$0.006",
+                    context_length: "32000",
+                    multimodal: "No",
+                    pdfs: "No",
+                    cost_band: "$"
+                },
+                {
+                    model_name: "Gemini 2.5 Pro",
+                    model_id: "google/gemini-2.5-pro",
+                    input_price: "$0.0025",
+                    output_price: "$0.0075",
+                    context_length: "128000",
+                    multimodal: "Yes",
+                    pdfs: "Yes",
+                    cost_band: "$"
+                },
+                {
+                    model_name: "Azure GPT-4 with Vision",
+                    model_id: "azure/gpt-4-vision",
+                    input_price: "$0.01",
+                    output_price: "$0.03",
+                    context_length: "128000",
+                    multimodal: "Yes",
+                    pdfs: "Yes",
+                    cost_band: "$$$"
+                },
+                {
+                    model_name: "Anthropic Claude 3 Vision",
+                    model_id: "anthropic/claude-3-vision",
+                    input_price: "$0.008",
+                    output_price: "$0.024",
+                    context_length: "100000",
+                    multimodal: "Yes",
+                    pdfs: "No",
+                    cost_band: "$$"
+                },
+                {
+                    model_name: "OpenAI o1 Mini",
+                    model_id: "openai/o1-mini",
+                    input_price: "$0.0015",
+                    output_price: "$0.003",
+                    context_length: "128000",
+                    multimodal: "No",
+                    pdfs: "Yes",
+                    cost_band: "$"
+                },
+                {
+                    model_name: "VertexAI Gemini 1.5 Flash",
+                    model_id: "vertex/gemini-1.5-flash",
+                    input_price: "$0.0007",
+                    output_price: "$0.0007",
+                    context_length: "1000000",
+                    multimodal: "Yes",
+                    pdfs: "Yes",
+                    cost_band: "$"
+                },
+                {
+                    model_name: "GPT-4 Turbo",
+                    model_id: "openai/gpt-4-turbo",
+                    input_price: "$0.01",
+                    output_price: "$0.03",
+                    context_length: "128000",
+                    multimodal: "No",
+                    pdfs: "No",
+                    cost_band: "$$$"
+                }
+            ];
+            
+            renderPricingTable();
+        }
+        
+        // Function to render the pricing table
+        function renderPricingTable() {
+            const pricingTableBody = document.getElementById('pricingTableBody');
+            const searchTerm = document.getElementById('modelSearch')?.value.toLowerCase() || '';
+            
+            // Filter data based on search term
+            const filteredData = pricingData.filter(model => 
+                model.model_name.toLowerCase().includes(searchTerm) || 
+                model.model_id.toLowerCase().includes(searchTerm)
+            );
+            
+            // Sort data with multi-level sorting support
+            filteredData.sort((a, b) => {
+                // Create a function to get values for any column
+                function getColumnValues(item, colIndex) {
+                    // Check for special cases
+                    const isAutoRouter = item.model_id.toLowerCase().includes('router') || item.model_id.toLowerCase().includes('openrouter');
+                    const isFreeModel = item.input_price === '$0.00' && item.output_price === '$0.00';
+                    
+                    let value;
+                    
+                    switch(colIndex) {
+                        case 0: // Model Name
+                            value = item.model_name.toLowerCase();
+                            break;
+                            
+                        case 1: // Input Cost
+                            if (item.input_price === 'Variable' || isAutoRouter) {
+                                value = 0.00005;
+                            } else if (item.input_price === 'N/A') {
+                                value = 0;
+                            } else {
+                                value = parseFloat(item.input_price.replace('$', ''));
+                                if (isNaN(value)) value = 0;
+                            }
+                            break;
+                            
+                        case 2: // Output Cost
+                            if (item.output_price === 'Variable' || isAutoRouter) {
+                                value = 0.00005;
+                            } else if (item.output_price === 'N/A') {
+                                value = 0;
+                            } else {
+                                value = parseFloat(item.output_price.replace('$', ''));
+                                if (isNaN(value)) value = 0;
+                            }
+                            break;
+                            
+                        case 3: // Context Length
+                            value = item.context_length === 'N/A' ? 0 : parseInt(item.context_length);
+                            break;
+                            
+                        case 4: // Multimodal
+                            value = item.multimodal === 'Yes' ? 0 : 1;
+                            break;
+                        
+                        case 5: // PDFs
+                            value = item.pdfs === 'Yes' ? 0 : 1;
+                            break;
+                        
+                        case 6: // Cost Band
+                            value = item.cost_band ? item.cost_band.length : 0;
+                            break;
+                            
+                        default:
+                            value = item.model_name.toLowerCase();
+                    }
+                    
+                    return value;
+                }
+                
+                // First compare by primary sort column
+                const aValue = getColumnValues(a, sortColumn);
+                const bValue = getColumnValues(b, sortColumn);
+                
+                // Compare values based on sort direction
+                if (aValue < bValue) return -1 * sortDirection;
+                if (aValue > bValue) return 1 * sortDirection;
+                
+                // If values are equal, check secondary sort criteria
+                for (const prevSort of previousSorts) {
+                    const prevAValue = getColumnValues(a, prevSort.column);
+                    const prevBValue = getColumnValues(b, prevSort.column);
+                    
+                    if (prevAValue < prevBValue) return -1 * prevSort.direction;
+                    if (prevAValue > prevBValue) return 1 * prevSort.direction;
+                }
+                
+                // If everything is equal, use model name as final tiebreaker
+                const aName = a.model_name.toLowerCase();
+                const bName = b.model_name.toLowerCase();
+                if (aName < bName) return -1;
+                if (aName > bName) return 1;
+                return 0;
+            });
+            
+            // Generate table content
+            if (filteredData.length === 0) {
+                pricingTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-3">No models found matching "${searchTerm}"</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            pricingTableBody.innerHTML = filteredData.map(model => {
+                // Determine row styling based on model type
+                let modelNameClass = '';
+                const isAutoRouter = model.model_id.toLowerCase().includes('router') || model.model_id.toLowerCase().includes('openrouter');
+                const isFreeModel = model.input_price === '$0.00' && model.output_price === '$0.00';
+                
+                if (isAutoRouter) {
+                    modelNameClass = 'text-warning';
+                } else if (isFreeModel) {
+                    modelNameClass = 'text-info';
+                }
+                
+                // Determine cost band and badge styling
+                let costBand = '';
+                let costBandClass = '';
+                
+                if (model.cost_band) {
+                    costBand = model.cost_band;
+                    
+                    if (model.cost_band === '$$$$') {
+                        costBandClass = 'cost-band-4-danger';
+                    } else if (model.cost_band === '$$$') {
+                        costBandClass = 'cost-band-3-warn';
+                    } else if (model.cost_band === '$$') {
+                        costBandClass = 'cost-band-2';
+                    } else if (model.cost_band === '$') {
+                        costBandClass = 'cost-band-1';
+                    }
+                }
+                
+                // Handle price display
+                let inputPriceDisplay = model.input_price;
+                let outputPriceDisplay = model.output_price;
+                
+                // Format context length display
+                let contextDisplay = model.context_length;
+                if (model.context_length !== 'N/A' && !isNaN(model.context_length)) {
+                    const contextNum = parseInt(model.context_length);
+                    contextDisplay = contextNum >= 1000000 
+                        ? `${(contextNum / 1000000).toFixed(1)}M` 
+                        : `${(contextNum / 1000).toFixed(0)}K`;
+                }
+                
+                // Create multimodal badge/label for the dedicated column
+                const multimodalDisplay = model.multimodal === 'Yes' 
+                    ? '<span class="badge bg-success">Yes</span>' 
+                    : '<span class="badge bg-secondary">No</span>';
+                
+                return `
+                    <tr>
+                        <td>
+                            <div>
+                                <span class="${modelNameClass} fw-medium">${model.model_name}</span>
+                                ${costBand ? `<span class="cost-band-indicator ${costBandClass}">${costBand}</span>` : ''}
+                            </div>
+                            <small class="text-muted d-block text-truncate" style="max-width: 250px;">${model.model_id}</small>
+                        </td>
+                        <td class="text-end">${inputPriceDisplay}</td>
+                        <td class="text-end">${outputPriceDisplay}</td>
+                        <td class="text-end">${contextDisplay}</td>
+                        <td class="text-center">
+                            ${multimodalDisplay}
+                        </td>
+                        <td class="text-center">
+                            ${model.pdfs === 'Yes' ? 
+                                '<span class="badge bg-success">Yes</span>' : 
+                                '<span class="badge bg-secondary">No</span>'}
+                        </td>
+                        <td class="text-center">
+                            ${costBand ? `<span class="cost-band-indicator ${costBandClass}">${costBand}</span>` : ''}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // Function to handle table sorting with multi-level sort support
+        window.sortPricingTable = function(columnIndex) {
+            // If clicking the same column, reverse the sort direction
+            if (sortColumn === columnIndex) {
+                sortDirection *= -1;
+            } else {
+                // Save the previous sort criteria before changing
+                if (sortColumn !== columnIndex) {
+                    // Only keep the most recent sort in history
+                    if (previousSorts.length > 0) {
+                        // If the current column is already in previousSorts, remove it
+                        previousSorts = previousSorts.filter(sort => sort.column !== columnIndex);
+                    }
+                    
+                    // Add the current sort to history before changing
+                    previousSorts.unshift({
+                        column: sortColumn,
+                        direction: sortDirection
+                    });
+                    
+                    // Limit history to 2 levels for simplicity
+                    if (previousSorts.length > 2) {
+                        previousSorts.pop();
+                    }
+                }
+                
+                // Set new primary sort
+                sortColumn = columnIndex;
+                sortDirection = 1;
+            }
+            
+            // Update the table with new sort order
+            renderPricingTable();
+            
+            // Update sort icons to show primary and secondary sorts
+            document.querySelectorAll('#pricingTable th i').forEach((icon, index) => {
+                if (index === sortColumn) {
+                    // Primary sort (current)
+                    icon.className = sortDirection === 1 ? 'fas fa-sort-up' : 'fas fa-sort-down';
+                } else if (previousSorts.some(sort => sort.column === index)) {
+                    // Secondary sort (previous)
+                    const prevSort = previousSorts.find(sort => sort.column === index);
+                    icon.className = prevSort.direction === 1 ? 'fas fa-sort-up text-muted' : 'fas fa-sort-down text-muted';
+                } else {
+                    // Not sorted
+                    icon.className = 'fas fa-sort';
+                }
+            });
+        };
+        
+        // Search functionality for pricing table
+        if (document.getElementById('modelSearch')) {
+            document.getElementById('modelSearch').addEventListener('input', renderPricingTable);
+        }
+        
+        // Initialize the table with test data
+        document.addEventListener('DOMContentLoaded', function() {
+            loadTestData();
+        });
+    </script>
+</body>
+</html>

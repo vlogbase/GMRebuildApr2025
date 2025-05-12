@@ -806,6 +806,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let pricingData = [];
     let sortColumn = 0;
     let sortDirection = 1; // 1 for ascending, -1 for descending
+    let previousSorts = []; // Track previous sort criteria for multi-level sorting
     
     // Function to load pricing data from API
     function loadPricingData() {
@@ -973,109 +974,84 @@ document.addEventListener('DOMContentLoaded', function() {
             model.model_id.toLowerCase().includes(searchTerm)
         );
         
-        // Sort data
+        // Sort data with multi-level sorting support
         filteredData.sort((a, b) => {
-            let aValue, bValue;
-            
-            // Check for special cases
-            const aIsAutoRouter = a.model_id.toLowerCase().includes('router') || a.model_id.toLowerCase().includes('openrouter');
-            const bIsAutoRouter = b.model_id.toLowerCase().includes('router') || b.model_id.toLowerCase().includes('openrouter');
-            const aIsFreeModel = a.input_price === '$0.00' && a.output_price === '$0.00';
-            const bIsFreeModel = b.input_price === '$0.00' && b.output_price === '$0.00';
-            
-            // Handle different columns
-            switch(sortColumn) {
-                case 0: // Model Name
-                    aValue = a.model_name.toLowerCase();
-                    bValue = b.model_name.toLowerCase();
-                    break;
-                    
-                case 1: // Input Cost
-                    // Special handling for pricing sorts
-                    if (a.input_price === 'Variable' || aIsAutoRouter) {
-                        // For AutoRouter models, sort them between free and paid models
-                        aValue = 0.00005; 
-                    } else if (a.input_price === 'N/A') {
-                        // Treat N/A as $0.00 for sorting
-                        aValue = 0;
-                    } else {
-                        // Parse all prices as numbers for sorting
-                        aValue = parseFloat(a.input_price.replace('$', ''));
-                        // Make sure $0.00 values are treated as 0 for sorting
-                        if (isNaN(aValue)) aValue = 0;
-                    }
-                    
-                    if (b.input_price === 'Variable' || bIsAutoRouter) {
-                        bValue = 0.00005;
-                    } else if (b.input_price === 'N/A') {
-                        // Treat N/A as $0.00 for sorting
-                        bValue = 0;
-                    } else {
-                        bValue = parseFloat(b.input_price.replace('$', ''));
-                        // Make sure $0.00 values are treated as 0 for sorting
-                        if (isNaN(bValue)) bValue = 0;
-                    }
-                    break;
-                    
-                case 2: // Output Cost
-                    // Special handling for output cost sorting
-                    if (a.output_price === 'Variable' || aIsAutoRouter) {
-                        aValue = 0.00005;
-                    } else if (a.output_price === 'N/A') {
-                        // Treat N/A as $0.00 for sorting
-                        aValue = 0;
-                    } else {
-                        aValue = parseFloat(a.output_price.replace('$', ''));
-                        // Make sure $0.00 values are treated as 0 for sorting
-                        if (isNaN(aValue)) aValue = 0;
-                    }
-                    
-                    if (b.output_price === 'Variable' || bIsAutoRouter) {
-                        bValue = 0.00005;
-                    } else if (b.output_price === 'N/A') {
-                        // Treat N/A as $0.00 for sorting
-                        bValue = 0;
-                    } else {
-                        bValue = parseFloat(b.output_price.replace('$', ''));
-                        // Make sure $0.00 values are treated as 0 for sorting
-                        if (isNaN(bValue)) bValue = 0;
-                    }
-                    break;
-                    
-                case 3: // Context Length
-                    // Context length sorting with proper handling for N/A values
-                    aValue = a.context_length === 'N/A' ? 0 : parseInt(a.context_length);
-                    bValue = b.context_length === 'N/A' ? 0 : parseInt(b.context_length);
-                    break;
-                    
-                case 4: // Multimodal
-                    // Yes comes before No for multimodal sorting
-                    aValue = a.multimodal === 'Yes' ? 0 : 1;
-                    bValue = b.multimodal === 'Yes' ? 0 : 1;
-                    break;
+            // Create a function to get values for any column
+            function getColumnValues(item, colIndex) {
+                // Check for special cases
+                const isAutoRouter = item.model_id.toLowerCase().includes('router') || item.model_id.toLowerCase().includes('openrouter');
+                const isFreeModel = item.input_price === '$0.00' && item.output_price === '$0.00';
                 
-                case 5: // PDFs
-                    // Yes comes before No for PDFs sorting
-                    aValue = a.pdfs === 'Yes' ? 0 : 1;
-                    bValue = b.pdfs === 'Yes' ? 0 : 1;
-                    break;
+                let value;
                 
-                case 6: // Cost Band
-                    // Sort by number of $ characters
-                    aValue = a.cost_band ? a.cost_band.length : 0;
-                    bValue = b.cost_band ? b.cost_band.length : 0;
-                    break;
+                switch(colIndex) {
+                    case 0: // Model Name
+                        value = item.model_name.toLowerCase();
+                        break;
+                        
+                    case 1: // Input Cost
+                        if (item.input_price === 'Variable' || isAutoRouter) {
+                            value = 0.00005;
+                        } else if (item.input_price === 'N/A') {
+                            value = 0;
+                        } else {
+                            value = parseFloat(item.input_price.replace('$', ''));
+                            if (isNaN(value)) value = 0;
+                        }
+                        break;
+                        
+                    case 2: // Output Cost
+                        if (item.output_price === 'Variable' || isAutoRouter) {
+                            value = 0.00005;
+                        } else if (item.output_price === 'N/A') {
+                            value = 0;
+                        } else {
+                            value = parseFloat(item.output_price.replace('$', ''));
+                            if (isNaN(value)) value = 0;
+                        }
+                        break;
+                        
+                    case 3: // Context Length
+                        value = item.context_length === 'N/A' ? 0 : parseInt(item.context_length);
+                        break;
+                        
+                    case 4: // Multimodal
+                        value = item.multimodal === 'Yes' ? 0 : 1;
+                        break;
                     
-                default:
-                    aValue = a.model_name.toLowerCase();
-                    bValue = b.model_name.toLowerCase();
+                    case 5: // PDFs
+                        value = item.pdfs === 'Yes' ? 0 : 1;
+                        break;
+                    
+                    case 6: // Cost Band
+                        value = item.cost_band ? item.cost_band.length : 0;
+                        break;
+                        
+                    default:
+                        value = item.model_name.toLowerCase();
+                }
+                
+                return value;
             }
+            
+            // First compare by primary sort column
+            const aValue = getColumnValues(a, sortColumn);
+            const bValue = getColumnValues(b, sortColumn);
             
             // Compare values based on sort direction
             if (aValue < bValue) return -1 * sortDirection;
             if (aValue > bValue) return 1 * sortDirection;
             
-            // If values are equal, use model name as secondary sort
+            // If values are equal, check secondary sort criteria
+            for (const prevSort of previousSorts) {
+                const prevAValue = getColumnValues(a, prevSort.column);
+                const prevBValue = getColumnValues(b, prevSort.column);
+                
+                if (prevAValue < prevBValue) return -1 * prevSort.direction;
+                if (prevAValue > prevBValue) return 1 * prevSort.direction;
+            }
+            
+            // If everything is equal, use model name as final tiebreaker
             const aName = a.model_name.toLowerCase();
             const bName = b.model_name.toLowerCase();
             if (aName < bName) return -1;
@@ -1163,17 +1139,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     </span>`;
             }
             
-            // Format free models with green color
+            // Format free models with consistent color (no special color)
             if (isFreeModel) {
-                inputPriceDisplay = `<span class="text-success">$0.00</span>`;
-                outputPriceDisplay = `<span class="text-success">$0.00</span>`;
+                inputPriceDisplay = `$0.00`;
+                outputPriceDisplay = `$0.00`;
             }
             
-            // Determine if costs should have special color for good value models
-            const goodPriceClass = isGoodValue ? 'text-success' : '';
-            if (isGoodValue && !isAutoRouter && !isFreeModel) {
-                inputPriceDisplay = `<span class="${goodPriceClass}">${model.input_price}</span>`;
-            }
+            // Remove special color for "good value" models to make all pricing consistent
+            // No special highlighting for any price values
             
             // Format context length with K or M suffix
             let contextDisplay = model.context_length;
@@ -1217,12 +1190,33 @@ document.addEventListener('DOMContentLoaded', function() {
         }).join('');
     }
     
-    // Function to handle table sorting
+    // Function to handle table sorting with multi-level sort support
     window.sortPricingTable = function(columnIndex) {
         // If clicking the same column, reverse the sort direction
         if (sortColumn === columnIndex) {
             sortDirection *= -1;
         } else {
+            // Save the previous sort criteria before changing
+            if (sortColumn !== columnIndex) {
+                // Only keep the most recent sort in history
+                if (previousSorts.length > 0) {
+                    // If the current column is already in previousSorts, remove it
+                    previousSorts = previousSorts.filter(sort => sort.column !== columnIndex);
+                }
+                
+                // Add the current sort to history before changing
+                previousSorts.unshift({
+                    column: sortColumn,
+                    direction: sortDirection
+                });
+                
+                // Limit history to 2 levels for simplicity
+                if (previousSorts.length > 2) {
+                    previousSorts.pop();
+                }
+            }
+            
+            // Set new primary sort
             sortColumn = columnIndex;
             sortDirection = 1;
         }
@@ -1230,11 +1224,17 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update the table with new sort order
         renderPricingTable();
         
-        // Update sort icons (optional enhancement)
+        // Update sort icons to show primary and secondary sorts
         document.querySelectorAll('#pricingTable th i').forEach((icon, index) => {
             if (index === sortColumn) {
+                // Primary sort (current)
                 icon.className = sortDirection === 1 ? 'fas fa-sort-up' : 'fas fa-sort-down';
+            } else if (previousSorts.some(sort => sort.column === index)) {
+                // Secondary sort (previous)
+                const prevSort = previousSorts.find(sort => sort.column === index);
+                icon.className = prevSort.direction === 1 ? 'fas fa-sort-up text-muted' : 'fas fa-sort-down text-muted';
             } else {
+                // Not sorted
                 icon.className = 'fas fa-sort';
             }
         });
