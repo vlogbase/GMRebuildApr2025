@@ -1,5 +1,2 @@
-[workflow]
-name = "app"
-description = "Run the Flask application"
+# This is a workflow for running the app
 run = "python app_workflow.py"
-persistent = true

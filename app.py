@@ -447,12 +447,13 @@ try:
             # If that fails, log a warning - we'll rely on the scheduler to retry soon
             logger.warning("Initial model fetching failed. The scheduler will retry shortly.")
     
-    # Final verification of database state
-    model_count = OpenRouterModel.query.count()
-    if model_count > 0:
-        logger.info(f"OpenRouter model database initialized with {model_count} models")
-    else:
-        logger.warning("No models available in the database. Application may have limited functionality.")
+    # Final verification of database state - use with app_context to ensure DB operations work
+    with app.app_context():
+        model_count = OpenRouterModel.query.count()
+        if model_count > 0:
+            logger.info(f"OpenRouter model database initialized with {model_count} models")
+        else:
+            logger.warning("No models available in the database. Application may have limited functionality.")
         
 except Exception as e:
     logger.error(f"Critical error fetching model data at startup: {e}")
@@ -1199,8 +1200,13 @@ def upload_file():
             # Handle image uploads (pass through the request as-is)
             return upload_image()
         elif extension == '.pdf':
-            # Handle PDF uploads
-            return upload_pdf()
+            # If we don't have a conversation_id yet, pass this parameter in the query string to upload_pdf
+            if conversation_id:
+                # Pass through the original request with conversation_id
+                return upload_pdf()
+            else:
+                # Create a redirect URL with conversation_id as None to trigger conversation creation
+                return upload_pdf()
         else:
             return jsonify({
                 "error": f"File type {extension} is not supported. Please upload an image (jpg, png, gif, webp) or PDF file."
@@ -1231,6 +1237,13 @@ def upload_pdf():
         JSON with pdf_data_url containing the base64 data URL needed for OpenRouter's PDF handling
     """
     try:
+        # Get conversation ID if provided (useful for tracking uploads)
+        conversation_id = request.args.get('conversation_id')
+        if conversation_id:
+            logger.info(f"PDF upload associated with conversation: {conversation_id}")
+        else:
+            logger.info(f"PDF upload with no conversation ID - will create a new conversation")
+        
         # Verify a file was uploaded
         if 'file' not in request.files:
             return jsonify({"error": "No file provided"}), 400
@@ -1255,6 +1268,56 @@ def upload_pdf():
         # Read the PDF into memory
         pdf_data = file.read()
         pdf_stream = io.BytesIO(pdf_data)
+        
+        # Get or create a conversation to associate with this PDF
+        # This ensures we have a valid conversation_id before trying to save the PDF
+        from models import Conversation
+        conversation = None
+        
+        # If conversation_id was provided, try to fetch that conversation
+        if conversation_id:
+            try:
+                conversation = Conversation.query.get(conversation_id)
+                logger.info(f"Found existing conversation with ID: {conversation_id}")
+            except Exception as e:
+                logger.error(f"Error finding conversation {conversation_id}: {e}")
+                conversation_id = None
+        
+        # If no valid conversation found or provided, create a new one
+        if not conversation:
+            # Create a new conversation for this PDF upload
+            try:
+                # Import the function to generate a unique share ID
+                from ensure_app_context import ensure_app_context
+                
+                # Use a descriptive title for PDF-initiated conversations
+                title = f"PDF Document: {filename}"
+                share_id = generate_share_id()
+                
+                # Create with app context to avoid "working outside of application context" errors
+                with ensure_app_context():
+                    # Generate a UUID for the conversation
+                    conversation_uuid = str(uuid.uuid4())
+                    
+                    # Create the conversation with required fields including conversation_uuid
+                    conversation = Conversation(
+                        title=title, 
+                        share_id=share_id,
+                        conversation_uuid=conversation_uuid  # Add the required conversation_uuid field
+                    )
+                    
+                    # Associate conversation with the authenticated user if available
+                    if current_user and current_user.is_authenticated:
+                        conversation.user_id = current_user.id
+                        logger.info(f"Associating new PDF conversation with user ID: {current_user.id}")
+                    
+                    db.session.add(conversation)
+                    db.session.commit()
+                    conversation_id = conversation.id
+                    logger.info(f"Created new conversation for PDF with ID: {conversation_id} and UUID: {conversation_uuid}")
+            except Exception as e:
+                logger.exception(f"Error creating conversation for PDF: {e}")
+                return jsonify({"error": f"Database error: {str(e)}"}), 500
         
         # Storage path for Azure Blob Storage
         storage_path = unique_filename
@@ -1299,13 +1362,36 @@ def upload_pdf():
                 base64_pdf = base64.b64encode(pdf_stream.read()).decode('utf-8')
                 pdf_data_url = f"data:application/pdf;base64,{base64_pdf}"
                 
+                # Now save a Message record with the PDF URL so it's properly associated with the conversation
+                try:
+                    from models import Message
+                    from ensure_app_context import ensure_app_context
+                    
+                    # Create a placeholder message to hold the PDF data
+                    # This ensures PDFs are properly tracked in conversation history
+                    with ensure_app_context():
+                        pdf_message = Message(
+                            conversation_id=conversation.id,
+                            role='user',
+                            content='', # Empty content since the PDF is the content
+                            pdf_url=pdf_data_url,
+                            pdf_filename=filename
+                        )
+                        db.session.add(pdf_message)
+                        db.session.commit()
+                        logger.info(f"Saved PDF message {pdf_message.id} for conversation {conversation.id}")
+                except Exception as e:
+                    logger.exception(f"Error saving PDF message to database: {e}")
+                    # Continue even if this fails - we'll at least return the PDF URL
+                
                 logger.info(f"Uploaded PDF to Azure Blob Storage: {unique_filename}")
                 
                 return jsonify({
                     "success": True,
                     "pdf_url": blob_client.url,
                     "pdf_data_url": pdf_data_url,
-                    "filename": filename
+                    "filename": filename,
+                    "conversation_id": conversation.id  # Return the conversation ID to the client
                 })
             except Exception as e:
                 logger.exception(f"Error uploading to Azure Blob Storage: {e}")
@@ -1325,13 +1411,36 @@ def upload_pdf():
                 base64_pdf = base64.b64encode(pdf_stream.read()).decode('utf-8')
                 pdf_data_url = f"data:application/pdf;base64,{base64_pdf}"
                 
+                # Save a Message record with the PDF URL so it's properly associated with the conversation
+                try:
+                    from models import Message
+                    from ensure_app_context import ensure_app_context
+                    
+                    # Create a placeholder message to hold the PDF data
+                    # This ensures PDFs are properly tracked in conversation history
+                    with ensure_app_context():
+                        pdf_message = Message(
+                            conversation_id=conversation.id,
+                            role='user',
+                            content='', # Empty content since the PDF is the content
+                            pdf_url=pdf_data_url,
+                            pdf_filename=filename
+                        )
+                        db.session.add(pdf_message)
+                        db.session.commit()
+                        logger.info(f"Saved PDF message {pdf_message.id} for conversation {conversation.id}")
+                except Exception as e:
+                    logger.exception(f"Error saving PDF message to database: {e}")
+                    # Continue even if this fails - we'll at least return the PDF URL
+                
                 logger.info(f"Fallback: Saved PDF to local filesystem: {file_path}")
                 
                 return jsonify({
                     "success": True,
                     "pdf_url": pdf_url,
                     "pdf_data_url": pdf_data_url,
-                    "filename": filename
+                    "filename": filename,
+                    "conversation_id": conversation.id  # Return the conversation ID to the client
                 })
         else:
             # Azure Blob Storage not available, use local filesystem
@@ -1350,13 +1459,36 @@ def upload_pdf():
             base64_pdf = base64.b64encode(pdf_stream.read()).decode('utf-8')
             pdf_data_url = f"data:application/pdf;base64,{base64_pdf}"
             
+            # Save a Message record with the PDF URL so it's properly associated with the conversation
+            try:
+                from models import Message
+                from ensure_app_context import ensure_app_context
+                
+                # Create a placeholder message to hold the PDF data
+                # This ensures PDFs are properly tracked in conversation history
+                with ensure_app_context():
+                    pdf_message = Message(
+                        conversation_id=conversation.id,
+                        role='user',
+                        content='', # Empty content since the PDF is the content
+                        pdf_url=pdf_data_url,
+                        pdf_filename=filename
+                    )
+                    db.session.add(pdf_message)
+                    db.session.commit()
+                    logger.info(f"Saved PDF message {pdf_message.id} for conversation {conversation.id}")
+            except Exception as e:
+                logger.exception(f"Error saving PDF message to database: {e}")
+                # Continue even if this fails - we'll at least return the PDF URL
+            
             logger.info(f"Saved PDF to local filesystem: {file_path}")
             
             return jsonify({
                 "success": True,
                 "pdf_url": pdf_url,
                 "pdf_data_url": pdf_data_url,
-                "filename": filename
+                "filename": filename,
+                "conversation_id": conversation.id  # Return the conversation ID to the client
             })
     except Exception as e:
         logger.exception(f"Error handling PDF upload: {e}")
@@ -1398,13 +1530,16 @@ def clear_conversations():
         # Create a new conversation
         title = "New Conversation"
         share_id = generate_share_id()
+        conversation_uuid = str(uuid.uuid4())
         conversation = Conversation(
             title=title, 
             share_id=share_id,
-            user_id=current_user.id
+            user_id=current_user.id,
+            conversation_uuid=conversation_uuid
         )
         db.session.add(conversation)
         db.session.commit()
+        logger.info(f"Created new conversation for user {current_user.id} with ID: {conversation.id}, UUID: {conversation_uuid}")
         
         return jsonify({"success": True, "message": f"Cleared {count} conversations", "new_conversation_id": conversation.id})
     
@@ -1436,15 +1571,17 @@ def get_conversations():
             # Create a new conversation for this user if none exist
             title = "New Conversation"
             share_id = generate_share_id()
+            conversation_uuid = str(uuid.uuid4())
             conversation = Conversation(
                 title=title, 
                 share_id=share_id,
-                user_id=current_user.id  # Associate conversation with user
+                user_id=current_user.id,  # Associate conversation with user
+                conversation_uuid=conversation_uuid
             )
             db.session.add(conversation)
             try:
                 db.session.commit()
-                logger.info(f"Created initial conversation for user {current_user.id}")
+                logger.info(f"Created initial conversation for user {current_user.id} with ID: {conversation.id}, UUID: {conversation_uuid}")
                 # Include created_at timestamp for proper date formatting in the UI
                 conversations = [{"id": conversation.id, "title": conversation.title, "created_at": conversation.created_at.isoformat()}]
             except Exception as e:
@@ -1718,8 +1855,9 @@ def chat(): # Synchronous function
         if not conversation_id: 
             # Always start with "New Conversation" title to allow for automatic title generation later
             title = "New Conversation"
-            share_id = generate_share_id() 
-            conversation = Conversation(title=title, share_id=share_id)
+            share_id = generate_share_id()
+            conversation_uuid = str(uuid.uuid4())
+            conversation = Conversation(title=title, share_id=share_id, conversation_uuid=conversation_uuid)
             # Associate conversation with the authenticated user
             if current_user and current_user.is_authenticated:
                 conversation.user_id = current_user.id
@@ -1728,7 +1866,7 @@ def chat(): # Synchronous function
             try:
                 db.session.commit()
                 conversation_id = conversation.id 
-                logger.info(f"Created new conversation with ID: {conversation_id}")
+                logger.info(f"Created new conversation with ID: {conversation_id}, UUID: {conversation_uuid}")
             except Exception as e:
                  logger.exception("Error committing new conversation")
                  db.session.rollback()
@@ -1781,25 +1919,32 @@ def chat(): # Synchronous function
         # Log what we're saving to the database
         logger.info(f"Saving user message to DB. Text: '{message_text[:50]}...' Image URL: {image_url[:50] if image_url else 'None'} PDF URL: {'Present' if pdf_url else 'None'}")
         
-        user_db_message = Message(
-            conversation_id=conversation.id, 
-            role='user', 
-            content=message_text,  # Store the text component
-            image_url=image_url,   # Store the image URL separately
-            pdf_url=pdf_url,       # Store the PDF URL separately
-            pdf_filename=pdf_filename if pdf_url else None  # Store the PDF filename if we have a PDF
-        )
-        db.session.add(user_db_message)
-        try:
-             db.session.commit()
-             logger.info(f"Saved user message {user_db_message.id} for conversation {conversation.id}")
-             # Log if multimodal content was included
-             if image_url:
-                logger.info(f"Image URL saved with message: {image_url[:50]}...")
-        except Exception as e:
-             logger.exception(f"Error committing user message {user_db_message.id}")
-             db.session.rollback()
-             abort(500, description="Database error saving user message")
+        # Import our app context manager
+        from ensure_app_context import ensure_app_context
+        
+        # Ensure all database operations are performed within the app context
+        with ensure_app_context():
+            user_db_message = Message(
+                conversation_id=conversation.id, 
+                role='user', 
+                content=message_text,  # Store the text component
+                image_url=image_url,   # Store the image URL separately
+                pdf_url=pdf_url,       # Store the PDF URL separately
+                pdf_filename=pdf_filename if pdf_url else None  # Store the PDF filename if we have a PDF
+            )
+            db.session.add(user_db_message)
+            try:
+                db.session.commit()
+                logger.info(f"Saved user message {user_db_message.id} for conversation {conversation.id}")
+                # Log if multimodal content was included
+                if image_url:
+                    logger.info(f"Image URL saved with message: {image_url[:50]}...")
+                if pdf_url:
+                    logger.info(f"PDF information saved with message: {pdf_filename}")
+            except Exception as e:
+                logger.exception(f"Error committing user message to database: {e}")
+                db.session.rollback()
+                abort(500, description="Database error saving user message")
 
 
         # --- Prepare Message History ---
@@ -2586,21 +2731,25 @@ def chat(): # Synchronous function
 
                 if full_response_text: # Only save if there was actual content
                     try:
-                        from models import Message 
-                        assistant_db_message = Message(
-                            conversation_id=current_conv_id, 
-                            role='assistant', 
-                            content=full_response_text,
-                            model=requested_model_id, 
-                            model_id_used=final_model_id_used, 
-                            prompt_tokens=final_prompt_tokens, 
-                            completion_tokens=final_completion_tokens,
-                            rating=None 
-                        )
-                        db.session.add(assistant_db_message)
-                        db.session.commit()
-                        assistant_message_id = assistant_db_message.id 
-                        logger.info(f"Saved assistant message {assistant_message_id} with metadata.")
+                        from models import Message
+                        from ensure_app_context import ensure_app_context
+                        
+                        # Use our app context manager to avoid "outside application context" errors
+                        with ensure_app_context():
+                            assistant_db_message = Message(
+                                conversation_id=current_conv_id, 
+                                role='assistant', 
+                                content=full_response_text,
+                                model=requested_model_id, 
+                                model_id_used=final_model_id_used, 
+                                prompt_tokens=final_prompt_tokens, 
+                                completion_tokens=final_completion_tokens,
+                                rating=None 
+                            )
+                            db.session.add(assistant_db_message)
+                            db.session.commit()
+                            assistant_message_id = assistant_db_message.id 
+                            logger.info(f"Saved assistant message {assistant_message_id} with metadata.")
                         
                         # --- Record usage for billing ---
                         if current_user and current_user.is_authenticated and final_prompt_tokens and final_completion_tokens:

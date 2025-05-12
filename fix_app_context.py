@@ -1,72 +1,67 @@
-#!/usr/bin/env python
 """
-Script to fix the application context issue in app.py
-This wraps database queries with app.app_context() to prevent
-'Working outside of application context' errors.
+Fix application context issues in Flask app
 """
 
+import logging
 import os
-import re
-from datetime import datetime
+import sys
+from sqlalchemy import text
+from app import app, db
 
-def backup_file(filename):
-    """Create a backup of the file before modifying it."""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_name = f"{filename}.bak.{timestamp}"
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def ensure_app_context():
+    """
+    Push the application context if needed, ensuring database operations work correctly
+    """
     try:
-        with open(filename, 'r') as src:
-            with open(backup_name, 'w') as dst:
-                dst.write(src.read())
-        print(f"Backup created: {backup_name}")
+        # Try to access configuration which requires app context
+        app.config["SQLALCHEMY_DATABASE_URI"]
+        logger.info("Application context is already active")
+        return True
+    except RuntimeError:
+        # Push the application context
+        logger.info("Pushing Flask application context")
+        app.app_context().push()
+        logger.info("Application context is now active")
         return True
     except Exception as e:
-        print(f"Error creating backup: {e}")
+        logger.error(f"Error ensuring app context: {e}")
         return False
 
-def add_app_context_wrapper():
+def fix_app_context():
     """
-    Find the section in app.py where we need to add app_context and modify it.
-    Look for the OpenRouterModel.query.count() outside app_context.
+    Ensure application context is available globally
     """
-    app_py_path = 'app.py'
-    
-    # Create backup
-    if not backup_file(app_py_path):
-        print("Backup failed, aborting.")
-        return False
-    
     try:
-        with open(app_py_path, 'r') as file:
-            content = file.read()
+        # Ensure we have the app context
+        ensure_app_context()
         
-        # Look for the problematic section
-        pattern = r"logger\.info\(\"Performing initial fetch of OpenRouter models at startup\"\)\s*try:\s*# First ensure proper Python imports\s*import traceback\s*from price_updater import fetch_and_store_openrouter_prices\s*from models import OpenRouterModel\s*\s*# Check if we have models in the database\s*model_count = OpenRouterModel\.query\.count\(\)"
+        # Test database connection to verify it works in this context
+        with db.engine.connect() as conn:
+            result = conn.execute(text("SELECT 1"))
+            row = result.fetchone()
+            if row and row[0] == 1:
+                logger.info("Database connection test successful")
+            else:
+                logger.error("Database connection test failed with unexpected result")
+                return False
         
-        # Prepare replacement that adds app context
-        replacement = 'logger.info("Performing initial fetch of OpenRouter models at startup")\ntry:\n    # First ensure proper Python imports\n    import traceback\n    from price_updater import fetch_and_store_openrouter_prices\n    from models import OpenRouterModel\n    \n    # Create an application context for database operations\n    with app.app_context():\n        # Check if we have models in the database\n        model_count = OpenRouterModel.query.count()'
-        
-        # Also fix the second instance
-        pattern2 = r"model_count = OpenRouterModel\.query\.count\(\)\s*logger\.info\(f\"Successfully fetched and stored {model_count} OpenRouter models in database\"\)"
-        replacement2 = '            with app.app_context():\n                model_count = OpenRouterModel.query.count()\n            logger.info(f"Successfully fetched and stored {model_count} OpenRouter models in database")'
-        
-        # Apply replacements
-        modified_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
-        modified_content = re.sub(pattern2, replacement2, modified_content, flags=re.DOTALL)
-        
-        # Write back to the file
-        with open(app_py_path, 'w') as file:
-            file.write(modified_content)
-            
-        print(f"Successfully updated {app_py_path} with app context wrappers")
+        logger.info("Application context successfully configured")
         return True
         
     except Exception as e:
-        print(f"Error modifying {app_py_path}: {e}")
+        logger.error(f"Error fixing application context: {e}")
+        logger.exception("Context fix failed with exception:")
         return False
-
+        
+# Run the fix if this script is executed directly
 if __name__ == "__main__":
-    print("Fixing application context issue in app.py...")
-    if add_app_context_wrapper():
-        print("✅ Application context fixes successfully applied")
+    success = fix_app_context()
+    if success:
+        print("✅ Application context fix applied successfully")
     else:
-        print("❌ Failed to apply application context fixes")
+        print("❌ Application context fix failed")
+        sys.exit(1)
