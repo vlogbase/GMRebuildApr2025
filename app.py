@@ -37,7 +37,7 @@ from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
 ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
 
 # Check if we should enable RAG features
-ENABLE_RAG = os.environ.get('ENABLE_RAG', 'true').lower() == 'true'
+ENABLE_RAG = False  # Disabled - using direct PDF handling with OpenRouter instead
 
 if ENABLE_MEMORY_SYSTEM:
     try:
@@ -53,15 +53,8 @@ else:
     def enrich_prompt_with_memory(session_id, user_id, user_message, conversation_history):
         return conversation_history # Return original history
         
-# Initialize document processor for RAG if enabled
-if ENABLE_RAG:
-    try:
-        from document_processor import DocumentProcessor
-        document_processor = DocumentProcessor()
-        logging.info("RAG functionality enabled")
-    except ImportError as e:
-        logging.warning(f"Failed to import document processor: {e}")
-        ENABLE_RAG = False
+# RAG system removed - using direct PDF handling with OpenRouter instead
+# The system now processes PDFs directly through OpenRouter PDF capabilities
 
 
 # Configure logging
@@ -246,6 +239,39 @@ SAFE_FALLBACK_MODELS = [
     "meta-llama/llama-3-8b",  # Text-only fallback
     "mistralai/mistral-7b"     # Another text-only fallback
 ]
+
+# Models that support images (multimodal)
+MULTIMODAL_MODELS = {
+    "google/gemini-pro-vision",
+    "google/gemini-1.5-pro-latest",
+    "anthropic/claude-3-opus-20240229",
+    "anthropic/claude-3-sonnet-20240229",
+    "anthropic/claude-3-haiku-20240307",
+    "anthropic/claude-3.5-sonnet-20240620",
+    "anthropic/claude-3.7-sonnet-20240910",
+    "openai/gpt-4-vision-preview",
+    "openai/gpt-4o-2024-05-13",
+    "mistralai/mistral-large-latest"
+}
+
+# Models that support PDF documents (document processing)
+DOCUMENT_MODELS = {
+    "google/gemini-pro-vision", 
+    "google/gemini-1.5-pro-latest",
+    "google/gemini-2.0-pro",
+    "google/gemini-2.5-pro-preview",
+    "anthropic/claude-3-opus-20240229",
+    "anthropic/claude-3-sonnet-20240229", 
+    "anthropic/claude-3-haiku-20240307",
+    "anthropic/claude-3.5-sonnet-20240620",
+    "anthropic/claude-3.7-sonnet-20240910",
+    "openai/gpt-4-turbo",
+    "openai/gpt-4-vision-preview",
+    "openai/gpt-4o-2024-05-13",
+    "openai/gpt-4o-2024-08-06",
+    "openai/o1-mini-2024-09-12",
+    "perplexity/sonar-pro"
+}
 
 # Initialize the scheduler for background tasks with enhanced configuration
 def init_scheduler():
