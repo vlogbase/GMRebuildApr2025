@@ -317,6 +317,30 @@ class CustomerReferral(db.Model):
         return f'<CustomerReferral {self.id}: User {self.customer_user_id} referred by Affiliate {self.affiliate_id}>'
 
 
+class UploadedDocument(db.Model):
+    """Model to store uploaded documents for RAG functionality"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    conversation_uuid = db.Column(db.String(64), nullable=True)  # Link to specific conversation
+    file_name = db.Column(db.String(256), nullable=False)  # Original filename
+    storage_path = db.Column(db.String(512), nullable=False)  # Azure Blob URL
+    mime_type = db.Column(db.String(128), nullable=False)  # MIME type of the file
+    status = db.Column(db.String(64), default='active_for_rag')  # Status of document in RAG system
+    
+    # Fields for metadata - may be used in future RAG phases
+    chunk_count = db.Column(db.Integer, default=0)  # Number of chunks (for text documents)
+    text_length = db.Column(db.Integer, default=0)  # Length of extracted text
+    
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    # Relationships
+    user = db.relationship('User', backref=db.backref('documents', lazy='dynamic'))
+    
+    def __repr__(self):
+        return f'<UploadedDocument {self.id}: {self.file_name}>'
+
+
 class OpenRouterModel(db.Model):
     """Model to store OpenRouter model information centrally in the database"""
     model_id = db.Column(db.String(128), primary_key=True)  # OpenRouter model ID (e.g., "google/gemini-pro")

@@ -895,6 +895,176 @@ def test_multimodal():
         else:
             return f"<h1>Error</h1><p>{error_msg}</p>", 500
 
+@app.route('/api/attach_file_for_rag', methods=['POST'])
+@login_required
+def attach_file_for_rag():
+    """
+    Route to handle files uploaded for RAG functionality.
+    Processes and stores PDFs or images in designated Azure Blob Storage containers.
+    
+    This endpoint is exclusively for files from the RAG attachment button and
+    validates that the selected model actually supports the file type.
+    
+    Success Response:
+        {
+            "results": [
+                {
+                    "filename": "document.pdf",
+                    "url": "https://gloriamundoblobs.blob.core.windows.net/gloriamundopdfs/abc123.pdf",
+                    "status": "success", 
+                    "id_in_db": 123
+                },
+                ...
+            ]
+        }
+        
+    Error Response:
+        {
+            "error": "No files provided"
+        }
+        
+        or
+        
+        {
+            "results": [
+                {
+                    "filename": "document.txt", 
+                    "status": "error", 
+                    "message": "File type not supported by selected model"
+                },
+                ...
+            ]
+        }
+    """
+    try:
+        # Verify file(s) were uploaded
+        if 'files[]' not in request.files:
+            return jsonify({"error": "No files provided"}), 400
+            
+        files = request.files.getlist('files[]')
+        if not files or len(files) == 0:
+            return jsonify({"error": "No files selected"}), 400
+            
+        # Get conversation UUID and current model ID from form data
+        conversation_uuid = request.form.get('conversation_uuid')
+        current_model_id = request.form.get('current_model_id')
+        
+        if not conversation_uuid or not current_model_id:
+            return jsonify({"error": "Missing conversation UUID or model ID"}), 400
+            
+        # Import the model and helper methods
+        from models import UploadedDocument, OpenRouterModel
+        
+        # Prepare a list to store results for the client
+        processed_files_info = []
+        
+        # Get Azure Storage connection string
+        azure_connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+        if not azure_connection_string:
+            return jsonify({"error": "Azure Storage not configured"}), 500
+            
+        # Create the BlobServiceClient
+        blob_service_client = BlobServiceClient.from_connection_string(azure_connection_string)
+        
+        for file in files:
+            # Basic validation
+            if not file or file.filename == '':
+                processed_files_info.append({
+                    "filename": "unknown",
+                    "status": "error",
+                    "message": "Empty file provided"
+                })
+                continue
+                
+            filename = file.filename
+            
+            # Check if it's a PDF or image
+            is_pdf = filename.lower().endswith('.pdf')
+            is_image = file.content_type.startswith('image/')
+            
+            if not is_pdf and not is_image:
+                processed_files_info.append({
+                    "filename": filename,
+                    "status": "error",
+                    "message": "Only PDF and image files are supported"
+                })
+                continue
+                
+            # Verify the model supports this file type
+            is_supported = False
+            if is_pdf:
+                is_supported = OpenRouterModel.is_model_pdf_capable(current_model_id)
+            elif is_image:
+                is_supported = OpenRouterModel.is_model_multimodal(current_model_id)
+                
+            if not is_supported:
+                processed_files_info.append({
+                    "filename": filename,
+                    "status": "error",
+                    "message": "File type not supported by selected model"
+                })
+                continue
+                
+            try:
+                # Determine target Azure container
+                target_container_name = "gloriamundopdfs" if is_pdf else "gloriamundoimages"
+                
+                # Get a reference to the container
+                container_client = blob_service_client.get_container_client(target_container_name)
+                
+                # Create a unique blob name with the conversation UUID prefix
+                unique_blob_name = f"{conversation_uuid}/{uuid.uuid4().hex}{os.path.splitext(filename)[1]}"
+                
+                # Get a blob client for the new blob
+                blob_client = container_client.get_blob_client(unique_blob_name)
+                
+                # Upload the file to Azure Blob Storage
+                blob_client.upload_blob(
+                    file.stream, 
+                    content_settings=ContentSettings(content_type=file.content_type)
+                )
+                
+                # Generate URL for the uploaded file
+                azure_blob_url = blob_client.url
+                
+                # Create and save a new UploadedDocument record
+                new_doc = UploadedDocument(
+                    user_id=current_user.id,
+                    conversation_uuid=conversation_uuid,
+                    file_name=filename,
+                    storage_path=azure_blob_url,
+                    mime_type=file.content_type,
+                    status='active_for_rag'
+                )
+                
+                db.session.add(new_doc)
+                db.session.commit()
+                
+                # Add success entry to processed_files_info
+                processed_files_info.append({
+                    "filename": filename,
+                    "url": azure_blob_url,
+                    "status": "success",
+                    "id_in_db": new_doc.id
+                })
+                
+                logger.info(f"Successfully uploaded file for RAG: {filename}")
+                
+            except Exception as e:
+                logger.exception(f"Error processing file {filename}: {e}")
+                processed_files_info.append({
+                    "filename": filename,
+                    "status": "error",
+                    "message": str(e)
+                })
+        
+        return jsonify({"results": processed_files_info})
+        
+    except Exception as e:
+        logger.exception(f"Error handling RAG file attachment: {e}")
+        return jsonify({"error": str(e)}), 500
+
+
 @app.route('/upload_image', methods=['POST'])
 @login_required
 def upload_image():
@@ -1362,6 +1532,20 @@ def chat(): # Synchronous function
             # Initialize RAG content flag
             has_rag_content = False
             relevant_chunks = []
+            rag_documents = []
+            
+            # Check if RAG documents were included in the request
+            if 'rag_documents' in data and isinstance(data['rag_documents'], list) and len(data['rag_documents']) > 0:
+                rag_documents = data['rag_documents']
+                has_rag_content = True
+                logger.info(f"RAG: Received {len(rag_documents)} documents from request")
+                
+                # Log the document info for debugging
+                for doc in rag_documents:
+                    doc_id = doc.get('id')
+                    filename = doc.get('filename')
+                    url = doc.get('url')
+                    logger.info(f"RAG Document: id={doc_id}, filename={filename}, url={url}")
             
             # Global document_processor is already declared at the function start
             
@@ -1369,7 +1553,11 @@ def chat(): # Synchronous function
             if ENABLE_RAG and user_message and len(user_message.strip()) > 0:
                 # Get user ID for retrieving documents
                 rag_user_id = str(current_user.id) if current_user and current_user.is_authenticated else get_user_identifier()
-                logger.info(f"RAG: Pre-checking for document availability for user_id: {rag_user_id}")
+                
+                if rag_documents:
+                    logger.info(f"RAG: Processing specific documents for user_id: {rag_user_id}")
+                else:
+                    logger.info(f"RAG: Pre-checking for document availability for user_id: {rag_user_id}")
                 
                 # Check if the user has any documents before attempting retrieval
                 try:
@@ -1387,13 +1575,29 @@ def chat(): # Synchronous function
                         logger.error("RAG: Azure OpenAI credentials are missing or incomplete.")
                         # Skip RAG retrieval when credentials are missing
                     else:
-                        # Do a preliminary check to see if the user has any documents
-                        has_documents = document_processor.user_has_documents(rag_user_id)
-                        if has_documents:
-                            has_rag_content = True
-                            logger.info("Detected RAG usage - user has documents - marking as requiring advanced model")
+                        if rag_documents:
+                            # We have specific documents from the request - use them
+                            # Fetch the actual document records from the database if needed
+                            from models import UploadedDocument
+                            doc_ids = [doc.get('id') for doc in rag_documents if doc.get('id')]
+                            
+                            if doc_ids:
+                                db_documents = UploadedDocument.query.filter(
+                                    UploadedDocument.user_id == current_user.id,
+                                    UploadedDocument.id.in_(doc_ids)
+                                ).all()
+                                
+                                if db_documents:
+                                    has_rag_content = True
+                                    logger.info(f"RAG: Found {len(db_documents)} matching documents in database")
                         else:
-                            logger.info("No documents found for user - not marking as RAG content")
+                            # No specific documents requested - check if user has any
+                            has_documents = document_processor.user_has_documents(rag_user_id)
+                            if has_documents:
+                                has_rag_content = True
+                                logger.info("Detected RAG usage - user has documents - marking as requiring advanced model")
+                            else:
+                                logger.info("No documents found for user - not marking as RAG content")
                 except Exception as e:
                     logger.error(f"Error checking for user documents: {e}")
                     # If we can't determine, assume no RAG to avoid using expensive models unnecessarily
@@ -1771,20 +1975,58 @@ def chat(): # Synchronous function
                         if 'document_processor' not in globals() or document_processor is None:
                             from document_processor import DocumentProcessor
                             document_processor = DocumentProcessor()
+                        
+                        # Check if specific RAG documents were included in the request
+                        if rag_documents and len(rag_documents) > 0:
+                            # Use specific documents from the request
+                            logger.info(f"RAG: Using {len(rag_documents)} specific documents from request")
                             
-                        # Double-check if the user has documents (should be true if has_rag_content was set)
-                        if document_processor.user_has_documents(rag_user_id):
-                            # User has documents, proceed with retrieval
-                            relevant_chunks = document_processor.retrieve_relevant_chunks(
-                                query_text=user_message,
-                                user_id=rag_user_id,
-                                limit=5  # Retrieve top 5 most relevant chunks
-                            )
-                            logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks using Azure embeddings.")
+                            # Get document IDs from the request
+                            doc_ids = [doc.get('id') for doc in rag_documents if doc.get('id')]
+                            
+                            if doc_ids:
+                                try:
+                                    # Retrieve chunks from the specific documents
+                                    relevant_chunks = document_processor.retrieve_chunks_from_documents(
+                                        query_text=user_message,
+                                        user_id=rag_user_id,
+                                        document_ids=doc_ids,
+                                        limit=5  # Retrieve top 5 most relevant chunks
+                                    )
+                                    logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks from specific documents")
+                                except AttributeError:
+                                    # Fall back to regular retrieval if document processor doesn't support document-specific retrieval
+                                    logger.warning("RAG: Document processor doesn't support document-specific retrieval, falling back to regular retrieval")
+                                    relevant_chunks = document_processor.retrieve_relevant_chunks(
+                                        query_text=user_message,
+                                        user_id=rag_user_id,
+                                        limit=5
+                                    )
+                            else:
+                                logger.warning("RAG: No valid document IDs in request, falling back to regular retrieval")
+                                # Fall back to regular retrieval
+                                if document_processor.user_has_documents(rag_user_id):
+                                    relevant_chunks = document_processor.retrieve_relevant_chunks(
+                                        query_text=user_message,
+                                        user_id=rag_user_id,
+                                        limit=5
+                                    )
+                                else:
+                                    relevant_chunks = []
                         else:
-                            # User doesn't have documents, skip retrieval
-                            logger.info("RAG: User has no documents, skipping retrieval")
-                            relevant_chunks = []
+                            # Double-check if the user has documents (should be true if has_rag_content was set)
+                            if document_processor.user_has_documents(rag_user_id):
+                                # User has documents, proceed with retrieval
+                                relevant_chunks = document_processor.retrieve_relevant_chunks(
+                                    query_text=user_message,
+                                    user_id=rag_user_id,
+                                    limit=5  # Retrieve top 5 most relevant chunks
+                                )
+                                logger.info(f"RAG: Found {len(relevant_chunks)} relevant chunks using Azure embeddings.")
+                            else:
+                                # User doesn't have documents, skip retrieval
+                                logger.info("RAG: User has no documents, skipping retrieval")
+                                relevant_chunks = []
                 except Exception as retrieval_error:
                     logger.error(f"RAG: Error retrieving document chunks: {retrieval_error}")
                     

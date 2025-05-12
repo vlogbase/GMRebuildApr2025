@@ -152,10 +152,12 @@
                             <span class="button-overlay"></span>
                         </button>
                     </div>
-                    <button id="upload-documents-btn" class="upload-documents-btn" title="Upload documents to enhance responses with your data">
-                        <i class="fa-solid fa-file-upload"></i>
-                        <span class="button-overlay"></span>
+                    <!-- Replaced document upload button with new RAG attach file button -->
+                    <button id="attach-rag-file-button" title="Attach PDF or Image for RAG">
+                        <i class="fas fa-paperclip"></i> Attach File for RAG
                     </button>
+                    <input type="file" id="rag-file-input" style="display: none;" multiple /> 
+                    <small id="rag-file-support-tooltip" class="form-text text-muted"></small>
                     <button id="refresh-prices-btn" class="upload-documents-btn" title="Reset models to defaults">
                         <i class="fa-solid fa-sync-alt"></i>
                         <span class="button-overlay"></span>
