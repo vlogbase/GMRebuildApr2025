@@ -2,48 +2,24 @@
 Simple script to run the Flask application for testing in the Replit environment.
 This is a wrapper script to start the app.py Flask application.
 """
-import os
-import sys
-import logging
-
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-logger = logging.getLogger(__name__)
 
 def run():
     """
     Run the Flask application with error handling and logging.
     """
+    import logging
+    from app import app
+    
+    # Configure logging
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
+    
     try:
-        logger.info("Starting Flask application for testing")
-        
-        # Import the Flask app from app.py
-        from app import app
-        
-        # Set debug mode
-        app.config['DEBUG'] = True
-        
-        # Log CSRF protection status
-        if app.config.get('WTF_CSRF_ENABLED', True):
-            logger.info("CSRF protection is ENABLED")
-        else:
-            logger.warning("CSRF protection is DISABLED")
-            
-        # Log protection settings
-        logger.info(f"CSRF methods: {app.config.get('WTF_CSRF_METHODS', ['POST', 'PUT', 'PATCH', 'DELETE'])}")
-        logger.info(f"CSRF headers: {app.config.get('WTF_CSRF_HEADERS', ['X-CSRFToken', 'X-CSRF-Token'])}")
-        
-        # Start the Flask server
-        logger.info("Starting Flask application. Access it via http://localhost:5000")
-        app.run(host='0.0.0.0', port=5000)
-        
+        logger.info("Starting Flask application...")
+        app.run(host='0.0.0.0', port=5000, debug=True)
     except Exception as e:
-        logger.error(f"Error starting Flask application: {e}")
-        raise
+        logger.error(f"Error running Flask application: {e}")
+        logger.exception("Detailed error:")
 
 if __name__ == "__main__":
     run()

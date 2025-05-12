@@ -1432,6 +1432,8 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Get reference to RAG indicator elements
         const ragAttachButton = document.getElementById('attach-rag-file-button');
+        const activeRagDocumentsContainer = document.getElementById('active-rag-documents');
+        const ragDocumentsList = document.getElementById('rag-documents-list');
         
         // Update UI to indicate RAG is active
         if (hasActiveDocuments) {
@@ -1448,6 +1450,50 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 document.getElementById('rag-file-counter').textContent = activeRagDocuments.length;
             }
+            
+            // Display the active RAG documents container
+            if (activeRagDocumentsContainer) {
+                activeRagDocumentsContainer.style.display = 'block';
+                
+                // Clear the documents list
+                if (ragDocumentsList) {
+                    ragDocumentsList.innerHTML = '';
+                    
+                    // Add each active document to the list
+                    activeRagDocuments.forEach((doc, index) => {
+                        const docItem = document.createElement('div');
+                        docItem.className = 'rag-document-item';
+                        docItem.dataset.index = index;
+                        
+                        // Determine icon based on file type
+                        const filename = doc.filename || '';
+                        const isPdf = filename.toLowerCase().endsWith('.pdf');
+                        const isImage = ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(ext => 
+                            filename.toLowerCase().endsWith(ext));
+                            
+                        const iconClass = isPdf ? 'fa-file-pdf' : isImage ? 'fa-file-image' : 'fa-file-alt';
+                        
+                        // Create document item content
+                        docItem.innerHTML = `
+                            <i class="fas ${iconClass} rag-doc-icon"></i>
+                            <span class="rag-doc-name" title="${filename}">${filename}</span>
+                            <button class="rag-doc-remove" title="Remove document">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        `;
+                        
+                        // Add event listener for remove button
+                        const removeBtn = docItem.querySelector('.rag-doc-remove');
+                        if (removeBtn) {
+                            removeBtn.addEventListener('click', function() {
+                                removeRagDocument(index);
+                            });
+                        }
+                        
+                        ragDocumentsList.appendChild(docItem);
+                    });
+                }
+            }
         } else {
             // RAG is not active - remove highlights
             ragAttachButton.classList.remove('rag-active');
@@ -1456,6 +1502,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const counter = document.getElementById('rag-file-counter');
             if (counter) {
                 counter.remove();
+            }
+            
+            // Hide the active RAG documents container
+            if (activeRagDocumentsContainer) {
+                activeRagDocumentsContainer.style.display = 'none';
             }
         }
     }
@@ -3936,6 +3987,90 @@ document.addEventListener('DOMContentLoaded', function() {
             to {transform: rotate(360deg);}
         }
         
+        /* Active RAG documents display styles */
+        .active-rag-documents-container {
+            margin: 10px 0;
+            border: 1px solid #e6f7ff;
+            border-radius: 4px;
+            background-color: #f9fcff;
+            padding: 8px;
+            width: 100%;
+        }
+        
+        .active-rag-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .active-rag-title {
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .clear-all-rag-docs-btn {
+            background: none;
+            border: none;
+            color: #ff4d4f;
+            cursor: pointer;
+            padding: 2px 5px;
+            font-size: 12px;
+            border-radius: 3px;
+        }
+        
+        .clear-all-rag-docs-btn:hover {
+            background-color: #fff1f0;
+        }
+        
+        .rag-documents-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .rag-document-item {
+            display: flex;
+            align-items: center;
+            background-color: #e6f7ff;
+            border: 1px solid #91d5ff;
+            border-radius: 16px;
+            padding: 4px 10px;
+            font-size: 12px;
+            max-width: 250px;
+        }
+        
+        .rag-doc-icon {
+            margin-right: 5px;
+            color: #1890ff;
+        }
+        
+        .rag-doc-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-right: 5px;
+        }
+        
+        .rag-doc-remove {
+            background: none;
+            border: none;
+            color: #ff4d4f;
+            cursor: pointer;
+            padding: 2px;
+            margin-left: 3px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+        }
+        
+        .rag-doc-remove:hover {
+            background-color: #fff1f0;
+        }
+        
         /* System message for RAG notifications */
         .system-message {
             background-color: #f0f7ff;
@@ -3952,6 +4087,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set up RAG file attachment functionality event listeners
     const ragFileInputElement = document.getElementById('rag-file-input');
     const attachRagFileButtonElement = document.getElementById('attach-rag-file-button');
+    const clearAllRagDocsButtonElement = document.getElementById('clear-all-rag-docs');
     const newChatButtonElement = document.getElementById('new-chat-btn');
     
     // Add event listener for RAG file attachment button
@@ -3964,6 +4100,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (ragFileInputElement) {
                 ragFileInputElement.click();
             }
+        });
+    }
+    
+    // Add event listener for Clear All RAG documents button
+    if (clearAllRagDocsButtonElement) {
+        clearAllRagDocsButtonElement.addEventListener('click', function() {
+            clearActiveRagDocuments();
         });
     }
     
@@ -4116,10 +4259,29 @@ document.addEventListener('DOMContentLoaded', function() {
         ragFileInputElement.value = '';
     }
     
-    // Helper function to clear active RAG documents
+    // Helper function to remove a specific RAG document
+    function removeRagDocument(index) {
+        if (index >= 0 && index < activeRagDocuments.length) {
+            const removedDoc = activeRagDocuments.splice(index, 1)[0];
+            console.log(`Removed RAG document: ${removedDoc.filename}`);
+            
+            // Update the UI to reflect the change
+            updateRagIndicatorState();
+            
+            // If there are no more active documents, notify the user
+            if (activeRagDocuments.length === 0) {
+                appendSystemMessage("All context documents have been removed.");
+            }
+        }
+    }
+    
+    // Helper function to clear all active RAG documents
     function clearActiveRagDocuments() {
-        activeRagDocuments = [];
-        updateRagIndicatorState();
+        if (activeRagDocuments.length > 0) {
+            activeRagDocuments = [];
+            updateRagIndicatorState();
+            appendSystemMessage("All context documents have been removed.");
+        }
     }
     
     // Helper function to get current conversation UUID

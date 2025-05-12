@@ -2259,6 +2259,22 @@ def chat(): # Synchronous function
         if len(messages) != len(processed_messages):
             logger.warning(f"Message count changed during format adaptation! Original: {len(messages)}, Processed: {len(processed_messages)}")
         
+        # Get annotations from the last assistant message (if any) for context persistence
+        last_annotations = None
+        try:
+            # Find the most recent assistant message in this conversation
+            from models import Message
+            last_assistant_msg = Message.query.filter_by(
+                conversation_id=conversation.id,
+                role='assistant'
+            ).order_by(Message.created_at.desc()).first()
+            
+            if last_assistant_msg and last_assistant_msg.annotations:
+                last_annotations = last_assistant_msg.annotations
+                logger.info(f"Found annotations from previous assistant message: {type(last_annotations)}")
+        except Exception as e:
+            logger.warning(f"Error retrieving annotations from previous messages: {e}")
+        
         # Create payload with the processed messages
         payload = {
             'model': openrouter_model,
@@ -2266,6 +2282,11 @@ def chat(): # Synchronous function
             'stream': True,
             'include_reasoning': True  # Enable reasoning tokens for all models that support it
         }
+        
+        # Add annotations if available for context persistence
+        if last_annotations:
+            payload['annotations'] = last_annotations
+            logger.info("Added annotations from previous message for context persistence")
         
         # Note: We don't need to add image_url separately as it's now included in the messages content
         # for multimodal models when an image is provided
@@ -2530,6 +2551,12 @@ def chat(): # Synchronous function
                                         if delta.get('reasoning') is not None:
                                             reasoning_chunk = delta['reasoning']
                                             logger.debug(f"Received reasoning chunk: {reasoning_chunk[:50]}...")
+                                            
+                                        # Extract annotations if available (for OpenRouter context persistence)
+                                        if 'annotations' in json_data and not hasattr(generate, 'captured_annotations'):
+                                            # Only capture annotations once per response (they shouldn't change during streaming)
+                                            generate.captured_annotations = json_data.get('annotations')
+                                            logger.debug(f"Captured annotations for context persistence: {generate.captured_annotations}")
 
                                     # Handle content chunk
                                     if content_chunk:
@@ -2579,6 +2606,9 @@ def chat(): # Synchronous function
                 if full_response_text: # Only save if there was actual content
                     try:
                         from models import Message 
+                        # Get captured annotations if available
+                        annotations = getattr(generate, 'captured_annotations', None)
+                        
                         assistant_db_message = Message(
                             conversation_id=current_conv_id, 
                             role='assistant', 
@@ -2587,6 +2617,7 @@ def chat(): # Synchronous function
                             model_id_used=final_model_id_used, 
                             prompt_tokens=final_prompt_tokens, 
                             completion_tokens=final_completion_tokens,
+                            annotations=annotations,
                             rating=None 
                         )
                         db.session.add(assistant_db_message)
