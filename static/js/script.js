@@ -259,6 +259,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Create new indicator with the appropriate styling
         indicator = document.createElement('div');
         indicator.id = 'upload-indicator';
+        indicator.className = 'attachments-container';
         indicator.style.display = 'none';
         
         // Add it before the chat input
@@ -272,6 +273,166 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         return indicator;
+    }
+    
+    // Function to create and show attachment indicators for all types of files
+    function showAttachmentIndicator(fileType, fileName, fileUrl) {
+        const uploadIndicator = createUploadIndicator();
+        uploadIndicator.style.display = 'flex';
+        
+        // Set appropriate icon and class based on file type
+        let iconClass = 'fa-file';
+        let indicatorClass = 'file-indicator';
+        
+        if (fileType === 'image') {
+            iconClass = 'fa-image';
+            indicatorClass = 'image-indicator';
+        } else if (fileType === 'pdf') {
+            iconClass = 'fa-file-pdf';
+            indicatorClass = 'pdf-indicator';
+        }
+        
+        // Create a unique ID for this attachment indicator
+        const indicatorId = `attachment-${Date.now()}-${Math.random().toString(36).substring(2, 10)}`;
+        
+        // Create the indicator HTML with clickable content for PDFs
+        let indicatorHtml = '';
+        
+        if (fileType === 'pdf') {
+            // Make PDF attachment clickable to view the file
+            indicatorHtml = `
+                <div id="${indicatorId}" class="attachment-indicator ${indicatorClass}" data-url="${fileUrl}">
+                    <div class="attachment-indicator-content">
+                        <a href="${fileUrl}" target="_blank" class="attachment-link" title="View PDF">
+                            <i class="fa-solid ${iconClass}"></i>
+                            <span class="attachment-filename">${fileName}</span>
+                        </a>
+                        <button class="remove-attachment-btn" title="Remove attachment"><i class="fa-solid fa-times"></i></button>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Regular indicator for other file types
+            indicatorHtml = `
+                <div id="${indicatorId}" class="attachment-indicator ${indicatorClass}" data-url="${fileUrl}">
+                    <div class="attachment-indicator-content">
+                        <i class="fa-solid ${iconClass}"></i>
+                        <span class="attachment-filename">${fileName}</span>
+                        <button class="remove-attachment-btn" title="Remove attachment"><i class="fa-solid fa-times"></i></button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Add the indicator to the container
+        uploadIndicator.insertAdjacentHTML('beforeend', indicatorHtml);
+        
+        // Get the added indicator element
+        const indicatorElement = document.getElementById(indicatorId);
+        
+        // Add event listener to remove button
+        const removeBtn = indicatorElement.querySelector('.remove-attachment-btn');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                // Remove this specific attachment based on its type
+                if (fileType === 'image') {
+                    // Find and remove the specific image URL from the array
+                    const index = attachedImageUrls.indexOf(fileUrl);
+                    if (index !== -1) {
+                        attachedImageUrls.splice(index, 1);
+                        updateImagePreviews();
+                    }
+                } else if (fileType === 'pdf') {
+                    clearAttachedPdf();
+                }
+                
+                // Remove this indicator from the DOM
+                indicatorElement.remove();
+                
+                // Hide the container if no attachments left
+                if (uploadIndicator.children.length === 0) {
+                    uploadIndicator.style.display = 'none';
+                }
+                
+                // Update send button state
+                updateSendButtonState();
+            });
+        }
+        
+        // Add CSS for attachment indicators if not already added
+        if (!document.getElementById('attachment-indicator-style')) {
+            const style = document.createElement('style');
+            style.id = 'attachment-indicator-style';
+            style.innerHTML = `
+                .attachments-container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    margin-bottom: 10px;
+                    width: 100%;
+                }
+                .attachment-indicator {
+                    background-color: rgba(240, 240, 240, 0.9);
+                    border: 1px solid rgba(0, 0, 0, 0.1);
+                    border-radius: 8px;
+                    padding: 8px 12px;
+                    transition: all 0.2s ease;
+                }
+                .attachment-indicator.image-indicator {
+                    background-color: rgba(61, 139, 255, 0.1);
+                    border-color: rgba(61, 139, 255, 0.3);
+                }
+                .attachment-indicator.pdf-indicator {
+                    background-color: rgba(230, 73, 45, 0.1);
+                    border-color: rgba(230, 73, 45, 0.3);
+                }
+                .attachment-indicator-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+                .attachment-indicator .fa-image {
+                    color: #3d8bff;
+                }
+                .attachment-indicator .fa-file-pdf {
+                    color: #e74c3c;
+                }
+                .attachment-filename {
+                    flex: 1;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                    font-size: 0.9em;
+                }
+                .attachment-link {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    flex: 1;
+                    text-decoration: none;
+                    color: inherit;
+                }
+                .attachment-link:hover {
+                    text-decoration: underline;
+                    color: #3d8bff;
+                }
+                .remove-attachment-btn {
+                    background: none;
+                    border: none;
+                    color: #666;
+                    cursor: pointer;
+                    padding: 2px 5px;
+                    border-radius: 4px;
+                }
+                .remove-attachment-btn:hover {
+                    background-color: rgba(0, 0, 0, 0.1);
+                    color: #e74c3c;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        return indicatorElement;
     }
     // DOM Elements
     const messageInput = document.getElementById('message-input');
@@ -320,6 +481,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let messageHistory = [];
     let attachedPdfUrl = null; // URL for attached PDF
     let attachedPdfName = null; // Name of attached PDF
+    let pdfIndicatorElement = null; // Element showing the attached PDF
     
     // Image upload state
     let attachedImageBlob = null;
@@ -720,6 +882,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!fileOrBlob) return;
 
         try {
+            // Ensure we have a conversation ID before uploading
+            // This prevents cross-conversation contamination
+            const conversationId = ensureConversationId();
+            console.log("Using conversation ID for image upload:", conversationId);
+            
             // Increment upload counter
             uploadingImageCount++;
             
@@ -735,6 +902,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Create FormData and append file
             const formData = new FormData();
             formData.append('file', fileOrBlob, fileOrBlob.name || 'photo.jpg');
+            formData.append('conversation_id', conversationId);
             
             console.log("📤 Uploading image to server...");
             
@@ -761,8 +929,11 @@ document.addEventListener('DOMContentLoaded', function() {
             // Store the image URL in the array
             attachedImageUrls.push(data.image_url);
             
-            // Show previews
+            // Show previews and attachment indicator
             updateImagePreviews();
+            
+            // Add an indicator showing this image is attached
+            showAttachmentIndicator('image', file.name, data.image_url);
             
             console.log(`Image uploaded successfully (${attachedImageUrls.length} total):`, data.image_url);
         } catch (error) {
@@ -791,20 +962,40 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!file) return;
         
         try {
+            // Ensure we have a conversation ID before uploading
+            // This prevents cross-conversation contamination
+            const conversationId = ensureConversationId();
+            console.log("Using conversation ID for PDF upload:", conversationId);
+            
             // Set upload flag to true - this will disable the send button
             isUploadingImage = true;
             
             // Update send button state
             updateSendButtonState();
             
+            // Show loading state on the PDF upload button if it exists
+            const pdfUploadButton = document.getElementById('pdf-upload');
+            if (pdfUploadButton) {
+                pdfUploadButton.classList.add('loading');
+            }
+            
             // Create an upload indicator
             const uploadIndicator = document.getElementById('upload-indicator') || createUploadIndicator();
             uploadIndicator.style.display = 'flex';
-            uploadIndicator.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading PDF: ${file.name}...`;
+            uploadIndicator.innerHTML = `
+                <div class="pdf-indicator loading">
+                    <div class="pdf-indicator-content">
+                        <i class="fa-solid fa-file-pdf"></i> 
+                        <span class="pdf-filename">Uploading ${file.name}...</span>
+                        <div class="spinner-border spinner-border-sm" role="status"></div>
+                    </div>
+                </div>
+            `;
             
             // Create FormData and append file
             const formData = new FormData();
             formData.append('file', file, file.name);
+            formData.append('conversation_id', conversationId);
             
             console.log("📤 Uploading PDF to server...");
             
@@ -829,21 +1020,16 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // Store the PDF URL and filename
-            attachedPdfUrl = data.pdf_data_url;
+            // Prefer the regular URL over the data URL for better OpenRouter compatibility
+            attachedPdfUrl = data.pdf_url || data.pdf_data_url;
             attachedPdfName = file.name;
+            console.log("Using PDF URL:", attachedPdfUrl.substring(0, 50) + "...");
             
-            // Update the indicator to show success
-            uploadIndicator.innerHTML = `<i class="fa-solid fa-file-pdf"></i> PDF ready: ${file.name} <button class="remove-file-btn"><i class="fa-solid fa-times"></i></button>`;
-            uploadIndicator.classList.add('pdf-indicator');
+            // Show attachment indicator using the unified system
+            const indicatorElement = showAttachmentIndicator('pdf', file.name, attachedPdfUrl);
             
-            // Add event listener to remove button
-            const removeBtn = uploadIndicator.querySelector('.remove-file-btn');
-            if (removeBtn) {
-                removeBtn.addEventListener('click', function() {
-                    clearAttachedPdf();
-                    uploadIndicator.remove();
-                });
-            }
+            // Store a reference to the indicator element for later access
+            pdfIndicatorElement = indicatorElement;
             
             console.log(`PDF uploaded successfully:`, attachedPdfName, attachedPdfUrl);
         } catch (error) {
@@ -854,6 +1040,12 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset upload flag
             isUploadingImage = false;
             updateSendButtonState();
+            
+            // Remove loading state from PDF upload button
+            const pdfUploadButton = document.getElementById('pdf-upload');
+            if (pdfUploadButton) {
+                pdfUploadButton.classList.remove('loading');
+            }
         }
     }
     
@@ -975,6 +1167,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Remove any PDF indicators from the UI
         const pdfIndicators = document.querySelectorAll('.pdf-indicator');
         pdfIndicators.forEach(indicator => indicator.remove());
+        
+        // Reset the PDF indicator element reference
+        pdfIndicatorElement = null;
         
         // Update send button state
         updateSendButtonState();
@@ -1549,6 +1744,17 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to manually refresh model prices from the server
+    // Function to ensure we have a conversation ID
+    // This is important for file uploads so they're associated with the right conversation
+    function ensureConversationId() {
+        if (!currentConversationId) {
+            // Generate a random ID if we don't have one yet
+            currentConversationId = 'conv_' + Math.random().toString(36).substring(2, 15);
+            console.log("Created new conversation ID:", currentConversationId);
+        }
+        return currentConversationId;
+    }
+    
     function refreshModelPrices() {
         console.log("Manually refreshing model prices from the server...");
         
@@ -2962,31 +3168,46 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Add PDF to content array if present
             if (hasPdf) {
+                // Check if this is a data URL or a regular URL
+                const isDataUrl = attachedPdfUrl.startsWith('data:application/pdf;base64,');
+                const fileObj = { filename: attachedPdfName || 'document.pdf' };
+                
+                // Add the appropriate property based on URL format
+                if (isDataUrl) {
+                    fileObj.file_data = attachedPdfUrl;
+                } else {
+                    fileObj.url = attachedPdfUrl;
+                }
+                
+                // Add to content array with correct structure
                 userMessageContent.push({
                     type: 'file',
-                    file: { 
-                        filename: attachedPdfName || 'document.pdf',
-                        file_data: attachedPdfUrl
-                    }
+                    file: fileObj
                 });
                 
                 // Add PDF URL to payload for backend compatibility
                 payload.pdf_url = attachedPdfUrl;
                 payload.pdf_filename = attachedPdfName;
                 
-                console.log(`📄 Including PDF document in message: ${attachedPdfName}`);
+                console.log(`📄 Including PDF document in message: ${attachedPdfName} (${isDataUrl ? 'data URL' : 'remote URL'})`);
             }
             
-            // Check if the model supports images
+            // Check if the model supports images and PDFs
             const model = allModels.find(m => m.id === modelId);
             const isMultimodalModel = model && model.is_multimodal === true;
+            const supportsPdf = model && model.supports_pdf === true;
             
-            if (!isMultimodalModel) {
+            // Warn about potentially incompatible model capabilities
+            if (hasImages && !isMultimodalModel) {
                 console.warn(`⚠️ Warning: Model ${modelId} does not support images, but images are being sent`);
             }
             
-            // Clear all images after sending
-            clearAttachedImages();
+            if (hasPdf && !supportsPdf) {
+                console.warn(`⚠️ Warning: Model ${modelId} does not support PDFs, but a PDF is being sent`);
+            }
+            
+            // Note: attachments are already cleared in the sendMessage function
+            // So we don't need to clear them again here
         }
         
         // Add user message to history with standardized content array format

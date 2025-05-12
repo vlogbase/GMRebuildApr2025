@@ -1173,6 +1173,11 @@ def upload_pdf():
         file = request.files['file']
         if file.filename == '':
             return jsonify({"error": "No file selected"}), 400
+        
+        # Get conversation ID if provided (for tracking)
+        conversation_id = request.form.get('conversation_id')
+        if conversation_id:
+            logger.info(f"PDF upload associated with conversation: {conversation_id}")
             
         # Validate file type
         filename = file.filename
@@ -1594,8 +1599,23 @@ def chat(): # Synchronous function
                         image_urls.append(url)
                 logger.warning(f"Using legacy top-level 'image_urls' field as fallback")
         
+        # Fallback for top-level PDF fields similar to images
+        if not pdf_urls:
+            # Get optional PDF URLs (legacy format)
+            legacy_pdf_url = data.get('pdf_url')
+            legacy_pdf_filename = data.get('pdf_filename', 'document.pdf')
+            
+            if legacy_pdf_url:
+                pdf_url = legacy_pdf_url
+                pdf_urls.append(legacy_pdf_url)
+                pdf_filename = legacy_pdf_filename
+                logger.warning(f"Using legacy top-level 'pdf_url' field as fallback")
+        
         if image_urls:
             logger.info(f"Request contains {len(image_urls)} images")
+        
+        if pdf_urls:
+            logger.info(f"Request contains {len(pdf_urls)} PDF documents")
         
         # Use .get for default model to avoid KeyError if '1' isn't present initially
         model_id = data.get('model', DEFAULT_PRESET_MODELS.get('1', 'google/gemini-flash-1.5')) 
@@ -1985,9 +2005,20 @@ def chat(): # Synchronous function
                         pdf_to_process.append((pdf_data, filename))
                 
                 for pdf_data_url, filename in pdf_to_process:
-                    # Validate that this is a data URL (required for OpenRouter PDF handling)
-                    if pdf_data_url.startswith('data:application/pdf;base64,'):
-                        # Add this PDF to the multimodal content
+                    # Check if this is an Azure Blob Storage URL
+                    if pdf_data_url.startswith(('http://', 'https://')) and 'blob.core.windows.net' in pdf_data_url:
+                        # Azure Blob URL - use as is in the "url" field
+                        multimodal_content.append({
+                            "type": "file",
+                            "file": {
+                                "filename": filename,
+                                "url": pdf_data_url  # Use URL format for Azure Blob Storage URLs
+                            }
+                        })
+                        logger.info(f"Added PDF document with URL to message: {filename}")
+                    # Check if this is a data URL
+                    elif pdf_data_url.startswith('data:application/pdf;base64,'):
+                        # Data URL - use in the "file_data" field
                         multimodal_content.append({
                             "type": "file",
                             "file": {
@@ -1995,9 +2026,10 @@ def chat(): # Synchronous function
                                 "file_data": pdf_data_url
                             }
                         })
-                        logger.info(f"Added PDF document to message: {filename}")
+                        logger.info(f"Added PDF document with data URL to message: {filename}")
                     else:
-                        logger.error(f"❌ INVALID PDF DATA URL FORMAT: PDF URLs must be data:application/pdf;base64,... format")
+                        logger.error(f"❌ INVALID PDF FORMAT: {pdf_data_url[:50]}...")
+                        logger.error("PDF must be either an Azure Blob Storage URL or a data:application/pdf;base64,... data URL")
             
             # Add the multimodal content to messages if we have at least one valid image or PDF
             if len(multimodal_content) > 1:  # First item is text, so we need more than 1 item
