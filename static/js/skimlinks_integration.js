@@ -265,11 +265,12 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Try adding our own affiliate links as a fallback method
+        // Apply our own affiliate links - this is our primary method since Skimlinks isn't loading
         const contentHTML = messageContent.innerHTML;
         
         // List of common product keywords and their affiliate links
         const affiliateLinks = {
+            // Tech products
             'iphone': 'https://www.amazon.com/s?k=iphone&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
             'samsung': 'https://www.amazon.com/s?k=samsung&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
             'macbook': 'https://www.amazon.com/s?k=macbook&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
@@ -278,19 +279,102 @@ document.addEventListener('DOMContentLoaded', function() {
             'headphones': 'https://www.amazon.com/s?k=headphones&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
             'camera': 'https://www.amazon.com/s?k=camera&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
             'tablet': 'https://www.amazon.com/s?k=tablet&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
-            'kindle': 'https://www.amazon.com/s?k=kindle&linkCode=ll2&tag=skimlinks_replacement&linkId=123456'
+            'kindle': 'https://www.amazon.com/s?k=kindle&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            'airpods': 'https://www.amazon.com/s?k=airpods&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            'smartwatch': 'https://www.amazon.com/s?k=smartwatch&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            'nintendo': 'https://www.amazon.com/s?k=nintendo&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            'playstation': 'https://www.amazon.com/s?k=playstation&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            'xbox': 'https://www.amazon.com/s?k=xbox&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            
+            // Home products
+            'vacuum': 'https://www.amazon.com/s?k=vacuum&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            'coffee maker': 'https://www.amazon.com/s?k=coffee+maker&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            'blender': 'https://www.amazon.com/s?k=blender&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            'air fryer': 'https://www.amazon.com/s?k=air+fryer&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            'mattress': 'https://www.amazon.com/s?k=mattress&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            
+            // Clothing & accessories
+            'sneakers': 'https://www.amazon.com/s?k=sneakers&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            'running shoes': 'https://www.amazon.com/s?k=running+shoes&linkCode=ll2&tag=skimlinks_replacement&linkId=123456',
+            'backpack': 'https://www.amazon.com/s?k=backpack&linkCode=ll2&tag=skimlinks_replacement&linkId=123456'
         };
         
         // Simple direct linking approach - replace product keywords with links
         let processedHTML = contentHTML;
         let madeChanges = false;
         
+        // Process single-word keywords first
         Object.keys(affiliateLinks).forEach(keyword => {
-            const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
-            if (regex.test(processedHTML)) {
-                processedHTML = processedHTML.replace(regex, `<a href="${affiliateLinks[keyword]}" target="_blank" rel="nofollow noopener" data-manual-affiliate="true">$&</a>`);
-                madeChanges = true;
-                console.warn(`SKIMLINKS DEBUG: Added manual affiliate link for "${keyword}"`);
+            // Only process if it's not part of an existing link
+            if (processedHTML.includes(`<a`)) {
+                // Don't replace inside existing links
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = processedHTML;
+                
+                // Get all text nodes not inside links
+                const textNodes = [];
+                const walk = document.createTreeWalker(
+                    tempDiv, 
+                    NodeFilter.SHOW_TEXT,
+                    { 
+                        acceptNode: function(node) {
+                            // Skip text nodes inside links
+                            if (node.parentNode.nodeName === 'A') {
+                                return NodeFilter.FILTER_REJECT;
+                            }
+                            return NodeFilter.FILTER_ACCEPT;
+                        } 
+                    }
+                );
+                
+                let currentNode;
+                while (currentNode = walk.nextNode()) {
+                    textNodes.push(currentNode);
+                }
+                
+                // Process each text node
+                textNodes.forEach(textNode => {
+                    const originalText = textNode.nodeValue;
+                    const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+                    
+                    if (regex.test(originalText)) {
+                        const newText = originalText.replace(regex, `###LINK_START_${keyword}###$&###LINK_END###`);
+                        if (newText !== originalText) {
+                            textNode.nodeValue = newText;
+                            madeChanges = true;
+                        }
+                    }
+                });
+                
+                if (madeChanges) {
+                    processedHTML = tempDiv.innerHTML;
+                    
+                    // Replace placeholders with actual links
+                    Object.keys(affiliateLinks).forEach(kw => {
+                        const linkStartPlaceholder = `###LINK_START_${kw}###`;
+                        const linkEndPlaceholder = `###LINK_END###`;
+                        
+                        while (processedHTML.includes(linkStartPlaceholder)) {
+                            processedHTML = processedHTML.replace(
+                                linkStartPlaceholder, 
+                                `<a href="${affiliateLinks[kw]}" target="_blank" rel="nofollow noopener" data-manual-affiliate="true" style="color: #0066cc; text-decoration: underline;">`
+                            );
+                            processedHTML = processedHTML.replace(linkEndPlaceholder, `</a>`);
+                            console.warn(`SKIMLINKS DEBUG: Added manual affiliate link for "${kw}"`);
+                        }
+                    });
+                }
+            } else {
+                // Simple replacement for documents without links
+                const regex = new RegExp(`\\b${keyword}\\b`, 'gi');
+                if (regex.test(processedHTML)) {
+                    processedHTML = processedHTML.replace(
+                        regex, 
+                        `<a href="${affiliateLinks[keyword]}" target="_blank" rel="nofollow noopener" data-manual-affiliate="true" style="color: #0066cc; text-decoration: underline;">$&</a>`
+                    );
+                    madeChanges = true;
+                    console.warn(`SKIMLINKS DEBUG: Added manual affiliate link for "${keyword}"`);
+                }
             }
         });
         
@@ -298,18 +382,18 @@ document.addEventListener('DOMContentLoaded', function() {
             messageContent.innerHTML = processedHTML;
             console.warn('SKIMLINKS DEBUG: Applied manual affiliate links, forcing repaint');
             forceRepaint(messageContent);
-            repaintApplied = true;
             
             // Mark as processed
             messageElement.dataset.skimlinksProcessed = 'true';
             messageElement.dataset.skimlinksProcessing = 'false';
+            messageElement.dataset.manualAffiliateLinks = 'true';
             
             // Move to next in queue
             setTimeout(processNextInQueue, 100);
             return;
         }
         
-        // Continue with normal Skimlinks integration if manual linking didn't make changes
+        // As a fallback, try Skimlinks - though we know it's not loading properly based on logs
         // Set a flag to track if we've done a repaint
         let repaintApplied = false;
         
