@@ -14,7 +14,7 @@ from functools import wraps
 
 from flask import Blueprint, flash, redirect, url_for, render_template, request, abort, current_app
 from flask_login import current_user, login_required
-from sqlalchemy import func, desc, and_, not_
+from sqlalchemy import func, desc, and_, not_, text
 from typing import NoReturn
 
 from models import User, Affiliate, Transaction, Commission, CustomerReferral, CommissionStatus, AffiliateStatus, PaymentStatus
@@ -137,10 +137,8 @@ def index():
             logger.info("Getting user stats")
             total_users = db.session.query(func.count(User.id)).scalar() or 0
             
-            # Only select the columns we need to reduce memory usage
-            recent_users = db.session.query(
-                User.id, User.username, User.email, User.created_at
-            ).filter(User.created_at != None)\
+            # Get full User objects to avoid attribute setting issues
+            recent_users = User.query.filter(User.created_at != None)\
             .order_by(User.created_at.desc())\
             .limit(5)\
             .all()
@@ -158,24 +156,16 @@ def index():
                 .filter_by(status=CommissionStatus.APPROVED.value)\
                 .scalar() or 0
                 
-            # Only select the columns we need
-            recent_commissions = db.session.query(
-                Commission.id, Commission.affiliate_id, Commission.commission_amount, 
-                Commission.status, Commission.created_at
-            ).filter(Commission.created_at != None)\
+            # Get full Commission objects to avoid attribute setting issues
+            recent_commissions = Commission.query.filter(Commission.created_at != None)\
             .order_by(Commission.created_at.desc())\
             .limit(5)\
             .all()
             
-            # Load affiliates for the recent commissions
-            affiliate_ids = [c.affiliate_id for c in recent_commissions]
-            affiliates = {
-                a.id: a for a in db.session.query(Affiliate).filter(Affiliate.id.in_(affiliate_ids)).all()
-            } if affiliate_ids else {}
-            
-            # Add affiliate objects to commissions
-            for comm in recent_commissions:
-                comm.affiliate = affiliates.get(comm.affiliate_id)
+            # Pre-load affiliates to avoid N+1 query issues
+            for commission in recent_commissions:
+                # Make sure we access the affiliate to ensure it's loaded
+                _ = commission.affiliate
             
             # Revenue stats
             logger.info("Getting revenue stats")
@@ -228,7 +218,7 @@ def index():
             
         finally:
             # Restore original timeout
-            db.session.get_bind().execute(f"SET statement_timeout = {original_timeout}")
+            db.session.execute(text(f"SET statement_timeout = {original_timeout}"))
         
         logger.info("Rendering admin dashboard template")
         return render_template('admin/dashboard.html',
@@ -268,8 +258,9 @@ def manage_commissions():
         # Set a timeout for this query to prevent long-running operations
         timeout = 10  # seconds
         from sqlalchemy.exc import OperationalError
-        original_timeout = db.session.get_bind().execute("SHOW statement_timeout").scalar()
-        db.session.get_bind().execute(f"SET statement_timeout = {timeout * 1000}")  # milliseconds
+        from sqlalchemy import text
+        original_timeout = db.session.execute(text("SHOW statement_timeout")).scalar()
+        db.session.execute(text(f"SET statement_timeout = {timeout * 1000}"))  # milliseconds
         
         try:
             logger.info("Accessing manage_commissions page")
@@ -346,7 +337,7 @@ def manage_commissions():
         
         finally:
             # Restore original timeout
-            db.session.get_bind().execute(f"SET statement_timeout = {original_timeout}")
+            db.session.execute(text(f"SET statement_timeout = {original_timeout}"))
         
         logger.info(f"Rendering manage_commissions template with {len(sorted_affiliates)} affiliates")
         return render_template('admin/manage_commissions.html',
@@ -487,30 +478,26 @@ def payouts():
                     'commissions': [],
                     'total_amount': 0,
                     'status': commission.status,
-                    'affiliates': set(),
-                    'created_at': commission.updated_at or commission.created_at
+                    'created_at': commission.updated_at,
+                    'affiliate_count': 0,
+                    'affiliate_ids': set()
                 }
+            
             batches[batch_id]['commissions'].append(commission)
             batches[batch_id]['total_amount'] += commission.commission_amount
-            batches[batch_id]['affiliates'].add(commission.affiliate_id)
+            batches[batch_id]['affiliate_ids'].add(commission.affiliate_id)
         
-        # Convert to list for template
-        grouped_payouts = [{
-            'batch_id': batch_id,
-            'commissions': batch['commissions'],
-            'total_amount': batch['total_amount'],
-            'status': batch['status'],
-            'affiliate_count': len(batch['affiliates']),
-            'commission_count': len(batch['commissions']),
-            'created_at': batch['created_at']
-        } for batch_id, batch in batches.items()]
+        # Count unique affiliates
+        for batch_id, batch in batches.items():
+            batch['affiliate_count'] = len(batch['affiliate_ids'])
+            batch['affiliate_ids'] = list(batch['affiliate_ids'])  # Convert to list for template
         
         # Sort by date (newest first)
-        grouped_payouts.sort(key=lambda x: x['created_at'], reverse=True)
+        sorted_batches = sorted(batches.values(), key=lambda x: x['created_at'], reverse=True)
         
-        return render_template('admin/payouts.html', grouped_payouts=grouped_payouts)
+        return render_template('admin/payouts.html', batches=sorted_batches)
     except Exception as e:
-        logger.error(f"Error in payouts view: {str(e)}", exc_info=True)
+        logger.error(f"Error in payouts: {str(e)}", exc_info=True)
         # Simple fallback page in case of errors
         return f"""
         <html>
@@ -524,42 +511,33 @@ def payouts():
         </html>
         """, 500
 
-@admin_bp.route('/check_payout_status/<batch_id>')
+@admin_bp.route('/check_payout_status/<batch_id>', methods=['POST'])
 @admin_required
 def check_payout_status_route(batch_id):
     """Check and update the status of a PayPal payout batch"""
     try:
-        # Get the status from PayPal
-        status_response = check_payout_status(batch_id)
-        status = status_response['batch_header']['batch_status']
+        # Get the batch from PayPal
+        payout_status = check_payout_status(batch_id)
+        batch_status = payout_status['batch_header']['batch_status']
         
-        # Update the database with the new status
-        if status == 'SUCCESS':
-            # Update all commissions in this batch to PAID
-            commissions = Commission.query.filter_by(payout_batch_id=batch_id).all()
+        # Get all commissions for this batch
+        commissions = Commission.query.filter_by(payout_batch_id=batch_id).all()
+        
+        # Update status
+        if batch_status == 'SUCCESS':
+            # Mark all as paid
             for commission in commissions:
                 commission.status = CommissionStatus.PAID.value
                 db.session.add(commission)
-                
-            db.session.commit()
-            flash(f'Payout batch {batch_id} is complete. All commissions marked as PAID.', 'success')
-        elif status == 'DENIED' or status == 'CANCELED':
-            # Update all commissions in this batch back to APPROVED
-            commissions = Commission.query.filter_by(payout_batch_id=batch_id).all()
-            for commission in commissions:
-                commission.status = CommissionStatus.APPROVED.value
-                commission.payout_batch_id = None
-                db.session.add(commission)
-                
-            db.session.commit()
-            flash(f'Payout batch {batch_id} was {status}. All commissions reset to APPROVED.', 'warning')
-        else:
-            # Still processing
-            flash(f'Payout batch {batch_id} status: {status}', 'info')
             
+            db.session.commit()
+            flash(f'Payout batch {batch_id} completed successfully. All commissions marked as paid.', 'success')
+        else:
+            # Just show the status
+            flash(f'Payout batch {batch_id} status: {batch_status}', 'info')
+        
         return redirect(url_for('admin_simple.payouts'))
     except Exception as e:
-        db.session.rollback()
         logger.error(f"Error checking payout status: {str(e)}", exc_info=True)
         flash(f'Error checking payout status: {str(e)}', 'error')
         return redirect(url_for('admin_simple.payouts'))
@@ -568,20 +546,19 @@ def check_payout_status_route(batch_id):
 @admin_required
 def toggle_paypal_mode():
     """Toggle between PayPal sandbox and live modes"""
-    try:
-        current_mode = os.environ.get('PAYPAL_MODE', 'sandbox')
-        new_mode = 'live' if current_mode == 'sandbox' else 'sandbox'
-        
-        # In a production environment, we would actually change the environment variable
-        # For now, we'll just show a message
-        flash(f'PayPal mode would be changed from {current_mode.upper()} to {new_mode.upper()} in production.', 'info')
-        return redirect(url_for('admin_simple.index'))
-    except Exception as e:
-        logger.error(f"Error toggling PayPal mode: {str(e)}", exc_info=True)
-        flash(f'Error toggling PayPal mode: {str(e)}', 'error')
-        return redirect(url_for('admin_simple.index'))
+    current_mode = os.environ.get('PAYPAL_MODE', 'sandbox')
+    new_mode = 'live' if current_mode == 'sandbox' else 'sandbox'
+    
+    # Set environment variable
+    os.environ['PAYPAL_MODE'] = new_mode
+    
+    # In a production app, we would update a configuration file or database setting
+    # But for simplicity, we're just toggling the environment variable in memory
+    
+    flash(f'PayPal mode changed from {current_mode} to {new_mode}.', 'success')
+    return redirect(url_for('admin_simple.index'))
 
-@admin_bp.route('/approve_commission/<int:commission_id>')
+@admin_bp.route('/approve_commission/<int:commission_id>', methods=['POST'])
 @admin_required
 def approve_commission(commission_id):
     """Approve a commission for payout"""
@@ -602,7 +579,7 @@ def approve_commission(commission_id):
         flash(f'Error approving commission: {str(e)}', 'error')
         return redirect(url_for('admin_simple.manage_commissions'))
 
-@admin_bp.route('/reject_commission/<int:commission_id>')
+@admin_bp.route('/reject_commission/<int:commission_id>', methods=['POST'])
 @admin_required
 def reject_commission(commission_id):
     """Reject a commission (e.g., if the associated purchase was refunded)"""
