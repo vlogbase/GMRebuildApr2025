@@ -1,2 +1,4 @@
-[dev]
-run = "python -m workflows.admin_test"
+workflows:
+  app_workflow:
+    description: "Run the Flask application"
+    run: python app_workflow.py
