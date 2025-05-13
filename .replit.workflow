@@ -1,4 +1,2 @@
-workflows:
-  app_workflow:
-    description: "Run the Flask application"
-    run: python app_workflow.py
+[dev]
+run = "python -m workflows.admin_test"
