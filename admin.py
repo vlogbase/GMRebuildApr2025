@@ -122,69 +122,113 @@ def index():
     """Admin dashboard with stats and KPIs"""
     logger.info("Admin dashboard route accessed")
     try:
-        # User stats
-        logger.info("Getting user stats")
-        total_users = User.query.count()
-        # Filter out users with null created_at values to prevent template errors
-        recent_users = User.query.filter(User.created_at != None).order_by(User.created_at.desc()).limit(5).all()
+        # Use timeout to prevent long-running queries
+        timeout = 10  # seconds
         
-        # Affiliate stats
-        logger.info("Getting affiliate stats")
-        total_affiliates = Affiliate.query.count()
-        active_affiliates = Affiliate.query.filter_by(status=AffiliateStatus.ACTIVE.value).count()
-    
-        # Commission stats
-        logger.info("Getting commission stats")
-        pending_commissions = Commission.query.filter_by(status=CommissionStatus.APPROVED.value).count()
-        # Filter out commissions with null created_at values to prevent template errors
-        recent_commissions = Commission.query.filter(Commission.created_at != None).order_by(Commission.created_at.desc()).limit(5).all()
+        # Set a timeout context for the database session
+        # This helps prevent worker timeouts and OOM errors
+        from sqlalchemy.exc import OperationalError
+        from sqlalchemy import text
+        original_timeout = db.session.execute(text("SHOW statement_timeout")).scalar()
+        db.session.execute(text(f"SET statement_timeout = {timeout * 1000}"))  # milliseconds
         
-        # Revenue stats
-        logger.info("Getting revenue stats")
-        total_revenue = db.session.query(func.sum(Transaction.amount_usd)).filter_by(status=PaymentStatus.COMPLETED.value).scalar() or 0
-        
-        # Date range for charts
-        logger.info("Preparing chart data")
-        end_date = datetime.now()
-        start_date = end_date - timedelta(days=30)
-        
-        # User registrations by day (with null check to prevent errors)
-        user_registrations = db.session.query(
-            func.date(User.created_at).label('date'),
-            func.count(User.id).label('count')
-        ).filter(User.created_at != None, User.created_at >= start_date, User.created_at <= end_date)\
-        .group_by(func.date(User.created_at))\
-        .order_by(func.date(User.created_at))\
-        .all()
-        
-        # Revenue by day (with null check to prevent errors)
-        revenue_by_day = db.session.query(
-            func.date(Transaction.created_at).label('date'),
-            func.sum(Transaction.amount_usd).label('amount')
-        ).filter(
-            Transaction.created_at != None,
-            Transaction.created_at >= start_date,
-            Transaction.created_at <= end_date,
-            Transaction.status == PaymentStatus.COMPLETED.value
-        )\
-        .group_by(func.date(Transaction.created_at))\
-        .order_by(func.date(Transaction.created_at))\
-        .all()
-        
-        # Create a full date range for the last 30 days
-        date_range = [(start_date + timedelta(days=i)).date() for i in range(31)]
-        
-        # Create dict for fast lookups
-        user_dict = {str(r[0]): r[1] for r in user_registrations}
-        revenue_dict = {str(r[0]): float(r[1]) for r in revenue_by_day}
-        
-        # Fill in missing dates with zeros
-        user_data = [user_dict.get(str(d), 0) for d in date_range]
-        revenue_data = [revenue_dict.get(str(d), 0) for d in date_range]
-        date_labels = [d.strftime('%Y-%m-%d') for d in date_range]
-        
-        # Get PayPal mode
-        paypal_mode = os.environ.get('PAYPAL_MODE', 'sandbox')
+        try:
+            # User stats - Use simplified queries with explicit columns to minimize memory usage
+            logger.info("Getting user stats")
+            total_users = db.session.query(func.count(User.id)).scalar() or 0
+            
+            # Only select the columns we need to reduce memory usage
+            recent_users = db.session.query(
+                User.id, User.username, User.email, User.created_at
+            ).filter(User.created_at != None)\
+            .order_by(User.created_at.desc())\
+            .limit(5)\
+            .all()
+            
+            # Affiliate stats
+            logger.info("Getting affiliate stats")
+            total_affiliates = db.session.query(func.count(Affiliate.id)).scalar() or 0
+            active_affiliates = db.session.query(func.count(Affiliate.id))\
+                .filter_by(status=AffiliateStatus.ACTIVE.value)\
+                .scalar() or 0
+            
+            # Commission stats
+            logger.info("Getting commission stats")
+            pending_commissions = db.session.query(func.count(Commission.id))\
+                .filter_by(status=CommissionStatus.APPROVED.value)\
+                .scalar() or 0
+                
+            # Only select the columns we need
+            recent_commissions = db.session.query(
+                Commission.id, Commission.affiliate_id, Commission.commission_amount, 
+                Commission.status, Commission.created_at
+            ).filter(Commission.created_at != None)\
+            .order_by(Commission.created_at.desc())\
+            .limit(5)\
+            .all()
+            
+            # Load affiliates for the recent commissions
+            affiliate_ids = [c.affiliate_id for c in recent_commissions]
+            affiliates = {
+                a.id: a for a in db.session.query(Affiliate).filter(Affiliate.id.in_(affiliate_ids)).all()
+            } if affiliate_ids else {}
+            
+            # Add affiliate objects to commissions
+            for comm in recent_commissions:
+                comm.affiliate = affiliates.get(comm.affiliate_id)
+            
+            # Revenue stats
+            logger.info("Getting revenue stats")
+            total_revenue = db.session.query(func.sum(Transaction.amount_usd))\
+                .filter_by(status=PaymentStatus.COMPLETED.value)\
+                .scalar() or 0
+            
+            # Use a smaller date range to reduce the amount of data processed
+            logger.info("Preparing chart data")
+            end_date = datetime.now()
+            # Reducing from 30 to 14 days to minimize data processing
+            start_date = end_date - timedelta(days=14)
+            
+            # Use optimized queries with date_trunc instead of func.date for better performance
+            # User registrations by day (with null check to prevent errors)
+            user_registrations = db.session.query(
+                func.date_trunc('day', User.created_at).label('date'),
+                func.count(User.id).label('count')
+            ).filter(User.created_at != None, User.created_at >= start_date, User.created_at <= end_date)\
+            .group_by(func.date_trunc('day', User.created_at))\
+            .all()
+            
+            # Revenue by day (with null check to prevent errors)
+            revenue_by_day = db.session.query(
+                func.date_trunc('day', Transaction.created_at).label('date'),
+                func.sum(Transaction.amount_usd).label('amount')
+            ).filter(
+                Transaction.created_at != None,
+                Transaction.created_at >= start_date,
+                Transaction.created_at <= end_date,
+                Transaction.status == PaymentStatus.COMPLETED.value
+            )\
+            .group_by(func.date_trunc('day', Transaction.created_at))\
+            .all()
+            
+            # Create a smaller date range (14 days instead of 30)
+            date_range = [(start_date + timedelta(days=i)).date() for i in range(15)]  # 14 days + today
+            
+            # Create dict for fast lookups - handle datetime objects from date_trunc
+            user_dict = {str(r[0].date() if r[0] else None): r[1] for r in user_registrations}
+            revenue_dict = {str(r[0].date() if r[0] else None): float(r[1] or 0) for r in revenue_by_day}
+            
+            # Fill in missing dates with zeros
+            user_data = [user_dict.get(str(d), 0) for d in date_range]
+            revenue_data = [revenue_dict.get(str(d), 0) for d in date_range]
+            date_labels = [d.strftime('%Y-%m-%d') for d in date_range]
+            
+            # Get PayPal mode
+            paypal_mode = os.environ.get('PAYPAL_MODE', 'sandbox')
+            
+        finally:
+            # Restore original timeout
+            db.session.get_bind().execute(f"SET statement_timeout = {original_timeout}")
         
         logger.info("Rendering admin dashboard template")
         return render_template('admin/dashboard.html',
@@ -221,55 +265,90 @@ def index():
 def manage_commissions():
     """Admin page for managing commissions"""
     try:
-        # Get all commissions ordered by status (approved first, then pending) and date
-        commissions = Commission.query.order_by(
-            # Approved first, then pending
-            Commission.status.desc(),
-            # Newest first within each status
-            Commission.created_at.desc()
-        ).all()
+        # Set a timeout for this query to prevent long-running operations
+        timeout = 10  # seconds
+        from sqlalchemy.exc import OperationalError
+        original_timeout = db.session.get_bind().execute("SHOW statement_timeout").scalar()
+        db.session.get_bind().execute(f"SET statement_timeout = {timeout * 1000}")  # milliseconds
         
-        # Group commissions by affiliate
-        affiliate_commissions = {}
-        for commission in commissions:
-            affiliate_id = commission.affiliate_id
-            if affiliate_id not in affiliate_commissions:
-                affiliate = Affiliate.query.get(affiliate_id)
-                affiliate_commissions[affiliate_id] = {
-                    'affiliate': affiliate,
-                    'commissions': [],
-                    'approved_total': 0,
-                    'pending_total': 0,
-                    'paid_total': 0,
-                    'rejected_total': 0
-                }
+        try:
+            logger.info("Accessing manage_commissions page")
             
-            affiliate_commissions[affiliate_id]['commissions'].append(commission)
+            # Get aggregate totals for each affiliate rather than loading all commission records
+            # This reduces memory usage significantly by letting the database do the aggregation
+            affiliate_totals = db.session.query(
+                Commission.affiliate_id,
+                func.sum(Commission.commission_amount).filter(Commission.status == CommissionStatus.APPROVED.value).label('approved_total'),
+                func.sum(Commission.commission_amount).filter(Commission.status == CommissionStatus.PENDING.value).label('pending_total'),
+                func.sum(Commission.commission_amount).filter(Commission.status == CommissionStatus.PAID.value).label('paid_total'),
+                func.sum(Commission.commission_amount).filter(Commission.status == CommissionStatus.REJECTED.value).label('rejected_total'),
+                func.count(Commission.id).label('commission_count')
+            ).group_by(Commission.affiliate_id).all()
             
-            if commission.status == CommissionStatus.APPROVED.value:
-                affiliate_commissions[affiliate_id]['approved_total'] += commission.commission_amount
-            elif commission.status == CommissionStatus.PENDING.value:
-                affiliate_commissions[affiliate_id]['pending_total'] += commission.commission_amount
-            elif commission.status == CommissionStatus.PAID.value:
-                affiliate_commissions[affiliate_id]['paid_total'] += commission.commission_amount
-            elif commission.status == CommissionStatus.REJECTED.value:
-                affiliate_commissions[affiliate_id]['rejected_total'] += commission.commission_amount
+            # Get all affiliate info in a single query
+            affiliate_ids = [t.affiliate_id for t in affiliate_totals]
+            affiliates = {
+                a.id: a for a in db.session.query(Affiliate).filter(Affiliate.id.in_(affiliate_ids)).all()
+            } if affiliate_ids else {}
+            
+            # For affiliates with significant commission counts, load last 5 commissions
+            # This prevents loading all commissions for affiliates with many records
+            affiliate_recent_commissions = {}
+            for total in affiliate_totals:
+                if total.affiliate_id in affiliates:
+                    # Only load up to 5 recent commissions per affiliate
+                    recent = db.session.query(
+                        Commission.id, 
+                        Commission.affiliate_id,
+                        Commission.commission_amount,
+                        Commission.status,
+                        Commission.created_at,
+                        Commission.commission_level
+                    ).filter(
+                        Commission.affiliate_id == total.affiliate_id,
+                        Commission.created_at != None
+                    ).order_by(Commission.created_at.desc()).limit(5).all()
+                    
+                    affiliate_recent_commissions[total.affiliate_id] = recent
+            
+            # Build the affiliate_commissions structure but with optimized data
+            affiliate_commissions = {}
+            for total in affiliate_totals:
+                affiliate_id = total.affiliate_id
+                if affiliate_id in affiliates:
+                    affiliate = affiliates[affiliate_id]
+                    recent_commissions = affiliate_recent_commissions.get(affiliate_id, [])
+                    
+                    affiliate_commissions[affiliate_id] = {
+                        'affiliate': affiliate,
+                        'commissions': recent_commissions,  # Only the 5 most recent
+                        'commission_count': total.commission_count,  # Total count for display
+                        'approved_total': float(total.approved_total or 0),
+                        'pending_total': float(total.pending_total or 0),
+                        'paid_total': float(total.paid_total or 0),
+                        'rejected_total': float(total.rejected_total or 0)
+                    }
+            
+            # Sort affiliates by those with approved commissions first, then total amount
+            sorted_affiliates = sorted(
+                affiliate_commissions.values(),
+                key=lambda x: (
+                    x['approved_total'] > 0,  # Approved commissions first
+                    x['approved_total'] + x['pending_total'] + x['paid_total'],  # Then by total earnings
+                ),
+                reverse=True
+            )
+            
+            # Calculate totals - use aggregate values already computed
+            total_approved = sum(a['approved_total'] for a in affiliate_commissions.values())
+            total_pending = sum(a['pending_total'] for a in affiliate_commissions.values())
+            total_paid = sum(a['paid_total'] for a in affiliate_commissions.values())
         
-        # Sort affiliates by those with approved commissions first, then total amount
-        sorted_affiliates = sorted(
-            affiliate_commissions.values(),
-            key=lambda x: (
-                x['approved_total'] > 0,  # Approved commissions first
-                x['approved_total'] + x['pending_total'] + x['paid_total'],  # Then by total earnings
-            ),
-            reverse=True
-        )
+        finally:
+            # Restore original timeout
+            db.session.get_bind().execute(f"SET statement_timeout = {original_timeout}")
         
-        # Calculate totals
-        total_approved = sum(a['approved_total'] for a in affiliate_commissions.values())
-        total_pending = sum(a['pending_total'] for a in affiliate_commissions.values())
-        total_paid = sum(a['paid_total'] for a in affiliate_commissions.values())
-        
+        logger.info(f"Rendering manage_commissions template with {len(sorted_affiliates)} affiliates")
         return render_template('admin/manage_commissions.html',
             affiliates=sorted_affiliates,
             total_approved=total_approved,
