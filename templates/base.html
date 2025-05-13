@@ -50,10 +50,10 @@
     <!-- Cookie Consent JavaScript -->
     <script src="{{ url_for('static', filename='js/cookie_consent.js') }}"></script>
     
-    <!-- Simplified chat-focused Skimlinks integration -->
-    <script src="{{ url_for('static', filename='js/chat_skimlinks.js') }}"></script>
+    <!-- Micro Page Skimlinks integration - treats each free message as its own HTML page -->
+    <script src="{{ url_for('static', filename='js/micro_page_skimlinks.js') }}"></script>
     
-    <!-- Skimlinks JavaScript (placed at the very end as per instructions) -->
+    <!-- Skimlinks JavaScript for the main page (still needed for test links) -->
     <script type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js"></script>
     {% endblock %}
 </body>
