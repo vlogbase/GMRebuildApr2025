@@ -2698,6 +2698,26 @@ document.addEventListener('DOMContentLoaded', function() {
         // Don't send empty messages with no attachments
         if (!message && !hasAttachments) return;
         
+        // Check if user is not authenticated and handle message counting
+        if (typeof userIsLoggedIn !== 'undefined' && !userIsLoggedIn) {
+            // Get the current message count
+            let nonAuthMessageCount = parseInt(localStorage.getItem('nonAuthMessageCount') || 0);
+            
+            // Increment the count for this new message
+            nonAuthMessageCount++;
+            localStorage.setItem('nonAuthMessageCount', nonAuthMessageCount);
+            
+            console.log(`Non-auth message count: ${nonAuthMessageCount}`);
+            
+            // Check if we need to show the login prompt (every 3 messages)
+            if (nonAuthMessageCount % 3 === 0) {
+                // Show login prompt after processing this message
+                setTimeout(() => {
+                    showLoginPrompt();
+                }, 1000); // Slight delay to ensure the message is displayed first
+            }
+        }
+        
         // Clear input and reset textarea height to initial state
         messageInput.value = '';
         messageInput.style.height = '40px'; // Reset to initial height
@@ -4211,4 +4231,52 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     `;
     document.head.appendChild(style);
+    
+    // Login prompt for non-authenticated users
+    if (typeof userIsLoggedIn !== 'undefined' && !userIsLoggedIn) {
+        // Initialize login prompt modal elements
+        const loginPromptModal = document.getElementById('login-prompt-modal');
+        const closeLoginPromptBtn = document.getElementById('close-login-prompt');
+        const noThanksBtn = document.getElementById('no-thanks-btn');
+        
+        // Function to show the login prompt modal
+        window.showLoginPrompt = function() {
+            if (loginPromptModal) {
+                loginPromptModal.style.display = 'flex';
+                // Add animation class
+                setTimeout(() => {
+                    loginPromptModal.style.opacity = '1';
+                }, 10);
+            }
+        };
+        
+        // Function to hide the login prompt modal
+        function hideLoginPrompt() {
+            if (loginPromptModal) {
+                loginPromptModal.style.opacity = '0';
+                setTimeout(() => {
+                    loginPromptModal.style.display = 'none';
+                }, 300); // Match the CSS transition duration
+            }
+        }
+        
+        // Close button event listener
+        if (closeLoginPromptBtn) {
+            closeLoginPromptBtn.addEventListener('click', hideLoginPrompt);
+        }
+        
+        // "No thanks" button event listener
+        if (noThanksBtn) {
+            noThanksBtn.addEventListener('click', hideLoginPrompt);
+        }
+        
+        // Close modal when clicking outside the modal content
+        if (loginPromptModal) {
+            loginPromptModal.addEventListener('click', function(e) {
+                if (e.target === loginPromptModal) {
+                    hideLoginPrompt();
+                }
+            });
+        }
+    }
 });

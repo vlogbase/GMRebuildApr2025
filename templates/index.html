@@ -249,6 +249,41 @@
                 </div>
             </div>
         </div>
+        <!-- Login Prompt Modal (displayed after 3 messages for non-authenticated users) -->
+        <div id="login-prompt-modal" class="modal" style="display: none;">
+            <div class="modal-content login-prompt-modal-content">
+                <div class="modal-header">
+                    <h3>Login to continue</h3>
+                    <button id="close-login-prompt" class="close-button">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="login-prompt-icon">
+                        <i class="fa-solid fa-user-circle"></i>
+                    </div>
+                    <p class="login-prompt-message">
+                        Login with Google to continue using GloriaMundo - it's free!
+                    </p>
+                    <p class="login-prompt-benefits">
+                        By logging in, you can:
+                        <ul>
+                            <li>Save all your conversations</li>
+                            <li>Access your chat history from any device</li>
+                            <li>Continue seamlessly where you left off</li>
+                        </ul>
+                    </p>
+                    <div class="login-prompt-actions">
+                        <a href="{{ url_for('google_auth.login') }}" class="auth-btn google-auth-btn">
+                            <i class="fa-brands fa-google"></i> Sign in with Google
+                        </a>
+                        <a href="javascript:void(0)" id="no-thanks-btn" class="no-thanks-link">
+                            No thanks, continue for now
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
     
 {% endblock %}
@@ -258,5 +293,20 @@
     <script>
         // Pass the login status to JavaScript
         const userIsLoggedIn = {{ is_logged_in|tojson }};
+        
+        // Set up non-authenticated user message counting
+        if (!userIsLoggedIn) {
+            // Initialize message counter from localStorage or reset to 0
+            let nonAuthMessageCount = parseInt(localStorage.getItem('nonAuthMessageCount') || 0);
+            const MESSAGE_THRESHOLD = 3; // Show login prompt after every 3 messages
+            
+            // Reset if the value is invalid
+            if (isNaN(nonAuthMessageCount)) {
+                nonAuthMessageCount = 0;
+                localStorage.setItem('nonAuthMessageCount', nonAuthMessageCount);
+            }
+            
+            console.log(`Non-authenticated user message count: ${nonAuthMessageCount}`);
+        }
     </script>
 {% endblock %}
