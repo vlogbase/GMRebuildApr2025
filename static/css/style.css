@@ -2142,12 +2142,7 @@ body.account-page .tab-pane {
     background-color: rgba(36, 185, 189, 0.1);
 }
 
-.disclaimer {
-    text-align: center;
-    color: var(--secondary-text);
-    font-size: 12px;
-    margin-top: 8px;
-}
+/* The standalone disclaimer is removed as it's now part of the footer */
 
 /* Image Upload and Camera UI */
 .input-group .message-actions {
@@ -3107,17 +3102,21 @@ code {
 /* Footer Legal Links */
 .footer-legal-links {
     text-align: center;
-    padding: 10px 0;
-    margin-top: 8px;
+    padding: 5px 0; /* Reduced from 10px to 5px */
+    margin-top: 5px; /* Reduced from 8px to 5px */
     border-top: 1px solid var(--border-color);
     color: var(--secondary-text);
     font-size: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
 }
 
 .footer-legal-links a {
     color: var(--secondary-text);
     text-decoration: none;
-    margin: 0 8px;
+    margin: 0 6px; /* Reduced from 8px to 6px */
     transition: color 0.2s;
 }
 
@@ -3126,9 +3125,14 @@ code {
 }
 
 .footer-legal-links .copyright {
-    display: block;
-    margin-top: 5px;
+    margin-left: 6px; /* Reduced from 8px to 6px */
     font-size: 11px;
+}
+
+.footer-legal-links .disclaimer-text {
+    margin: 0 8px; /* Reduced from 12px to 8px */
+    font-size: 11px;
+    font-style: italic;
 }
 
 /* Policy Pages Styles */

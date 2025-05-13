@@ -99,10 +99,12 @@
     
     <p class="effective-date">This Cookie Policy is effective as of April 24, 2025.</p>
     
-    <div class="footer">
+    <div class="footer-legal-links">
         <a href="{{ url_for('terms_of_service') }}">Terms of Service</a>
         <a href="{{ url_for('privacy_policy') }}">Privacy Policy</a>
+        <a href="{{ url_for('cookie_policy') }}">Cookie Policy</a>
         <a href="javascript:void(0)" id="open-cookie-settings">Cookie Settings</a>
+        <span class="copyright">© {{ now.year }} Sentigral Limited</span>
     </div>
 </div>
 {% endblock %}
