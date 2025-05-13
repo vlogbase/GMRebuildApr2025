@@ -15,6 +15,24 @@ document.addEventListener('DOMContentLoaded', function() {
     setupFreeModelDetection();
     
     console.log('Skimlinks iframe integration initialized');
+    
+    // DEBUG: Add temporary test button for development
+    const debugButton = document.createElement('button');
+    debugButton.textContent = 'Debug Affiliate View';
+    debugButton.style.position = 'fixed';
+    debugButton.style.bottom = '80px';
+    debugButton.style.right = '20px';
+    debugButton.style.zIndex = '9999';
+    debugButton.style.padding = '8px 12px';
+    debugButton.style.backgroundColor = 'red';
+    debugButton.style.color = 'white';
+    debugButton.style.border = 'none';
+    debugButton.style.borderRadius = '4px';
+    debugButton.style.cursor = 'pointer';
+    debugButton.addEventListener('click', function() {
+        window.testAffiliateView();
+    });
+    document.body.appendChild(debugButton);
 });
 
 /**
@@ -35,7 +53,7 @@ function addAffiliateViewToggle() {
     toggleButton.style.border = 'none';
     toggleButton.style.borderRadius = '4px';
     toggleButton.style.cursor = 'pointer';
-    toggleButton.style.display = 'none'; // Hidden by default, shown when free model content exists
+    toggleButton.style.display = 'block'; // Always visible for testing purposes
     
     // Add click handler
     toggleButton.addEventListener('click', function() {
