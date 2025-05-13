@@ -1,2 +1,4 @@
-# This is a workflow for running the app
-run = "python app_workflow.py"
+[workflow]
+name = "chat-app"
+entrypoint = "app_workflow.py"
+requirements = []

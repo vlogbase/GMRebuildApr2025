@@ -13,6 +13,27 @@ function getCSRFToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content;
 }
 
+// Utility function to force a browser repaint on an element
+// This is used to fix rendering issues where content doesn't appear until window focus changes
+function forceRepaint(element) {
+    if (!element) {
+        console.warn('forceRepaint called with null/undefined element');
+        return;
+    }
+    
+    // Read layout property to force layout calculation
+    const currentHeight = element.offsetHeight;
+    // Force a style recalculation with a more substantial change
+    element.style.transform = 'translateZ(0)';
+    // Use requestAnimationFrame to ensure it processes in the next paint cycle
+    requestAnimationFrame(() => {
+        element.style.transform = '';
+    });
+    
+    // Log debug info
+    console.debug(`forceRepaint applied to element: ${element.className || 'unnamed'}`);
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
@@ -414,7 +435,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof userIsLoggedIn !== 'undefined') {
         if (userIsLoggedIn) {
             console.log("User is logged in according to server, fetching conversations");
-            fetchConversations();
+            // Defer conversation loading to improve initial page load speed
+            setTimeout(() => {
+                console.log('Deferred loading of conversation history');
+                fetchConversations();
+            }, 200);
         } else {
             console.log("User is not logged in according to server, showing login prompt");
             // For non-logged in users, show the login prompt in the sidebar
@@ -430,7 +455,11 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         // Fallback to DOM check if userIsLoggedIn is not defined
         if (isAuthenticated) {
-            fetchConversations();
+            // Defer conversation loading in fallback case too
+            setTimeout(() => {
+                console.log('Deferred loading of conversation history (fallback)');
+                fetchConversations();
+            }, 200);
         } else {
             // Show login prompt as a fallback
             if (conversationsList) {
@@ -1510,7 +1539,13 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize model data only if on the chat page
     if (modelSelector) {
         console.log('Model selector found, initializing selector functionality');
-        fetchUserPreferences();
+        
+        // Defer model data loading to improve initial page load speed
+        // This allows the UI to render first before loading large model datasets
+        setTimeout(() => {
+            console.log('Deferred loading of model preferences and data');
+            fetchUserPreferences();
+        }, 100);
         
         // Model preset button click handlers
         if (modelPresetButtons && modelPresetButtons.length > 0) {
@@ -2843,6 +2878,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     const textDiv = document.createElement('div');
                     textDiv.innerHTML = formatMessage(item.text);
                     messageContent.appendChild(textDiv);
+                    // Force a repaint to ensure text content is visible
+                    forceRepaint(textDiv);
                 });
                 
                 // Then add images
@@ -2896,12 +2933,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 const formattedMessage = formatMessage(content);
                 messageContent.innerHTML = formattedMessage;
                 
-                // Force a repaint by briefly manipulating the DOM
-                // This fixes the issue where text doesn't appear until window focus changes
-                messageContent.style.opacity = '0.99';
-                setTimeout(() => {
-                    messageContent.style.opacity = '';
-                }, 0);
+                // Apply the repaint to ensure content is visible
+                forceRepaint(messageContent);
                 
                 // Only add "Show more" for user messages that are long
                 if (sender === 'user' && shouldTruncateMessage(content)) {
@@ -3499,11 +3532,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                     const errorMsg = parsedData.error || 'Unknown error occurred';
                                     messageContent.innerHTML = `<span class="error">Error: ${errorMsg}</span>`;
                                     
-                                    // Force a repaint to ensure error is visible
-                                    messageContent.style.opacity = '0.99';
-                                    setTimeout(() => {
-                                        messageContent.style.opacity = '';
-                                    }, 0);
+                                    // Apply the repaint to ensure error content is visible
+                                    forceRepaint(messageContent);
                                     
                                     console.error("Received error from backend:", errorMsg);
                                     // Optionally re-enable input/button here if desired
@@ -3525,12 +3555,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                         // Use your existing formatMessage function
                                         messageContent.innerHTML = formatMessage(responseText);
                                         
-                                        // Force a repaint by briefly manipulating the DOM
-                                        // This fixes the issue where text doesn't appear until window focus changes
-                                        messageContent.style.opacity = '0.99';
-                                        setTimeout(() => {
-                                            messageContent.style.opacity = '';
-                                        }, 0);
+                                        // Apply the repaint to ensure content is visible
+                                        forceRepaint(messageContent);
                                         
                                         // Only auto-scroll if user was already at the bottom and chatMessages exists
                                         if (shouldScroll && chatMessages) {

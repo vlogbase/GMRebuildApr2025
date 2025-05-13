@@ -1,29 +1,27 @@
 """
-Main application workflow
+Simple Flask server workflow for the chat app
 """
-
-import logging
+import os
 import sys
-from app import app as flask_app
+import logging
+from app import app
 
-# Configure logging
+# Set up logging
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler("app_workflow.log"),
-        logging.StreamHandler(sys.stdout)
-    ]
+    filename='app_workflow.log'
 )
-
-logger = logging.getLogger(__name__)
 
 def run():
     """
-    Run the Flask application
+    Run the Flask application on port 5000 with debugging
     """
-    logger.info("Starting Flask application")
-    flask_app.run(host='0.0.0.0', port=5000, debug=False)
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    except Exception as e:
+        logging.error(f"Error starting the app: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
     run()
