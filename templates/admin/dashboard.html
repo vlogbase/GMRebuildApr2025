@@ -17,9 +17,9 @@
                 </span>
             </div>
             <div class="space-x-4">
-                <a href="{{ url_for('admin.index') }}" class="font-medium hover:underline">Dashboard</a>
-                <a href="{{ url_for('admin.manage_commissions') }}" class="font-medium hover:underline">Commissions</a>
-                <a href="{{ url_for('admin.payouts') }}" class="font-medium hover:underline">Payouts</a>
+                <a href="{{ url_for('admin_simple.index') }}" class="font-medium hover:underline">Dashboard</a>
+                <a href="{{ url_for('admin_simple.manage_commissions') }}" class="font-medium hover:underline">Commissions</a>
+                <a href="{{ url_for('admin_simple.payouts') }}" class="font-medium hover:underline">Payouts</a>
                 <a href="{{ url_for('index') }}" class="font-medium hover:underline">Back to App</a>
             </div>
         </div>
@@ -62,7 +62,7 @@
                         </svg>
                     </div>
                     <p class="text-3xl font-bold text-gray-800 mt-2">{{ pending_commissions }}</p>
-                    <a href="{{ url_for('admin.manage_commissions') }}" class="text-sm text-blue-500 hover:underline mt-1">Manage Commissions</a>
+                    <a href="{{ url_for('admin_simple.manage_commissions') }}" class="text-sm text-blue-500 hover:underline mt-1">Manage Commissions</a>
                 </div>
                 
                 <!-- Revenue Stats Card -->
@@ -95,7 +95,7 @@
                             {% endif %}
                         </p>
                     </div>
-                    <form action="{{ url_for('admin.toggle_paypal_mode') }}" method="post">
+                    <form action="{{ url_for('admin_simple.toggle_paypal_mode') }}" method="post">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">
                             Switch to {{ 'LIVE' if paypal_mode == 'sandbox' else 'SANDBOX' }} Mode

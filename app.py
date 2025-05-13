@@ -178,14 +178,9 @@ try:
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
 
-# Register admin blueprint using our completely separate admin module
-# This eliminates all Flask-Admin template recursion issues by using a fresh implementation
+# Register admin blueprint
 try:
-    # Import from the new admin module (not simple_admin or admin_panel)
-    from admin import admin_bp, init_admin
-    
-    # Create explicit error handler for admin blueprint before registration
-    @admin_bp.errorhandler(Exception)
+    # Define custom error handler function that will be passed to admin module
     def handle_admin_exception(e):
         logger.error(f"Admin exception: {str(e)}", exc_info=True)
         return """
@@ -200,11 +195,12 @@ try:
         </html>
         """.format(str(e)), 500
     
-    # Register the admin blueprint with a completely new URL prefix to avoid any conflicts
+    # Now import and initialize the admin blueprint
+    from admin import init_admin
     init_admin(app)
     
     # Log success
-    logger.info("New admin blueprint registered successfully with prefix /admin_simple")
+    logger.info("Admin blueprint registered successfully with prefix /admin_simple")
     
     # Add redirects from old admin routes to new admin routes
     @app.route('/admin')

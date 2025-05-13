@@ -13,9 +13,9 @@
                 <h1 class="text-2xl font-bold">GloriaMundo Admin</h1>
             </div>
             <div class="space-x-4">
-                <a href="{{ url_for('admin.index') }}" class="font-medium hover:underline">Dashboard</a>
-                <a href="{{ url_for('admin.manage_commissions') }}" class="font-medium hover:underline font-bold">Commissions</a>
-                <a href="{{ url_for('admin.payouts') }}" class="font-medium hover:underline">Payouts</a>
+                <a href="{{ url_for('admin_simple.index') }}" class="font-medium hover:underline">Dashboard</a>
+                <a href="{{ url_for('admin_simple.manage_commissions') }}" class="font-medium hover:underline font-bold">Commissions</a>
+                <a href="{{ url_for('admin_simple.payouts') }}" class="font-medium hover:underline">Payouts</a>
                 <a href="{{ url_for('index') }}" class="font-medium hover:underline">Back to App</a>
             </div>
         </div>
@@ -25,7 +25,7 @@
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-3xl font-bold text-gray-800">Manage Commissions</h2>
             
-            <form id="batchActionForm" action="{{ url_for('admin.approve_commission', commission_id=0) }}" method="post" class="hidden">
+            <form id="batchActionForm" action="{{ url_for('admin_simple.approve_commission', commission_id=0) }}" method="post" class="hidden">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" id="batchAction" value="">
                 <div id="commissionIdContainer"></div>
@@ -38,6 +38,12 @@
                 <button onclick="processBatchAction('batch_reject')" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition">
                     Reject Selected
                 </button>
+                <form action="{{ url_for('admin_simple.process_payouts') }}" method="post" id="processPayoutsForm" class="inline-block ml-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">
+                        Process Approved Payouts
+                    </button>
+                </form>
             </div>
         </div>
         
@@ -151,12 +157,16 @@
                                 <td class="py-2 px-4">
                                     {% if commission.status == 'held' %}
                                     <div class="flex space-x-2">
-                                        <a href="{{ url_for('admin.approve_commission', commission_id=commission.id) }}" class="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition">
-                                            Approve
-                                        </a>
-                                        <a href="{{ url_for('admin.reject_commission', commission_id=commission.id) }}" class="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition">
-                                            Reject
-                                        </a>
+                                        <form method="POST" action="{{ url_for('admin_simple.approve_commission', commission_id=commission.id) }}" class="inline">
+                                            <button type="submit" class="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition">
+                                                Approve
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('admin_simple.reject_commission', commission_id=commission.id) }}" class="inline">
+                                            <button type="submit" class="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition">
+                                                Reject
+                                            </button>
+                                        </form>
                                     </div>
                                     {% else %}
                                     <span class="text-xs text-gray-500">No actions available</span>

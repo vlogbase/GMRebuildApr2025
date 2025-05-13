@@ -270,7 +270,7 @@ def manage_commissions():
             affiliate_totals = db.session.query(
                 Commission.affiliate_id,
                 func.sum(Commission.commission_amount).filter(Commission.status == CommissionStatus.APPROVED.value).label('approved_total'),
-                func.sum(Commission.commission_amount).filter(Commission.status == CommissionStatus.PENDING.value).label('pending_total'),
+                func.sum(Commission.commission_amount).filter(Commission.status == CommissionStatus.HELD.value).label('pending_total'),
                 func.sum(Commission.commission_amount).filter(Commission.status == CommissionStatus.PAID.value).label('paid_total'),
                 func.sum(Commission.commission_amount).filter(Commission.status == CommissionStatus.REJECTED.value).label('rejected_total'),
                 func.count(Commission.id).label('commission_count')
