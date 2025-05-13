@@ -340,12 +340,32 @@ def manage_commissions():
             db.session.execute(text(f"SET statement_timeout = {original_timeout}"))
         
         logger.info(f"Rendering manage_commissions template with {len(sorted_affiliates)} affiliates")
+        
+        # Prepare data for the template - reformat for template compatibility
+        grouped_commissions = {}
+        for affiliate_data in sorted_affiliates:
+            affiliate_id = affiliate_data['affiliate'].id
+            grouped_commissions[affiliate_id] = {
+                'affiliate': affiliate_data['affiliate'],
+                'commissions': affiliate_data['commissions'],
+                'total_amount': affiliate_data['approved_total'] + affiliate_data['pending_total']
+            }
+        
+        # Get filter params from request (default to empty values if not present)
+        status = request.args.get('status', '')
+        affiliate_id = request.args.get('affiliate_id', '')
+        min_amount = request.args.get('min_amount', '')
+        
         return render_template('admin/manage_commissions.html',
             affiliates=sorted_affiliates,
+            grouped_commissions=grouped_commissions,
             total_approved=total_approved,
             total_pending=total_pending,
             total_paid=total_paid,
-            commission_status=CommissionStatus
+            commission_status=CommissionStatus,
+            status=status,
+            affiliate_id=affiliate_id,
+            min_amount=min_amount
         )
     except Exception as e:
         logger.error(f"Error in manage_commissions: {str(e)}", exc_info=True)

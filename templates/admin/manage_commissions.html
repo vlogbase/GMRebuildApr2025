@@ -50,7 +50,7 @@
         <!-- Filters -->
         <div class="bg-white rounded-lg shadow-md p-6 mb-6">
             <h3 class="text-lg font-semibold text-gray-700 mb-4">Filter Commissions</h3>
-            <form action="{{ url_for('admin.manage_commissions') }}" method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <form action="{{ url_for('admin_simple.manage_commissions') }}" method="get" class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <label for="status" class="block text-sm font-medium text-gray-700 mb-1">Status</label>
                     <select id="status" name="status" class="w-full p-2 border border-gray-300 rounded">
@@ -158,11 +158,13 @@
                                     {% if commission.status == 'held' %}
                                     <div class="flex space-x-2">
                                         <form method="POST" action="{{ url_for('admin_simple.approve_commission', commission_id=commission.id) }}" class="inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 transition">
                                                 Approve
                                             </button>
                                         </form>
                                         <form method="POST" action="{{ url_for('admin_simple.reject_commission', commission_id=commission.id) }}" class="inline">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <button type="submit" class="px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 transition">
                                                 Reject
                                             </button>
