@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Skimlinks Test{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h2>Skimlinks Integration Test</h2>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <p><strong>How to test:</strong> This page follows the Skimlinks documentation exactly. The Skimlinks script is included just before the closing body tag.</p>
+                    </div>
+                    
+                    <h3>Official Skimlinks Test Link</h3>
+                    <p>Click this link to verify if Skimlinks is working: <a href="http://test.skimlinks.com">Skimlinks Test</a></p>
+                    <p>If Skimlinks is working correctly, you'll be taken to a success page.</p>
+                    
+                    <hr>
+                    
+                    <h3>Product Mentions (Should Become Affiliate Links)</h3>
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <p>Here are some popular products you might be interested in:</p>
+                            <ul>
+                                <li>iPhone for mobile photography</li>
+                                <li>Samsung Galaxy for Android users</li>
+                                <li>MacBook Pro for professional work</li>
+                                <li>Dell XPS laptop for students</li>
+                                <li>4K monitor for design work</li>
+                                <li>Bose noise-canceling headphones for focus</li>
+                                <li>Sony digital camera for travel</li>
+                                <li>iPad tablet for reading</li>
+                                <li>Kindle for e-books</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <h3>Skimlinks Debug Info</h3>
+                    <div id="skimlinks-debug-output" class="alert alert-secondary">
+                        Click the button below to check Skimlinks status
+                    </div>
+                    <button id="check-skimlinks-btn" class="btn btn-primary" onclick="checkSkimlinks()">Check Skimlinks Status</button>
+                    
+                    <hr>
+                    
+                    <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Chat</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function checkSkimlinks() {
+    const outputDiv = document.getElementById('skimlinks-debug-output');
+    const skimlinksExists = typeof window.skimlinks !== 'undefined';
+    const skimlinksUnderscoreExists = typeof window._skimlinks !== 'undefined';
+    
+    let output = '<h5>Skimlinks Status:</h5>';
+    output += '<ul>';
+    output += `<li><strong>window.skimlinks exists:</strong> ${skimlinksExists ? '✅ Yes' : '❌ No'}</li>`;
+    output += `<li><strong>window._skimlinks exists:</strong> ${skimlinksUnderscoreExists ? '✅ Yes' : '❌ No'}</li>`;
+    
+    // Check for any links modified by Skimlinks
+    const links = document.querySelectorAll('a');
+    let skimlinksLinks = 0;
+    
+    links.forEach(link => {
+        if (link.href.includes('go.skimresources.com') || 
+            link.hasAttribute('data-skimlinks') || 
+            link.hasAttribute('data-skimwords')) {
+            skimlinksLinks++;
+        }
+    });
+    
+    output += `<li><strong>Links modified by Skimlinks:</strong> ${skimlinksLinks}</li>`;
+    output += '</ul>';
+    
+    outputDiv.innerHTML = output;
+}
+</script>
+{% endblock %}

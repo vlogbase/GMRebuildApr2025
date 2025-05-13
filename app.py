@@ -925,6 +925,22 @@ def test_upload_page():
     This serves a static HTML page for testing without requiring the full UI.
     """
     return render_template('test_upload.html')
+    
+@app.route('/skimlinks-test')
+def skimlinks_test_page():
+    """
+    A dedicated page for testing Skimlinks affiliate integration.
+    This follows Skimlinks documentation exactly to test basic functionality.
+    """
+    return render_template('skimlinks_test.html')
+    
+@app.route('/skimlinks-pure')
+def skimlinks_pure_test():
+    """
+    A completely standalone test page for Skimlinks that doesn't extend base template.
+    This is the purest implementation following Skimlinks docs exactly.
+    """
+    return render_template('skimlinks_standalone.html')
 
 @app.route('/test-multimodal')
 @login_required

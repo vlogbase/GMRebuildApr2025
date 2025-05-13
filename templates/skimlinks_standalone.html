@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skimlinks Pure Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        h1, h2, h3 {
+            color: #0066cc;
+        }
+        
+        .container {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .info {
+            background-color: #f0f8ff;
+            padding: 10px;
+            border-left: 3px solid #0066cc;
+        }
+        
+        .product-list {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        button {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .test-link {
+            display: inline-block;
+            margin: 10px 0;
+            color: #0066cc;
+            text-decoration: underline;
+        }
+        
+        #skimlinks-status {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Skimlinks Pure Test</h1>
+    
+    <div class="info">
+        <p>This is a completely standalone test page that follows the Skimlinks documentation exactly.</p>
+        <p>The Skimlinks script is included just before the closing body tag, as recommended.</p>
+    </div>
+    
+    <div class="container">
+        <h2>Official Skimlinks Test</h2>
+        <p>Click this link to test if Skimlinks is working: <a href="http://test.skimlinks.com" class="test-link">Skimlinks Test</a></p>
+        <p>If the test is working, you will be redirected to a success page.</p>
+    </div>
+    
+    <div class="container">
+        <h2>Product Mentions</h2>
+        <p>These product mentions should be automatically converted to affiliate links by Skimlinks:</p>
+        
+        <div class="product-list">
+            <h3>Popular Tech Products</h3>
+            <ul>
+                <li>iPhone for mobile photography</li>
+                <li>Samsung Galaxy for Android users</li>
+                <li>MacBook Pro for professional work</li>
+                <li>Dell XPS laptop for students</li>
+                <li>4K monitor for design work</li>
+                <li>Bose noise-canceling headphones for focus</li>
+                <li>Sony digital camera for travel</li>
+                <li>iPad tablet for reading</li>
+                <li>Kindle for e-books</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="container">
+        <h2>Check Skimlinks Status</h2>
+        <button onclick="checkSkimlinks()">Check Skimlinks</button>
+        <div id="skimlinks-status"></div>
+    </div>
+    
+    <div class="container">
+        <h2>Navigation</h2>
+        <a href="/skimlinks-test" style="margin-right: 15px;">Go to Regular Test Page</a>
+        <a href="/">Back to Main Chat</a>
+    </div>
+
+    <script>
+        function checkSkimlinks() {
+            const statusDiv = document.getElementById('skimlinks-status');
+            const skimlinksExists = typeof window.skimlinks !== 'undefined';
+            const skimlinksUnderscoreExists = typeof window._skimlinks !== 'undefined';
+            
+            let output = '<h3>Skimlinks Status:</h3>';
+            output += '<ul>';
+            output += `<li><strong>window.skimlinks exists:</strong> ${skimlinksExists ? '✅ Yes' : '❌ No'}</li>`;
+            output += `<li><strong>window._skimlinks exists:</strong> ${skimlinksUnderscoreExists ? '✅ Yes' : '❌ No'}</li>`;
+            
+            // Check for any links modified by Skimlinks
+            const links = document.querySelectorAll('a');
+            let skimlinksLinks = 0;
+            
+            links.forEach(link => {
+                if (link.href.includes('go.skimresources.com') || 
+                    link.hasAttribute('data-skimlinks') || 
+                    link.hasAttribute('data-skimwords')) {
+                    skimlinksLinks++;
+                }
+            });
+            
+            output += `<li><strong>Links modified by Skimlinks:</strong> ${skimlinksLinks}</li>`;
+            output += '</ul>';
+            
+            if (skimlinksLinks > 0) {
+                output += '<p style="color: green; font-weight: bold;">✅ Skimlinks is working! Product mentions have been converted to affiliate links.</p>';
+            } else if (skimlinksExists || skimlinksUnderscoreExists) {
+                output += '<p style="color: orange; font-weight: bold;">⚠️ Skimlinks script is loaded but no links were converted.</p>';
+            } else {
+                output += '<p style="color: red; font-weight: bold;">❌ Skimlinks does not appear to be working.</p>';
+            }
+            
+            statusDiv.innerHTML = output;
+        }
+        
+        // Check status automatically after page load
+        window.addEventListener('load', function() {
+            // Wait a moment to give Skimlinks time to process
+            setTimeout(checkSkimlinks, 1000);
+        });
+    </script>
+    
+    <!-- Skimlinks JavaScript (placed at the very end as per instructions) -->
+    <script type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js"></script>
+</body>
+</html>
