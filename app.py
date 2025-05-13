@@ -940,7 +940,7 @@ def skimlinks_pure_test():
     A completely standalone test page for Skimlinks that doesn't extend base template.
     This is the purest implementation following Skimlinks docs exactly.
     """
-    return render_template('skimlinks_standalone.html')
+    return render_template('skimlinks_pure_test.html')
 
 @app.route('/test-multimodal')
 @login_required

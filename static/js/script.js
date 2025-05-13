@@ -2945,6 +2945,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 const formattedMessage = formatMessage(content);
                 messageContent.innerHTML = formattedMessage;
                 
+                // Check if this is a free model message and we need to apply Skimlinks
+                if (sender === 'ai' && messageElement.dataset.modelType === 'free') {
+                    // Flag this content for Skimlinks processing
+                    messageElement.classList.add('needs-skimlinks');
+                }
+                
                 // Apply the repaint to ensure content is visible
                 forceRepaint(messageContent);
                 
