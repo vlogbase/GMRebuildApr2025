@@ -125,7 +125,8 @@ def index():
         # User stats
         logger.info("Getting user stats")
         total_users = User.query.count()
-        recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
+        # Filter out users with null created_at values to prevent template errors
+        recent_users = User.query.filter(User.created_at != None).order_by(User.created_at.desc()).limit(5).all()
         
         # Affiliate stats
         logger.info("Getting affiliate stats")
@@ -135,7 +136,8 @@ def index():
         # Commission stats
         logger.info("Getting commission stats")
         pending_commissions = Commission.query.filter_by(status=CommissionStatus.APPROVED.value).count()
-        recent_commissions = Commission.query.order_by(Commission.created_at.desc()).limit(5).all()
+        # Filter out commissions with null created_at values to prevent template errors
+        recent_commissions = Commission.query.filter(Commission.created_at != None).order_by(Commission.created_at.desc()).limit(5).all()
         
         # Revenue stats
         logger.info("Getting revenue stats")
@@ -146,20 +148,21 @@ def index():
         end_date = datetime.now()
         start_date = end_date - timedelta(days=30)
         
-        # User registrations by day
+        # User registrations by day (with null check to prevent errors)
         user_registrations = db.session.query(
             func.date(User.created_at).label('date'),
             func.count(User.id).label('count')
-        ).filter(User.created_at >= start_date, User.created_at <= end_date)\
+        ).filter(User.created_at != None, User.created_at >= start_date, User.created_at <= end_date)\
         .group_by(func.date(User.created_at))\
         .order_by(func.date(User.created_at))\
         .all()
         
-        # Revenue by day
+        # Revenue by day (with null check to prevent errors)
         revenue_by_day = db.session.query(
             func.date(Transaction.created_at).label('date'),
             func.sum(Transaction.amount_usd).label('amount')
         ).filter(
+            Transaction.created_at != None,
             Transaction.created_at >= start_date,
             Transaction.created_at <= end_date,
             Transaction.status == PaymentStatus.COMPLETED.value
