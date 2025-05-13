@@ -544,6 +544,18 @@
                     
                     <hr class="my-4" style="border-color: #3f4246;">
                     
+                    <h5>Chat Preferences</h5>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="enableMemory" {% if user.enable_memory %}checked{% endif %}>
+                        <label class="form-check-label" for="enableMemory">Enable chat memory across sessions</label>
+                        <small class="form-text text-muted d-block mt-1">
+                            When enabled, the AI can remember and reference information from your previous conversations.
+                            Disabling this may reduce token usage for new chats.
+                        </small>
+                    </div>
+                    
+                    <hr class="my-4" style="border-color: #3f4246;">
+                    
                     <h5>Notification Preferences</h5>
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="emailNotifications" checked>
@@ -590,6 +602,54 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired - Initializing account page functions');
+    
+    // Utility function for toast notifications
+    function showToast(type, message) {
+        // Create toast container if it doesn't exist
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'position-fixed bottom-0 end-0 p-3';
+            toastContainer.style.zIndex = '1050';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // Create a unique ID for this toast
+        const toastId = 'toast-' + Date.now();
+        
+        // Set color class based on type
+        let colorClass = 'bg-primary';
+        if (type === 'success') colorClass = 'bg-success';
+        else if (type === 'error') colorClass = 'bg-danger';
+        else if (type === 'warning') colorClass = 'bg-warning text-dark';
+        
+        // Create toast HTML
+        const toastHtml = `
+            <div id="${toastId}" class="toast ${colorClass} text-white" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header ${colorClass} text-white">
+                    <strong class="me-auto">${type.charAt(0).toUpperCase() + type.slice(1)}</strong>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `;
+        
+        // Add toast to container
+        toastContainer.innerHTML += toastHtml;
+        
+        // Initialize and show the toast
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, { delay: 5000 });
+        toast.show();
+        
+        // Remove toast after it's hidden
+        toastElement.addEventListener('hidden.bs.toast', function() {
+            toastElement.remove();
+        });
+    }
     
     // Initialize Bootstrap tooltips
     var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
@@ -1377,6 +1437,44 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the usage analytics functionality
     handleUsageSubTabs();
     handleCsvExport();
+    
+    // Memory preference toggle handler
+    const enableMemoryToggle = document.getElementById('enableMemory');
+    if (enableMemoryToggle) {
+        enableMemoryToggle.addEventListener('change', function() {
+            const enableMemory = this.checked;
+            
+            // Show toggle indicator
+            const toggleStatus = enableMemory ? 'enabled' : 'disabled';
+            const toastMessage = `Memory across sessions ${toggleStatus}`;
+            
+            // Call API to update preference
+            fetch('/billing/update-memory-preference', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ enable_memory: enableMemory })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success notification using existing toast system
+                    showToast('success', toastMessage);
+                } else {
+                    // Show error and revert toggle
+                    showToast('error', 'Failed to update preference: ' + data.message);
+                    enableMemoryToggle.checked = !enableMemory;
+                }
+            })
+            .catch(error => {
+                console.error('Error updating memory preference:', error);
+                showToast('error', 'An error occurred while saving your preference');
+                enableMemoryToggle.checked = !enableMemory;
+            });
+        });
+    }
 });
 </script>
 {% endblock %}

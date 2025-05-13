@@ -47,6 +47,9 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user_is_active = db.Column(db.Boolean, default=True)  # Whether this user account is active
     
+    # User preferences
+    enable_memory = db.Column(db.Boolean, default=True)  # Whether to enable chat memory across sessions
+    
     # Billing fields
     credits = db.Column(db.Integer, nullable=False, default=0)  # User's credit balance in credits (1 credit = $0.00001)
     

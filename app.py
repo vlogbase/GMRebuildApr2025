@@ -2236,19 +2236,27 @@ def chat(): # Synchronous function
         if has_pdfs and not model_supports_documents:
             logger.warning(f"⚠️ PDF document(s) provided but model {openrouter_model} doesn't support PDF handling. PDFs ignored.")
 
-        # --- Enrich with memory if needed ---
+        # --- Enrich with memory if needed and user has it enabled ---
         if ENABLE_MEMORY_SYSTEM:
-            try:
-                memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation.id}"
-                enriched_messages = enrich_prompt_with_memory(
-                     session_id=str(conversation.id), user_id=memory_user_id, 
-                     user_message=user_message, conversation_history=messages
-                )
-                if len(enriched_messages) > len(messages):
-                     logger.info(f"Added {len(enriched_messages) - len(messages)} context messages from memory system")
-                messages = enriched_messages
-            except Exception as e:
-                 logger.error(f"Error enriching with memory: {e}")
+            memory_enabled = True
+            if current_user and current_user.is_authenticated:
+                memory_enabled = current_user.enable_memory
+                logger.info(f"User {current_user.id} memory preference: {'enabled' if memory_enabled else 'disabled'}")
+            
+            if memory_enabled:
+                try:
+                    memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation.id}"
+                    enriched_messages = enrich_prompt_with_memory(
+                        session_id=str(conversation.id), user_id=memory_user_id, 
+                        user_message=user_message, conversation_history=messages
+                    )
+                    if len(enriched_messages) > len(messages):
+                        logger.info(f"Added {len(enriched_messages) - len(messages)} context messages from memory system")
+                    messages = enriched_messages
+                except Exception as e:
+                    logger.error(f"Error enriching with memory: {e}")
+            else:
+                logger.info("Memory enrichment skipped - user has disabled memory across sessions")
                  
         # --- Incorporate document context from RAG system ---
         if ENABLE_RAG:
@@ -2836,16 +2844,23 @@ def chat(): # Synchronous function
                                 logger.error(f"Error recording billing usage: {billing_error}")
                                 # Don't fail the whole request if billing recording fails
 
-                        # Save to memory system if enabled
+                        # Save to memory system if enabled and user hasn't disabled it
                         if ENABLE_MEMORY_SYSTEM:
-                             try:
-                                 memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{current_conv_id}"
-                                 save_message_with_memory(
-                                     session_id=str(current_conv_id), user_id=memory_user_id, 
-                                     role='assistant', content=full_response_text
-                                 )
-                             except Exception as e:
-                                 logger.error(f"Error saving assistant message to memory: {e}")
+                             memory_enabled = True
+                             if current_user and current_user.is_authenticated:
+                                 memory_enabled = current_user.enable_memory
+                             
+                             if memory_enabled:
+                                 try:
+                                     memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{current_conv_id}"
+                                     save_message_with_memory(
+                                         session_id=str(current_conv_id), user_id=memory_user_id, 
+                                         role='assistant', content=full_response_text
+                                     )
+                                 except Exception as e:
+                                     logger.error(f"Error saving assistant message to memory: {e}")
+                             else:
+                                 logger.info("Message not saved to memory - user has disabled memory across sessions")
                         
                         # Check if this is the first assistant message and generate a title
                         try:

@@ -400,6 +400,35 @@ def usage_history():
         flash(f"An error occurred: {str(e)}", "error")
         return redirect(url_for('billing.account_management'))
 
+@billing_bp.route('/update-memory-preference', methods=['POST'])
+@login_required
+def update_memory_preference():
+    """
+    Update the user's memory preference setting.
+    """
+    try:
+        # Get the preference value from the request
+        enable_memory = request.json.get('enable_memory', True)
+        
+        # Update the user's preference
+        current_user.enable_memory = enable_memory
+        db.session.commit()
+        
+        logger.info(f"Updated memory preference for user {current_user.id} to {enable_memory}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Memory preference updated successfully",
+            "enable_memory": enable_memory
+        })
+    
+    except Exception as e:
+        logger.error(f"Error updating memory preference: {e}")
+        return jsonify({
+            "success": False,
+            "message": f"Error updating preference: {str(e)}"
+        }), 500
+
 @billing_bp.route('/transactions', methods=['GET'])
 @login_required
 def transaction_history():
