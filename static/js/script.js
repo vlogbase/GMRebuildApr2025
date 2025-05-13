@@ -1677,6 +1677,10 @@ document.addEventListener('DOMContentLoaded', function() {
             currentModel = userPreferences[presetId] || defaultModels[presetId];
             console.log(`Selected preset ${presetId} with model: ${currentModel}`);
             
+            // Set a global flag for Skimlinks integration to use
+            window.currentlyUsingFreeModel = presetId === '6';
+            console.warn("SKIMLINKS DEBUG: Model preset selected, using free model:", window.currentlyUsingFreeModel);
+            
             // Update multimodal controls based on the selected model
             updateMultimodalControls(currentModel);
             
@@ -2835,6 +2839,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const messageElement = document.createElement('div');
         messageElement.className = `message message-${sender}`;
         messageElement.dataset.messageId = metadata ? metadata.id : Date.now(); // Use actual message ID if available
+        
+        // Add information about model type for Skimlinks processing
+        // Only AI messages need this information
+        if (sender === 'ai') {
+            // Check if we're using a free model (preset 6)
+            const isFreeModel = currentModel.includes(':free') || currentPresetId === '6';
+            messageElement.dataset.modelType = isFreeModel ? 'free' : 'paid';
+        }
         
         // Create avatar
         const avatar = document.createElement('div');
