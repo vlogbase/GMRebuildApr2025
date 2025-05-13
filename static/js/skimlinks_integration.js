@@ -605,18 +605,115 @@ document.addEventListener('DOMContentLoaded', function() {
             queueMessageForProcessing(message);
         });
         
-        // Create a test for manual affiliate linking
-        console.warn('SKIMLINKS DEBUG: Testing manual affiliate linking system');
+        // Create a super visible test with DIRECT link creation to bypass any potential issues
+        console.warn('SKIMLINKS DEBUG: Creating direct test with manually injected links');
+        
+        // Remove any existing test messages first
+        const existingTests = document.querySelectorAll('.affiliate-test-container');
+        existingTests.forEach(test => {
+            if (test.parentNode) {
+                test.parentNode.removeChild(test);
+            }
+        });
+        
+        // Create a very obvious test message with directly injected links
+        const directTestMessage = document.createElement('div');
+        directTestMessage.className = 'affiliate-test-container';
+        
+        // Style the container to be unmissable
+        Object.assign(directTestMessage.style, {
+            position: 'fixed',
+            top: '100px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: '80%',
+            maxWidth: '800px',
+            padding: '25px',
+            backgroundColor: '#ffffff',
+            border: '3px solid #ff6600',
+            borderRadius: '10px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+            zIndex: '9999',
+            fontFamily: 'Arial, sans-serif',
+            fontSize: '14px',
+            color: '#333333'
+        });
+        
+        // Create the HTML with direct links - not relying on the processing function
+        directTestMessage.innerHTML = `
+            <h2 style="margin-top: 0; color: #ff6600; border-bottom: 2px solid #ff6600; padding-bottom: 10px;">
+                Manual Affiliate Link Test <span style="font-size: 14px; color: #666;">(should show blue, underlined links)</span>
+            </h2>
+            
+            <p style="line-height: 1.6; margin: 15px 0;">
+                Here are some popular products you could consider: 
+                <a href="https://www.amazon.com/s?k=iphone&linkCode=ll2&tag=skimlinks_replacement&linkId=123456" 
+                   target="_blank" rel="nofollow noopener" 
+                   style="color: #0066cc; font-weight: bold; text-decoration: underline; background-color: #fffde7; padding: 0 3px; border-radius: 3px; border: 1px dashed #0066cc;">iPhone</a> for mobile photography, 
+                
+                <a href="https://www.amazon.com/s?k=samsung&linkCode=ll2&tag=skimlinks_replacement&linkId=123456" 
+                   target="_blank" rel="nofollow noopener" 
+                   style="color: #0066cc; font-weight: bold; text-decoration: underline; background-color: #fffde7; padding: 0 3px; border-radius: 3px; border: 1px dashed #0066cc;">Samsung</a> for Android users, 
+                
+                <a href="https://www.amazon.com/s?k=macbook&linkCode=ll2&tag=skimlinks_replacement&linkId=123456" 
+                   target="_blank" rel="nofollow noopener" 
+                   style="color: #0066cc; font-weight: bold; text-decoration: underline; background-color: #fffde7; padding: 0 3px; border-radius: 3px; border: 1px dashed #0066cc;">MacBook</a> for professional work, 
+                
+                a good <a href="https://www.amazon.com/s?k=laptop&linkCode=ll2&tag=skimlinks_replacement&linkId=123456" 
+                   target="_blank" rel="nofollow noopener" 
+                   style="color: #0066cc; font-weight: bold; text-decoration: underline; background-color: #fffde7; padding: 0 3px; border-radius: 3px; border: 1px dashed #0066cc;">laptop</a> for students.
+            </p>
+            
+            <div style="background-color: #e9f7ff; color: #0066cc; padding: 10px 15px; margin-top: 15px; border-radius: 5px; border: 1px solid #0066cc;">
+                <strong>Important:</strong> This test should display multiple blue, underlined links above. If you don't see them, there might be an issue with your browser or CSS.
+            </div>
+            
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="affiliate-test-close" style="padding: 8px 15px; background-color: #ff6600; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">Close Test</button>
+            </div>
+        `;
+        
+        document.body.appendChild(directTestMessage);
+        
+        // Add event listener to close button
+        const closeButton = document.getElementById('affiliate-test-close');
+        if (closeButton) {
+            closeButton.addEventListener('click', function() {
+                if (directTestMessage.parentNode) {
+                    directTestMessage.parentNode.removeChild(directTestMessage);
+                }
+            });
+        }
+        
+        // Count the links to verify they're created
+        const directLinks = directTestMessage.querySelectorAll('a[href*="amazon.com"]');
+        console.warn(`SKIMLINKS DEBUG: Direct test created with ${directLinks.length} manually inserted links`);
+        
+        // Also create the regular test message for comparison
+        console.warn('SKIMLINKS DEBUG: Testing algorithmic affiliate linking system');
         
         // Create a temporary message with test content containing product keywords
+        // Use a more obvious, visible display style
         const testManualMessage = document.createElement('div');
-        testManualMessage.className = 'message ai-message';
+        testManualMessage.className = 'message ai-message test-message-container';
         testManualMessage.dataset.modelType = 'free';
+        testManualMessage.style.position = 'fixed';
+        testManualMessage.style.top = '100px';
+        testManualMessage.style.right = '20px';
+        testManualMessage.style.width = '30%';
+        testManualMessage.style.maxWidth = '400px';
+        testManualMessage.style.padding = '20px';
+        testManualMessage.style.backgroundColor = '#f9f9f9';
+        testManualMessage.style.border = '2px solid #333';
+        testManualMessage.style.borderRadius = '8px';
+        testManualMessage.style.boxShadow = '0 4px 8px rgba(0,0,0,0.2)';
+        testManualMessage.style.zIndex = '9998';
         testManualMessage.innerHTML = `
-            <div class="message-content">
-                <p>Here are some popular products you could consider: iPhone for mobile photography, Samsung for Android users, 
-                MacBook for professional work, a good laptop for students, a high-resolution monitor for design work, 
-                noise-canceling headphones for focus, a digital camera for travel, a tablet for reading, and a Kindle for e-books.</p>
+            <div class="message-content" style="margin-bottom: 10px; font-family: Arial, sans-serif;">
+                <h3 style="margin-top: 0; color: #333;">Algorithm Test</h3>
+                <p style="line-height: 1.5;">Here are some popular products you could consider: <strong>iPhone</strong> for mobile photography, <strong>Samsung</strong> for Android users, 
+                <strong>MacBook</strong> for professional work, a good <strong>laptop</strong> for students, a high-resolution <strong>monitor</strong> for design work, 
+                noise-canceling <strong>headphones</strong> for focus, a digital <strong>camera</strong> for travel, a <strong>tablet</strong> for reading, and a <strong>Kindle</strong> for e-books.</p>
             </div>
         `;
         document.body.appendChild(testManualMessage);
@@ -653,20 +750,69 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             
             if (linkCount > 0) {
+                // Replace the HTML with the processed version that contains links
                 messageContent.innerHTML = processedHTML;
                 console.warn(`SKIMLINKS DEBUG: Applied ${linkCount} manual affiliate links to test message`);
-                forceRepaint(messageContent);
                 
                 // Add visual indication that this is a test
                 const testLabel = document.createElement('div');
-                testLabel.style.background = '#f8f9fa';
-                testLabel.style.color = '#666';
-                testLabel.style.padding = '4px 8px';
-                testLabel.style.marginTop = '8px';
+                testLabel.style.background = '#e9f7ff';
+                testLabel.style.color = '#0066cc';
+                testLabel.style.padding = '8px 12px';
+                testLabel.style.marginTop = '12px';
                 testLabel.style.borderRadius = '4px';
-                testLabel.style.fontSize = '12px';
-                testLabel.innerHTML = 'TEST MESSAGE: Manual affiliate links applied';
+                testLabel.style.fontSize = '14px';
+                testLabel.style.fontWeight = 'bold';
+                testLabel.style.border = '1px solid #0066cc';
+                testLabel.innerHTML = 'TEST MESSAGE: Manual affiliate links applied - check for blue underlined links above';
                 messageContent.appendChild(testLabel);
+                
+                // Add a close button
+                const closeButton = document.createElement('button');
+                closeButton.textContent = 'Close Test';
+                closeButton.style.position = 'absolute';
+                closeButton.style.top = '10px';
+                closeButton.style.right = '10px';
+                closeButton.style.padding = '5px 10px';
+                closeButton.style.backgroundColor = '#333';
+                closeButton.style.color = 'white';
+                closeButton.style.border = 'none';
+                closeButton.style.borderRadius = '4px';
+                closeButton.style.cursor = 'pointer';
+                closeButton.onclick = function() {
+                    if (testManualMessage && testManualMessage.parentNode) {
+                        testManualMessage.parentNode.removeChild(testManualMessage);
+                    }
+                };
+                testManualMessage.appendChild(closeButton);
+                
+                // Enhance link visibility by directly manipulating each link element
+                setTimeout(() => {
+                    const links = messageContent.querySelectorAll('a[data-manual-affiliate="true"]');
+                    console.warn(`SKIMLINKS DEBUG: Found ${links.length} affiliate links to enhance`);
+                    
+                    links.forEach(link => {
+                        // Make links extremely visible
+                        link.style.color = '#0066cc';
+                        link.style.textDecoration = 'underline';
+                        link.style.fontWeight = 'bold';
+                        link.style.backgroundColor = '#fff7e6';
+                        link.style.padding = '0 3px';
+                        link.style.margin = '0 2px';
+                        link.style.borderRadius = '3px';
+                        link.style.border = '1px dashed #0066cc';
+                        link.style.display = 'inline-block';
+                        
+                        // Add an icon after the link
+                        const icon = document.createElement('span');
+                        icon.innerHTML = ' 🔗';
+                        icon.style.fontSize = '12px';
+                        link.appendChild(icon);
+                    });
+                    
+                    // Force a repaint
+                    forceRepaint(messageContent);
+                }, 50);
             } else {
                 console.warn('SKIMLINKS DEBUG: No keywords found in test message');
             }
