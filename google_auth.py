@@ -86,7 +86,7 @@ def callback():
     user = User.query.filter_by(email=users_email).first()
     if not user:
         is_new_user = True
-        user = User(username=users_name, email=users_email)
+        user = User(username=users_name, email=users_email, enable_memory=True)
         db.session.add(user)
         db.session.commit()
 
