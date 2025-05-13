@@ -2896,6 +2896,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 const formattedMessage = formatMessage(content);
                 messageContent.innerHTML = formattedMessage;
                 
+                // Force a repaint by briefly manipulating the DOM
+                // This fixes the issue where text doesn't appear until window focus changes
+                messageContent.style.opacity = '0.99';
+                setTimeout(() => {
+                    messageContent.style.opacity = '';
+                }, 0);
+                
                 // Only add "Show more" for user messages that are long
                 if (sender === 'user' && shouldTruncateMessage(content)) {
                     // Add truncated class
@@ -3491,6 +3498,13 @@ document.addEventListener('DOMContentLoaded', function() {
                                     console.log("==> Processing type: error"); // ADD THIS LOG
                                     const errorMsg = parsedData.error || 'Unknown error occurred';
                                     messageContent.innerHTML = `<span class="error">Error: ${errorMsg}</span>`;
+                                    
+                                    // Force a repaint to ensure error is visible
+                                    messageContent.style.opacity = '0.99';
+                                    setTimeout(() => {
+                                        messageContent.style.opacity = '';
+                                    }, 0);
+                                    
                                     console.error("Received error from backend:", errorMsg);
                                     // Optionally re-enable input/button here if desired
                                     // messageInput.disabled = false;
@@ -3509,7 +3523,14 @@ document.addEventListener('DOMContentLoaded', function() {
                                         
                                         responseText += parsedData.content;
                                         // Use your existing formatMessage function
-                                        messageContent.innerHTML = formatMessage(responseText); 
+                                        messageContent.innerHTML = formatMessage(responseText);
+                                        
+                                        // Force a repaint by briefly manipulating the DOM
+                                        // This fixes the issue where text doesn't appear until window focus changes
+                                        messageContent.style.opacity = '0.99';
+                                        setTimeout(() => {
+                                            messageContent.style.opacity = '';
+                                        }, 0);
                                         
                                         // Only auto-scroll if user was already at the bottom and chatMessages exists
                                         if (shouldScroll && chatMessages) {
