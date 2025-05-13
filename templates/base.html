@@ -50,11 +50,11 @@
     <!-- Cookie Consent JavaScript -->
     <script src="{{ url_for('static', filename='js/cookie_consent.js') }}"></script>
     
-    <!-- Micro Page Skimlinks integration - treats each free message as its own HTML page -->
-    <script src="{{ url_for('static', filename='js/micro_page_skimlinks.js') }}"></script>
+    <!-- Direct Skimlinks integration - works with auto-injected Skimlinks script -->
+    <script src="{{ url_for('static', filename='js/direct_skimlinks.js') }}"></script>
     
-    <!-- Skimlinks JavaScript for the main page (still needed for test links) -->
-    <script type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js"></script>
+    <!-- Note: We don't include the Skimlinks script here as it's already being auto-injected in the head -->
+    <!-- <script type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js"></script> -->
     {% endblock %}
 </body>
 </html>
