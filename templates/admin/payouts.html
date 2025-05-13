@@ -1,203 +1,141 @@
-{% extends 'admin/master.html' %}
-
-{% block head_css %}
-{{ super() }}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-<style>
-    .payout-card {
-        margin-bottom: 20px;
-        border-radius: 5px;
-        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-    }
-    
-    .payout-card .card-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background-color: #f8f9fa;
-        padding: 12px 20px;
-    }
-    
-    .payout-card .card-body {
-        padding: 20px;
-    }
-    
-    .payout-status {
-        font-size: 0.9rem;
-        padding: 4px 12px;
-        border-radius: 4px;
-    }
-    
-    .status-paid {
-        background-color: #28a745;
-        color: white;
-    }
-    
-    .status-processing {
-        background-color: #17a2b8;
-        color: white;
-    }
-    
-    .status-failed {
-        background-color: #dc3545;
-        color: white;
-    }
-    
-    .status-unclaimed {
-        background-color: #6c757d;
-        color: white;
-    }
-    
-    .payout-table th {
-        font-weight: 600;
-        color: #495057;
-    }
-    
-    .payout-table tbody tr:hover {
-        background-color: rgba(0, 0, 0, 0.03);
-    }
-    
-    .action-btn {
-        padding: 4px 10px;
-        font-size: 0.85rem;
-    }
-    
-    .batch-info {
-        color: #6c757d;
-        font-size: 0.9rem;
-    }
-    
-    .batch-actions {
-        margin-top: 10px;
-    }
-    
-    .no-payouts {
-        padding: 40px 20px;
-        text-align: center;
-        background-color: #f8f9fa;
-        border-radius: 5px;
-    }
-    
-    .no-payouts i {
-        font-size: 3rem;
-        color: #6c757d;
-        margin-bottom: 20px;
-    }
-    
-    .status-indicator {
-        display: inline-block;
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        margin-right: 5px;
-    }
-    
-    .indicator-paid {
-        background-color: #28a745;
-    }
-    
-    .indicator-processing {
-        background-color: #17a2b8;
-    }
-    
-    .indicator-failed {
-        background-color: #dc3545;
-    }
-    
-    .indicator-unclaimed {
-        background-color: #6c757d;
-    }
-</style>
-{% endblock %}
-
-{% block body %}
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Payout History</h2>
-        <div>
-            <a href="{{ url_for('admin_panel.commissions') }}" class="btn btn-primary">
-                <i class="fas fa-money-bill-wave"></i> Manage Commissions
-            </a>
-            <a href="{{ url_for('admin_panel.index') }}" class="btn btn-outline-secondary ms-2">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </a>
-        </div>
-    </div>
-    
-    {% if grouped_payouts %}
-    <!-- Payout Batches -->
-    {% for batch_id, data in grouped_payouts.items() %}
-    <div class="card payout-card">
-        <div class="card-header">
-            <div>
-                <strong>Batch ID:</strong> 
-                <span class="batch-id">{{ batch_id }}</span>
-                <div class="batch-info">
-                    Created {{ data.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
-                </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payouts - GloriaMundo Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <nav class="bg-gradient-to-r from-blue-600 to-indigo-800 text-white px-6 py-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <h1 class="text-2xl font-bold">GloriaMundo Admin</h1>
             </div>
-            <div class="d-flex align-items-center">
-                <div class="me-3">
-                    <span class="payout-status status-{{ data.latest_status or 'processing' }}">
-                        {{ (data.latest_status or 'processing')|capitalize }}
-                    </span>
-                </div>
-                <div>
-                    <span class="badge bg-primary">Total: ${{ data.total_amount|round(2) }}</span>
-                </div>
+            <div class="space-x-4">
+                <a href="{{ url_for('admin.index') }}" class="font-medium hover:underline">Dashboard</a>
+                <a href="{{ url_for('admin.manage_commissions') }}" class="font-medium hover:underline">Commissions</a>
+                <a href="{{ url_for('admin.payouts') }}" class="font-medium hover:underline font-bold">Payouts</a>
+                <a href="{{ url_for('index') }}" class="font-medium hover:underline">Back to App</a>
             </div>
         </div>
-        <div class="card-body">
-            <div class="batch-actions mb-3">
-                <a href="{{ url_for('admin_panel.check_payout_status_route', batch_id=batch_id) }}" class="btn btn-info">
-                    <i class="fas fa-sync-alt"></i> Check Status
+    </nav>
+
+    <div class="container mx-auto px-6 py-8">
+        <h2 class="text-3xl font-bold text-gray-800 mb-6">PayPal Payouts</h2>
+        
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                <div class="mb-4 p-4 rounded-md {{ 'bg-green-100 text-green-800' if category == 'success' else 'bg-red-100 text-red-800' }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        
+        {% if grouped_payouts %}
+            {% for batch_id, payout_group in grouped_payouts.items() %}
+            <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                    <div>
+                        <h3 class="text-lg font-semibold text-gray-800">
+                            Batch ID: {{ batch_id }}
+                        </h3>
+                        <p class="text-sm text-gray-500">
+                            Created: {{ payout_group.created_at.strftime('%Y-%m-%d %H:%M:%S') }}
+                        </p>
+                    </div>
+                    <div class="flex items-center">
+                        <span class="mr-4 px-3 py-1 text-sm rounded-full 
+                            {% if payout_group.latest_status == 'paid' %}
+                                bg-green-100 text-green-800
+                            {% elif payout_group.latest_status == 'processing' %}
+                                bg-blue-100 text-blue-800
+                            {% elif payout_group.latest_status == 'failed' %}
+                                bg-red-100 text-red-800
+                            {% elif payout_group.latest_status == 'unclaimed' %}
+                                bg-yellow-100 text-yellow-800
+                            {% else %}
+                                bg-gray-100 text-gray-800
+                            {% endif %}
+                        ">
+                            {{ payout_group.latest_status|title }}
+                        </span>
+                        <a href="{{ url_for('admin.check_payout_status_route', batch_id=batch_id) }}" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">
+                            Check Status
+                        </a>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead>
+                            <tr>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Commission ID</th>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Affiliate</th>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount</th>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="py-3 px-4 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Updated</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            {% for commission in payout_group.commissions %}
+                            <tr>
+                                <td class="py-3 px-4 text-sm text-gray-800">{{ commission.id }}</td>
+                                <td class="py-3 px-4 text-sm text-gray-800">
+                                    {% set affiliate = commission.affiliate %}
+                                    <div class="flex flex-col">
+                                        <span class="font-medium">{{ affiliate.name if affiliate else 'Unknown' }}</span>
+                                        <span class="text-xs text-gray-500">{{ affiliate.email if affiliate else '' }}</span>
+                                        <span class="text-xs text-gray-500">PP: {{ affiliate.paypal_email if affiliate and affiliate.paypal_email else 'N/A' }}</span>
+                                    </div>
+                                </td>
+                                <td class="py-3 px-4 text-sm font-medium text-gray-800">${{ '%0.2f' | format(commission.commission_amount) }}</td>
+                                <td class="py-3 px-4">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                                        {% if commission.status == 'paid' %}
+                                            bg-green-100 text-green-800
+                                        {% elif commission.status == 'processing' %}
+                                            bg-blue-100 text-blue-800
+                                        {% elif commission.status == 'failed' %}
+                                            bg-red-100 text-red-800
+                                        {% elif commission.status == 'unclaimed' %}
+                                            bg-yellow-100 text-yellow-800
+                                        {% else %}
+                                            bg-gray-100 text-gray-800
+                                        {% endif %}
+                                    ">
+                                        {{ commission.status|title }}
+                                    </span>
+                                </td>
+                                <td class="py-3 px-4 text-sm text-gray-600">{{ commission.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            </tr>
+                            {% endfor %}
+                            
+                            <!-- Summary row -->
+                            <tr class="bg-gray-50">
+                                <td class="py-3 px-4 text-sm font-medium text-gray-800" colspan="2">Total</td>
+                                <td class="py-3 px-4 text-sm font-bold text-gray-800">${{ '%0.2f' | format(payout_group.total_amount) }}</td>
+                                <td class="py-3 px-4 text-sm text-gray-600" colspan="2">{{ payout_group.commissions|length }} commission(s)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="bg-white rounded-lg shadow-md p-6 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 class="text-lg font-medium text-gray-800 mb-2">No Payouts Found</h3>
+                <p class="text-gray-600 mb-4">There are no payouts processed yet.</p>
+                <a href="{{ url_for('admin.manage_commissions') }}" class="inline-block px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition">
+                    Manage Commissions
                 </a>
             </div>
-            
-            <table class="table table-hover payout-table">
-                <thead>
-                    <tr>
-                        <th>Commission ID</th>
-                        <th>Affiliate</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Last Updated</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for commission in data.commissions %}
-                    <tr>
-                        <td>{{ commission.id }}</td>
-                        <td>{{ commission.affiliate_id }}</td>
-                        <td>${{ commission.commission_amount|round(2) }}</td>
-                        <td>
-                            {% if commission.status == 'processing' %}
-                            <span class="status-indicator indicator-processing"></span> Processing
-                            {% elif commission.status == 'paid' %}
-                            <span class="status-indicator indicator-paid"></span> Paid
-                            {% elif commission.status == 'failed' %}
-                            <span class="status-indicator indicator-failed"></span> Failed
-                            {% elif commission.status == 'unclaimed' %}
-                            <span class="status-indicator indicator-unclaimed"></span> Unclaimed
-                            {% else %}
-                            <span class="status-indicator"></span> {{ commission.status|capitalize }}
-                            {% endif %}
-                        </td>
-                        <td>{{ commission.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+        {% endif %}
     </div>
-    {% endfor %}
-    {% else %}
-    <div class="no-payouts">
-        <i class="fas fa-credit-card"></i>
-        <h4>No Payouts Yet</h4>
-        <p class="text-muted">You haven't processed any PayPal payouts yet.</p>
-        <a href="{{ url_for('admin_panel.commissions') }}" class="btn btn-primary mt-3">Manage Commissions</a>
-    </div>
-    {% endif %}
-</div>
-{% endblock %}
+</body>
+</html>

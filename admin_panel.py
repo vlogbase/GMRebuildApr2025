@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from typing import Optional, NoReturn
 
-from flask import Blueprint, flash, redirect, url_for, request, session, render_template, Response
+from flask import Blueprint, flash, redirect, url_for, request, session, render_template, Response, abort
 from flask_admin import Admin, AdminIndexView, expose
 from flask_admin.contrib.sqla import ModelView
 from flask_admin.menu import MenuLink
@@ -28,7 +28,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Create blueprint
-admin_bp = Blueprint('admin_panel', __name__, url_prefix='/admin')
+admin_bp = Blueprint('admin_panel', __name__, url_prefix='/admin_portal')
 
 # --- Helper Functions ---
 
@@ -52,17 +52,13 @@ def admin_required(f):
 # --- Admin Views ---
 
 class AuthenticatedIndexView(AdminIndexView):
-    """Custom admin index view that requires authentication"""
-    @expose('/')
-    def index(self):
-        if not current_user.is_authenticated or not is_admin():
-            flash("You do not have permission to access this page", "error")
-            return redirect(url_for('index'))
-        return self._handle_view(None, **{})
+    """Custom admin index view that requires authentication
     
-    @expose('/dashboard')
-    def dashboard(self):
-        """Dashboard with app metrics and stats"""
+    Uses the standard AdminIndexView from Flask-Admin but with authentication
+    to ensure only admin users can access the dashboard.
+    """
+    def dashboard_data(self):
+        """Get data for dashboard display"""
         # User stats
         total_users = User.query.count()
         recent_users = User.query.order_by(User.created_at.desc()).limit(5).all()
@@ -72,62 +68,90 @@ class AuthenticatedIndexView(AdminIndexView):
         active_affiliates = Affiliate.query.filter_by(status=AffiliateStatus.ACTIVE.value).count()
         
         # Commission stats
-        total_commissions = Commission.query.count()
-        pending_commissions = Commission.query.filter_by(status=CommissionStatus.HELD.value).count()
-        approved_commissions = Commission.query.filter_by(status=CommissionStatus.APPROVED.value).count()
+        pending_commissions = Commission.query.filter_by(status=CommissionStatus.APPROVED.value).count()
+        recent_commissions = Commission.query.order_by(Commission.created_at.desc()).limit(5).all()
         
-        # Transaction stats
-        total_transactions = Transaction.query.count()
+        # Revenue stats
         total_revenue = db.session.query(func.sum(Transaction.amount_usd)).filter_by(status=PaymentStatus.COMPLETED.value).scalar() or 0
         
-        # Recent commissions
-        recent_commissions = Commission.query.order_by(Commission.created_at.desc()).limit(10).all()
+        # Get data for charts
+        end_date = datetime.now()
+        start_date = end_date - timedelta(days=30)
         
-        # PayPal mode
-        paypal_mode = os.environ.get('PAYPAL_MODE', 'sandbox')
-        
-        # Stats over time (last 30 days)
-        thirty_days_ago = datetime.utcnow() - timedelta(days=30)
-        
-        # Daily new users (last 30 days)
-        daily_users = db.session.query(
-            func.date_trunc('day', User.created_at).label('day'),
+        # User registrations by day
+        user_registrations = db.session.query(
+            func.date(User.created_at).label('date'),
             func.count(User.id).label('count')
-        ).filter(User.created_at >= thirty_days_ago).group_by('day').order_by('day').all()
+        ).filter(User.created_at >= start_date, User.created_at <= end_date)\
+        .group_by(func.date(User.created_at))\
+        .order_by(func.date(User.created_at))\
+        .all()
         
-        # Daily revenue (last 30 days)
-        daily_revenue = db.session.query(
-            func.date_trunc('day', Transaction.created_at).label('day'),
+        # Revenue by day
+        revenue_by_day = db.session.query(
+            func.date(Transaction.created_at).label('date'),
             func.sum(Transaction.amount_usd).label('amount')
         ).filter(
-            Transaction.created_at >= thirty_days_ago, 
+            Transaction.created_at >= start_date,
+            Transaction.created_at <= end_date,
             Transaction.status == PaymentStatus.COMPLETED.value
-        ).group_by('day').order_by('day').all()
+        )\
+        .group_by(func.date(Transaction.created_at))\
+        .order_by(func.date(Transaction.created_at))\
+        .all()
         
-        # Format for chart.js
-        user_labels = [day.strftime('%Y-%m-%d') for day, _ in daily_users]
-        user_data = [count for _, count in daily_users]
+        # Convert to lists for charts
+        date_range = [(start_date + timedelta(days=i)).date() for i in range(31)]
         
-        revenue_labels = [day.strftime('%Y-%m-%d') for day, _ in daily_revenue]
-        revenue_data = [float(amount or 0) for _, amount in daily_revenue]
+        # Create dict for fast lookups
+        user_dict = {str(r[0]): r[1] for r in user_registrations}
+        revenue_dict = {str(r[0]): float(r[1]) for r in revenue_by_day}
         
-        return self.render('admin/dashboard.html',
+        # Fill in missing dates with zeros
+        user_data = [user_dict.get(str(d), 0) for d in date_range]
+        revenue_data = [revenue_dict.get(str(d), 0) for d in date_range]
+        date_labels = [d.strftime('%Y-%m-%d') for d in date_range]
+        
+        # Get PayPal mode
+        paypal_mode = os.environ.get('PAYPAL_MODE', 'sandbox')
+        
+        return dict(
             total_users=total_users,
             recent_users=recent_users,
             total_affiliates=total_affiliates,
             active_affiliates=active_affiliates,
-            total_commissions=total_commissions,
             pending_commissions=pending_commissions,
-            approved_commissions=approved_commissions,
-            total_transactions=total_transactions,
-            total_revenue=total_revenue,
             recent_commissions=recent_commissions,
-            paypal_mode=paypal_mode,
-            user_labels=user_labels,
+            total_revenue=total_revenue,
+            user_labels=date_labels,
             user_data=user_data,
-            revenue_labels=revenue_labels,
-            revenue_data=revenue_data
+            revenue_labels=date_labels,
+            revenue_data=revenue_data,
+            paypal_mode=paypal_mode
         )
+        
+    def is_accessible(self):
+        """Check if the user has access to the admin interface"""
+        return current_user.is_authenticated and is_admin()
+    
+    def inaccessible_callback(self, name, **kwargs) -> NoReturn:
+        """Handle unauthorized access attempts"""
+        flash("You do not have permission to access this page", "error")
+        # Using abort to indicate no return, which satisfies NoReturn type
+        response = redirect(url_for('index'))
+        abort(response.status_code)
+    
+    @expose('/')
+    def index(self) -> str:
+        """Admin index page showing dashboard"""
+        # Since we handle authentication in is_accessible and inaccessible_callback,
+        # we know by this point that the user is authorized
+        return self.render('admin/dashboard.html', **self.dashboard_data())
+    
+    @expose('/dashboard')
+    def dashboard(self) -> str:
+        """Dashboard with app metrics and stats"""
+        return self.render('admin/dashboard.html', **self.dashboard_data())
 
 class SecureModelView(ModelView):
     """Base ModelView that requires admin authentication"""
@@ -135,8 +159,11 @@ class SecureModelView(ModelView):
         return current_user.is_authenticated and is_admin()
     
     def inaccessible_callback(self, name, **kwargs):
+        # Flash a message and redirect to homepage
         flash("You do not have permission to access this page", "error")
-        return redirect(url_for('index'))
+        # This function is not supposed to return a value according to Flask-Admin
+        # but we need to return a response to make it work
+        abort(redirect(url_for('index')))
 
 class UserModelView(SecureModelView):
     """User model admin view"""
@@ -260,12 +287,15 @@ class CommissionModelView(SecureModelView):
 
 def init_admin(app):
     """Initialize the admin interface with the app"""
-    # Create admin interface
+    # Create admin interface - will only run once due to Flask's app context
+    # Addresses circular template reference by providing explicit template_mode
     admin = Admin(
-        app, 
+        app,
         name='GloriaMundo Admin', 
-        template_mode='bootstrap4',
-        index_view=AuthenticatedIndexView(name='Dashboard', url='/admin')
+        template_mode='bootstrap4',  # This sets the base template to bootstrap4/admin/base.html
+        index_view=AuthenticatedIndexView(name='Dashboard', url='/admin_portal', endpoint='admin'),
+        url='/admin_portal',
+        static_url_path='/admin_portal/static'  # Ensures static files are properly served
     )
     
     # Add model views
@@ -372,7 +402,7 @@ def process_payouts():
             
             if not eligible_affiliates:
                 flash("No affiliates eligible for payout", "warning")
-                return redirect(url_for('admin.commissions'))
+                return redirect(url_for('admin_panel.manage_commissions'))
                 
             selected_affiliates = [str(affiliate.affiliate_id) for affiliate in eligible_affiliates]
         else:
@@ -381,7 +411,7 @@ def process_payouts():
             
             if not selected_commission_ids:
                 flash("No commissions selected for payout", "warning")
-                return redirect(url_for('admin.commissions'))
+                return redirect(url_for('admin_panel.manage_commissions'))
                 
             # Get commissions
             selected_commissions = Commission.query.filter(
@@ -440,7 +470,7 @@ def process_payouts():
         
         if not payout_items:
             flash("No eligible affiliates for payout", "warning")
-            return redirect(url_for('admin.commissions'))
+            return redirect(url_for('admin_panel.manage_commissions'))
             
         # Process the payout via PayPal
         payout_result = process_paypal_payout(sender_batch_id, payout_items, note=request.form.get('payout_note', 'GloriaMundo Chat Affiliate Commission Payout'))
@@ -457,17 +487,17 @@ def process_payouts():
             db.session.commit()
             
             flash(f"Successfully initiated payout batch {batch_id}. {len(affected_commission_ids)} commissions are being processed.", "success")
-            return redirect(url_for('admin.payouts'))
+            return redirect(url_for('admin_panel.payouts'))
         else:
             error = payout_result.get('error', 'Unknown error')
             flash(f"PayPal payout failed: {error}", "error")
-            return redirect(url_for('admin.commissions'))
+            return redirect(url_for('admin_panel.manage_commissions'))
         
     except Exception as e:
         logger.error(f"Error in process_payouts: {e}")
         db.session.rollback()
         flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('admin.commissions'))
+        return redirect(url_for('admin_panel.manage_commissions'))
 
 @admin_bp.route('/payouts')
 @admin_required
@@ -514,7 +544,7 @@ def payouts():
     except Exception as e:
         logger.error(f"Error in admin payouts: {e}")
         flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('admin.index'))
+        return redirect(url_for('admin_panel.index'))
 
 @admin_bp.route('/check-payout-status/<batch_id>')
 @admin_required
@@ -528,7 +558,7 @@ def check_payout_status_route(batch_id):
         
         if not status_result['success']:
             flash(f"Error checking payout status: {status_result.get('error')}", "error")
-            return redirect(url_for('admin.payouts'))
+            return redirect(url_for('admin_panel.payouts'))
         
         # Process each item in the payout batch
         updated_count = 0
@@ -579,13 +609,13 @@ def check_payout_status_route(batch_id):
         db.session.commit()
         
         flash(f"Successfully updated status for {updated_count} commissions in batch {batch_id}", "success")
-        return redirect(url_for('admin.payouts'))
+        return redirect(url_for('admin_panel.payouts'))
         
     except Exception as e:
         logger.error(f"Error checking payout status: {e}")
         db.session.rollback()
         flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('admin.payouts'))
+        return redirect(url_for('admin_panel.payouts'))
 
 @admin_bp.route('/toggle-paypal-mode', methods=['POST'])
 @admin_required
@@ -601,12 +631,12 @@ def toggle_paypal_mode():
         os.environ['PAYPAL_MODE'] = new_mode
         
         flash(f"PayPal mode switched from {current_mode} to {new_mode}", "success")
-        return redirect(url_for('admin.index'))
+        return redirect(url_for('admin_panel.index'))
         
     except Exception as e:
         logger.error(f"Error toggling PayPal mode: {e}")
         flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('admin.index'))
+        return redirect(url_for('admin_panel.index'))
 
 @admin_bp.route('/approve-commission/<int:commission_id>')
 @admin_required
@@ -619,24 +649,24 @@ def approve_commission(commission_id):
         
         if not commission:
             flash("Commission not found", "error")
-            return redirect(url_for('admin.commissions'))
+            return redirect(url_for('admin_panel.manage_commissions'))
             
         if commission.status != CommissionStatus.HELD.value:
             flash(f"Commission is not in HELD status (current: {commission.status})", "warning")
-            return redirect(url_for('admin.commissions'))
+            return redirect(url_for('admin_panel.manage_commissions'))
             
         # Update status
         commission.status = CommissionStatus.APPROVED.value
         db.session.commit()
         
         flash(f"Commission #{commission_id} approved for payout", "success")
-        return redirect(url_for('admin.commissions'))
+        return redirect(url_for('admin_panel.manage_commissions'))
         
     except Exception as e:
         logger.error(f"Error approving commission: {e}")
         db.session.rollback()
         flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('admin.commissions'))
+        return redirect(url_for('admin_panel.manage_commissions'))
 
 @admin_bp.route('/reject-commission/<int:commission_id>')
 @admin_required
@@ -649,21 +679,21 @@ def reject_commission(commission_id):
         
         if not commission:
             flash("Commission not found", "error")
-            return redirect(url_for('admin.commissions'))
+            return redirect(url_for('admin_panel.manage_commissions'))
             
         if commission.status != CommissionStatus.HELD.value:
             flash(f"Commission is not in HELD status (current: {commission.status})", "warning")
-            return redirect(url_for('admin.commissions'))
+            return redirect(url_for('admin_panel.manage_commissions'))
             
         # Update status
         commission.status = CommissionStatus.REJECTED.value
         db.session.commit()
         
         flash(f"Commission #{commission_id} rejected", "success")
-        return redirect(url_for('admin.commissions'))
+        return redirect(url_for('admin_panel.manage_commissions'))
         
     except Exception as e:
         logger.error(f"Error rejecting commission: {e}")
         db.session.rollback()
         flash(f"An error occurred: {str(e)}", "error")
-        return redirect(url_for('admin.commissions'))
+        return redirect(url_for('admin_panel.manage_commissions'))

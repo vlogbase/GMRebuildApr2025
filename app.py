@@ -178,16 +178,53 @@ try:
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
 
-# Register admin blueprint and initialize Flask-Admin
+# Register admin blueprint using our completely separate admin module
+# This eliminates all Flask-Admin template recursion issues by using a fresh implementation
 try:
-    from admin_panel import admin_bp, init_admin
-    app.register_blueprint(admin_bp, url_prefix='/admin')
+    # Import from the new admin module (not simple_admin or admin_panel)
+    from admin import admin_bp, init_admin
     
-    # Initialize the Flask-Admin interface
-    admin = init_admin(app)
-    logger.info("Admin blueprint and Flask-Admin interface registered successfully")
+    # Create explicit error handler for admin blueprint before registration
+    @admin_bp.errorhandler(Exception)
+    def handle_admin_exception(e):
+        logger.error(f"Admin exception: {str(e)}", exc_info=True)
+        return """
+        <html>
+            <head><title>Admin Error</title></head>
+            <body>
+                <h1>Error in Admin Panel</h1>
+                <p>An unexpected error occurred in the admin panel. This has been logged for investigation.</p>
+                <p>Error details: {}</p>
+                <a href="/">Return to Home</a>
+            </body>
+        </html>
+        """.format(str(e)), 500
+    
+    # Register the admin blueprint with a completely new URL prefix to avoid any conflicts
+    init_admin(app)
+    
+    # Log success
+    logger.info("New admin blueprint registered successfully with prefix /admin_simple")
+    
+    # Add redirects from old admin routes to new admin routes
+    @app.route('/admin')
+    @app.route('/admin/')
+    @app.route('/admin_portal')
+    @app.route('/admin_portal/')
+    @app.route('/admin_dash')
+    @app.route('/admin_dash/')
+    def redirect_to_admin_portal():
+        return redirect(url_for('admin_simple.index'))
+        
+    @app.route('/admin/<path:subpath>')
+    @app.route('/admin_portal/<path:subpath>')
+    @app.route('/admin_dash/<path:subpath>')
+    def redirect_admin_subpaths(subpath):
+        # Redirect all admin routes to our new admin implementation
+        return redirect('/admin_simple/' + subpath)
+        
 except Exception as e:
-    logger.error(f"Error registering Admin blueprint or initializing Flask-Admin: {e}")
+    logger.error(f"Error registering Admin blueprint: {str(e)}", exc_info=True)
 
 # Helper function for admin access control
 def is_admin():
