@@ -9,3 +9,9 @@ run = "python -m workflows.mobile_ui"
 language = "python3"
 onBoot = ""
 hidden = false
+
+[mobile_test]
+run = "python -m workflows.mobile_test"
+language = "python3"
+onBoot = ""
+hidden = false

@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Update the selected model names in the panel
+    // Update the selected model names in the panel with cost band indicators
     function updateSelectedModelNames() {
         // For each preset, get the selected model from userPreferences or defaultModels
         for (let i = 1; i <= 6; i++) {
@@ -68,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const modelId = window.userPreferences?.[presetId] || window.defaultModels?.[presetId];
             
             if (modelId) {
-                // Format the model name
+                // Get the model name
                 let modelName = modelId;
                 
                 // Try to get a more friendly name from the list of models
@@ -79,7 +79,46 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update the display
                 const modelNameElement = document.getElementById(`mobile-selected-model-${presetId}`);
                 if (modelNameElement) {
-                    modelNameElement.textContent = modelName;
+                    // Clear any existing content
+                    modelNameElement.innerHTML = '';
+                    
+                    // Create and add the model name span
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = modelName;
+                    nameSpan.className = 'selected-model-name-text';
+                    modelNameElement.appendChild(nameSpan);
+                    
+                    // Find the model in the global list to get its properties
+                    const model = window.allModels?.find(m => m.id === modelId);
+                    
+                    if (model) {
+                        // Add cost band indicator if available
+                        if (model.cost_band) {
+                            const costBandSpan = document.createElement('span');
+                            costBandSpan.textContent = model.cost_band;
+                            costBandSpan.className = 'preset-cost-band';
+                            
+                            // Add appropriate color class based on band value
+                            if (model.cost_band === '$$$$') {
+                                costBandSpan.classList.add('cost-band-4-danger');
+                            } else if (model.cost_band === '$$$') {
+                                costBandSpan.classList.add('cost-band-3-warn');
+                            } else if (model.cost_band === '$$') {
+                                costBandSpan.classList.add('cost-band-2');
+                            } else if (model.cost_band === '$') {
+                                costBandSpan.classList.add('cost-band-1');
+                            }
+                            
+                            modelNameElement.appendChild(costBandSpan);
+                        }
+                        // Add free indicator if it's a free model
+                        else if (model.is_free === true || modelId.includes(':free')) {
+                            const freeSpan = document.createElement('span');
+                            freeSpan.textContent = 'Free';
+                            freeSpan.className = 'preset-free-indicator';
+                            modelNameElement.appendChild(freeSpan);
+                        }
+                    }
                 }
             }
         }
@@ -194,18 +233,41 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 li.appendChild(modelInfo);
                 
-                // Model cost
+                // Model cost with proper cost band styling
                 const modelCost = document.createElement('div');
                 modelCost.className = 'model-cost';
                 
-                // Use the pricing structure from the main script
+                // Free model case
                 if (model.is_free === true || model.id.includes(':free')) {
                     modelCost.textContent = 'Free';
-                } else if (model.pricing && model.pricing.prompt) {
+                    modelCost.classList.add('free-model');
+                } 
+                // Model with cost band
+                else if (model.cost_band) {
+                    // Create styled cost band span (similar to desktop UI)
+                    const costBandSpan = document.createElement('span');
+                    costBandSpan.textContent = model.cost_band;
+                    costBandSpan.className = 'cost-band-indicator';
+                    
+                    // Add appropriate color class based on band value
+                    if (model.cost_band === '$$$$') {
+                        costBandSpan.classList.add('cost-band-4-danger');
+                    } else if (model.cost_band === '$$$') {
+                        costBandSpan.classList.add('cost-band-3-warn');
+                    } else if (model.cost_band === '$$') {
+                        costBandSpan.classList.add('cost-band-2');
+                    } else if (model.cost_band === '$') {
+                        costBandSpan.classList.add('cost-band-1');
+                    } else {
+                        costBandSpan.classList.add('cost-band-free');
+                    }
+                    
+                    modelCost.appendChild(costBandSpan);
+                }
+                // Fallback for models with pricing but no cost band
+                else if (model.pricing && model.pricing.prompt) {
                     const promptPrice = model.pricing.prompt;
                     modelCost.textContent = `$${promptPrice.toFixed(4)}/1K in`;
-                } else if (model.cost_band) {
-                    modelCost.textContent = model.cost_band;
                 }
                 
                 li.appendChild(modelCost);
