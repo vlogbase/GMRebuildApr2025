@@ -34,171 +34,6 @@ function forceRepaint(element) {
     console.debug(`forceRepaint applied to element: ${element.className || 'unnamed'}`);
 }
 
-// Device detection utility
-const deviceDetection = {
-    // Flag to identify if device is touch-capable (mobile/tablet)
-    isTouchDevice: false,
-    
-    // Flag to identify if device has fine pointer capability (mouse)
-    hasPointer: false,
-    
-    // Flag to determine if device should be treated as mobile for UX decisions
-    isMobileDevice: false,
-    
-    // Initialize device detection
-    init: function() {
-        // Check for touch capability
-        this.isTouchDevice = ('ontouchstart' in window) || 
-                            (navigator.maxTouchPoints > 0) || 
-                            (navigator.msMaxTouchPoints > 0);
-        
-        // Check for pointer capability (most desktops have this)
-        this.hasPointer = window.matchMedia('(pointer:fine)').matches;
-        
-        // Check for hover capability (most mobile devices don't have hover)
-        const hasHover = window.matchMedia('(hover: hover)').matches;
-        
-        // Check for small screen (additional mobile indicator)
-        const hasSmallScreen = window.innerWidth < 768;
-        
-        // Check common mobile user agent patterns as a backup method
-        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-        const mobileUserAgent = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-        
-        // Logic to determine if this is a mobile device for UX purposes
-        // Primary method: Touch + No fine pointer
-        // Secondary: User agent or small screen if the primary method is ambiguous
-        this.isMobileDevice = (this.isTouchDevice && !this.hasPointer) || 
-                             (!this.hasPointer && !hasHover) ||
-                             (mobileUserAgent && hasSmallScreen);
-        
-        // Log the detected capabilities
-        console.log('Device detection:', {
-            touch: this.isTouchDevice,
-            pointer: this.hasPointer,
-            hover: hasHover,
-            smallScreen: hasSmallScreen,
-            mobileUserAgent: mobileUserAgent,
-            isMobile: this.isMobileDevice
-        });
-        
-        // Add CSS classes to the document to allow CSS-based device targeting
-        document.documentElement.classList.toggle('touch-device', this.isTouchDevice);
-        document.documentElement.classList.toggle('pointer-device', this.hasPointer);
-        document.documentElement.classList.toggle('mobile-device', this.isMobileDevice);
-    }
-};
-
-// Initialize device detection immediately
-deviceDetection.init();
-
-// Mobile Navigation Drawer functionality
-function initMobileNavigation() {
-    const mobileNavToggle = document.getElementById('mobile-nav-toggle');
-    const sidebarCloseBtn = document.getElementById('sidebar-close-btn');
-    const sidebar = document.querySelector('.sidebar');
-    const sidebarOverlay = document.getElementById('sidebar-overlay');
-    
-    if (!mobileNavToggle || !sidebarCloseBtn || !sidebar) {
-        return; // Elements not found, possibly not on a page with navigation
-    }
-    
-    // Add login status class to body for CSS targeting
-    if (userIsLoggedIn) {
-        document.body.classList.add('user-logged-in');
-    }
-    
-    // Function to toggle sidebar visibility
-    function toggleSidebar() {
-        sidebar.classList.toggle('active');
-        
-        // Also toggle the overlay
-        if (sidebarOverlay) {
-            sidebarOverlay.classList.toggle('active');
-        }
-    }
-    
-    // Open sidebar
-    mobileNavToggle.addEventListener('click', toggleSidebar);
-    
-    // Close sidebar
-    sidebarCloseBtn.addEventListener('click', toggleSidebar);
-    
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', function(event) {
-        // Only do this on mobile devices
-        if (!deviceDetection.isMobileDevice) return;
-        
-        // Check if the sidebar is open and the click was outside it
-        if (sidebar.classList.contains('active') && 
-            !sidebar.contains(event.target) && 
-            event.target !== mobileNavToggle) {
-            sidebar.classList.remove('active');
-            
-            // Also hide the overlay
-            if (sidebarOverlay) {
-                sidebarOverlay.classList.remove('active');
-            }
-        }
-    });
-    
-    // Add click handler to overlay to close the sidebar
-    if (sidebarOverlay) {
-        sidebarOverlay.addEventListener('click', function() {
-            sidebar.classList.remove('active');
-            sidebarOverlay.classList.remove('active');
-        });
-    }
-    
-    // Prevent clicks inside the sidebar from closing it
-    sidebar.addEventListener('click', function(event) {
-        event.stopPropagation();
-    });
-    
-    // Close sidebar after selecting a conversation on mobile
-    const conversationItems = document.querySelectorAll('.conversation-item');
-    conversationItems.forEach(item => {
-        item.addEventListener('click', function() {
-            if (deviceDetection.isMobileDevice) {
-                sidebar.classList.remove('active');
-            }
-        });
-    });
-    
-    // Close sidebar when clicking login/logout buttons on mobile
-    const loginBtn = document.getElementById('login-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    
-    if (loginBtn) {
-        loginBtn.addEventListener('click', function() {
-            if (deviceDetection.isMobileDevice) {
-                sidebar.classList.remove('active');
-            }
-        });
-    }
-    
-    if (logoutBtn) {
-        logoutBtn.addEventListener('click', function() {
-            if (deviceDetection.isMobileDevice) {
-                sidebar.classList.remove('active');
-            }
-        });
-    }
-    
-    // Also add event listeners to all auth buttons in the sidebar
-    const authButtons = sidebar.querySelectorAll('.auth-btn');
-    authButtons.forEach(btn => {
-        btn.addEventListener('click', function() {
-            if (deviceDetection.isMobileDevice) {
-                sidebar.classList.remove('active');
-            }
-        });
-    });
-}
-
-// Initialize mobile navigation after DOM is loaded
-document.addEventListener('DOMContentLoaded', initMobileNavigation);
-
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
@@ -1717,17 +1552,11 @@ document.addEventListener('DOMContentLoaded', function() {
             updateSendButtonState();
         });
         
-        // Handle keydown for Enter key and special cases with device-specific behavior
+        // Handle keydown for Enter key and special cases
         messageInput.addEventListener('keydown', function(event) {
-            // Only process Enter key on desktop devices (non-mobile)
-            // This allows mobile users to use Enter for new lines without sending
             if (event.key === 'Enter' && !event.shiftKey) {
-                if (!deviceDetection.isMobileDevice) {
-                    // On desktop: Enter sends the message
-                    event.preventDefault();
-                    sendMessage();
-                }
-                // On mobile: Enter creates a new line (default behavior)
+                event.preventDefault();
+                sendMessage();
             }
             
             // For Backspace and Delete keys, resize after a brief delay
@@ -2958,18 +2787,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         
                         // Update the sidebar with the new conversation
                         fetchConversations(true);
-                        
-                        // Close sidebar on mobile when creating a new chat
-                        if (deviceDetection.isMobileDevice) {
-                            const sidebar = document.querySelector('.sidebar');
-                            const sidebarOverlay = document.getElementById('sidebar-overlay');
-                            if (sidebar) {
-                                sidebar.classList.remove('active');
-                                if (sidebarOverlay) {
-                                    sidebarOverlay.classList.remove('active');
-                                }
-                            }
-                        }
                     } else {
                         console.error('Failed to create new conversation:', data.error || 'Unknown error');
                     }
@@ -2991,14 +2808,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Clear chat and reset conversation items in sidebar
             clearChat();
             // In a real app, you would also clear the storage/backend
-            
-            // Close sidebar on mobile after clearing conversations
-            if (deviceDetection.isMobileDevice) {
-                const sidebar = document.querySelector('.sidebar');
-                if (sidebar) {
-                    sidebar.classList.remove('active');
-                }
-            }
         });
     }
     
@@ -3605,18 +3414,6 @@ document.addEventListener('DOMContentLoaded', function() {
                                 
                                 // Load the conversation
                                 loadConversation(conversation.id);
-                                
-                                // Close sidebar on mobile devices when selecting a conversation
-                                if (deviceDetection.isMobileDevice) {
-                                    const sidebar = document.querySelector('.sidebar');
-                                    const sidebarOverlay = document.getElementById('sidebar-overlay');
-                                    if (sidebar) {
-                                        sidebar.classList.remove('active');
-                                        if (sidebarOverlay) {
-                                            sidebarOverlay.classList.remove('active');
-                                        }
-                                    }
-                                }
                             });
                             
                             conversationsList.appendChild(conversationItem);
