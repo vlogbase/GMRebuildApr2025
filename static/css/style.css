@@ -2135,23 +2135,31 @@ body.account-page .tab-pane {
     justify-content: center;
 }
 
+/* For desktop version - simpler variant of Material Design */
 .reset-to-default-btn {
-    background-color: transparent;
-    color: var(--secondary-text);
-    border: 1px solid var(--border-color);
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    border: none;
     border-radius: 4px;
-    padding: 6px 12px;
+    padding: 8px 12px;
     font-size: 13px;
     cursor: pointer;
     transition: all 0.2s ease;
     display: flex;
     align-items: center;
     gap: 6px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    position: relative;
+    overflow: hidden;
 }
 
 .reset-to-default-btn:hover {
     background-color: var(--hover-color);
-    color: var(--text-color);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.reset-to-default-btn:active {
+    transform: translateY(1px);
 }
 
 .reset-to-default-btn i {
@@ -3112,84 +3120,104 @@ code {
     width: 100%;
 }
 
+/* Material Design inspired mobile preset buttons */
 .mobile-preset-btn {
     width: 36px;
     height: 36px;
     border-radius: 50%;
     background-color: var(--button-bg);
     color: var(--text-color);
-    border: 1px solid var(--border-color);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
     font-size: 14px;
     padding: 0;
-    transition: background-color 0.2s, transform 0.1s;
+    border: none;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s ease-out;
 }
 
-/* Color scheme for the numbered buttons in the footer */
+/* Color scheme for the numbered buttons - subtle background in inactive state */
 .mobile-preset-btn[data-preset-id="1"] {
-    border-color: #5D8BF4; /* Blue */
+    background-image: linear-gradient(to bottom right, rgba(93, 139, 244, 0.1), rgba(93, 139, 244, 0.2));
 }
 
 .mobile-preset-btn[data-preset-id="2"] {
-    border-color: #9D65D0; /* Purple */
+    background-image: linear-gradient(to bottom right, rgba(157, 101, 208, 0.1), rgba(157, 101, 208, 0.2));
 }
 
 .mobile-preset-btn[data-preset-id="3"] {
-    border-color: #FF8C61; /* Orange */
+    background-image: linear-gradient(to bottom right, rgba(255, 140, 97, 0.1), rgba(255, 140, 97, 0.2));
 }
 
 .mobile-preset-btn[data-preset-id="4"] {
-    border-color: #24b9bd; /* Accent color - cyan */
+    background-image: linear-gradient(to bottom right, rgba(36, 185, 189, 0.1), rgba(36, 185, 189, 0.2));
 }
 
 .mobile-preset-btn[data-preset-id="5"] {
-    border-color: #FC5C9C; /* Pink */
+    background-image: linear-gradient(to bottom right, rgba(252, 92, 156, 0.1), rgba(252, 92, 156, 0.2));
 }
 
 .mobile-preset-btn[data-preset-id="6"] {
-    border-color: #28a745; /* Green */
+    background-image: linear-gradient(to bottom right, rgba(40, 167, 69, 0.1), rgba(40, 167, 69, 0.2));
 }
 
+/* Ripple effect for touch feedback */
+.mobile-preset-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.7);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%, -50%);
+    transform-origin: 50% 50%;
+}
+
+.mobile-preset-btn:active::after {
+    animation: ripple 0.4s ease-out;
+}
+
+/* Active buttons - full color and elevated */
 .mobile-preset-btn.active {
     color: white;
-    position: relative;
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
 }
 
-/* Active state color scheme */
+/* Active state - full color gradients */
 .mobile-preset-btn.active[data-preset-id="1"] {
-    background-color: #5D8BF4; /* Blue */
-    border-color: #5D8BF4;
+    background-image: linear-gradient(to bottom right, #5D8BF4, #4a78e0);
 }
 
 .mobile-preset-btn.active[data-preset-id="2"] {
-    background-color: #9D65D0; /* Purple */
-    border-color: #9D65D0;
+    background-image: linear-gradient(to bottom right, #9D65D0, #8952bd);
 }
 
 .mobile-preset-btn.active[data-preset-id="3"] {
-    background-color: #FF8C61; /* Orange */
-    border-color: #FF8C61;
+    background-image: linear-gradient(to bottom right, #FF8C61, #ff7846);
 }
 
 .mobile-preset-btn.active[data-preset-id="4"] {
-    background-color: #24b9bd; /* Accent color - cyan */
-    border-color: #24b9bd;
+    background-image: linear-gradient(to bottom right, #24b9bd, #1fa8ac);
 }
 
 .mobile-preset-btn.active[data-preset-id="5"] {
-    background-color: #FC5C9C; /* Pink */
-    border-color: #FC5C9C;
+    background-image: linear-gradient(to bottom right, #FC5C9C, #fb4089);
 }
 
 .mobile-preset-btn.active[data-preset-id="6"] {
-    background-color: #28a745; /* Green */
-    border-color: #28a745;
+    background-image: linear-gradient(to bottom right, #28a745, #23913c);
 }
 
-.mobile-preset-btn.active::after {
+/* Bottom indicator dot for active state */
+.mobile-preset-btn.active::before {
     content: "";
     position: absolute;
     bottom: -4px;
@@ -3198,12 +3226,35 @@ code {
     width: 4px;
     height: 4px;
     border-radius: 50%;
-    background-color: var(--primary-color);
+    background-color: white;
+    box-shadow: 0 0 4px rgba(0, 0, 0, 0.2);
 }
 
+/* Ripple animation */
+@keyframes ripple {
+    0% {
+        transform: scale(0, 0);
+        opacity: 1;
+    }
+    20% {
+        transform: scale(25, 25);
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(40, 40);
+    }
+}
+
+/* Free preset overrides - uses green theme matching free model indicators */
 .mobile-preset-btn.free-preset {
-    background-color: var(--free-btn-bg);
-    color: var(--free-btn-text);
+    background-image: linear-gradient(to bottom right, rgba(40, 167, 69, 0.12), rgba(40, 167, 69, 0.24));
+    color: var(--text-color);
+}
+
+.mobile-preset-btn.free-preset.active {
+    background-image: linear-gradient(to bottom right, #28a745, #218838);
+    color: white;
 }
 
 .mobile-preset-btn:active {
@@ -3211,24 +3262,46 @@ code {
     opacity: 0.9;
 }
 
+/* Material design panel toggle button */
 .mobile-model-panel-toggle {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background-color: var(--button-bg);
+    background-image: linear-gradient(to bottom right, #24b9bd22, #24b9bd44); /* Subtle accent color */
     color: var(--text-color);
-    border: 1px solid var(--border-color);
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 12px;
-    transition: all 0.2s;
+    transition: all 0.2s ease-out;
     margin-left: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    position: relative;
+    overflow: hidden;
+}
+
+.mobile-model-panel-toggle:active::after {
+    animation: ripple 0.4s ease-out;
+}
+
+.mobile-model-panel-toggle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.7);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%, -50%);
+    transform-origin: 50% 50%;
 }
 
 .mobile-model-panel-toggle:active {
     transform: scale(0.95);
-    background-color: var(--hover-color);
+    background-image: linear-gradient(to bottom right, #24b9bd33, #24b9bd66);
 }
 
 /* Mobile Bottom Sheet Panels */
@@ -3311,7 +3384,7 @@ code {
     flex: 1;
 }
 
-/* Mobile Panel Preset Buttons */
+/* Mobile Panel Preset Buttons - Material Design style */
 .mobile-panel-preset-btn {
     display: flex;
     justify-content: space-between;
@@ -3323,10 +3396,48 @@ code {
     padding: 16px;
     text-align: left;
     color: var(--text-color);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+/* Ripple effect for panel buttons */
+.mobile-panel-preset-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%, -50%);
+    transform-origin: 50% 50%;
+}
+
+.mobile-panel-preset-btn:active::after {
+    animation: list-ripple 0.6s ease-out;
 }
 
 .mobile-panel-preset-btn:active {
     background-color: var(--hover-color);
+}
+
+/* Ripple animation for list items */
+@keyframes list-ripple {
+    0% {
+        transform: scale(0, 0);
+        opacity: 1;
+    }
+    20% {
+        transform: scale(40, 40);
+        opacity: 1;
+    }
+    100% {
+        opacity: 0;
+        transform: scale(50, 50);
+    }
 }
 
 .preset-info {
@@ -3404,14 +3515,23 @@ code {
     border-bottom: 1px solid var(--border-color);
 }
 
+/* Material Design search input */
 #mobile-model-search {
     width: 100%;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
+    padding: 12px 16px;
+    border-radius: 4px;
+    border: none;
     background-color: var(--input-bg);
     color: var(--text-color);
     font-size: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+#mobile-model-search:focus {
+    outline: none;
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
+    transform: translateY(-1px);
 }
 
 .mobile-model-list-container {
@@ -3426,12 +3546,35 @@ code {
     margin: 0;
 }
 
+/* Material Design model list items */
 .mobile-model-list li {
     padding: 12px 16px;
     border-bottom: 1px solid var(--border-color);
     display: flex;
     justify-content: space-between;
     align-items: center;
+    position: relative;
+    overflow: hidden;
+    transition: background-color 0.2s ease;
+}
+
+/* Ripple effect for list items */
+.mobile-model-list li::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%, -50%);
+    transform-origin: 50% 50%;
+}
+
+.mobile-model-list li:active::after {
+    animation: list-ripple 0.6s ease-out;
 }
 
 .mobile-model-list li:active {
@@ -3440,6 +3583,7 @@ code {
 
 .mobile-model-list li.active {
     background-color: var(--active-item-bg);
+    box-shadow: inset 0 0 0 1px var(--primary-color);
 }
 
 .mobile-model-list .model-info {
@@ -3908,26 +4052,52 @@ code {
     margin-top: 12px;
 }
 
-/* Shared reset button styles */
-.reset-all-to-default-btn,
-.reset-to-default-btn {
-    background-color: var(--input-bg);
+/* Material Design reset buttons */
+.reset-to-default-btn,
+.reset-all-to-default-btn {
+    background-color: var(--button-bg);
     color: var(--text-color);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border: none;
+    border-radius: 4px;
     padding: 10px 16px;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
     font-size: 14px;
     font-weight: 500;
-    transition: background-color 0.2s, transform 0.1s;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+    transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+    position: relative;
+    overflow: hidden;
+}
+
+/* Ripple effect for reset buttons */
+.reset-to-default-btn::after,
+.reset-all-to-default-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 5px;
+    height: 5px;
+    background: rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    border-radius: 100%;
+    transform: scale(1, 1) translate(-50%, -50%);
+    transform-origin: 50% 50%;
+}
+
+.reset-to-default-btn:active::after,
+.reset-all-to-default-btn:active::after {
+    animation: ripple 0.4s ease-out;
 }
 
 .reset-all-to-default-btn:active,
 .reset-to-default-btn:active {
     background-color: var(--hover-color);
-    transform: scale(0.98);
+    transform: translateY(-1px);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
 }
 
 /* Hover state for reset buttons */
