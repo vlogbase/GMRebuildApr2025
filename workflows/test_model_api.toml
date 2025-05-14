@@ -1,0 +1,4 @@
+[workflow]
+name = "test-model-api"
+entrypoint = "test_model_api_workflow.py"
+requirements = []

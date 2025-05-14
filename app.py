@@ -2191,7 +2191,16 @@ def chat(): # Synchronous function
         has_pdfs = pdf_url or (pdf_urls and len(pdf_urls) > 0)
         
         # Check if model supports multimodal content or PDF documents
+        # First try to look up the model in the database
         model_supports_documents = openrouter_model in DOCUMENT_MODELS
+        try:
+            # Check the database for more accurate information
+            from models import OpenRouterModel
+            db_model = OpenRouterModel.query.get(openrouter_model)
+            if db_model and db_model.supports_pdf:
+                model_supports_documents = True
+        except Exception as e:
+            logger.warning(f"Error checking database for PDF support: {e}")
         
         # Include multimedia content if we have images or PDFs and the model supports them
         if (has_images and model_supports_multimodal) or (has_pdfs and model_supports_documents):
@@ -2598,7 +2607,18 @@ def chat(): # Synchronous function
                         has_pdf_content = True
                         break
         
-        if has_pdf_content and openrouter_model in DOCUMENT_MODELS:
+        # Check if model supports PDF files (from database or hardcoded list)
+        model_supports_pdf = openrouter_model in DOCUMENT_MODELS
+        try:
+            # Check the database for more accurate information
+            from models import OpenRouterModel
+            db_model = OpenRouterModel.query.get(openrouter_model)
+            if db_model and db_model.supports_pdf:
+                model_supports_pdf = True
+        except Exception as e:
+            logger.warning(f"Error checking database for PDF support: {e}")
+            
+        if has_pdf_content and model_supports_pdf:
             logger.info(f"PDF content detected for document-capable model {openrouter_model}, adding native PDF plugin config")
             payload['plugins'] = [
                 {
@@ -3127,7 +3147,7 @@ def _fetch_openrouter_models():
                     },
                     'is_free': model.is_free,
                     'is_multimodal': model.is_multimodal,
-                    'supports_pdf': model.model_id in DOCUMENT_MODELS,
+                    'supports_pdf': model.supports_pdf or model.model_id in DOCUMENT_MODELS,
                     'is_perplexity': 'perplexity/' in model.model_id.lower(),
                     'is_reasoning': model.supports_reasoning,
                     'created_at': model.created_at.isoformat() if model.created_at else None,
@@ -3166,7 +3186,7 @@ def _fetch_openrouter_models():
                         },
                         'is_free': model.is_free,
                         'is_multimodal': model.is_multimodal,
-                        'supports_pdf': model.model_id in DOCUMENT_MODELS,
+                        'supports_pdf': model.supports_pdf or model.model_id in DOCUMENT_MODELS,
                         'is_perplexity': 'perplexity/' in model.model_id.lower(),
                         'is_reasoning': model.supports_reasoning,
                         'created_at': model.created_at.isoformat() if model.created_at else None,
@@ -3528,7 +3548,7 @@ def get_models():
                         'completion': str(db_model.output_price_usd_million / 1000000)
                     },
                     'is_multimodal': db_model.is_multimodal,
-                    'supports_pdf': db_model.model_id in DOCUMENT_MODELS,
+                    'supports_pdf': db_model.supports_pdf or db_model.model_id in DOCUMENT_MODELS,
                     'is_free': db_model.input_price_usd_million == 0 and db_model.output_price_usd_million == 0,
                     'is_perplexity': 'perplexity/' in db_model.model_id.lower(),
                     'is_reasoning': any(keyword in db_model.model_id.lower() or 

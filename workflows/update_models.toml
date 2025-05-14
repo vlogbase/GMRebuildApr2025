@@ -1,0 +1,4 @@
+[workflow]
+name = "update-openrouter-models"
+entrypoint = "update_models_workflow.py"
+requirements = []

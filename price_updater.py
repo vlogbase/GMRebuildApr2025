@@ -62,12 +62,19 @@ def fetch_and_store_openrouter_prices() -> bool:
         
         # Log the API request details (without exposing the full key)
         masked_key = api_key[:4] + "..." + api_key[-4:] if len(api_key) > 8 else "***"
-        logger.debug(f"API Request URL: https://openrouter.ai/api/v1/models")
+        # Use query parameters to get ALL models (including ones that might be filtered out by default)
+        params = {
+            'limit': 1000,  # Get as many models as possible
+            'ready': 'all'  # Include all models, not just ready ones
+        }
+        request_url = 'https://openrouter.ai/api/v1/models'
+        logger.debug(f"API Request URL: {request_url} with params: {params}")
         logger.debug(f"Using API key: {masked_key}")
         
         response = requests.get(
-            'https://openrouter.ai/api/v1/models',
+            request_url,
             headers=headers,
+            params=params,
             timeout=15.0
         )
         
@@ -80,9 +87,30 @@ def fetch_and_store_openrouter_prices() -> bool:
         # Parse response JSON
         models_data = response.json()
         
-        # Log response data (limited for brevity)
-        data_count = len(models_data.get('data', []))
-        logger.debug(f"Received data for {data_count} models from OpenRouter API")
+        # Log response data with more details
+        models = models_data.get('data', [])
+        data_count = len(models)
+        logger.info(f"Received data for {data_count} models from OpenRouter API")
+        
+        # Log details of the first few and last few models to understand what we're getting
+        if data_count > 0:
+            # Log first 3 models
+            for i in range(min(3, data_count)):
+                model = models[i]
+                logger.info(f"First Models - Model {i+1}: {model.get('id')} - {model.get('name')}")
+                
+            # Log last 3 models
+            for i in range(max(0, data_count-3), data_count):
+                model = models[i]
+                logger.info(f"Last Models - Model {i+1}: {model.get('id')} - {model.get('name')}")
+                
+            # Check if our target model exists in the data
+            target_model_id = "nousresearch/deephermes-3-mistral-24b-preview:free"
+            target_model = next((m for m in models if m.get('id') == target_model_id), None)
+            if target_model:
+                logger.info(f"Target model '{target_model_id}' found in API response")
+            else:
+                logger.warning(f"Target model '{target_model_id}' NOT found in API response")
         
         # Process model data to extract pricing
         prices = {}
@@ -242,6 +270,13 @@ def fetch_and_store_openrouter_prices() -> bool:
                             db_model.last_fetched_at = datetime.utcnow()
                             db_model.updated_at = datetime.utcnow()
                             updated_count += 1
+                            
+                            # Log updates for specific models we're tracking
+                            if model_id in ["nousresearch/deephermes-3-mistral-24b-preview:free"]:
+                                logger.info(f"Updated tracked model in database: {model_id}, PDF support: {db_model.supports_pdf}")
+                            # Also log some updates for verification
+                            elif updated_count <= 3 or updated_count % 50 == 0:
+                                logger.info(f"Updated model in database: {model_id}, PDF support: {db_model.supports_pdf}")
                         else:
                             # Create new model
                             original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
@@ -280,6 +315,13 @@ def fetch_and_store_openrouter_prices() -> bool:
                             new_model.last_fetched_at = datetime.utcnow()
                             db.session.add(new_model)
                             new_count += 1
+                            
+                            # Log newly created models for specific models we're tracking
+                            if model_id in ["nousresearch/deephermes-3-mistral-24b-preview:free"]:
+                                logger.info(f"Created new database entry for tracked model: {model_id}")
+                            # Also log some new models for verification
+                            elif new_count <= 3 or new_count % 50 == 0:
+                                logger.info(f"Created new database entry for model: {model_id}")
                             
                     except Exception as model_error:
                         logger.error(f"Error updating model {model_id} in database: {model_error}")
