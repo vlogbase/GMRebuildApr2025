@@ -142,6 +142,66 @@ class UserPreference(db.Model):
         return f'<UserPreference {self.user_identifier}: Preset {self.preset_id} -> {self.model_id}>'
 
 
+class UserChatSettings(db.Model):
+    """Advanced chat parameter settings for a user"""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    
+    # OpenRouter parameters
+    temperature = db.Column(db.Float, nullable=True, default=None)  # Controls randomness (0.0 to 2.0)
+    top_p = db.Column(db.Float, nullable=True, default=None)  # Controls diversity (0.0 to 1.0)
+    max_tokens = db.Column(db.Integer, nullable=True, default=None)  # Max tokens or "max" if null
+    frequency_penalty = db.Column(db.Float, nullable=True, default=None)  # Reduces repetition (-2.0 to 2.0)
+    presence_penalty = db.Column(db.Float, nullable=True, default=None)  # Reduces topic repetition (-2.0 to 2.0)
+    top_k = db.Column(db.Integer, nullable=True, default=None)  # Limits token pool (0 to 100)
+    stop_sequences = db.Column(db.Text, nullable=True, default=None)  # JSON-encoded list of stop sequences
+    response_format = db.Column(db.String(20), nullable=True, default=None)  # text, json
+    
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    # Define relationship to User
+    user = db.relationship('User', backref=db.backref('chat_settings', uselist=False))
+    
+    def to_dict(self):
+        """Convert settings to dictionary for API requests"""
+        settings_dict = {}
+        
+        # Only include non-None values
+        if self.temperature is not None:
+            settings_dict['temperature'] = self.temperature
+            
+        if self.top_p is not None:
+            settings_dict['top_p'] = self.top_p
+            
+        if self.max_tokens is not None:
+            settings_dict['max_tokens'] = self.max_tokens
+            
+        if self.frequency_penalty is not None:
+            settings_dict['frequency_penalty'] = self.frequency_penalty
+            
+        if self.presence_penalty is not None:
+            settings_dict['presence_penalty'] = self.presence_penalty
+            
+        if self.top_k is not None:
+            settings_dict['top_k'] = self.top_k
+            
+        if self.stop_sequences:
+            import json
+            try:
+                settings_dict['stop'] = json.loads(self.stop_sequences)
+            except:
+                pass  # Ignore invalid JSON
+            
+        if self.response_format:
+            settings_dict['response_format'] = {"type": self.response_format}
+            
+        return settings_dict
+        
+    def __repr__(self):
+        return f'<UserChatSettings for User {self.user_id}>'
+
+
 class Transaction(db.Model):
     """Transaction model for tracking payments and credit purchases"""
     id = db.Column(db.Integer, primary_key=True)

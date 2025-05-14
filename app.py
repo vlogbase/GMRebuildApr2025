@@ -145,6 +145,18 @@ with app.app_context():
             logger.info("OpenRouterModel table already exists, skipping migrations")
     except Exception as e:
         logger.exception(f"Error checking or running OpenRouter migrations: {e}")
+        
+    # Run UserChatSettings migration
+    try:
+        logger.info("Running UserChatSettings migration...")
+        from migrations_user_chat_settings import run_migration
+        success = run_migration()
+        if success:
+            logger.info("UserChatSettings migration completed successfully")
+        else:
+            logger.warning("UserChatSettings migration failed")
+    except Exception as e:
+        logger.error(f"Error running UserChatSettings migration: {e}")
         # Continue anyway as this is not critical for application startup
 
 # Initialize LoginManager
@@ -174,6 +186,10 @@ except Exception as e:
 try:
     from affiliate import affiliate_bp
     app.register_blueprint(affiliate_bp, url_prefix='/affiliate')
+    
+    # Register user settings blueprint
+    from user_settings import user_settings_bp, init_user_settings
+    init_user_settings(app)
     logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
@@ -2595,6 +2611,26 @@ def chat(): # Synchronous function
             'stream': True,
             'include_reasoning': True  # Enable reasoning tokens for all models that support it
         }
+        
+        # Apply user's advanced chat parameter settings if available
+        if current_user and current_user.is_authenticated:
+            try:
+                from user_settings import get_chat_settings_for_user, validate_model_specific_parameters
+                
+                # Get the user's chat settings
+                user_settings = get_chat_settings_for_user(current_user.id)
+                
+                # Validate and adjust parameters based on model constraints
+                if user_settings:
+                    user_settings = validate_model_specific_parameters(user_settings, openrouter_model)
+                    
+                    # Add validated settings to the payload
+                    payload.update(user_settings)
+                    
+                    logger.info(f"Applied user chat settings: {json.dumps(user_settings)}")
+            except Exception as e:
+                logger.error(f"Error applying user chat settings: {e}")
+                # Continue without user settings if there's an error
         
         # Add PDF plugin configuration if this model supports documents (native engine for PDFs)
         # This ensures PDFs are processed by the native model capabilities instead of falling back to OCR

@@ -561,6 +561,194 @@
                         </small>
                     </div>
                     
+                    <!-- Advanced Chat Preferences Section -->
+                    <div class="mt-4">
+                        <h5 class="d-flex align-items-center">
+                            <span>Advanced Chat Preferences</span>
+                            <button id="toggleAdvancedPrefs" class="btn btn-sm btn-outline-secondary ms-2" type="button" data-bs-toggle="collapse" data-bs-target="#advancedChatPrefs" aria-expanded="false" aria-controls="advancedChatPrefs">
+                                <i class="fas fa-chevron-down"></i>
+                            </button>
+                        </h5>
+                        <small class="form-text text-muted d-block mb-3">
+                            Fine-tune how AI models respond to your prompts.
+                            Leave settings at default unless you need specific behavior.
+                        </small>
+                        
+                        <div class="collapse" id="advancedChatPrefs">
+                            <div class="card card-body bg-dark border-secondary">
+                                <div class="d-flex justify-content-end mb-3">
+                                    <button type="button" id="resetAllDefaults" class="btn btn-sm btn-outline-warning">
+                                        <i class="fas fa-undo me-1"></i> Reset All to Defaults
+                                    </button>
+                                </div>
+                                
+                                <!-- Temperature -->
+                                <div class="mb-4">
+                                    <label for="temperature" class="form-label d-flex justify-content-between">
+                                        <span>Temperature</span>
+                                        <span class="badge bg-secondary" id="temperatureValue">Default</span>
+                                    </label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="range" class="form-range flex-grow-1" id="temperatureSlider" min="0" max="2" step="0.01">
+                                        <input type="number" class="form-control form-control-sm" id="temperature" style="width: 70px" min="0" max="2" step="0.01">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary reset-param" data-param="temperature">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Controls randomness in responses. Lower values are more deterministic, higher values more creative.
+                                    </small>
+                                </div>
+                                
+                                <!-- Top P -->
+                                <div class="mb-4">
+                                    <label for="topP" class="form-label d-flex justify-content-between">
+                                        <span>Top P (Nucleus Sampling)</span>
+                                        <span class="badge bg-secondary" id="topPValue">Default</span>
+                                    </label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="range" class="form-range flex-grow-1" id="topPSlider" min="0" max="1" step="0.01">
+                                        <input type="number" class="form-control form-control-sm" id="topP" style="width: 70px" min="0" max="1" step="0.01">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary reset-param" data-param="topP">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Controls diversity in word choices. Higher values increase variety.
+                                    </small>
+                                </div>
+                                
+                                <!-- Max Tokens -->
+                                <div class="mb-4">
+                                    <label for="maxTokens" class="form-label d-flex justify-content-between">
+                                        <span>Max Tokens</span>
+                                        <span class="badge bg-secondary" id="maxTokensValue">Default (Max)</span>
+                                    </label>
+                                    <div class="mb-2">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="maxTokensOption" id="maxTokensMax" value="max" checked>
+                                            <label class="form-check-label" for="maxTokensMax">Max (Default)</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="maxTokensOption" id="maxTokensSpecific" value="specific">
+                                            <label class="form-check-label" for="maxTokensSpecific">Specific value</label>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2" id="maxTokensInputGroup">
+                                        <input type="range" class="form-range flex-grow-1" id="maxTokensSlider" min="1" max="8000" step="1" disabled>
+                                        <input type="number" class="form-control form-control-sm" id="maxTokens" style="width: 90px" min="1" max="8000" step="1" disabled>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary reset-param" data-param="maxTokens">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Maximum response length. Note: Will be automatically capped based on model limits.
+                                    </small>
+                                </div>
+                                
+                                <!-- Frequency Penalty -->
+                                <div class="mb-4">
+                                    <label for="frequencyPenalty" class="form-label d-flex justify-content-between">
+                                        <span>Frequency Penalty</span>
+                                        <span class="badge bg-secondary" id="frequencyPenaltyValue">Default</span>
+                                    </label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="range" class="form-range flex-grow-1" id="frequencyPenaltySlider" min="-2" max="2" step="0.01">
+                                        <input type="number" class="form-control form-control-sm" id="frequencyPenalty" style="width: 70px" min="-2" max="2" step="0.01">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary reset-param" data-param="frequencyPenalty">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Reduces repetition of frequent tokens. Higher values reduce word repetition.
+                                    </small>
+                                </div>
+                                
+                                <!-- Presence Penalty -->
+                                <div class="mb-4">
+                                    <label for="presencePenalty" class="form-label d-flex justify-content-between">
+                                        <span>Presence Penalty</span>
+                                        <span class="badge bg-secondary" id="presencePenaltyValue">Default</span>
+                                    </label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="range" class="form-range flex-grow-1" id="presencePenaltySlider" min="-2" max="2" step="0.01">
+                                        <input type="number" class="form-control form-control-sm" id="presencePenalty" style="width: 70px" min="-2" max="2" step="0.01">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary reset-param" data-param="presencePenalty">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Reduces repetition of topics. Higher values encourage exploring new topics.
+                                    </small>
+                                </div>
+                                
+                                <!-- Top K -->
+                                <div class="mb-4">
+                                    <label for="topK" class="form-label d-flex justify-content-between">
+                                        <span>Top K</span>
+                                        <span class="badge bg-secondary" id="topKValue">Default</span>
+                                    </label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <input type="range" class="form-range flex-grow-1" id="topKSlider" min="0" max="100" step="1">
+                                        <input type="number" class="form-control form-control-sm" id="topK" style="width: 70px" min="0" max="100" step="1">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary reset-param" data-param="topK">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Limits vocabulary to most likely options. Lower values make responses more focused.
+                                    </small>
+                                </div>
+                                
+                                <!-- Stop Sequences -->
+                                <div class="mb-4">
+                                    <label for="stopSequences" class="form-label d-flex justify-content-between">
+                                        <span>Stop Sequences</span>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary reset-param" data-param="stopSequences">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </label>
+                                    <div class="mb-2">
+                                        <input type="text" class="form-control" id="stopSequences" placeholder="Enter sequence and press Enter">
+                                    </div>
+                                    <div id="stopSequencesList" class="d-flex flex-wrap gap-2">
+                                        <!-- Stop sequences will be added here dynamically -->
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Sequences where the AI will stop generating further tokens. Add multiple by pressing Enter after each.
+                                    </small>
+                                </div>
+                                
+                                <!-- Response Format -->
+                                <div class="mb-4">
+                                    <label class="form-label">Response Format</label>
+                                    <div class="d-flex align-items-center mb-2">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="responseFormat" id="responseFormatText" value="text" checked>
+                                            <label class="form-check-label" for="responseFormatText">Natural Text (Default)</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="responseFormat" id="responseFormatJson" value="json">
+                                            <label class="form-check-label" for="responseFormatJson">JSON Structure</label>
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary ms-2 reset-param" data-param="responseFormat">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                    </div>
+                                    <small class="form-text text-muted">
+                                        Format for AI responses. JSON format is useful for structured data.
+                                    </small>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="button" id="saveAdvancedPrefs" class="btn btn-primary">
+                                        <i class="fas fa-save me-1"></i> Save Advanced Preferences
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <hr class="my-4" style="border-color: #3f4246;">
                     
                     <h5>Notification Preferences</h5>
@@ -602,6 +790,7 @@
     </div>
 </div>
 
+<script src="{{ url_for('static', filename='js/advanced_chat_preferences.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired - Initializing account page functions');
