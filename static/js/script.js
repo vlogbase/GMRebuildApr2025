@@ -84,17 +84,24 @@ function enableMessageControls() {
     if (sendButton) {
         sendButton.disabled = false;
         sendButton.classList.remove('disabled');
+        sendButton.classList.remove('waiting'); // Clear waiting state set by bootstrap.js
+        sendButton.setAttribute('aria-label', 'Send message');
     }
     
     if (fileUploadButton) {
         fileUploadButton.disabled = false;
         fileUploadButton.classList.remove('disabled');
+        fileUploadButton.classList.remove('waiting'); // Clear waiting state set by bootstrap.js
     }
     
     if (cameraButton) {
         cameraButton.disabled = false;
         cameraButton.classList.remove('disabled');
+        cameraButton.classList.remove('waiting'); // Clear waiting state set by bootstrap.js
     }
+    
+    // Update global state flag
+    window.isLoadingConversation = false;
 }
 
 // Function to disable the send button and upload button
@@ -119,7 +126,15 @@ function disableMessageControls() {
     }
 }
 
-document.addEventListener('DOMContentLoaded', function() {
+// Two-phase initialization approach
+// Phase 1: UI initialization (handled by bootstrap.js)
+// Phase 2: Data operations (handled here)
+
+// Initialize data operations separately from UI rendering
+function initializeDataOperations() {
+    console.log('Phase 2: Starting data operations');
+    window.isLoadingConversation = true;
+    
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
     console.log('User authentication status:', isAuthenticated ? 'Logged in' : 'Not logged in');
@@ -138,8 +153,8 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Disable messaging controls until conversation is created
-        disableMessageControls();
+        // UI state already handled by bootstrap.js
+        // We'll keep controls in loading state until conversation is created
     }
     
     // Remove billing query parameters on first load to prevent redirect loops
@@ -150,6 +165,21 @@ document.addEventListener('DOMContentLoaded', function() {
         history.replaceState(null, "", window.location.pathname);
         console.log("Removed billing query parameters to prevent redirect loop");
     }
+    
+    // Initialize conversation sidebar and conversation creation
+    // This is the heavier data operation part that we defer
+    initializeConversationSidebar();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Phase 1 is already complete (handled by bootstrap.js)
+    console.log('Phase 1: DOM ready - UI initialized by bootstrap.js');
+    
+    // Start Phase 2 data operations after a slight delay to ensure UI is responsive first
+    setTimeout(initializeDataOperations, 50);
+    
+    // Remove the old direct initialization that would happen later
+    // initializeConversationSidebar(); - now called by initializeDataOperations
     
     // The free model preset ID
     const FREE_PRESET_ID = '6';
@@ -627,8 +657,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Initialize the conversation sidebar
-    initializeConversationSidebar();
+    // Conversation sidebar is now initialized in initializeDataOperations()
+    // initializeConversationSidebar();
     
     // For non-authenticated users, lock premium features regardless
     if (!isAuthenticated) {
