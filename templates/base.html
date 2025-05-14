@@ -20,7 +20,7 @@
     
     <!-- Inline critical CSS for above-the-fold content -->
     <style>
-        {% include 'static/css/critical.css' %}
+        {% include 'critical.css' %}
 
         /* Critical icon styles */
         .fa-plus:before { content: "\2b"; }
@@ -110,7 +110,9 @@
     
     {% block scripts %}
     <!-- Critical UI Bootstrap JavaScript - runs immediately -->
-    <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
+    <script>
+        {% include 'bootstrap.js' %}
+    </script>
     
     <!-- Bootstrap JS Bundle with Popper - load with medium priority -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
