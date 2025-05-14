@@ -109,7 +109,8 @@
             
             <!-- Input Area -->
             <div class="chat-input-container">
-                <div class="model-buttons">
+                <!-- Desktop Model Buttons - Only visible on desktop -->
+                <div class="model-buttons desktop-only">
                     <div class="model-preset-container">
                         <button class="model-preset-btn" data-preset-id="1">
                             <i class="fa-solid fa-robot model-icon"></i>
@@ -167,6 +168,10 @@
                         <span class="button-overlay"></span>
                     </button>
                 </div>
+                
+                <!-- Mobile Model Buttons - Only visible on mobile -->
+                <!-- Include the mobile model selector template -->
+                {% include 'mobile_model_selector.html' %}
                 
                 <!-- Document Upload UI removed - using unified file upload approach instead -->
                 <!-- Legacy RAG document upload UI removed in favor of direct PDF handling via OpenRouter -->

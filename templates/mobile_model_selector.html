@@ -1,0 +1,136 @@
+<!-- Mobile Model Selection UI (To be included in index.html) -->
+<!-- This will only be visible on mobile devices -->
+
+<!-- Mobile Numbered Buttons (1-6) -->
+<div class="mobile-model-buttons" id="mobile-model-buttons">
+    <button class="mobile-preset-btn" data-preset-id="1" aria-label="Preset 1">
+        <span class="preset-number">1</span>
+    </button>
+    <button class="mobile-preset-btn" data-preset-id="2" aria-label="Preset 2">
+        <span class="preset-number">2</span>
+    </button>
+    <button class="mobile-preset-btn" data-preset-id="3" aria-label="Preset 3">
+        <span class="preset-number">3</span>
+    </button>
+    <button class="mobile-preset-btn" data-preset-id="4" aria-label="Preset 4">
+        <span class="preset-number">4</span>
+    </button>
+    <button class="mobile-preset-btn" data-preset-id="5" aria-label="Preset 5">
+        <span class="preset-number">5</span>
+    </button>
+    <button class="mobile-preset-btn free-preset" data-preset-id="6" aria-label="Free Preset">
+        <span class="preset-number">6</span>
+    </button>
+    <button class="mobile-model-panel-toggle" id="mobile-model-panel-toggle" aria-label="Show Model Panel">
+        <i class="fa-solid fa-chevron-up"></i>
+    </button>
+</div>
+
+<!-- Mobile Bottom Sheet Panel -->
+<div class="mobile-model-panel" id="mobile-model-panel">
+    <div class="panel-header">
+        <span class="panel-title">Select Model Preset</span>
+        <button class="panel-close-btn" id="mobile-panel-close">
+            <i class="fa-solid fa-times"></i>
+        </button>
+    </div>
+    
+    <div class="panel-content">
+        <!-- Vertical list of model presets -->
+        <button class="mobile-panel-preset-btn" data-preset-id="1">
+            <div class="preset-info">
+                <i class="fa-solid fa-robot model-icon"></i>
+                <span class="model-name">Gemini 2.5</span>
+            </div>
+            <div class="preset-action">
+                <span class="selected-model-name" id="mobile-selected-model-1">Claude 3.5 Sonnet</span>
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </button>
+        
+        <button class="mobile-panel-preset-btn" data-preset-id="2">
+            <div class="preset-info">
+                <i class="fa-solid fa-robot model-icon"></i>
+                <span class="model-name">Llama 4 Maverick</span>
+            </div>
+            <div class="preset-action">
+                <span class="selected-model-name" id="mobile-selected-model-2">Llama 4 Maverick</span>
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </button>
+        
+        <button class="mobile-panel-preset-btn" data-preset-id="3">
+            <div class="preset-info">
+                <i class="fa-solid fa-brain model-icon"></i>
+                <span class="model-name">Reasoning</span>
+            </div>
+            <div class="preset-action">
+                <span class="selected-model-name" id="mobile-selected-model-3">Claude 3.5 Sonnet</span>
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </button>
+        
+        <button class="mobile-panel-preset-btn" data-preset-id="4">
+            <div class="preset-info">
+                <i class="fa-solid fa-image model-icon"></i>
+                <span class="model-name">Multimodal</span>
+            </div>
+            <div class="preset-action">
+                <span class="selected-model-name" id="mobile-selected-model-4">Claude 3.5 Sonnet</span>
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </button>
+        
+        <button class="mobile-panel-preset-btn" data-preset-id="5">
+            <div class="preset-info">
+                <i class="fa-solid fa-search model-icon"></i>
+                <span class="model-name">Perplexity</span>
+            </div>
+            <div class="preset-action">
+                <span class="selected-model-name" id="mobile-selected-model-5">Perplexity Online</span>
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </button>
+        
+        <button class="mobile-panel-preset-btn free-preset" data-preset-id="6">
+            <div class="preset-info">
+                <i class="fa-solid fa-gift model-icon"></i>
+                <span class="model-name">Free</span>
+            </div>
+            <div class="preset-action">
+                <span class="selected-model-name" id="mobile-selected-model-6">Mistral Small</span>
+                <i class="fa-solid fa-chevron-right"></i>
+            </div>
+        </button>
+    </div>
+</div>
+
+<!-- Mobile Model Selection Panel -->
+<div class="mobile-model-selection" id="mobile-model-selection">
+    <div class="panel-header">
+        <button class="panel-back-btn" id="mobile-selection-back">
+            <i class="fa-solid fa-chevron-left"></i>
+            <span>Back to Presets</span>
+        </button>
+        <button class="panel-close-btn" id="mobile-selection-close">
+            <i class="fa-solid fa-times"></i>
+        </button>
+    </div>
+    
+    <div class="selection-search">
+        <input type="text" id="mobile-model-search" placeholder="Search models...">
+    </div>
+    
+    <div class="mobile-model-list-container">
+        <ul id="mobile-model-list" class="mobile-model-list"></ul>
+    </div>
+    
+    <div class="panel-footer">
+        <button id="mobile-reset-to-default" class="reset-to-default-btn">
+            <i class="fa-solid fa-rotate-left"></i> Reset to Default
+        </button>
+    </div>
+</div>
+
+<!-- Mobile Panel Backdrop -->
+<div class="mobile-panel-backdrop" id="mobile-panel-backdrop"></div>

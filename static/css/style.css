@@ -3083,44 +3083,102 @@ code {
     transition: opacity 0.3s ease;
 }
 
-/* Mobile-specific classes used by mobile.js */
-.mobile-device .model-preset-btn .mobile-touch-version {
-    opacity: 0.3 !important;
-    width: 14px !important;
-    margin-right: -5px !important;
-    pointer-events: none !important;
+/* ========== NEW MOBILE UI STYLES ========== */
+
+/* Hide desktop model buttons on mobile */
+@media (max-width: 576px) {
+    .desktop-only {
+        display: none !important;
+    }
 }
 
-.mobile-device .model-preset-btn::after {
+/* Hide mobile elements on desktop */
+@media (min-width: 577px) {
+    .mobile-model-buttons,
+    .mobile-model-panel,
+    .mobile-model-selection,
+    .mobile-panel-backdrop {
+        display: none !important;
+    }
+}
+
+/* Mobile Numbered Buttons (1-6) */
+.mobile-model-buttons {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    gap: 4px;
+    width: 100%;
+}
+
+.mobile-preset-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 14px;
+    padding: 0;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.mobile-preset-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    position: relative;
+}
+
+.mobile-preset-btn.active::after {
     content: "";
     position: absolute;
-    top: 0;
-    right: 0;
-    width: 6px;
-    height: 6px;
+    bottom: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    height: 4px;
     border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.5);
-    margin: 5px;
-    opacity: 0.7;
+    background-color: var(--primary-color);
 }
 
-.mobile-device .model-selector.mobile-centered {
-    width: 90% !important;
-    height: auto !important;
-    max-height: 70vh !important;
-    left: 5% !important;
-    transform: translateX(0) !important;
-    margin: 0 auto !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    z-index: 1000 !important;
-    box-shadow: 0 4px 25px rgba(0, 0, 0, 0.25) !important;
-    border-radius: 12px !important;
+.mobile-preset-btn.free-preset {
+    background-color: var(--free-btn-bg);
+    color: var(--free-btn-text);
 }
 
-/* Add a backdrop/overlay for the mobile selector */
-.mobile-device.model-selector-active::before {
-    content: "";
+.mobile-preset-btn:active {
+    transform: scale(0.95);
+    opacity: 0.9;
+}
+
+.mobile-model-panel-toggle {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--button-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    transition: all 0.2s;
+    margin-left: 4px;
+}
+
+.mobile-model-panel-toggle:active {
+    transform: scale(0.95);
+    background-color: var(--hover-color);
+}
+
+/* Mobile Bottom Sheet Panels */
+.mobile-panel-backdrop {
     position: fixed;
     top: 0;
     left: 0;
@@ -3128,35 +3186,207 @@ code {
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.5);
     z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
 }
 
-/* Touch feedback states */
-.mobile-device .model-preset-btn.touch-pressing {
+.mobile-panel-backdrop.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.mobile-model-panel,
+.mobile-model-selection {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background-color: var(--bg-color);
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.mobile-model-panel.visible,
+.mobile-model-selection.visible {
+    transform: translateY(0);
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.panel-title {
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.panel-back-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 0;
+}
+
+.panel-close-btn {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 16px;
+    opacity: 0.7;
+    padding: 8px;
+}
+
+.panel-content {
+    padding: 8px 0;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Mobile Panel Preset Buttons */
+.mobile-panel-preset-btn {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    background: none;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 16px;
+    text-align: left;
+    color: var(--text-color);
+}
+
+.mobile-panel-preset-btn:active {
     background-color: var(--hover-color);
-    transition: background-color 0.1s;
-    transform: scale(0.98);
 }
 
-.mobile-device .model-preset-btn.active-longpress {
-    background-color: var(--border-color);
-    transform: scale(0.95);
+.preset-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.preset-info .model-icon {
+    width: 20px;
+    text-align: center;
+}
+
+.preset-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--secondary-text-color);
+    font-size: 14px;
+}
+
+/* Mobile Model Selection Panel */
+.selection-search {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+#mobile-model-search {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: var(--input-bg);
+    color: var(--text-color);
+    font-size: 16px;
+}
+
+.mobile-model-list-container {
+    overflow-y: auto;
+    flex: 1;
+    padding: 8px 0;
+}
+
+.mobile-model-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.mobile-model-list li {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.mobile-model-list li:active {
+    background-color: var(--hover-color);
+}
+
+.mobile-model-list li.active {
+    background-color: var(--active-item-bg);
+}
+
+.mobile-model-list .model-info {
+    flex: 1;
+}
+
+.mobile-model-list .model-title {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.mobile-model-list .model-description {
+    font-size: 12px;
+    color: var(--secondary-text-color);
+}
+
+.mobile-model-list .model-cost {
+    font-size: 12px;
+    color: var(--cost-color);
+}
+
+.panel-footer {
+    padding: 16px;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: center;
+}
+
+.panel-footer button {
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 500;
 }
 
 /* Enhanced mobile touchable elements */
-.mobile-device button, 
-.mobile-device .send-btn,
-.mobile-device .action-btn {
-    min-height: 42px !important;
-    touch-action: manipulation;
-}
-
-/* Better visible hover states on mobile touch */
-.mobile-device button:active,
-.mobile-device .send-btn:active,
-.mobile-device .action-btn:active {
-    opacity: 0.8;
-    transform: scale(0.98);
-    transition: all 0.1s ease;
+@media (max-width: 576px) {
+    button, 
+    .send-btn,
+    .action-btn {
+        min-height: 42px;
+        touch-action: manipulation;
+    }
+    
+    button:active,
+    .send-btn:active,
+    .action-btn:active {
+        opacity: 0.8;
+        transform: scale(0.98);
+        transition: all 0.1s ease;
+    }
 }
 
 @media (max-width: 576px) {

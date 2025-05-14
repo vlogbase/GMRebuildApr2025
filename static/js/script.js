@@ -1822,6 +1822,11 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
+        // Dispatch event for the mobile UI
+        document.dispatchEvent(new CustomEvent('preset-button-selected', {
+            detail: { presetId }
+        }));
+        
         // Remove active class from all buttons
         modelPresetButtons.forEach(btn => btn.classList.remove('active'));
         
@@ -1852,7 +1857,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to update the selected model's cost indicator in the UI
-    function updateSelectedModelCostIndicator(modelId) {
+    // Expose this function globally for mobile UI
+    window.updateSelectedModelCostIndicator = function(modelId) {
         if (!modelId) return;
         
         // Find the model in allModels to get its cost band
@@ -1899,7 +1905,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to update multimodal controls (image upload, camera) based on model capability
-    function updateMultimodalControls(modelId) {
+    // Expose this function globally for mobile UI
+    window.updateMultimodalControls = function(modelId) {
         // Store the current model ID globally for capability checks
         currentModel = modelId;
         
@@ -2064,7 +2071,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to format model ID into a display name
-    function formatModelName(modelId, isFreePrefixed = false) {
+    // Expose this function globally for mobile UI
+    window.formatModelName = function(modelId, isFreePrefixed = false) {
         if (!modelId) return 'Unknown';
         
         // Check if we have a custom display name for this model
@@ -2457,7 +2465,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to populate the model list based on preset filters
-    function populateModelList(presetId) {
+    // Expose this function globally for mobile UI
+    window.populateModelList = function(presetId) {
         // Log 5: At function start
         console.log(`[Debug] populateModelList called for presetId: ${presetId}`);
         console.log(`[Debug] Current global allModels count: ${allModels ? allModels.length : 'undefined'}`);
@@ -2681,7 +2690,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to select a model for a preset and save the preference
-    function selectModelForPreset(presetId, modelId) {
+    // Expose this function globally for mobile UI
+window.selectModelForPreset = function(presetId, modelId) {
         // Check if trying to assign a free model to a non-free preset
         const isFreeModel = modelId.includes(':free') || allModels.some(m => m.id === modelId && m.is_free === true);
         if (presetId !== '6' && isFreeModel) {
@@ -2730,7 +2740,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to reset a preset or all presets to default
-    function resetToDefault(presetId) {
+    // Expose this function globally for mobile UI
+window.resetToDefault = function(presetId) {
         if (!confirm(presetId ? `Reset preset ${presetId} to its default model?` : 'Reset all model presets to their defaults?')) {
             return;
         }
@@ -2822,7 +2833,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to save model preference to the server
-    function saveModelPreference(presetId, modelId, buttonElement) {
+    // Expose this function globally for mobile UI
+    window.saveModelPreference = function(presetId, modelId, buttonElement) {
         fetch('/save_preference', {
             method: 'POST',
             headers: {
