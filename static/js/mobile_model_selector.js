@@ -102,13 +102,15 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Show mobile model selection for a specific preset
     function showMobileModelSelection(presetId) {
+        console.log(`Mobile: Opening model selection for preset ${presetId}`);
         currentPresetId = presetId;
         
         // Hide the model panel
         mobileModelPanel.classList.remove('visible');
         
-        // Show the selection panel
+        // Show the selection panel and backdrop
         mobileModelSelection.classList.add('visible');
+        mobileBackdrop.classList.add('visible');
         
         // Populate the model list
         populateMobileModelList(presetId);
@@ -117,6 +119,8 @@ document.addEventListener('DOMContentLoaded', function() {
         if (mobileModelSearch) {
             mobileModelSearch.value = '';
         }
+        
+        console.log('Mobile: Model selection panel opened');
     }
     
     // Hide mobile model selection
@@ -146,10 +150,17 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Now create our own list items with mobile-specific styling
             const allModels = window.availableModels || [];
-            const filteredModels = presetId === '4' ? allModels.filter(model => model.multimodal) :
+            
+            // Log available models for debugging
+            console.log(`Mobile: Found ${allModels.length} models from window.availableModels`);
+            
+            // Use the same property names as in the main script
+            const filteredModels = presetId === '4' ? allModels.filter(model => model.is_multimodal) :
                                   presetId === '5' ? allModels.filter(model => model.id.includes('perplexity')) :
-                                  presetId === '6' ? allModels.filter(model => model.free) :
+                                  presetId === '6' ? allModels.filter(model => model.is_free === true || model.id.includes(':free')) :
                                   allModels;
+                                  
+            console.log(`Mobile: Filtered to ${filteredModels.length} models for preset ${presetId}`);
             
             // Get current selected model for this preset
             const currentModel = window.userPreferences?.[presetId] || window.defaultModels?.[presetId];
@@ -187,10 +198,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 const modelCost = document.createElement('div');
                 modelCost.className = 'model-cost';
                 
-                if (model.price_input) {
-                    modelCost.textContent = `$${model.price_input.toFixed(4)}/1K in`;
-                } else if (model.free) {
+                // Use the pricing structure from the main script
+                if (model.is_free === true || model.id.includes(':free')) {
                     modelCost.textContent = 'Free';
+                } else if (model.pricing && model.pricing.prompt) {
+                    const promptPrice = model.pricing.prompt;
+                    modelCost.textContent = `$${promptPrice.toFixed(4)}/1K in`;
+                } else if (model.cost_band) {
+                    modelCost.textContent = model.cost_band;
                 }
                 
                 li.appendChild(modelCost);

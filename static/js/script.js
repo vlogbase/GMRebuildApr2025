@@ -2230,6 +2230,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Assign the fully processed data to the global variable
                     allModels = modelDataArray;
+                    // Expose the models to window object for mobile interface
+                    window.availableModels = allModels;
                     
                     // For non-authenticated users, ensure we have at least the default free models available
                     if (!isAuthenticated) {
