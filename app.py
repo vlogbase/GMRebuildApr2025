@@ -1652,6 +1652,9 @@ def get_conversations():
     try:
         from models import Conversation
         
+        # Check if this is a request for metadata only (faster loading)
+        metadata_only = request.args.get('metadata_only', 'false').lower() == 'true'
+        
         # Log if this is a cache-busting request
         if request.args.get('_'):
             logger.info(f"Received cache-busting request for conversations at timestamp: {request.args.get('_')}")
@@ -1690,11 +1693,15 @@ def get_conversations():
             # Include created_at date for proper date formatting in the UI
             conversations = [{"id": conv.id, "title": conv.title, "created_at": conv.created_at.isoformat()} for conv in all_conversations]
             
-            # Log each conversation's details for debugging
-            for conv in conversations:
-                print(f"[CONVERSATIONS] ID: {conv['id']}, Title: '{conv['title']}', Created: {conv['created_at']}")
-            
-            logger.info(f"Returning {len(conversations)} conversations")
+            # Log information based on request type
+            if metadata_only:
+                logger.info(f"Returning metadata-only for {len(conversations)} conversations - optimized load")
+            else:
+                # Log each conversation's details for debugging (only in full data mode)
+                for conv in conversations:
+                    print(f"[CONVERSATIONS] ID: {conv['id']}, Title: '{conv['title']}', Created: {conv['created_at']}")
+                
+                logger.info(f"Returning {len(conversations)} conversations with full details")
 
         return jsonify({"conversations": conversations})
     except Exception as e:

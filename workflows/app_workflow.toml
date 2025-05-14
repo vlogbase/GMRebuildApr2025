@@ -1,0 +1,2 @@
+# Flask app workflow configuration
+run = "python app_workflow.py"

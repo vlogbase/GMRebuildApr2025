@@ -6,6 +6,11 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{% block title %}GloriaMundo Chat{% endblock %}</title>
     
+    <!-- Resource hints for faster loading -->
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://s.skimresources.com" crossorigin>
+    
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon-96x96.png') }}" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='img/favicon.svg') }}" />
@@ -72,17 +77,17 @@
     {% endblock %}
     
     {% block scripts %}
-    <!-- Bootstrap JS Bundle with Popper -->
+    <!-- Bootstrap JS Bundle with Popper (critical for UI functionality) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Main JavaScript -->
-    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <!-- Main JavaScript (deferred to not block rendering) -->
+    <script defer src="{{ url_for('static', filename='js/script.js') }}"></script>
     
-    <!-- Cookie Consent JavaScript -->
-    <script src="{{ url_for('static', filename='js/cookie_consent.js') }}"></script>
+    <!-- Cookie Consent JavaScript (non-critical, can be deferred) -->
+    <script defer src="{{ url_for('static', filename='js/cookie_consent.js') }}"></script>
     
-    <!-- Skimlinks - Automatic Affiliate Link Generator -->
-    <script type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js"></script>
+    <!-- Skimlinks - Automatic Affiliate Link Generator (non-critical, can be deferred) -->
+    <script defer type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js"></script>
     {% endblock %}
 </body>
 </html>
