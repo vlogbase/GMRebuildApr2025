@@ -1,2 +1,3 @@
-[dev]
-run = "python -m workflows.admin_test"
+[workflows.app_workflow]
+# Start the app server
+run = "python app_workflow.py"

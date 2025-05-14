@@ -4294,7 +4294,17 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.share_url) {
-                    const shareUrl = window.location.origin + data.share_url;
+                    // Generate absolute URL ensuring it's properly formed
+                    // First check if share_url is already an absolute URL
+                    let shareUrl;
+                    if (data.share_url.startsWith('http')) {
+                        shareUrl = data.share_url; // Already absolute
+                    } else {
+                        // Handle both cases: URLs with or without leading slash
+                        const shareUrlPath = data.share_url.startsWith('/') ? data.share_url : '/' + data.share_url;
+                        shareUrl = window.location.origin + shareUrlPath;
+                    }
+                    console.log('Share URL created:', shareUrl);
                     navigator.clipboard.writeText(shareUrl)
                         .then(() => {
                             // Visual feedback

@@ -3804,8 +3804,10 @@ def view_shared_conversation(share_id):
     try:
         from models import Conversation, Message
         from datetime import datetime
+        from flask_login import current_user
         
         logger.info(f"Starting to process shared conversation view for share_id: {share_id}")
+        logger.info(f"User authentication state: {'Authenticated' if current_user.is_authenticated else 'Not authenticated'}")
         
         # Find the conversation by share_id
         conversation = Conversation.query.filter_by(share_id=share_id).first()
@@ -3814,7 +3816,7 @@ def view_shared_conversation(share_id):
             flash("The shared conversation link is invalid or has expired.", "warning")
             return redirect(url_for('index'))
         
-        logger.info(f"Found conversation with ID: {conversation.id}, title: {conversation.title}")
+        logger.info(f"Found conversation with ID: {conversation.id}, title: {conversation.title}, user_id: {conversation.user_id}")
         
         # Get all messages for this conversation
         messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.id).all()
@@ -3848,12 +3850,17 @@ def view_shared_conversation(share_id):
             # Provide a default date if missing
             conversation.created_at = datetime.now()
             
-        # Return the shared conversation template
+        # IMPORTANT FIX: Force using the shared conversation template regardless of authentication state
+        # This ensures that both authenticated and non-authenticated users see the shared conversation
+        # instead of being redirected to their own conversations
         logger.info("Rendering shared_conversation.html template")
+        
+        # Pass is_shared=True to indicate this is a shared view - template can use this for proper styling
         return render_template(
             'shared_conversation.html',
             conversation=conversation,
-            messages=formatted_messages
+            messages=formatted_messages,
+            is_shared=True
         )
     
     except Exception as e:
