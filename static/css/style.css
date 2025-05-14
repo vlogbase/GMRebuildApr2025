@@ -3157,11 +3157,11 @@ code {
 }
 
 .mobile-preset-btn[data-preset-id="4"] i {
-    color: #24b9bd; /* Accent color - cyan */
+    color: #24b9bd; /* Accent color - cyan for multimodal */
 }
 
 .mobile-preset-btn[data-preset-id="5"] i {
-    color: #FC5C9C; /* Pink */
+    color: #FC5C9C; /* Pink for search */
 }
 
 .mobile-preset-btn[data-preset-id="6"] i {
