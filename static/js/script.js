@@ -2300,6 +2300,32 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Assign the fully processed data to the global variable
                     allModels = modelDataArray;
                     
+                    // Create a window.modelData object organized by preset for mobile view
+                    window.modelData = {};
+                    
+                    // Apply preset filters to populate window.modelData
+                    Object.keys(presetFilters).forEach(presetId => {
+                        window.modelData[presetId] = allModels.filter(model => presetFilters[presetId](model));
+                    });
+                    
+                    // Make sure preset 6 (free) has the free models
+                    window.modelData['6'] = allModels.filter(model => model.is_free);
+                    
+                    // Make pricing info available to mobile view
+                    window.userModelPrices = {};
+                    allModels.forEach(model => {
+                        window.userModelPrices[model.id] = {
+                            promptPrice: model.pricing.prompt.toFixed(4),
+                            completionPrice: model.pricing.completion.toFixed(4),
+                            isFree: model.is_free
+                        };
+                    });
+                    
+                    // Also make user preferences available
+                    window.userModelPreferences = userPreferences;
+                    
+                    console.log('[Debug] Created window.modelData and window.userModelPrices for mobile');
+                    
                     // For non-authenticated users, ensure we have at least the default free models available
                     if (!isAuthenticated) {
                         console.log('[Debug] User is not authenticated, ensuring fallback free models are available');
@@ -2880,6 +2906,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to save model preference to the server
     function saveModelPreference(presetId, modelId, buttonElement) {
+        // Store the preference locally
+        userPreferences[presetId] = modelId;
+        
+        // Update the global window.userModelPreferences for mobile UI
+        window.userModelPreferences = window.userModelPreferences || {};
+        window.userModelPreferences[presetId] = modelId;
+        
         fetch('/save_preference', {
             method: 'POST',
             headers: {
@@ -4775,3 +4808,9 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 });
+
+// Make saveModelPreference available globally for mobile UI
+window.saveModelPreference = function(presetId, modelId) {
+    // Call the actual function, but without a button element since mobile UI handles its own UI updates
+    saveModelPreference(presetId, modelId, null);
+};
