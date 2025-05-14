@@ -3128,11 +3128,65 @@ code {
     transition: background-color 0.2s, transform 0.1s;
 }
 
+/* Color scheme for the numbered buttons in the footer */
+.mobile-preset-btn[data-preset-id="1"] {
+    border-color: #5D8BF4; /* Blue */
+}
+
+.mobile-preset-btn[data-preset-id="2"] {
+    border-color: #9D65D0; /* Purple */
+}
+
+.mobile-preset-btn[data-preset-id="3"] {
+    border-color: #FF8C61; /* Orange */
+}
+
+.mobile-preset-btn[data-preset-id="4"] {
+    border-color: #24b9bd; /* Accent color - cyan */
+}
+
+.mobile-preset-btn[data-preset-id="5"] {
+    border-color: #FC5C9C; /* Pink */
+}
+
+.mobile-preset-btn[data-preset-id="6"] {
+    border-color: #28a745; /* Green */
+}
+
 .mobile-preset-btn.active {
-    background-color: var(--primary-color);
     color: white;
-    border-color: var(--primary-color);
     position: relative;
+}
+
+/* Active state color scheme */
+.mobile-preset-btn.active[data-preset-id="1"] {
+    background-color: #5D8BF4; /* Blue */
+    border-color: #5D8BF4;
+}
+
+.mobile-preset-btn.active[data-preset-id="2"] {
+    background-color: #9D65D0; /* Purple */
+    border-color: #9D65D0;
+}
+
+.mobile-preset-btn.active[data-preset-id="3"] {
+    background-color: #FF8C61; /* Orange */
+    border-color: #FF8C61;
+}
+
+.mobile-preset-btn.active[data-preset-id="4"] {
+    background-color: #24b9bd; /* Accent color - cyan */
+    border-color: #24b9bd;
+}
+
+.mobile-preset-btn.active[data-preset-id="5"] {
+    background-color: #FC5C9C; /* Pink */
+    border-color: #FC5C9C;
+}
+
+.mobile-preset-btn.active[data-preset-id="6"] {
+    background-color: #28a745; /* Green */
+    border-color: #28a745;
 }
 
 .mobile-preset-btn.active::after {
@@ -3723,14 +3777,13 @@ code {
     margin-right: 0.5rem;
 }
 
-/* Mobile Preset Number Styles */
+/* Mobile Preset Number Styles - Color-coded system */
 .preset-number {
     display: flex;
     align-items: center;
     justify-content: center;
     width: 24px;
     height: 24px;
-    background-color: var(--accent-color);
     color: white;
     border-radius: 50%;
     font-size: 0.9rem;
@@ -3739,9 +3792,29 @@ code {
     flex-shrink: 0;
 }
 
-/* Free preset button gets a different color */
-.free-preset .preset-number {
-    background-color: #28a745;
+/* Color scheme for each preset number */
+[data-preset-id="1"] .preset-number {
+    background-color: #5D8BF4; /* Blue */
+}
+
+[data-preset-id="2"] .preset-number {
+    background-color: #9D65D0; /* Purple */
+}
+
+[data-preset-id="3"] .preset-number {
+    background-color: #FF8C61; /* Orange */
+}
+
+[data-preset-id="4"] .preset-number {
+    background-color: #24b9bd; /* Accent color - cyan */
+}
+
+[data-preset-id="5"] .preset-number {
+    background-color: #FC5C9C; /* Pink */
+}
+
+[data-preset-id="6"] .preset-number {
+    background-color: #28a745; /* Green */
 }
 
 /* Reset All to Default button */
