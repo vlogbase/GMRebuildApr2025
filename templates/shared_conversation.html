@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}Shared Conversation - GloriaMundo{% endblock %}
+
+{% block content %}
+<div class="shared-container">
+    <div class="shared-header">
+        <h1>{{ conversation.title or 'Shared Conversation' }}</h1>
+        <div class="shared-meta">
+            <span>Shared conversation</span>
+            <span class="shared-date">
+                {% if conversation.created_at %}
+                    {{ conversation.created_at.strftime('%B %d, %Y') }}
+                {% else %}
+                    Unknown date
+                {% endif %}
+            </span>
+        </div>
+    </div>
+
+    <div class="chat-container shared-chat">
+        <div class="chat-messages" id="chat-messages">
+            {% for message in messages %}
+            <div class="message {{ message.role }}-message">
+                <div class="message-content">
+                    {% if message.image_url %}
+                    <div class="message-image">
+                        <img src="{{ message.image_url }}" alt="Shared image" />
+                    </div>
+                    {% endif %}
+                    
+                    <div class="message-text">{{ message.content|safe }}</div>
+                </div>
+                <div class="message-meta">
+                    {% if message.role == 'assistant' and message.model %}
+                    <div class="model-tag">{{ message.model }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <div class="shared-footer">
+        <p>This is a read-only conversation shared via GloriaMundo.</p>
+        <a href="{{ url_for('index') }}" class="btn primary-btn">Start your own conversation</a>
+    </div>
+</div>
+{% endblock %}

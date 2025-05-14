@@ -1,0 +1,3 @@
+[command]
+workdir = "."
+cmd = ["python", "workflows/conversation_fix_workflow.py"]

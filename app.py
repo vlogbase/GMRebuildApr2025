@@ -3704,20 +3704,64 @@ def share_conversation(conversation_id):
 
 @app.route('/share/<share_id>')
 def view_shared_conversation(share_id):
-    """ Display shared conversation (Placeholder) """
+    """Display a shared conversation for anyone with the link"""
     try:
-        from models import Conversation 
+        from models import Conversation, Message
+        from datetime import datetime
+        
+        logger.info(f"Starting to process shared conversation view for share_id: {share_id}")
+        
+        # Find the conversation by share_id
         conversation = Conversation.query.filter_by(share_id=share_id).first()
         if not conversation:
+            logger.warning(f"No conversation found with share_id: {share_id}")
             flash("The shared conversation link is invalid or has expired.", "warning")
             return redirect(url_for('index'))
-
-        logger.info(f"Viewing shared conversation placeholder for ID: {share_id}")
-        flash(f"Shared conversation view not yet implemented (ID: {share_id}).", "info")
-        return redirect(url_for('index'))
-
+        
+        logger.info(f"Found conversation with ID: {conversation.id}, title: {conversation.title}")
+        
+        # Get all messages for this conversation
+        messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.id).all()
+        logger.info(f"Found {len(messages)} messages for conversation ID: {conversation.id}")
+        
+        # Convert messages to a format suitable for the template
+        formatted_messages = []
+        for message in messages:
+            # Skip system messages in shared view
+            if message.role == 'system':
+                continue
+                
+            formatted_message = {
+                'id': message.id,
+                'role': message.role,
+                'content': message.content,
+                'model': message.model,
+                'created_at': message.created_at.isoformat() if message.created_at else '',
+                'image_url': message.image_url
+            }
+            formatted_messages.append(formatted_message)
+        
+        logger.info(f"Formatted {len(formatted_messages)} messages for template")
+        
+        # Fix for potential date formatting issue
+        if hasattr(conversation, 'created_at') and conversation.created_at:
+            created_at_str = conversation.created_at.strftime('%B %d, %Y')
+            logger.info(f"Conversation created date: {created_at_str}")
+        else:
+            logger.warning("Conversation has no created_at attribute or it's None")
+            # Provide a default date if missing
+            conversation.created_at = datetime.now()
+            
+        # Return the shared conversation template
+        logger.info("Rendering shared_conversation.html template")
+        return render_template(
+            'shared_conversation.html',
+            conversation=conversation,
+            messages=formatted_messages
+        )
+    
     except Exception as e:
-        logger.exception(f"Error viewing shared conversation {share_id}")
+        logger.exception(f"Error viewing shared conversation {share_id}: {e}")
         flash("An error occurred while trying to load the shared conversation.", "error")
         return redirect(url_for('index'))
 

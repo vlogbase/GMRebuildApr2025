@@ -11,6 +11,7 @@
     --hover-color: #333;
     --card-bg: #1e2124;
     --table-stripe-bg: rgba(255, 255, 255, 0.03);
+    --text-muted: #999; /* Used for shared conversation meta info */
 }
 
 * {
@@ -3188,4 +3189,52 @@ code {
     margin-top: 30px;
     color: var(--accent-color);
     font-weight: bold;
+}
+
+/* Shared conversation styles */
+.shared-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1rem;
+}
+
+.shared-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.shared-meta {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.shared-date {
+    margin-left: 1rem;
+}
+
+.shared-chat {
+    height: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.shared-footer {
+    margin-top: 2rem;
+    text-align: center;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.navbar-shared-indicator {
+    display: flex;
+    align-items: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.navbar-shared-indicator i {
+    margin-right: 0.5rem;
 }

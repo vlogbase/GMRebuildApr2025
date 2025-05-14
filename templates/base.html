@@ -27,6 +27,37 @@
     {% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
+    {% if request.path.startswith('/share/') %}
+    <!-- Header for shared conversations -->
+    <header>
+        <nav class="navbar">
+            <div class="navbar-brand">
+                <a href="{{ url_for('index') }}">
+                    <img src="{{ url_for('static', filename='img/logo.svg') }}" alt="GloriaMundo" class="logo">
+                </a>
+            </div>
+            
+            <div class="navbar-shared-indicator">
+                <span><i class="fa-solid fa-share-nodes"></i> Shared Conversation</span>
+            </div>
+            
+            <div class="navbar-actions">
+                {% if current_user.is_authenticated %}
+                <a href="{{ url_for('billing.account') }}" class="account-link" title="Account">
+                    <i class="fa-solid fa-user"></i>
+                    <span>Credits: ${{ '%.2f'|format(current_user.credit_balance|float) }}</span>
+                </a>
+                <a href="{{ url_for('logout') }}" id="logout-btn" class="btn auth-btn">
+                    <i class="fa-solid fa-sign-out-alt"></i> Logout
+                </a>
+                {% else %}
+                <a href="{{ url_for('login') }}" class="btn auth-btn">Sign In</a>
+                {% endif %}
+            </div>
+        </nav>
+    </header>
+    {% endif %}
+    
     {% block content %}{% endblock %}
     
     <!-- Global Footer (only visible in certain pages) -->
