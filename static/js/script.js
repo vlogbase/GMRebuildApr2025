@@ -62,7 +62,12 @@ function performIdleCleanup() {
                     if (cleanedCount > 0) {
                         console.log(`Idle cleanup: permanently deleted ${cleanedCount} empty conversations`);
                         // Refresh the conversation list if any were deleted
-                        fetchConversations(true);
+                        // Use window.fetchConversations to ensure it's accessible globally
+                        if (typeof window.fetchConversations === 'function') {
+                            window.fetchConversations(true);
+                        } else {
+                            console.log('Conversations will be refreshed on next user interaction');
+                        }
                     }
                 }
             })
@@ -438,7 +443,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Model data
     let allModels = []; // All models from OpenRouter
+    window.availableModels = allModels; // Expose globally for mobile scripts
     let userPreferences = {}; // User preferences for preset buttons
+    window.userPreferences = userPreferences; // Expose globally
     
     // Filter configurations for each preset
     const presetFilters = {
@@ -472,6 +479,9 @@ document.addEventListener('DOMContentLoaded', function() {
         '5': 'perplexity/sonar-pro', // Open model
         '6': 'google/gemini-2.0-flash-exp:free' // Free model
     };
+    
+    // Expose defaultModels globally for mobile scripts
+    window.defaultModels = defaultModels;
     
     // Short display names for preset buttons
     const defaultModelDisplayNames = {
@@ -3504,6 +3514,8 @@ window.resetToDefault = function(presetId) {
     
     // Function to fetch conversations from the backend
     function fetchConversations(bustCache = false, metadataOnly = true) {
+        // Make this function globally available for other scripts
+        window.fetchConversations = fetchConversations;
         // Check if user is logged in - if not, show login prompt instead of loading
         // userIsLoggedIn is passed from the template
         if (typeof userIsLoggedIn !== 'undefined' && !userIsLoggedIn) {

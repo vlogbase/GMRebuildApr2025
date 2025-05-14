@@ -1,48 +1,43 @@
 """
-Script to run the Flask application with the improved price updater and model handling.
+Simple Flask server workflow for GloriaMundo Chat Mobile UI Testing
+
+This workflow runs the Flask application to test the mobile UI improvements:
+1. Model selection buttons and interface
+2. Sidebar behavior on mobile
+3. Fixed layout with scrollable content
 """
 
-import sys
 import logging
 import os
-from pathlib import Path
+import sys
 
-# Configure logging
+# Set up logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='app_output.log'
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
 )
 logger = logging.getLogger(__name__)
 
-# Add the parent directory to sys.path to import app
-sys.path.append(str(Path(__file__).parent.parent))
-
 def run():
-    """
-    Run the Flask application with error handling and logging.
-    """
-    try:
-        # Log startup
-        logger.info("Starting Flask application with improved scheduler and model handling...")
-        
-        # Import the Flask app
-        from app import app
-        
-        # Run the Flask app on host 0.0.0.0 to allow external access
-        host = '0.0.0.0'
-        port = int(os.environ.get('PORT', 5000))
-        
-        # Log startup configuration
-        logger.info(f"Starting Flask app on {host}:{port}")
-        
-        # Run the application
-        app.run(host=host, port=port, debug=True)
-        
-    except Exception as e:
-        logger.error(f"Error running Flask application: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+    """Run the Flask application with development settings enabled."""
+    logger.info("Starting GloriaMundo Chat application workflow")
+    
+    # Environment setup
+    os.environ["FLASK_APP"] = "app.py"
+    os.environ["FLASK_ENV"] = "development"
+    os.environ["FLASK_DEBUG"] = "1"
+    
+    # Import and run the Flask application
+    logger.info("Importing Flask application")
+    import app
+    
+    logger.info("Starting Flask server")
+    
+    # Run with host='0.0.0.0' to make the app accessible from outside
+    app.app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
 
 if __name__ == "__main__":
     run()
