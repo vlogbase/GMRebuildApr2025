@@ -168,9 +168,9 @@
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <h5 class="mb-0">Purchase History</h5>
-                            <button class="btn btn-sm btn-outline-secondary">
+                            <a href="{{ url_for('billing.export_transactions_csv') }}" class="btn btn-sm btn-outline-secondary">
                                 <i class="fas fa-download me-2"></i>Export CSV
-                            </button>
+                            </a>
                         </div>
                         <div class="card-body">
                             {% if recent_transactions %}
@@ -210,9 +210,15 @@
                                                 {% endif %}
                                             </td>
                                             <td class="text-light">
-                                                <button type="button" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" data-bs-placement="top" title="View Receipt">
+                                                {% if transaction.status == 'completed' %}
+                                                <a href="{{ url_for('billing.generate_receipt', transaction_id=transaction.id) }}" class="btn btn-sm btn-outline-info" data-bs-toggle="tooltip" data-bs-placement="top" title="Download Receipt" target="_blank">
+                                                    <i class="fas fa-receipt"></i>
+                                                </a>
+                                                {% else %}
+                                                <button type="button" class="btn btn-sm btn-outline-info" disabled title="Receipt unavailable for pending or failed transactions">
                                                     <i class="fas fa-receipt"></i>
                                                 </button>
+                                                {% endif %}
                                             </td>
                                         </tr>
                                         {% endfor %}

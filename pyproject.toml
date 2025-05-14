@@ -41,4 +41,5 @@ dependencies = [
     "paypalhttp>=1.0.1",
     "wtforms>=3.2.1",
     "flask-admin>=1.6.1",
+    "reportlab>=4.4.0",
 ]

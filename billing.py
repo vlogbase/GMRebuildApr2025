@@ -14,15 +14,23 @@ import logging
 import math
 from datetime import datetime, timedelta
 from urllib.parse import urlparse
+import io
+import uuid
+import stripe
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session, jsonify, g
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session, jsonify, g, send_file, Response
 from flask_login import current_user, login_required
 from sqlalchemy import desc, func, and_
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.platypus import Table, TableStyle
+from reportlab.lib.units import inch, cm
 
 from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
 from models import CustomerReferral, Affiliate, Commission, CommissionStatus, AffiliateStatus
-from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature
+from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature, retrieve_session
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -546,6 +554,274 @@ def transaction_history():
     except Exception as e:
         logger.error(f"Error in transaction_history: {e}")
         flash(f"An error occurred: {str(e)}", "error")
+        return redirect(url_for('billing.account_management'))
+
+@billing_bp.route('/export-transactions', methods=['GET'])
+@login_required
+def export_transactions_csv():
+    """
+    Export transaction history as a CSV file.
+    """
+    try:
+        # Get all transactions for the current user
+        transactions = Transaction.query.filter_by(user_id=current_user.id) \
+            .order_by(desc(Transaction.created_at)).all()
+        
+        if not transactions:
+            flash("No transactions to export", "info")
+            return redirect(url_for('billing.account_management'))
+        
+        # Create CSV content
+        csv_content = io.StringIO()
+        csv_content.write("Transaction ID,Date,Amount,Credits,Payment Method,Status,Receipt Number\n")
+        
+        for transaction in transactions:
+            # Format date
+            date_str = transaction.created_at.strftime('%Y-%m-%d')
+            
+            # Generate receipt number (only for completed transactions)
+            receipt_number = ""
+            if transaction.status == PaymentStatus.COMPLETED.value:
+                receipt_number = f"R-{transaction.id}-{transaction.stripe_payment_intent[-6:] if transaction.stripe_payment_intent else 'XXXX'}"
+            
+            # Format row
+            row = f"{transaction.id},{date_str},${transaction.amount_usd:.2f},{transaction.credits},{transaction.payment_method},{transaction.status},{receipt_number}\n"
+            csv_content.write(row)
+        
+        # Prepare response
+        csv_content.seek(0)
+        timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
+        filename = f"transactions_{timestamp}.csv"
+        
+        return Response(
+            csv_content.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment;filename={filename}"}
+        )
+    
+    except Exception as e:
+        logger.error(f"Error exporting transactions: {e}")
+        flash(f"An error occurred while exporting transactions: {str(e)}", "error")
+        return redirect(url_for('billing.account_management'))
+
+@billing_bp.route('/receipt/<int:transaction_id>', methods=['GET'])
+@login_required
+def generate_receipt(transaction_id):
+    """
+    Generate and download a PDF receipt for a completed transaction.
+    
+    Args:
+        transaction_id (int): ID of the transaction to generate receipt for
+    """
+    try:
+        # Get transaction details
+        transaction = Transaction.query.filter_by(id=transaction_id, user_id=current_user.id).first()
+        
+        if not transaction:
+            flash("Transaction not found or does not belong to you", "error")
+            return redirect(url_for('billing.account_management'))
+        
+        # Check if transaction is completed
+        if transaction.status != PaymentStatus.COMPLETED.value:
+            flash("Receipt is only available for completed transactions", "warning")
+            return redirect(url_for('billing.account_management'))
+        
+        # Get user and package details
+        user = User.query.get(transaction.user_id)
+        package = None
+        if transaction.package_id:
+            package = Package.query.get(transaction.package_id)
+        
+        # Try to get additional details from Stripe
+        tax_details = None
+        billing_address = None
+        stripe_payment_method = None
+        payment_date = transaction.updated_at or transaction.created_at
+        
+        if transaction.payment_method == "stripe" and transaction.payment_id:
+            # Retrieve session from Stripe
+            session_result = retrieve_session(transaction.payment_id)
+            
+            if session_result["success"]:
+                session = session_result["session"]
+                
+                # Try to get tax details
+                if hasattr(session, 'total_details') and session.total_details:
+                    tax_details = {
+                        'tax_amount': session.total_details.amount_tax / 100 if hasattr(session.total_details, 'amount_tax') else 0,
+                        'tax_rate': None  # Stripe doesn't directly provide the tax rate percentage
+                    }
+                
+                # Try to get customer details
+                if hasattr(session, 'customer_details') and session.customer_details:
+                    if hasattr(session.customer_details, 'address') and session.customer_details.address:
+                        address = session.customer_details.address
+                        billing_address = {
+                            'line1': getattr(address, 'line1', ''),
+                            'line2': getattr(address, 'line2', ''),
+                            'city': getattr(address, 'city', ''),
+                            'state': getattr(address, 'state', ''),
+                            'postal_code': getattr(address, 'postal_code', ''),
+                            'country': getattr(address, 'country', '')
+                        }
+                
+                # Get payment method details if available
+                if transaction.stripe_payment_intent:
+                    try:
+                        payment_intent = stripe.PaymentIntent.retrieve(transaction.stripe_payment_intent)
+                        # Handle different ways to access payment_method
+                        payment_method_id = None
+                        
+                        # Try dictionary-style access first
+                        if isinstance(payment_intent, dict) and 'payment_method' in payment_intent:
+                            payment_method_id = payment_intent['payment_method']
+                        # Then try attribute-style access
+                        elif hasattr(payment_intent, 'payment_method'):
+                            payment_method_id = payment_intent.payment_method
+                            # If it's an expandable field, it might be an object with an 'id' attribute
+                            if not isinstance(payment_method_id, str) and hasattr(payment_method_id, 'id'):
+                                payment_method_id = payment_method_id.id
+                        
+                        # If we have a string payment method ID, retrieve it
+                        if isinstance(payment_method_id, str):
+                            payment_method = stripe.PaymentMethod.retrieve(payment_method_id)
+                            if payment_method and hasattr(payment_method, 'card') and payment_method.card:
+                                stripe_payment_method = {
+                                    'brand': payment_method.card.brand.capitalize() if hasattr(payment_method.card, 'brand') else 'Card',
+                                    'last4': payment_method.card.last4 if hasattr(payment_method.card, 'last4') else '****'
+                                }
+                    except Exception as e:
+                        logger.warning(f"Could not retrieve payment method details: {e}")
+        
+        # Generate receipt PDF
+        buffer = io.BytesIO()
+        p = canvas.Canvas(buffer, pagesize=A4)
+        width, height = A4
+        
+        # Set up the PDF with receipt information
+        # Company Logo and Header Information
+        p.setFont("Helvetica-Bold", 18)
+        p.drawString(50, height - 50, "Sentigral Limited")
+        
+        p.setFont("Helvetica", 12)
+        p.drawString(50, height - 70, "UK Company Number 11278228")
+        p.drawString(50, height - 85, "VAT Number GB354005139")
+        p.drawString(50, height - 100, "21 Deacon Gardens, Seaton Carew")
+        p.drawString(50, height - 115, "Hartlepool, England, TS25 1UU")
+        
+        # Receipt Title and Number
+        p.setFont("Helvetica-Bold", 14)
+        receipt_number = f"R-{transaction.id}-{uuid.uuid4().hex[:6].upper()}"
+        p.drawString(width - 200, height - 50, "RECEIPT")
+        p.setFont("Helvetica", 12)
+        p.drawString(width - 200, height - 70, f"Receipt #: {receipt_number}")
+        p.drawString(width - 200, height - 85, f"Date: {payment_date.strftime('%Y-%m-%d')}")
+        
+        # Billing Information
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, height - 150, "Billed To:")
+        p.setFont("Helvetica", 11)
+        
+        start_y = height - 170
+        # Safely access user attributes
+        username = user.username if user and hasattr(user, 'username') else "Customer"
+        email = user.email if user and hasattr(user, 'email') else ""
+        
+        p.drawString(50, start_y, f"{username}")
+        if email:
+            p.drawString(50, start_y - 15, f"Email: {email}")
+        
+        if billing_address:
+            line_y = start_y - 35
+            if billing_address['line1']:
+                p.drawString(50, line_y, billing_address['line1'])
+                line_y -= 15
+            if billing_address['line2']:
+                p.drawString(50, line_y, billing_address['line2'])
+                line_y -= 15
+            
+            address_line = []
+            if billing_address['city']:
+                address_line.append(billing_address['city'])
+            if billing_address['state']:
+                address_line.append(billing_address['state'])
+            if address_line:
+                p.drawString(50, line_y, ", ".join(address_line))
+                line_y -= 15
+                
+            if billing_address['postal_code']:
+                p.drawString(50, line_y, billing_address['postal_code'])
+                line_y -= 15
+            if billing_address['country']:
+                p.drawString(50, line_y, billing_address['country'])
+                line_y -= 15
+        
+        # Payment Information
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(width - 200, height - 150, "Payment Method:")
+        p.setFont("Helvetica", 11)
+        
+        payment_info = "Stripe"
+        if stripe_payment_method:
+            payment_info = f"{stripe_payment_method['brand']} ending in {stripe_payment_method['last4']}"
+        
+        p.drawString(width - 200, height - 170, payment_info)
+        p.drawString(width - 200, height - 185, f"Transaction ID: {transaction.id}")
+        
+        # Line
+        p.line(50, height - 225, width - 50, height - 225)
+        
+        # Description and Amounts
+        description_y = height - 250
+        p.setFont("Helvetica-Bold", 12)
+        p.drawString(50, description_y, "Description")
+        p.drawString(width - 200, description_y, "Amount")
+        
+        p.setFont("Helvetica", 11)
+        description = f"Credit Package: {package.name if package else 'Credits'}"
+        p.drawString(50, description_y - 25, description)
+        p.drawString(width - 200, description_y - 25, f"${transaction.amount_usd:.2f}")
+        
+        # Tax information if available
+        subtotal = transaction.amount_usd
+        tax_amount = 0
+        
+        if tax_details and tax_details['tax_amount'] > 0:
+            tax_amount = tax_details['tax_amount']
+            p.drawString(50, description_y - 50, "Tax")
+            p.drawString(width - 200, description_y - 50, f"${tax_amount:.2f}")
+        
+        # Total
+        total = subtotal + tax_amount
+        p.setFont("Helvetica-Bold", 12)
+        p.line(width - 200, description_y - 65, width - 50, description_y - 65)
+        p.drawString(50, description_y - 80, "Total")
+        p.drawString(width - 200, description_y - 80, f"${total:.2f}")
+        
+        # Footer
+        p.setFont("Helvetica", 10)
+        footer_text = "Thank you for your business!"
+        p.drawString((width - p.stringWidth(footer_text, "Helvetica", 10)) / 2, 50, footer_text)
+        
+        # Save PDF
+        p.showPage()
+        p.save()
+        buffer.seek(0)
+        
+        # Create filename for the receipt
+        filename = f"receipt_{receipt_number}.pdf"
+        
+        # Return the PDF as a download
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/pdf'
+        )
+    
+    except Exception as e:
+        logger.error(f"Error generating receipt: {e}")
+        flash(f"An error occurred while generating the receipt: {str(e)}", "error")
         return redirect(url_for('billing.account_management'))
 
 def calculate_openrouter_credits(prompt_tokens, completion_tokens, model_id):

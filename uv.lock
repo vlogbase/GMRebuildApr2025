@@ -182,6 +182,15 @@ wheels = [
 ]
 
 [[package]]
+name = "chardet"
+version = "5.2.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f3/0d/f7b6ab21ec75897ed80c17d79b15951a719226b9fababf1e40ea74d69079/chardet-5.2.0.tar.gz", hash = "sha256:1b3b6ff479a8c414bc3fa2c0852995695c4a026dcd6d0633b2dd092ca39c1cf7", size = 2069618 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/38/6f/f5fbc992a329ee4e0f288c1fe0e2ad9485ed064cac731ed2fe47dcc38cbf/chardet-5.2.0-py3-none-any.whl", hash = "sha256:e1cf59446890a00105fe7b7912492ea04b6e6f06d4b742b2c788469e34c82970", size = 199385 },
+]
+
+[[package]]
 name = "charset-normalizer"
 version = "3.4.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1429,6 +1438,7 @@ dependencies = [
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "replit-object-storage" },
+    { name = "reportlab" },
     { name = "requests" },
     { name = "sqlalchemy" },
     { name = "stripe" },
@@ -1470,6 +1480,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.1.0" },
     { name = "pyyaml", specifier = ">=6.0.2" },
     { name = "replit-object-storage", specifier = ">=1.0.2" },
+    { name = "reportlab", specifier = ">=4.4.0" },
     { name = "requests", specifier = ">=2.32.3" },
     { name = "sqlalchemy", specifier = ">=2.0.40" },
     { name = "stripe", specifier = ">=12.1.0" },
@@ -1491,6 +1502,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5a/3c/e4a79901536c6b3801072eb92b2a29a0c2b99471ac75ba92271a7cad568e/replit_object_storage-1.0.2.tar.gz", hash = "sha256:ee51c759e0361d6fd6dffc847b9d5019c5572ee6490166aa66ab6001ed70595d", size = 4720 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/40/0d/844005c9a92b288afc4ca551efcefedb280c4af53b842a33e51129c72e7e/replit_object_storage-1.0.2-py3-none-any.whl", hash = "sha256:de9791d50b9c1197e32224d641529fe0d1b3b3e8fafb20d235f2916dac34cfca", size = 5691 },
+]
+
+[[package]]
+name = "reportlab"
+version = "4.4.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "chardet" },
+    { name = "pillow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/88/69/291a56d8bb177017e6e5421c34baa51b2e9017434c0ca1822e5007e45a26/reportlab-4.4.0.tar.gz", hash = "sha256:a64d85513910e246c21dc97ccc3c9054a1d44370bf8fc1fab80af937814354d5", size = 3597413 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/52/15/4702e132ae36beb8daf3e20a92f166451148c4a89650cc9d3f19b3c66714/reportlab-4.4.0-py3-none-any.whl", hash = "sha256:0a993f1d4a765fcbdf4e26adc96b3351004ebf4d27583340595ba7edafebec32", size = 1953103 },
 ]
 
 [[package]]

@@ -2,7 +2,7 @@ modules = ["nodejs-20", "python-3.11", "postgresql-16"]
 
 [nix]
 channel = "stable-24_05"
-packages = ["cargo", "freetype", "lcms2", "libev", "libiconv", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "libyaml", "openjpeg", "rustc", "tcl", "tk", "xcodebuild", "zlib"]
+packages = ["cargo", "freetype", "glibcLocales", "lcms2", "libev", "libiconv", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "libyaml", "openjpeg", "rustc", "tcl", "tk", "xcodebuild", "zlib"]
 
 # Deployment section using main:app and gevent worker
 [deployment]
