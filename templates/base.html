@@ -14,53 +14,16 @@
     <meta name="apple-mobile-web-app-title" content="GloriaMundo" />
     <link rel="manifest" href="{{ url_for('static', filename='img/site.webmanifest') }}" />
     
-    <!-- Preconnect to external domains -->
-    <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
-    
-    <!-- Inline critical CSS for above-the-fold content -->
-    <style>
-        {% include 'critical.css' %}
-
-        /* Critical icon styles */
-        .fa-plus:before { content: "\2b"; }
-        .fa-paper-plane:before { content: "\f1d8"; }
-        .fa-robot:before { content: "\f544"; }
-        .fa-brain:before { content: "\f5dc"; }
-        .fa-image:before { content: "\f03e"; }
-        .fa-search:before { content: "\f002"; }
-        .fa-gift:before { content: "\f06b"; }
-        .fa-file-circle-plus:before { content: "\e494"; }
-        .fa-camera:before { content: "\f030"; }
-        .fa-chevron-down:before { content: "\f078"; }
-        .fa-sync-alt:before { content: "\f2f1"; }
-    </style>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     {% block styles %}
-    <!-- Preload critical CSS files -->
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style">
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" as="style">
-    
-    <!-- Full Font Awesome loaded with non-blocking technique -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" media="print" onload="this.media='all'">
-    
-    <!-- Bootstrap loaded with non-blocking technique (after critical CSS inline) -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" media="print" onload="this.media='all'">
-    
-    <!-- Main CSS (loaded async with preload) -->
-    <link rel="preload" href="{{ url_for('static', filename='css/style.css') }}" as="style">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" media="print" onload="this.media='all'">
-    
-    <!-- Cookie Consent CSS (non-critical) -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie_consent.css') }}" media="print" onload="this.media='all'">
-    
-    <!-- Fallbacks for browsers that don't support onload -->
-    <noscript>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie_consent.css') }}">
-    </noscript>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Main CSS (must be after Bootstrap for proper overrides) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Cookie Consent CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie_consent.css') }}">
     {% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -109,22 +72,17 @@
     {% endblock %}
     
     {% block scripts %}
-    <!-- Critical UI Bootstrap JavaScript - runs immediately -->
-    <script>
-        {% include 'bootstrap.js' %}
-    </script>
+    <!-- Bootstrap JS Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Bootstrap JS Bundle with Popper - load with medium priority -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" defer></script>
+    <!-- Main JavaScript -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
     
-    <!-- Main JavaScript - critical for functionality but can load after initial render -->
-    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+    <!-- Cookie Consent JavaScript -->
+    <script src="{{ url_for('static', filename='js/cookie_consent.js') }}"></script>
     
-    <!-- Cookie Consent JavaScript - load after page is interactive -->
-    <script src="{{ url_for('static', filename='js/cookie_consent.js') }}" defer></script>
-    
-    <!-- Skimlinks - Automatic Affiliate Link Generator - load with low priority -->
-    <script type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js" async></script>
+    <!-- Skimlinks - Automatic Affiliate Link Generator -->
+    <script type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js"></script>
     {% endblock %}
 </body>
 </html>

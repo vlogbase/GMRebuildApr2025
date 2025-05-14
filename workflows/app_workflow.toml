@@ -1,4 +1,0 @@
-[app_workflow]
-entrypoint = "app_workflow.py"
-language = "python3"
-run = "python app_workflow.py"
