@@ -504,8 +504,14 @@ document.addEventListener('DOMContentLoaded', function() {
             // Schedule cleanup to run when browser is idle (won't impact page load)
             performIdleCleanup();
             
+            // Check if we have an initial conversation ID from a shared link redirect
+            if (typeof initialConversationId !== 'undefined' && initialConversationId) {
+                console.log(`Loading initial conversation ID from redirect: ${initialConversationId}`);
+                currentConversationId = initialConversationId;
+                loadConversation(initialConversationId);
+            }
             // Create a new conversation if we don't have one already
-            if (!currentConversationId) {
+            else if (!currentConversationId) {
                 console.log("No current conversation, creating a new one on page load");
                 
                 // Create a new conversation immediately (no blocking cleanup)

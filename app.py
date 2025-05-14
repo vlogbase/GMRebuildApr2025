@@ -860,6 +860,9 @@ def index():
     # Allow non-authenticated users to use the app with limited functionality
     is_logged_in = current_user.is_authenticated
     
+    # Check if there's a specific conversation to load (used for redirects from share links)
+    conversation_id = request.args.get('conversation_id')
+    
     # Fetch conversations only if user is logged in
     conversations = []
     if is_logged_in:
@@ -876,7 +879,8 @@ def index():
         'index.html', 
         user=current_user, 
         is_logged_in=is_logged_in,
-        conversations=conversations
+        conversations=conversations,
+        initial_conversation_id=conversation_id
     )
 
 @app.route('/login')
@@ -3813,6 +3817,13 @@ def view_shared_conversation(share_id):
             logger.warning(f"No conversation found with share_id: {share_id}")
             flash("The shared conversation link is invalid or has expired.", "warning")
             return redirect(url_for('index'))
+            
+        # Check if this is the owner of the conversation viewing through a shared link
+        # If so, redirect them to the home page with the current conversation ID
+        # The JavaScript will load the correct conversation
+        if current_user.is_authenticated and conversation.user_id == current_user.id:
+            logger.info(f"Owner of conversation {conversation.id} viewing their own shared link - redirecting to home with conversation ID")
+            return redirect(url_for('index', conversation_id=conversation.id))
         
         logger.info(f"Found conversation with ID: {conversation.id}, title: {conversation.title}")
         

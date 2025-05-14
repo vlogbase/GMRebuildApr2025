@@ -288,8 +288,9 @@
 {% block scripts %}
     {{ super() }}
     <script>
-        // Pass the login status to JavaScript
+        // Pass the login status and initial conversation ID to JavaScript
         const userIsLoggedIn = {{ is_logged_in|tojson }};
+        const initialConversationId = {{ initial_conversation_id|tojson if initial_conversation_id else 'null' }};
         
         // Set up non-authenticated user message counting
         if (!userIsLoggedIn) {
