@@ -3123,7 +3123,7 @@ code {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background-color: var(--button-bg);
+    background-color: rgba(30, 30, 30, 0.8); /* Darker background */
     display: flex;
     align-items: center;
     justify-content: center;
@@ -3132,41 +3132,40 @@ code {
     line-height: 14px;
     padding: 0;
     border: none;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
     position: relative;
     overflow: hidden;
     transition: all 0.2s ease;
 }
 
-/* Color scheme for the numbered buttons - extremely subtle in inactive state */
-.mobile-preset-btn[data-preset-id="1"] {
+/* Make the icon slightly larger for better visibility */
+.mobile-preset-btn i {
+    font-size: 16px;
+}
+
+/* Color scheme for the buttons - applying colors to icons */
+.mobile-preset-btn[data-preset-id="1"] i {
     color: #5D8BF4; /* Blue */
-    background-color: rgba(93, 139, 244, 0.05);
 }
 
-.mobile-preset-btn[data-preset-id="2"] {
+.mobile-preset-btn[data-preset-id="2"] i {
     color: #9D65D0; /* Purple */
-    background-color: rgba(157, 101, 208, 0.05);
 }
 
-.mobile-preset-btn[data-preset-id="3"] {
+.mobile-preset-btn[data-preset-id="3"] i {
     color: #FF8C61; /* Orange */
-    background-color: rgba(255, 140, 97, 0.05);
 }
 
-.mobile-preset-btn[data-preset-id="4"] {
+.mobile-preset-btn[data-preset-id="4"] i {
     color: #24b9bd; /* Accent color - cyan */
-    background-color: rgba(36, 185, 189, 0.05);
 }
 
-.mobile-preset-btn[data-preset-id="5"] {
+.mobile-preset-btn[data-preset-id="5"] i {
     color: #FC5C9C; /* Pink */
-    background-color: rgba(252, 92, 156, 0.05);
 }
 
-.mobile-preset-btn[data-preset-id="6"] {
+.mobile-preset-btn[data-preset-id="6"] i {
     color: #28a745; /* Green */
-    background-color: rgba(40, 167, 69, 0.05);
 }
 
 /* Subtle ripple effect */
@@ -3192,46 +3191,52 @@ code {
     transform: scale(0.97);
 }
 
-/* Active state - elegant with subtle elevation */
+/* Active state - elegant with subtle elevation and glow */
 .mobile-preset-btn.active {
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+    background-color: rgba(15, 15, 15, 0.95); /* Darker background when active */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-/* Active state - subtle color backgrounds */
+/* Active state - color-specific glows */
 .mobile-preset-btn.active[data-preset-id="1"] {
-    background-color: rgba(93, 139, 244, 0.12);
+    box-shadow: 0 0 6px rgba(93, 139, 244, 0.4);
 }
 
 .mobile-preset-btn.active[data-preset-id="2"] {
-    background-color: rgba(157, 101, 208, 0.12);
+    box-shadow: 0 0 6px rgba(157, 101, 208, 0.4);
 }
 
 .mobile-preset-btn.active[data-preset-id="3"] {
-    background-color: rgba(255, 140, 97, 0.12);
+    box-shadow: 0 0 6px rgba(255, 140, 97, 0.4);
 }
 
 .mobile-preset-btn.active[data-preset-id="4"] {
-    background-color: rgba(36, 185, 189, 0.12);
+    box-shadow: 0 0 6px rgba(36, 185, 189, 0.4);
 }
 
 .mobile-preset-btn.active[data-preset-id="5"] {
-    background-color: rgba(252, 92, 156, 0.12);
+    box-shadow: 0 0 6px rgba(252, 92, 156, 0.4);
 }
 
 .mobile-preset-btn.active[data-preset-id="6"] {
-    background-color: rgba(40, 167, 69, 0.12);
+    box-shadow: 0 0 6px rgba(40, 167, 69, 0.4);
 }
 
-/* Bottom indicator for active state - thin colored line */
+/* Make icons slightly brighter when active */
+.mobile-preset-btn.active i {
+    filter: brightness(1.2);
+}
+
+/* Bottom indicator for active state - subtle ring */
 .mobile-preset-btn.active::before {
     content: "";
     position: absolute;
-    bottom: -2px;
+    bottom: 3px;
     left: 50%;
     transform: translateX(-50%);
-    width: 12px;
-    height: 2px;
-    border-radius: 1px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
     background-color: currentColor;
 }
 
@@ -3252,13 +3257,12 @@ code {
 }
 
 /* Free preset with consistent styling */
-.mobile-preset-btn.free-preset {
+.mobile-preset-btn.free-preset i {
     color: #28a745; /* Green */
-    background-color: rgba(40, 167, 69, 0.05);
 }
 
 .mobile-preset-btn.free-preset.active {
-    background-color: rgba(40, 167, 69, 0.12);
+    box-shadow: 0 0 6px rgba(40, 167, 69, 0.4);
 }
 
 /* Refined panel toggle button - matches mobile preset button style */
@@ -3266,8 +3270,7 @@ code {
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    background-color: rgba(36, 185, 189, 0.05);
-    color: #24b9bd; /* Accent color - cyan */
+    background-color: rgba(30, 30, 30, 0.8); /* Darker background */
     border: none;
     display: flex;
     align-items: center;
@@ -3275,9 +3278,13 @@ code {
     font-size: 12px;
     transition: all 0.2s ease;
     margin-left: 4px;
-    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
     position: relative;
     overflow: hidden;
+}
+
+.mobile-model-panel-toggle i {
+    color: #24b9bd; /* Accent color - cyan */
 }
 
 .mobile-model-panel-toggle::after {
@@ -3400,29 +3407,47 @@ code {
     transition: all 0.2s ease;
 }
 
-/* Add subtle left border for preset identification */
+/* Add subtle left border for preset identification and colored icons */
 .mobile-panel-preset-btn[data-preset-id="1"] {
     border-left: 3px solid rgba(93, 139, 244, 0.3); /* Blue */
+}
+.mobile-panel-preset-btn[data-preset-id="1"] .model-icon {
+    color: #5D8BF4; /* Blue */
 }
 
 .mobile-panel-preset-btn[data-preset-id="2"] {
     border-left: 3px solid rgba(157, 101, 208, 0.3); /* Purple */
 }
+.mobile-panel-preset-btn[data-preset-id="2"] .model-icon {
+    color: #9D65D0; /* Purple */
+}
 
 .mobile-panel-preset-btn[data-preset-id="3"] {
     border-left: 3px solid rgba(255, 140, 97, 0.3); /* Orange */
+}
+.mobile-panel-preset-btn[data-preset-id="3"] .model-icon {
+    color: #FF8C61; /* Orange */
 }
 
 .mobile-panel-preset-btn[data-preset-id="4"] {
     border-left: 3px solid rgba(36, 185, 189, 0.3); /* Cyan */
 }
+.mobile-panel-preset-btn[data-preset-id="4"] .model-icon {
+    color: #24b9bd; /* Cyan */
+}
 
 .mobile-panel-preset-btn[data-preset-id="5"] {
     border-left: 3px solid rgba(252, 92, 156, 0.3); /* Pink */
 }
+.mobile-panel-preset-btn[data-preset-id="5"] .model-icon {
+    color: #FC5C9C; /* Pink */
+}
 
 .mobile-panel-preset-btn[data-preset-id="6"] {
     border-left: 3px solid rgba(40, 167, 69, 0.3); /* Green */
+}
+.mobile-panel-preset-btn[data-preset-id="6"] .model-icon {
+    color: #28a745; /* Green */
 }
 
 /* Subtle ripple effect for panel buttons */
