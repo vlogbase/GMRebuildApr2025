@@ -1132,6 +1132,33 @@ body.account-page .tab-pane {
     color: var(--accent-color);
 }
 
+/* Google login button style in header */
+.header-login-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 5px;
+    text-decoration: none;
+    background-color: var(--accent-color);
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+.header-login-btn:hover {
+    background-color: #1da5a9; /* Slightly darker shade */
+    transform: translateY(-1px);
+    box-shadow: 0 3px 5px rgba(0, 0, 0, 0.3);
+    text-decoration: none;
+    color: white;
+}
+
+.header-login-btn i {
+    font-size: 1.1rem;
+}
+
 .chat-messages {
     flex: 1;
     overflow-y: auto;
@@ -3795,11 +3822,12 @@ code {
         font-size: 0.9rem; /* Smaller title on mobile screens */
     }
     
-    .header-account-link {
+    .header-account-link, .header-login-btn {
         padding: 4px 6px; /* Smaller padding on mobile screens */
     }
     
-    .header-account-link .account-link-text {
+    .header-account-link .account-link-text,
+    .header-login-btn .login-btn-text {
         display: none; /* Hide text on small screens, show only icon */
     }
     
