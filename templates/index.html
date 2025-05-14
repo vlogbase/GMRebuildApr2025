@@ -10,8 +10,8 @@
 
 {% block content %}
     <div class="app-container">
-        <!-- Mobile Navigation Toggle Button -->
-        <button id="mobile-nav-toggle" class="mobile-nav-toggle">
+        <!-- Mobile Navigation Toggle Button (Sidebar Toggle) -->
+        <button id="sidebar-toggle" class="mobile-nav-toggle">
             <i class="fa-solid fa-chevron-right"></i>
         </button>
         
@@ -28,7 +28,7 @@
         {% endif %}
         
         <!-- Left Sidebar -->
-        <div class="sidebar">
+        <div id="sidebar" class="sidebar">
             <!-- Mobile Close Button -->
             <button id="sidebar-close-btn" class="sidebar-close-btn">
                 <i class="fa-solid fa-chevron-left"></i>
@@ -339,6 +339,32 @@
         </div>
     </div>
     
+    
+    <!-- Mobile Model Selection Bottom Sheet -->
+    <div id="model-bottom-sheet-backdrop" class="bottom-sheet-backdrop"></div>
+    <div id="model-bottom-sheet" class="bottom-sheet-container">
+        <div class="bottom-sheet">
+            <div class="bottom-sheet-header">
+                <h3>Select Model</h3>
+                <div class="bottom-sheet-actions">
+                    <div class="bottom-sheet-search-container">
+                        <input type="text" id="model-bottom-sheet-search" class="bottom-sheet-search" placeholder="Search models...">
+                        <i class="fa-solid fa-search"></i>
+                    </div>
+                    <button id="model-bottom-sheet-close" class="bottom-sheet-close">
+                        <i class="fa-solid fa-times"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="model-bottom-sheet-content" class="bottom-sheet-content">
+                <!-- Model options will be populated here by JavaScript -->
+                <div class="bottom-sheet-loading">
+                    <div class="loading-spinner"></div>
+                    <div>Loading models...</div>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block scripts %}
