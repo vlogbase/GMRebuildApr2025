@@ -714,42 +714,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
     }
     
-    // Function to update summary tab
-    function updateSummaryTab(data) {
-        const summaryTab = document.getElementById('usage-summary-tab');
-        if (!summaryTab) return;
-        
-        if (data.usage.length === 0) {
-            // No data for this range
-            summaryTab.innerHTML = `
-                <div class="text-center py-5">
-                    <div class="mb-3">
-                        <i class="fas fa-chart-line fa-3x text-muted"></i>
-                    </div>
-                    <h5>No Usage Data</h5>
-                    <p class="text-muted mb-4">No usage data available for the selected time period.</p>
-                    <div class="d-flex justify-content-center gap-3">
-                        <button class="btn btn-outline-secondary" id="changeDateRangeBtn">
-                            <i class="fas fa-calendar-alt me-2"></i>Change Date Range
-                        </button>
-                        <a href="{{ url_for('index') }}" class="btn btn-primary">
-                            <i class="fas fa-robot me-2"></i>Try Using Models
-                        </a>
-                    </div>
-                </div>`;
-            
-            // Re-attach event listener to change date range button
-            const changeDateBtn = document.getElementById('changeDateRangeBtn');
-            if (changeDateBtn) {
-                changeDateBtn.addEventListener('click', function() {
-                    document.querySelector('.btn-group .btn[data-range="1"]').click();
-                });
-            }
-            return;
-        }
-        
-        // We have data, construct the summary view
-        let summaryHtml = `
+    // Function to create stats boxes that appear in both tabs
+    function createStatsBoxes(data) {
+        return `
             <div class="row mb-4">
                 <div class="col-md-4 mb-3">
                     <div class="card bg-dark h-100">
@@ -779,37 +746,39 @@ document.addEventListener('DOMContentLoaded', function() {
                     </div>
                 </div>
             </div>`;
-            
-        // Add additional summary content as needed
-        summaryTab.innerHTML = summaryHtml;
     }
     
-    // Function to update detailed tab
-    function updateDetailedTab(data) {
-        const detailedTab = document.getElementById('usage-detailed-tab');
-        if (!detailedTab) return;
+    // Function to create "no data" message
+    function createNoDataMessage(btnId) {
+        return `
+            <div class="text-center py-5">
+                <div class="mb-3">
+                    <i class="fas fa-chart-line fa-3x text-muted"></i>
+                </div>
+                <h5>No Usage Data</h5>
+                <p class="text-muted mb-4">No usage data available for the selected time period.</p>
+                <div class="d-flex justify-content-center gap-3">
+                    <button class="btn btn-outline-secondary" id="${btnId}">
+                        <i class="fas fa-calendar-alt me-2"></i>Change Date Range
+                    </button>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">
+                        <i class="fas fa-robot me-2"></i>Try Using Models
+                    </a>
+                </div>
+            </div>`;
+    }
+    
+    // Function to update summary tab
+    function updateSummaryTab(data) {
+        const summaryTab = document.getElementById('usage-summary-tab');
+        if (!summaryTab) return;
         
         if (data.usage.length === 0) {
             // No data for this range
-            detailedTab.innerHTML = `
-                <div class="text-center py-5">
-                    <div class="mb-3">
-                        <i class="fas fa-chart-line fa-3x text-muted"></i>
-                    </div>
-                    <h5>No Usage Data</h5>
-                    <p class="text-muted mb-4">No usage data available for the selected time period.</p>
-                    <div class="d-flex justify-content-center gap-3">
-                        <button class="btn btn-outline-secondary" id="changeDateRangeBtn2">
-                            <i class="fas fa-calendar-alt me-2"></i>Change Date Range
-                        </button>
-                        <a href="{{ url_for('index') }}" class="btn btn-primary">
-                            <i class="fas fa-robot me-2"></i>Try Using Models
-                        </a>
-                    </div>
-                </div>`;
-                
+            summaryTab.innerHTML = createNoDataMessage('changeDateRangeBtn');
+            
             // Re-attach event listener to change date range button
-            const changeDateBtn = document.getElementById('changeDateRangeBtn2');
+            const changeDateBtn = document.getElementById('changeDateRangeBtn');
             if (changeDateBtn) {
                 changeDateBtn.addEventListener('click', function() {
                     document.querySelector('.btn-group .btn[data-range="1"]').click();
@@ -818,7 +787,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // We have data, construct the detailed table
+        // We have data, start with the stats boxes
+        let summaryHtml = createStatsBoxes(data);
+        
+        // Add the summary table (similar to the detailed view but with fewer columns)
         let tableRows = '';
         data.usage.forEach(usage => {
             tableRows += `
@@ -834,7 +806,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 </tr>`;
         });
         
-        let detailedHtml = `
+        summaryHtml += `
+            <h5 class="mb-3">Chat Summary</h5>
             <div class="table-responsive">
                 <table class="table table-dark table-striped table-hover">
                     <thead class="table-dark">
@@ -854,6 +827,101 @@ document.addEventListener('DOMContentLoaded', function() {
                 <small class="text-muted">Showing ${data.usage.length} records</small>
             </div>`;
             
+        // Set the HTML content
+        summaryTab.innerHTML = summaryHtml;
+    }
+    
+    // Function to update detailed tab
+    function updateDetailedTab(data) {
+        const detailedTab = document.getElementById('usage-detailed-tab');
+        if (!detailedTab) return;
+        
+        if (data.usage.length === 0) {
+            // No data for this range
+            detailedTab.innerHTML = createNoDataMessage('changeDateRangeBtn2');
+                
+            // Re-attach event listener to change date range button
+            const changeDateBtn = document.getElementById('changeDateRangeBtn2');
+            if (changeDateBtn) {
+                changeDateBtn.addEventListener('click', function() {
+                    document.querySelector('.btn-group .btn[data-range="1"]').click();
+                });
+            }
+            return;
+        }
+        
+        // We have data, start with the stats boxes
+        let detailedHtml = createStatsBoxes(data);
+        
+        // Add the detailed table with additional columns
+        let tableRows = '';
+        data.usage.forEach(usage => {
+            // Calculate input and output costs - assume a standard ratio if not available
+            const inputTokens = usage.prompt_tokens || 0;
+            const outputTokens = usage.completion_tokens || 0;
+            
+            // Estimate input/output costs (this is a simplification)
+            // In reality, different models have different input/output pricing
+            const totalCost = usage.credits_used / 100000; // convert to dollars
+            let inputCost, outputCost;
+            
+            if (inputTokens === 0 && outputTokens === 0) {
+                // If we don't have token counts, show full cost as output
+                inputCost = 0;
+                outputCost = totalCost;
+            } else {
+                // Simple approximation: input tokens are ~1/3 the cost of output tokens for most models
+                const inputCostRatio = 0.25; // input is 25% of total cost
+                const outputCostRatio = 0.75; // output is 75% of total cost
+                
+                // Distribute cost by these ratios
+                inputCost = totalCost * inputCostRatio;
+                outputCost = totalCost * outputCostRatio;
+            }
+            
+            tableRows += `
+                <tr>
+                    <td class="text-light">${usage.created_at}</td>
+                    <td class="text-light">
+                        ${usage.usage_type === 'chat' ? 
+                            '<span class="badge badge-sm bg-primary">Chat</span>' : 
+                            '<span class="badge badge-sm bg-info">Embedding</span>'}
+                    </td>
+                    <td class="text-light">${usage.model_id ? usage.model_id.split('/').pop() : 'Unknown'}</td>
+                    <td class="text-light">${inputTokens.toLocaleString()}</td>
+                    <td class="text-light">$${inputCost.toFixed(5)}</td>
+                    <td class="text-light">${outputTokens.toLocaleString()}</td>
+                    <td class="text-light">$${outputCost.toFixed(5)}</td>
+                    <td class="text-light">$${totalCost.toFixed(5)}</td>
+                </tr>`;
+        });
+        
+        detailedHtml += `
+            <h5 class="mb-3">Detailed Usage Analysis</h5>
+            <div class="table-responsive">
+                <table class="table table-dark table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="min-width: 110px;" class="text-white">Date</th>
+                            <th style="min-width: 80px;" class="text-white">Type</th>
+                            <th style="min-width: 180px;" class="text-white">Model</th>
+                            <th style="min-width: 80px;" class="text-white">Input Tokens</th>
+                            <th style="min-width: 80px;" class="text-white">Input Cost</th>
+                            <th style="min-width: 80px;" class="text-white">Output Tokens</th>
+                            <th style="min-width: 80px;" class="text-white">Output Cost</th>
+                            <th style="min-width: 80px;" class="text-white">Total Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <small class="text-muted">Showing ${data.usage.length} records</small>
+            </div>`;
+            
+        // Set the HTML content
         detailedTab.innerHTML = detailedHtml;
     }
     
