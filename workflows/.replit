@@ -1,4 +1,1 @@
-[run]
-language = "python3"
-onBoot = ""
-entrypoint = ".replit.workflow"
+{"language":"python3","onBoot":"","entrypoint":".replit.workflow"}

@@ -3722,3 +3722,50 @@ code {
 .navbar-shared-indicator i {
     margin-right: 0.5rem;
 }
+
+/* Mobile Preset Number Styles */
+.preset-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background-color: var(--accent-color);
+    color: white;
+    border-radius: 50%;
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+
+/* Free preset button gets a different color */
+.free-preset .preset-number {
+    background-color: #28a745;
+}
+
+/* Reset All to Default button */
+.reset-all-container {
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+    border-top: 1px solid var(--border-color);
+    margin-top: 12px;
+}
+
+.reset-all-to-default-btn {
+    background-color: var(--border-color);
+    color: var(--text-color);
+    border: none;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.reset-all-to-default-btn:hover {
+    background-color: var(--hover-color);
+}

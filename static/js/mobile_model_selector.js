@@ -369,4 +369,57 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('model-selected', function(e) {
         updateSelectedModelNames();
     });
+    
+    // Reset All to Default button in model panel
+    const mobileResetAllToDefault = document.getElementById('mobile-reset-all-to-default');
+    if (mobileResetAllToDefault) {
+        mobileResetAllToDefault.addEventListener('click', function() {
+            resetAllPresetsToDefault();
+        });
+    }
 });
+
+/**
+ * Reset all presets to their default models
+ */
+function resetAllPresetsToDefault() {
+    if (window.defaultModels) {
+        console.log('Mobile: Resetting all presets to default models');
+        
+        // Confirm with the user before resetting
+        if (confirm('Reset all presets to their default models?')) {
+            // Reset to default models
+            for (let i = 1; i <= 6; i++) {
+                const presetId = i.toString();
+                const defaultModel = window.defaultModels[presetId];
+                
+                if (defaultModel) {
+                    // Update user preferences
+                    if (!window.userPreferences) {
+                        window.userPreferences = {};
+                    }
+                    window.userPreferences[presetId] = defaultModel;
+                    
+                    // Update the displayed model name
+                    const modelNameElement = document.getElementById(`mobile-selected-model-${presetId}`);
+                    if (modelNameElement) {
+                        modelNameElement.textContent = defaultModel.name || defaultModel.id;
+                    }
+                }
+            }
+            
+            // Save preferences to server
+            if (window.saveUserPreferences && typeof window.saveUserPreferences === 'function') {
+                window.saveUserPreferences();
+            }
+            
+            // Display confirmation
+            alert('All presets have been reset to default models');
+            
+            // Hide the panel
+            hideMobileModelPanel();
+        }
+    } else {
+        console.error('Mobile: Default models not available for reset');
+    }
+}
