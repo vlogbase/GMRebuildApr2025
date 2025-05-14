@@ -2381,36 +2381,57 @@ document.addEventListener('DOMContentLoaded', function() {
         if (button) {
             const rect = button.getBoundingClientRect();
             const selectorRect = modelSelector.getBoundingClientRect();
+            const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
             
-            // Calculate position
-            // First try to position above the button with a gap
-            const gap = 10; // Gap in pixels between button and selector
+            // Calculate position with a gap
+            const gap = 10; // Gap in pixels
             
-            // Get dimensions
+            // Set default dimensions for selector
+            const selectorWidth = 300; // Width of the selector
             const selectorHeight = selectorRect.height || 300; // Default if not visible yet
-            let topPosition = rect.top - selectorHeight - gap;
             
-            // Check if there's enough space above
-            if (topPosition < 0) {
-                // Not enough space above, position below the button
-                topPosition = rect.bottom + gap;
+            // Mobile-specific positioning (centered in viewport)
+            if (window.innerWidth <= 576) {
+                // Center horizontally on the screen
+                const leftPosition = Math.max(10, Math.floor((viewportWidth - selectorWidth) / 2));
+                
+                // Position vertically in the middle of the viewport
+                const topPosition = Math.floor((viewportHeight - selectorHeight) / 2);
+                
+                // Apply centered position
+                modelSelector.style.top = `${topPosition}px`;
+                modelSelector.style.left = `${leftPosition}px`;
+            } else {
+                // Desktop positioning (relative to button)
+                // Try to position above the button first
+                let topPosition = rect.top - selectorHeight - gap;
+                
+                // Check if there's enough space above
+                if (topPosition < 0) {
+                    // Not enough space above, position below the button
+                    topPosition = rect.bottom + gap;
+                }
+                
+                // Center horizontally relative to the button
+                let leftPosition = rect.left + (rect.width / 2) - (selectorWidth / 2);
+                
+                // Ensure the selector doesn't go off-screen
+                if (leftPosition < 10) leftPosition = 10;
+                if (leftPosition + selectorWidth > viewportWidth - 10) {
+                    leftPosition = viewportWidth - selectorWidth - 10;
+                }
+                
+                // Apply the position
+                modelSelector.style.top = `${topPosition}px`;
+                modelSelector.style.left = `${leftPosition}px`;
             }
-            
-            // Center horizontally relative to the button
-            const leftPosition = rect.left + (rect.width / 2) - 150; // 150 = half of selector width
-            
-            // Apply the position
-            modelSelector.style.top = `${topPosition}px`;
-            modelSelector.style.left = `${leftPosition}px`;
             
             // Make visible
             modelSelector.style.display = 'block';
             
             // Clear search input
             modelSearch.value = '';
-            
-            // Log 8: Before populating the model list
-            console.log(`[Debug] openModelSelector called for preset ${presetId}. About to call populateModelList.`);
             
             // Populate model list for this preset
             populateModelList(presetId);

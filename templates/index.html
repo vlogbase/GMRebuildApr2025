@@ -4,8 +4,11 @@
 
 {% block content %}
     <div class="app-container">
+        <!-- Sidebar backdrop - only visible on mobile when sidebar is active -->
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+        
         <!-- Left Sidebar -->
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <button id="new-chat-btn" class="new-chat-btn">
                     <i class="fa-solid fa-plus"></i> New Chat
@@ -65,8 +68,13 @@
         <div class="chat-container">
             <!-- App Header -->
             <div class="app-header">
-                <div class="app-title">
-                    <h1>GloriaMundo Chat</h1>
+                <div class="header-left">
+                    <button id="sidebar-toggle" class="sidebar-toggle-btn">
+                        <i class="fa-solid fa-bars"></i>
+                    </button>
+                    <div class="app-title">
+                        <h1>GloriaMundo Chat</h1>
+                    </div>
                 </div>
                 {% if current_user.is_authenticated %}
                 <div class="app-account-access">

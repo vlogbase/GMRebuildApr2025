@@ -1,0 +1,2 @@
+# Mobile UI Test workflow configuration
+run = "python mobile_ui_test.py"

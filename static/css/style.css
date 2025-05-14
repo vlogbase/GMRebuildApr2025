@@ -77,12 +77,19 @@
 /* Bootstrap Dark Theme Overrides */
 /* These styles ensure Bootstrap components work with our dark theme */
 
+/* Global smooth scrolling */
+html {
+    scroll-behavior: smooth;
+    touch-action: manipulation; /* Optimize touch behavior */
+}
+
 /* General Body & Text */
 body {
     background-color: var(--bg-color);
     color: var(--text-color);
     min-height: 100vh;
     overflow-x: hidden; /* Prevent horizontal scrolling */
+    -webkit-tap-highlight-color: transparent; /* Remove tap highlight on mobile */
 }
 
 /* Card components */
@@ -1160,6 +1167,29 @@ body.account-page .tab-pane {
     font-size: 16px;
     line-height: 1.5;
     margin-bottom: 24px;
+}
+
+/* Welcome section mobile adjustments */
+@media (max-width: 576px) {
+    .welcome-container {
+        padding: 20px 15px;
+    }
+    
+    .welcome-icon {
+        width: 36px;
+        height: 36px;
+        margin-bottom: 12px;
+    }
+    
+    .welcome-heading {
+        font-size: 20px;
+        margin-bottom: 12px;
+    }
+    
+    .welcome-text {
+        font-size: 14px;
+        margin-bottom: 20px;
+    }
 }
 
 .example-question-btn {
@@ -3022,49 +3052,115 @@ code {
     }
 }
 
+/* Sidebar toggle button (only visible on mobile) */
+.sidebar-toggle-btn {
+    display: none;
+    background: transparent;
+    border: none;
+    color: var(--text-color);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 8px;
+    margin-right: 8px;
+}
+
+.header-left {
+    display: flex;
+    align-items: center;
+}
+
+/* Sidebar backdrop for mobile overlay */
+.sidebar-backdrop {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 98;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
 @media (max-width: 576px) {
     .app-container {
         flex-direction: column;
     }
     
+    /* Show the sidebar toggle button on mobile */
+    .sidebar-toggle-btn {
+        display: block;
+    }
+    
+    /* Make the sidebar a slide-in overlay on mobile */
     .sidebar {
-        width: 100%;
-        height: auto;
-        max-height: 40vh;
-        position: relative; /* Override sticky position from desktop */
-        overflow: hidden; /* Hide overflow */
+        position: fixed;
+        top: 0;
+        left: -280px; /* Start off-screen */
+        width: 280px;
+        height: 100vh;
+        z-index: 99;
+        transition: left 0.3s ease;
+        box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* When the sidebar is active, slide it in */
+    .sidebar.active {
+        left: 0;
+    }
+    
+    /* Show backdrop when sidebar is active */
+    .sidebar-backdrop.active {
+        display: block;
+        opacity: 1;
     }
     
     .conversation-list {
-        max-height: calc(40vh - 130px); /* Adjust for mobile header and footer */
+        max-height: calc(100vh - 170px); /* Adjust for sidebar header and footer */
         overflow-y: auto;
     }
     
-    .sidebar-footer {
-        position: relative; /* Override sticky position from desktop */
-        bottom: auto;
-    }
-    
+    /* Fixed layout for the chat container */
     .chat-container {
-        height: auto;
-        min-height: 60vh;
+        height: 100vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
     }
     
-    .chat-messages {
-        height: auto; /* Allow content to determine height */
-        min-height: 40vh; /* Minimum height for messages area */
-    }
-    
+    /* Fixed header */
     .app-header {
-        padding: 8px 10px; /* Smaller padding on very small screens */
+        position: sticky;
+        top: 0;
+        padding: 8px 10px;
+        z-index: 10;
+        background-color: var(--sidebar-bg);
+    }
+    
+    /* Scrollable chat messages */
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        height: auto;
+    }
+    
+    /* Fixed input area at the bottom */
+    .chat-input-container {
+        position: sticky;
+        bottom: 0;
+        padding: 12px 8px;
+        background-color: var(--bg-color);
+        z-index: 10;
+        border-top: 1px solid var(--border-color);
     }
     
     .app-title h1 {
-        font-size: 0.9rem; /* Even smaller title on very small screens */
+        font-size: 0.9rem; /* Smaller title on mobile screens */
     }
     
     .header-account-link {
-        padding: 4px 6px; /* Smaller padding on very small screens */
+        padding: 4px 6px; /* Smaller padding on mobile screens */
     }
     
     .header-account-link .account-link-text {
@@ -3076,9 +3172,22 @@ code {
         max-width: 75%;
     }
     
-    /* Force everything to fit on small screens */
-    .chat-input-container {
-        padding: 12px 8px;
+    /* Mobile optimizations for touch inputs */
+    #message-input {
+        font-size: 16px; /* Prevent iOS zoom on focus */
+    }
+    
+    /* Make buttons slightly larger for easier touch targets */
+    .message-actions button,
+    #sidebar-toggle {
+        min-width: 40px;
+        min-height: 40px;
+        padding: 8px;
+    }
+    
+    /* Adjust spacing for message actions */
+    .message-actions {
+        gap: 8px;
     }
     
     .model-buttons {
@@ -3089,12 +3198,29 @@ code {
         gap: 4px; /* Reduce gap on very small screens */
     }
     
+    /* Mobile-specific preset button adaptations */
     .model-preset-btn {
-        padding: 6px 4px 6px 6px; /* Further reduce padding */
+        padding: 6px 8px; /* Full button padding without reserved space for dropdown */
     }
     
+    /* Hide the dropdown section on mobile - we'll use long press instead */
     .model-preset-btn .selector-icon-container {
-        width: 20px; /* Even smaller width on tiny screens */
+        opacity: 0.4; /* Make less prominent but still visible as an indicator */
+        width: 16px; /* Smaller width on mobile */
+        pointer-events: none; /* Disable direct interactions - long press will be used instead */
+    }
+    
+    /* Add visual feedback for long-press interaction */
+    .model-preset-btn:active {
+        background-color: var(--hover-color);
+        transition: background-color 0.1s; /* Faster transition for touch feedback */
+    }
+    
+    /* Center the model selector dropdown on mobile */
+    .model-selector {
+        width: 90%; /* Take most of the screen width */
+        left: 5% !important; /* Force centering */
+        max-height: 70vh; /* Limit height to prevent overflow */
     }
     
     /* Adjust input group and send button to prevent overflow */

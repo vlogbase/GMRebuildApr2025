@@ -4,11 +4,32 @@ Conversation Utilities for GloriaMundo
 Functions for managing conversation lifecycle, including cleanup of empty conversations
 """
 import logging
-from sqlalchemy.exc import NoResultFound
+import functools
+import warnings
+from sqlalchemy.exc import NoResultFound, SAWarning
 from flask import current_app
 
 # Set up logging
 logger = logging.getLogger(__name__)
+
+def suppress_delete_warning(func):
+    """
+    Decorator to suppress SQLAlchemy warnings about deleting 0 rows.
+    
+    This addresses the warning:
+    "DELETE statement on table expected to delete N row(s); 0 were matched."
+    
+    It's a common race condition when multiple processes might try to delete
+    the same record.
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        with warnings.catch_warnings():
+            warnings.filterwarnings('ignore', 
+                                   category=SAWarning, 
+                                   message=r'DELETE statement on table .* expected to delete .* row\(s\); 0 were matched.')
+            return func(*args, **kwargs)
+    return wrapper
 
 def is_conversation_empty(db, Message, conversation_id):
     """
@@ -30,6 +51,7 @@ def is_conversation_empty(db, Message, conversation_id):
         # Default to False (not empty) to prevent accidental deletion
         return False
 
+@suppress_delete_warning
 def cleanup_empty_conversations(db, Message, Conversation, user_id):
     """
     Find and delete all empty conversations for a user.
@@ -61,13 +83,21 @@ def cleanup_empty_conversations(db, Message, Conversation, user_id):
         
         if deleted_count > 0:
             # Permanently delete the empty conversations
+            deleted_successfully = 0
             for conversation in empty_conversations:
-                db.session.delete(conversation)
-                logger.info(f"Deleting empty conversation {conversation.id} for user {user_id}")
+                # Refresh the conversation from the database to ensure it still exists
+                db.session.refresh(conversation)
+                
+                try:
+                    db.session.delete(conversation)
+                    logger.info(f"Deleting empty conversation {conversation.id} for user {user_id}")
+                    deleted_successfully += 1
+                except Exception as e:
+                    logger.warning(f"Could not delete conversation {conversation.id}: {e}")
             
             # Commit the changes
             db.session.commit()
-            logger.info(f"Permanently deleted {deleted_count} empty conversations for user {user_id}")
+            logger.info(f"Permanently deleted {deleted_successfully} empty conversations for user {user_id}")
         
         return deleted_count
     
@@ -76,6 +106,7 @@ def cleanup_empty_conversations(db, Message, Conversation, user_id):
         db.session.rollback()
         return 0
 
+@suppress_delete_warning
 def delete_conversation_if_empty(db, Message, Conversation, conversation_id):
     """
     Delete a specific conversation if it has no messages.
@@ -100,11 +131,19 @@ def delete_conversation_if_empty(db, Message, Conversation, conversation_id):
         
         # Check if conversation is empty
         if is_conversation_empty(db, Message, conversation_id):
-            # Permanently delete the conversation (hard delete)
-            db.session.delete(conversation)
-            db.session.commit()
-            logger.info(f"Permanently deleted empty conversation {conversation_id}")
-            return True
+            try:
+                # Refresh the conversation from DB to ensure it still exists
+                db.session.refresh(conversation)
+                
+                # Permanently delete the conversation (hard delete)
+                db.session.delete(conversation)
+                db.session.commit()
+                logger.info(f"Permanently deleted empty conversation {conversation_id}")
+                return True
+            except Exception as e:
+                logger.warning(f"Failed to delete conversation {conversation_id}: {e}")
+                db.session.rollback()
+                return False
         
         return False
     
