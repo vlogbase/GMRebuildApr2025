@@ -1809,7 +1809,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to select a preset button and update the current model
-    function selectPresetButton(presetId) {
+    // Expose this function globally for mobile.js
+    window.selectPresetButton = function(presetId) {
         // Check if this is a premium preset (all except preset 6)
         if (presetId !== '6') {
             // Check premium access before allowing selection of premium model
@@ -2372,9 +2373,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to open the model selector for a specific preset
-    function openModelSelector(presetId, buttonElement) {
+    // Expose this function globally for mobile.js
+    window.openModelSelector = function(presetId, buttonElement) {
         // Set current editing preset
         currentlyEditingPresetId = presetId;
+        
+        // For mobile: add a class to body when selector is active
+        if (window.innerWidth <= 576) {
+            document.body.classList.add('model-selector-active');
+        }
         
         // Position the selector relative to the button
         const button = buttonElement || document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
@@ -2443,6 +2450,9 @@ document.addEventListener('DOMContentLoaded', function() {
         if (modelSelector) {
             modelSelector.style.display = 'none';
             currentlyEditingPresetId = null;
+            
+            // Remove the selector active class from body (for mobile view)
+            document.body.classList.remove('model-selector-active');
         }
     }
     

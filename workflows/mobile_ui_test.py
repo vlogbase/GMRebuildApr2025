@@ -1,48 +1,43 @@
 """
-Simple Flask server workflow for testing the mobile UI
+Test workflow for the mobile UI improvements.
 """
-
-import sys
-import logging
 import os
-from pathlib import Path
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='mobile_ui_test.log'
-)
-logger = logging.getLogger(__name__)
-
-# Add the parent directory to sys.path to import app
-sys.path.append(str(Path(__file__).parent.parent))
+import sys
+import time
+from flask import Flask
 
 def run():
     """
-    Run the Flask application for testing the mobile UI with the long-press model buttons
+    Run the Flask application in debug mode.
+    
+    This will allow us to test the mobile features by accessing the application
+    from a mobile device or using the browser's mobile emulation mode.
     """
+    # Import the app to run it
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
+    # Print a message to help with testing
+    print("\n=== MOBILE UI TEST WORKFLOW ===")
+    print("1. Access this app from a mobile device or")
+    print("2. Use your browser's dev tools to emulate a mobile device")
+    print("3. Test the long-press on model preset buttons")
+    print("4. Test the sidebar toggle and menu\n")
+    
+    # Import and run the app
     try:
-        # Log startup
-        logger.info("Starting Flask application for mobile UI testing...")
-        
-        # Import the Flask app
         from app import app
         
-        # Run the Flask app on host 0.0.0.0 to allow external access
-        host = '0.0.0.0'
-        port = int(os.environ.get('PORT', 5000))
+        # Set some Flask configuration for testing
+        app.config['TESTING'] = True
+        app.config['DEBUG'] = True
         
-        # Log startup configuration
-        logger.info(f"Starting Flask app on {host}:{port}")
-        
-        # Run the application
-        app.run(host=host, port=port, debug=True)
+        # Run the Flask application
+        print("\n=== Starting Flask server... ===\n")
+        app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=False)
         
     except Exception as e:
-        logger.error(f"Error running Flask application: {e}")
-        import traceback
-        logger.error(traceback.format_exc())
+        print(f"Error starting the Flask application: {e}")
+        raise
 
 if __name__ == "__main__":
     run()
