@@ -47,15 +47,30 @@ def account_management():
         packages = Package.query.filter_by(is_active=True).all()
         logger.debug(f"Found {len(packages)} active packages")
         
-        # Get recent transactions
-        recent_transactions = Transaction.query.filter_by(user_id=current_user.id) \
-            .order_by(desc(Transaction.created_at)).limit(5).all()
-        logger.debug(f"Found {len(recent_transactions)} recent transactions")
+        # Get recent transactions, filter out test mode transactions (those with stripe_payment_intent starting with 'pi_test_')
+        transaction_query = Transaction.query.filter_by(user_id=current_user.id)
         
-        # Get recent usage
+        # Filter out test transactions (those with payment_intent starting with 'pi_test_')
+        live_transactions = []
+        for transaction in transaction_query.order_by(desc(Transaction.created_at)).all():
+            # If it's a Stripe transaction, check if it's a test one
+            if transaction.payment_method == 'stripe' and transaction.stripe_payment_intent:
+                if not transaction.stripe_payment_intent.startswith('pi_test_'):
+                    live_transactions.append(transaction)
+            else:
+                # Non-Stripe transactions or those without a payment intent are included
+                live_transactions.append(transaction)
+        
+        # Limit to 5 transactions for display
+        recent_transactions = live_transactions[:5]
+        logger.debug(f"Found {len(recent_transactions)} live-mode recent transactions")
+        
+        # Get usage from last 24 hours by default
+        last_24h = datetime.utcnow() - timedelta(days=1)
         recent_usage = Usage.query.filter_by(user_id=current_user.id) \
-            .order_by(desc(Usage.created_at)).limit(5).all()
-        logger.debug(f"Found {len(recent_usage)} recent usage records")
+            .filter(Usage.created_at >= last_24h) \
+            .order_by(desc(Usage.created_at)).all()
+        logger.debug(f"Found {len(recent_usage)} usage records in the last 24 hours")
         
         # Get affiliate information
         affiliate = Affiliate.query.filter_by(email=current_user.email).first()
@@ -386,9 +401,29 @@ def usage_history():
     View detailed usage history.
     """
     try:
-        # Get all usage records
-        usage_list = Usage.query.filter_by(user_id=current_user.id) \
-            .order_by(desc(Usage.created_at)).all()
+        # Get date range param or default to 'all'
+        date_range = request.args.get('range', 'all')
+        
+        # Create base query
+        query = Usage.query.filter_by(user_id=current_user.id)
+        
+        # Apply date filtering based on selected range
+        now = datetime.utcnow()
+        if date_range == '1':  # Last 24 hours
+            start_date = now - timedelta(days=1)
+            query = query.filter(Usage.created_at >= start_date)
+        elif date_range == '7':  # Last 7 days
+            start_date = now - timedelta(days=7)
+            query = query.filter(Usage.created_at >= start_date)
+        elif date_range == '30':  # Last 30 days
+            start_date = now - timedelta(days=30)
+            query = query.filter(Usage.created_at >= start_date)
+        elif date_range == 'month':  # This month
+            start_date = datetime(now.year, now.month, 1)
+            query = query.filter(Usage.created_at >= start_date)
+        
+        # Get all filtered usage records
+        usage_list = query.order_by(desc(Usage.created_at)).all()
         
         return render_template(
             'usage_history.html',
@@ -399,6 +434,69 @@ def usage_history():
         logger.error(f"Error in usage_history: {e}")
         flash(f"An error occurred: {str(e)}", "error")
         return redirect(url_for('billing.account_management'))
+
+@billing_bp.route('/get-usage-by-range', methods=['GET'])
+@login_required
+def get_usage_by_range():
+    """
+    API endpoint to get usage data filtered by date range.
+    """
+    try:
+        # Get date range param, default to '1' (24 hours)
+        date_range = request.args.get('range', '1')
+        
+        # Create base query
+        query = Usage.query.filter_by(user_id=current_user.id)
+        
+        # Apply date filtering based on selected range
+        now = datetime.utcnow()
+        if date_range == '1':  # Last 24 hours
+            start_date = now - timedelta(days=1)
+            query = query.filter(Usage.created_at >= start_date)
+        elif date_range == '7':  # Last 7 days
+            start_date = now - timedelta(days=7)
+            query = query.filter(Usage.created_at >= start_date)
+        elif date_range == '30':  # Last 30 days
+            start_date = now - timedelta(days=30)
+            query = query.filter(Usage.created_at >= start_date)
+        elif date_range == 'month':  # This month
+            start_date = datetime(now.year, now.month, 1)
+            query = query.filter(Usage.created_at >= start_date)
+        
+        # Get usage data with applied filters
+        usage_data = query.order_by(desc(Usage.created_at)).all()
+        
+        # Format data for response
+        results = []
+        for usage in usage_data:
+            results.append({
+                'id': usage.id,
+                'created_at': usage.created_at.strftime('%Y-%m-%d %H:%M'),
+                'credits_used': usage.credits_used,
+                'model_id': usage.model_id,
+                'usage_type': usage.usage_type,
+                'prompt_tokens': usage.prompt_tokens,
+                'completion_tokens': usage.completion_tokens
+            })
+        
+        # Calculate summary stats
+        total_credits = sum(usage.credits_used for usage in usage_data)
+        total_requests = len(usage_data)
+        
+        return jsonify({
+            'success': True,
+            'usage': results,
+            'total_credits': total_credits,
+            'total_requests': total_requests,
+            'date_range': date_range
+        })
+    
+    except Exception as e:
+        logger.error(f"Error in get_usage_by_range: {e}")
+        return jsonify({
+            'success': False,
+            'message': f"Error retrieving usage data: {str(e)}"
+        }), 500
 
 @billing_bp.route('/update-memory-preference', methods=['POST'])
 @login_required

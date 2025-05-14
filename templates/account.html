@@ -268,7 +268,8 @@
                                 <div class="btn-group">
                                     <button class="btn btn-sm btn-outline-secondary" data-range="30">Last 30 Days</button>
                                     <button class="btn btn-sm btn-outline-secondary" data-range="7">Last 7 Days</button>
-                                    <button class="btn btn-sm btn-outline-secondary active" data-range="month">This Month</button>
+                                    <button class="btn btn-sm btn-outline-secondary active" data-range="1">Last 24 Hours</button>
+                                    <button class="btn btn-sm btn-outline-secondary" data-range="month">This Month</button>
                                 </div>
                             </div>
                             
@@ -680,6 +681,183 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize date range selection buttons
     const dateRangeButtons = document.querySelectorAll('.btn-group .btn[data-range]');
     
+    // Function to update usage data based on selected date range
+    function updateUsageData(dateRange) {
+        // Show loading indicator
+        const summaryTab = document.getElementById('usage-summary-tab');
+        const detailedTab = document.getElementById('usage-detailed-tab');
+        
+        if (summaryTab) {
+            summaryTab.innerHTML = '<div class="text-center py-3"><i class="fas fa-circle-notch fa-spin fa-2x"></i><p class="mt-2">Loading usage data...</p></div>';
+        }
+        
+        // Fetch data from API
+        fetch(`/billing/get-usage-by-range?range=${dateRange}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update tabs with new data
+                    updateSummaryTab(data);
+                    updateDetailedTab(data);
+                } else {
+                    // Show error
+                    if (summaryTab) {
+                        summaryTab.innerHTML = `<div class="text-center py-5"><div class="mb-3"><i class="fas fa-exclamation-circle fa-3x text-danger"></i></div><h5>Error Loading Data</h5><p class="text-muted mb-4">${data.message}</p></div>`;
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching usage data:', error);
+                if (summaryTab) {
+                    summaryTab.innerHTML = '<div class="text-center py-5"><div class="mb-3"><i class="fas fa-exclamation-circle fa-3x text-danger"></i></div><h5>Error Loading Data</h5><p class="text-muted mb-4">Failed to load usage data. Please try again later.</p></div>';
+                }
+            });
+    }
+    
+    // Function to update summary tab
+    function updateSummaryTab(data) {
+        const summaryTab = document.getElementById('usage-summary-tab');
+        if (!summaryTab) return;
+        
+        if (data.usage.length === 0) {
+            // No data for this range
+            summaryTab.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-chart-line fa-3x text-muted"></i>
+                    </div>
+                    <h5>No Usage Data</h5>
+                    <p class="text-muted mb-4">No usage data available for the selected time period.</p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button class="btn btn-outline-secondary" id="changeDateRangeBtn">
+                            <i class="fas fa-calendar-alt me-2"></i>Change Date Range
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <i class="fas fa-robot me-2"></i>Try Using Models
+                        </a>
+                    </div>
+                </div>`;
+            
+            // Re-attach event listener to change date range button
+            const changeDateBtn = document.getElementById('changeDateRangeBtn');
+            if (changeDateBtn) {
+                changeDateBtn.addEventListener('click', function() {
+                    document.querySelector('.btn-group .btn[data-range="1"]').click();
+                });
+            }
+            return;
+        }
+        
+        // We have data, construct the summary view
+        let summaryHtml = `
+            <div class="row mb-4">
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-dark h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-bolt fa-2x mb-3 text-warning"></i>
+                            <h2 class="text-light">${data.total_requests}</h2>
+                            <p class="text-muted">API Requests</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-dark h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-dollar-sign fa-2x mb-3 text-success"></i>
+                            <h2 class="text-light">$${(data.total_credits / 100000).toFixed(2)}</h2>
+                            <p class="text-muted">Total Cost</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 mb-3">
+                    <div class="card bg-dark h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-calculator fa-2x mb-3 text-info"></i>
+                            <h2 class="text-light">$${data.total_requests > 0 ? (data.total_credits / 100000 / data.total_requests).toFixed(3) : "0.000"}</h2>
+                            <p class="text-muted">Avg. Cost per Request</p>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+            
+        // Add additional summary content as needed
+        summaryTab.innerHTML = summaryHtml;
+    }
+    
+    // Function to update detailed tab
+    function updateDetailedTab(data) {
+        const detailedTab = document.getElementById('usage-detailed-tab');
+        if (!detailedTab) return;
+        
+        if (data.usage.length === 0) {
+            // No data for this range
+            detailedTab.innerHTML = `
+                <div class="text-center py-5">
+                    <div class="mb-3">
+                        <i class="fas fa-chart-line fa-3x text-muted"></i>
+                    </div>
+                    <h5>No Usage Data</h5>
+                    <p class="text-muted mb-4">No usage data available for the selected time period.</p>
+                    <div class="d-flex justify-content-center gap-3">
+                        <button class="btn btn-outline-secondary" id="changeDateRangeBtn2">
+                            <i class="fas fa-calendar-alt me-2"></i>Change Date Range
+                        </button>
+                        <a href="{{ url_for('index') }}" class="btn btn-primary">
+                            <i class="fas fa-robot me-2"></i>Try Using Models
+                        </a>
+                    </div>
+                </div>`;
+                
+            // Re-attach event listener to change date range button
+            const changeDateBtn = document.getElementById('changeDateRangeBtn2');
+            if (changeDateBtn) {
+                changeDateBtn.addEventListener('click', function() {
+                    document.querySelector('.btn-group .btn[data-range="1"]').click();
+                });
+            }
+            return;
+        }
+        
+        // We have data, construct the detailed table
+        let tableRows = '';
+        data.usage.forEach(usage => {
+            tableRows += `
+                <tr>
+                    <td class="text-light">${usage.created_at}</td>
+                    <td class="text-light">
+                        ${usage.usage_type === 'chat' ? 
+                            '<span class="badge badge-sm bg-primary">Chat</span>' : 
+                            '<span class="badge badge-sm bg-info">Embedding</span>'}
+                    </td>
+                    <td class="text-light">${usage.model_id ? usage.model_id.split('/').pop() : 'Unknown'}</td>
+                    <td class="text-light">$${(usage.credits_used / 100000).toFixed(5)}</td>
+                </tr>`;
+        });
+        
+        let detailedHtml = `
+            <div class="table-responsive">
+                <table class="table table-dark table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th style="min-width: 110px;" class="text-white">Date</th>
+                            <th style="min-width: 80px;" class="text-white">Type</th>
+                            <th style="min-width: 180px;" class="text-white">Model</th>
+                            <th style="min-width: 80px;" class="text-white">Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${tableRows}
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mt-3">
+                <small class="text-muted">Showing ${data.usage.length} records</small>
+            </div>`;
+            
+        detailedTab.innerHTML = detailedHtml;
+    }
+    
+    // Add event listeners to date range buttons
     dateRangeButtons.forEach(function(button) {
         button.addEventListener('click', function() {
             // Remove active class from all buttons
@@ -690,10 +868,19 @@ document.addEventListener('DOMContentLoaded', function() {
             // Add active class to clicked button
             this.classList.add('active');
             
-            // TODO: Add actual date range filtering functionality
-            console.log(`Selected date range: ${this.getAttribute('data-range')}`);
+            // Get date range value
+            const dateRange = this.getAttribute('data-range');
+            
+            // Update usage data
+            updateUsageData(dateRange);
         });
     });
+    
+    // Load initial data with default range (Last 24 Hours)
+    if (document.querySelector('#usage-tab.active') || document.querySelector('#usage.active')) {
+        // Only load data if we're on the usage tab
+        updateUsageData('1');
+    }
     
     // Enable/disable activation button based on checkbox
     const agreeCheckbox = document.getElementById('agreeToTerms');
@@ -819,6 +1006,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Get the tab name from data-bs-target attribute (removing the # symbol)
             const tabName = event.target.getAttribute('data-bs-target').substring(1);
+            
+            // Special handling when switching to usage tab
+            if (tabName === 'usage') {
+                // Get currently selected date range, or default to '1' (Last 24 Hours)
+                const activeRange = document.querySelector('.btn-group .btn[data-range].active');
+                const dateRange = activeRange ? activeRange.getAttribute('data-range') : '1';
+                
+                // Load usage data for the selected range
+                updateUsageData(dateRange);
+            }
             
             // Tab-specific logic
             if (tabName === 'pricing') {
