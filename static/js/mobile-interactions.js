@@ -7,11 +7,29 @@
  */
 
 document.addEventListener('DOMContentLoaded', function() {
+    // Check if device detection is available and this is a mobile device
+    // This is a fallback in case the CSS media query doesn't work
+    let isMobile = false;
+    
     // Add a class to body for CSS targeting
-    if (deviceDetection && deviceDetection.isMobileDevice) {
+    if (window.deviceDetection && window.deviceDetection.isMobileDevice) {
         document.body.classList.add('mobile-device');
-    } else {
-        return; // Only continue for mobile devices
+        isMobile = true;
+    } else if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+        // Alternative check - devices with coarse pointer (touch) are likely mobile
+        document.body.classList.add('mobile-device');
+        isMobile = true;
+    }
+    
+    if (!isMobile) {
+        // Hide the bottom sheet elements on non-mobile devices
+        const bottomSheet = document.getElementById('model-bottom-sheet');
+        const bottomSheetBackdrop = document.getElementById('model-bottom-sheet-backdrop');
+        
+        if (bottomSheet) bottomSheet.style.display = 'none';
+        if (bottomSheetBackdrop) bottomSheetBackdrop.style.display = 'none';
+        
+        return; // Only continue executing for mobile devices
     }
     
     // DOM elements

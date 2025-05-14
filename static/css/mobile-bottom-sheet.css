@@ -1,6 +1,20 @@
 /* Mobile Bottom Sheet Styles for GloriaMundo */
 
 /* Bottom Sheet Container */
+/* Hide by default on all devices */
+.bottom-sheet-backdrop,
+.bottom-sheet-container {
+    display: none;
+}
+
+/* Only allow display on mobile devices */
+@media (pointer: coarse) {
+    .bottom-sheet-backdrop,
+    .bottom-sheet-container {
+        display: block;
+    }
+}
+
 .bottom-sheet-backdrop {
     position: fixed;
     top: 0;
