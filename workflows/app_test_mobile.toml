@@ -1,0 +1,4 @@
+[run]
+command = ["python", "-m", "workflows.app_test"]
+description = "Run the application for mobile navigation testing"
+showInDiscoverDevTools = true

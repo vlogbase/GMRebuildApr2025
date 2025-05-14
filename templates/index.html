@@ -4,8 +4,30 @@
 
 {% block content %}
     <div class="app-container">
+        <!-- Mobile Navigation Toggle Button -->
+        <button id="mobile-nav-toggle" class="mobile-nav-toggle">
+            <i class="fa-solid fa-chevron-right"></i>
+        </button>
+        
+        <!-- Sidebar Overlay (for mobile) -->
+        <div id="sidebar-overlay" class="sidebar-overlay"></div>
+        
+        <!-- Mobile Google Login Button (Only for signed-out users) -->
+        {% if not is_logged_in %}
+        <div class="mobile-google-login">
+            <a href="{{ url_for('google_auth.login') }}" class="auth-btn google-auth-btn">
+                <i class="fa-brands fa-google"></i> Sign in with Google
+            </a>
+        </div>
+        {% endif %}
+        
         <!-- Left Sidebar -->
         <div class="sidebar">
+            <!-- Mobile Close Button -->
+            <button id="sidebar-close-btn" class="sidebar-close-btn">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            
             <div class="sidebar-header">
                 <button id="new-chat-btn" class="new-chat-btn">
                     <i class="fa-solid fa-plus"></i> New Chat

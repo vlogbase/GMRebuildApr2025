@@ -829,6 +829,120 @@ body.account-page .tab-pane {
     position: sticky;
     top: 0;
     overflow: hidden; /* Prevent sidebar from causing main page to scroll */
+    transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+    z-index: 1000;
+}
+
+/* Modal overlay for mobile sidebar */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+}
+
+.sidebar-overlay.active {
+    opacity: 1;
+}
+
+/* Mobile nav toggle button */
+.mobile-nav-toggle {
+    display: none; /* Hidden by default, shown only on mobile */
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 999;
+    background-color: var(--sidebar-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 38px;
+    height: 38px;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.mobile-nav-toggle:hover, 
+.mobile-nav-toggle:active {
+    background-color: var(--hover-color);
+    transform: scale(1.05);
+}
+
+.mobile-nav-toggle i {
+    color: var(--accent-color);
+    font-size: 16px;
+}
+
+/* Mobile sidebar close button inside the drawer */
+.sidebar-close-btn {
+    display: none; /* Hidden by default, shown only on mobile */
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    align-items: center;
+    justify-content: center;
+    color: var(--accent-color);
+    font-size: 16px;
+    cursor: pointer;
+    z-index: 1001;
+    transition: background-color 0.2s, transform 0.2s;
+}
+
+.sidebar-close-btn:hover,
+.sidebar-close-btn:active {
+    background-color: var(--hover-color);
+    transform: scale(1.05);
+}
+
+/* Google login button for mobile */
+.mobile-google-login {
+    display: none; /* Hidden by default, shown for signed-out users on mobile */
+    position: fixed;
+    top: 12px;
+    left: 60px; /* Space for the menu toggle */
+    right: 12px;
+    z-index: 998;
+    background-color: var(--sidebar-bg);
+    border-radius: 6px;
+    padding: 0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.mobile-google-login .auth-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    padding: 10px 0;
+    font-size: 14px;
+    font-weight: 500;
+    background-color: rgba(66, 133, 244, 0.1);
+    transition: background-color 0.2s;
+}
+
+.mobile-google-login .auth-btn:hover,
+.mobile-google-login .auth-btn:active {
+    background-color: rgba(66, 133, 244, 0.15);
+}
+
+.mobile-google-login .auth-btn i {
+    font-size: 18px;
+    color: #4285F4;
 }
 
 .sidebar-header {
@@ -1090,6 +1204,13 @@ body.account-page .tab-pane {
     background-color: var(--sidebar-bg);
     border-bottom: 1px solid var(--border-color);
     z-index: 10;
+}
+
+/* Mobile-specific header adjustments */
+@media (max-width: 768px) {
+    .app-header {
+        padding-left: 60px; /* Make room for the mobile toggle button */
+    }
 }
 
 .app-title h1 {
@@ -2982,10 +3103,79 @@ code {
     to {transform: rotate(360deg);}
 }
 
+/* Device-specific styles */
+.mobile-device .chat-input-container {
+    position: relative;
+}
+
+.mobile-device .input-group {
+    position: relative;
+}
+
+.mobile-device .input-group::after {
+    content: 'Press send button to submit';
+    position: absolute;
+    bottom: 4px;
+    right: 48px; /* Space for send button */
+    font-size: 11px;
+    color: var(--secondary-text);
+    opacity: 0.7;
+    pointer-events: none;
+    max-width: 150px;
+    text-align: right;
+}
+
 /* Media queries for responsiveness */
 @media (max-width: 768px) {
+    /* Mobile sidebar behavior */
     .sidebar {
-        width: 240px;
+        position: fixed;
+        width: 280px;
+        transform: translateX(-100%); /* Hide offscreen by default */
+        box-shadow: none;
+        z-index: 1001;
+    }
+    
+    /* When sidebar is active/open */
+    .sidebar.active {
+        transform: translateX(0); /* Slide in */
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Show modal overlay when sidebar is active */
+    .sidebar-overlay {
+        display: block;
+        pointer-events: none;
+    }
+    
+    .sidebar-overlay.active {
+        pointer-events: auto;
+    }
+    
+    /* Show mobile nav toggle button */
+    .mobile-nav-toggle {
+        display: flex;
+    }
+    
+    /* Show sidebar close button inside drawer */
+    .sidebar-close-btn {
+        display: flex; /* Use flex to center the icon */
+    }
+    
+    /* Show Google login button for mobile users when not logged in */
+    body:not(.user-logged-in) .mobile-google-login {
+        display: block;
+    }
+    
+    /* Adjust app container to take full width */
+    .app-container {
+        display: block; /* Removes flex to prevent sidebar from taking up space */
+    }
+    
+    /* Adjust chat container to take full width */
+    .chat-container {
+        width: 100%;
+        margin-left: 0;
     }
     
     .model-buttons {
