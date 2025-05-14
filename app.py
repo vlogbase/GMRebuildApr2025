@@ -2615,6 +2615,7 @@ def chat(): # Synchronous function
         # Apply user's advanced chat parameter settings if available
         if current_user and current_user.is_authenticated:
             try:
+                import json
                 from user_settings import get_chat_settings_for_user, validate_model_specific_parameters
                 
                 # Get the user's chat settings
@@ -2729,9 +2730,11 @@ def chat(): # Synchronous function
             # Verify content format matches model capabilities
             if model_supports_multimodal != has_multimodal_message:
                 if model_supports_multimodal and not has_multimodal_message:
-                    logger.warning("⚠️ Model supports multimodal content but we're sending text-only!")
+                    # This is completely fine, just log as info
+                    logger.info("ℹ️ Using text-only message with a multimodal-capable model")
                 elif not model_supports_multimodal and has_multimodal_message:
-                    logger.warning("⚠️ Model does NOT support multimodal but we're still sending multimodal content!")
+                    # This could be a real issue, keep as warning
+                    logger.warning("⚠️ Model does NOT support multimodal but we're sending multimodal content!")
             else:
                 logger.info(f"✅ Content format correctly matched to model capabilities: multimodal={model_supports_multimodal}")
             

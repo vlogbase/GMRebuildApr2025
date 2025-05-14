@@ -75,6 +75,13 @@ def save_chat_settings():
         # Get the settings from the request
         data = request.json
         
+        # Handle case where request.json is None
+        if data is None:
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data received'
+            }), 400
+        
         # Validate inputs
         temperature = data.get('temperature')
         if temperature is not None:

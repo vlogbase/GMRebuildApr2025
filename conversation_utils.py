@@ -48,7 +48,7 @@ def cleanup_empty_conversations(db, Message, Conversation, user_id):
         # Find all conversation IDs that have messages (not empty)
         conversations_with_messages = db.session.query(Message.conversation_id)\
             .distinct()\
-            .subquery()
+            .scalar_subquery()  # Use scalar_subquery() to properly handle IN clause
         
         # Find all conversations for the user that don't have any messages
         empty_conversations = Conversation.query\

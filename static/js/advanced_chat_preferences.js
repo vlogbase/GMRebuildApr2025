@@ -374,10 +374,28 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
             },
+            credentials: 'same-origin', // Include cookies for session authentication
             body: JSON.stringify(settings)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                // Handle HTTP error status
+                console.error('HTTP error:', response.status, response.statusText);
+                return response.text().then(text => {
+                    try {
+                        // Try to parse as JSON for structured error
+                        const errorData = JSON.parse(text);
+                        throw new Error(errorData.error || 'Unknown error');
+                    } catch (e) {
+                        // If not JSON, use text or status
+                        throw new Error(text || `HTTP error ${response.status}`);
+                    }
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 // Show success message
@@ -388,7 +406,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .catch(error => {
             console.error('Error saving settings:', error);
-            showToast('Error saving preferences. Please try again.', 'error');
+            showToast('Failed to save preferences: ' + error.message, 'error');
         });
     }
     
