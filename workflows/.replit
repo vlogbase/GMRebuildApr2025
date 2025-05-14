@@ -1,20 +1,4 @@
-[app_workflow]
-name = "Flask Application"
+[run]
 language = "python3"
-run = "python -m workflows.app_workflow"
-onBoot = "exit"
-default_file = "workflows/app_workflow.py"
-
-[scheduler_test]
-name = "Scheduler Test"
-language = "python3"
-run = "python -m workflows.scheduler_test"
-onBoot = "exit"
-default_file = "workflows/scheduler_test.py"
-
-[csrf_test]
-name = "CSRF Protection Test"
-language = "python3"
-run = "python -m workflows.csrf_test"
-onBoot = "exit"
-default_file = "workflows/csrf_test.py"
+onBoot = ""
+entrypoint = ".replit.workflow"

@@ -2824,44 +2824,70 @@ document.addEventListener('DOMContentLoaded', function() {
     // New chat button
     if (newChatButton) {
         newChatButton.addEventListener('click', function() {
-            // Clear chat messages except the welcome message
-            clearChat();
+            // Add a loading effect to the button
+            const originalContent = newChatButton.innerHTML;
+            newChatButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
+            newChatButton.disabled = true;
             
-            // Reset currentConversationId as a fallback in case API call fails
-            currentConversationId = null;
+            // First, check if the current conversation is already empty
+            // If it is, we can just reuse it instead of creating a new one
+            if (isAuthenticated && currentConversationId) {
+                fetch(`/api/conversation/${currentConversationId}/is-empty`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.is_empty) {
+                            // Current conversation is already empty, just reuse it
+                            console.log(`Current conversation ${currentConversationId} is already empty, reusing it`);
+                            
+                            // Clear chat UI
+                            clearChat();
+                            
+                            // Restore button state
+                            newChatButton.innerHTML = originalContent;
+                            newChatButton.disabled = false;
+                            
+                            // No need to refresh the conversation list since we're using the same conversation
+                            return;
+                        } else {
+                            // Current conversation has messages, create a new one
+                            createNewConversation();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking if conversation is empty:', error);
+                        // On error, just create a new conversation
+                        createNewConversation();
+                    });
+            } else {
+                // No current conversation, create a new one
+                createNewConversation();
+            }
             
-            // Call API to create a new conversation
-            if (isAuthenticated) {
-                // Add a loading effect to the button
-                const originalContent = newChatButton.innerHTML;
-                newChatButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
-                newChatButton.disabled = true;
+            // Function to create a new conversation
+            function createNewConversation() {
+                // Clear chat UI
+                clearChat();
                 
-                // First clean up any empty conversations
-                fetch('/api/cleanup-empty-conversations', {
+                // Reset currentConversationId as a fallback in case API call fails
+                currentConversationId = null;
+                
+                if (!isAuthenticated) {
+                    // No authentication, just restore button state
+                    newChatButton.innerHTML = originalContent;
+                    newChatButton.disabled = false;
+                    return;
+                }
+                
+                // Schedule idle cleanup instead of blocking with synchronous cleanup
+                performIdleCleanup();
+                
+                // Create a new conversation immediately
+                fetch('/api/create-conversation', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCSRFToken()
                     }
-                })
-                .then(response => response.json())
-                .then(cleanupData => {
-                    if (cleanupData.success) {
-                        const cleanedCount = cleanupData.cleaned_count || 0;
-                        if (cleanedCount > 0) {
-                            console.log(`Cleaned up ${cleanedCount} empty conversations before creating new one`);
-                        }
-                    }
-                    
-                    // Now create a new conversation
-                    return fetch('/api/create-conversation', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCSRFToken()
-                        }
-                    });
                 })
                 .then(response => response.json())
                 .then(data => {
