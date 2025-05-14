@@ -508,7 +508,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (typeof initialConversationId !== 'undefined' && initialConversationId) {
                 console.log(`Loading initial conversation ID from redirect: ${initialConversationId}`);
                 currentConversationId = initialConversationId;
+                
+                // Load the specific conversation immediately without fetching all conversations
                 loadConversation(initialConversationId);
+                
+                // Only fetch other conversations after a longer delay (optimization)
+                setTimeout(() => {
+                    console.log('Deferred loading of conversation history (after initial conversation loaded)');
+                    fetchConversations(true, true);  // bust cache, metadata only
+                }, 1500);  // Longer delay since we're already showing content
+                
+                // Skip the other initialization paths since we've already loaded a conversation
+                return;
             }
             // Create a new conversation if we don't have one already
             else if (!currentConversationId) {

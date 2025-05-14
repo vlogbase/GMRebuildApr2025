@@ -3825,6 +3825,10 @@ def view_shared_conversation(share_id):
             logger.info(f"Owner of conversation {conversation.id} viewing their own shared link - redirecting to home with conversation ID")
             return redirect(url_for('index', conversation_id=conversation.id))
         
+        # For authenticated users who are not the owner, explicitly set is_logged_in flag
+        # to pass to the template (ensures consistent rendering regardless of auth status)
+        is_logged_in = current_user.is_authenticated
+        
         logger.info(f"Found conversation with ID: {conversation.id}, title: {conversation.title}")
         
         # Get all messages for this conversation
@@ -3864,7 +3868,9 @@ def view_shared_conversation(share_id):
         return render_template(
             'shared_conversation.html',
             conversation=conversation,
-            messages=formatted_messages
+            messages=formatted_messages,
+            is_logged_in=is_logged_in,
+            user=current_user
         )
     
     except Exception as e:
