@@ -3855,6 +3855,42 @@ document.addEventListener('DOMContentLoaded', function() {
         // Line breaks
         text = text.replace(/\n/g, '<br>');
         
+        // URL Detection - convert plain URLs to links
+        // Regular expression to match URLs
+        const urlRegex = /https?:\/\/[^\s<>"]+/gi;
+        
+        // Use placeholder markers for URLs with unique IDs
+        const urlPlaceholders = {};
+        let placeholderCounter = 0;
+        
+        // First step: Extract and protect URLs in HTML tags
+        let protectedHtml = text.replace(/<a\s+[^>]*>(.*?)<\/a>|<[^>]*>/g, match => {
+            // Only process <a> tags, leave other tags as is
+            if (match.startsWith('<a ')) {
+                return match.replace(urlRegex, url => {
+                    const placeholder = `__PROTECTED_URL_${placeholderCounter++}__`;
+                    urlPlaceholders[placeholder] = url;
+                    return placeholder;
+                });
+            }
+            return match;
+        });
+        
+        // Second step: Convert plain URLs to links
+        protectedHtml = protectedHtml.replace(urlRegex, url => {
+            // Create a safe display URL (truncate if too long)
+            let displayUrl = url;
+            if (url.length > 50) {
+                displayUrl = url.substring(0, 47) + '...';
+            }
+            return `<a href="${url}" target="_blank" rel="noopener noreferrer">${displayUrl}</a>`;
+        });
+        
+        // Final step: Restore protected URLs
+        text = protectedHtml.replace(/__PROTECTED_URL_(\d+)__/g, (match, id) => {
+            return urlPlaceholders[match] || match;
+        });
+        
         return text;
     }
     

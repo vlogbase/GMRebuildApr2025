@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Formatting Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .message {
+            background-color: #f5f5f5;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #0078d7;
+        }
+        .message-content {
+            line-height: 1.5;
+        }
+        .test-input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        button {
+            background-color: #0078d7;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0063b1;
+        }
+        .test-description {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        code {
+            background-color: #eee;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: Monaco, monospace;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .home-link {
+            display: block;
+            margin-top: 30px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>URL Formatting Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Plain URL Detection</h2>
+        <div class="test-description">
+            Type or paste text with a URL to see how it gets formatted
+        </div>
+        <textarea id="urlTestInput" class="test-input" rows="4" placeholder="Type text with a URL like https://example.com here...">Here's a test URL: https://example.com and another one https://github.com/some-repo</textarea>
+        <button id="testUrlBtn">Format Message</button>
+        
+        <div class="message">
+            <div class="message-content" id="urlTestOutput">
+                <!-- Formatted output will appear here -->
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Pre-defined Test Cases</h2>
+        
+        <div class="test-description">Test Case 1: Plain URLs</div>
+        <div class="message">
+            <div class="message-content test-case" id="testCase1">
+                Check out this website: https://example.com and this other one https://github.com
+            </div>
+        </div>
+        
+        <div class="test-description">Test Case 2: URLs in existing HTML</div>
+        <div class="message">
+            <div class="message-content test-case" id="testCase2">
+                This link is already formatted: <a href="https://example.com">https://example.com</a> but this one is not: https://github.com
+            </div>
+        </div>
+        
+        <div class="test-description">Test Case 3: URLs in code blocks</div>
+        <div class="message">
+            <div class="message-content test-case" id="testCase3">
+                Here's some code: <code>fetch('https://api.example.com')</code> and a plain URL https://example.com
+            </div>
+        </div>
+        
+        <div class="test-description">Test Case 4: URL with special characters</div>
+        <div class="message">
+            <div class="message-content test-case" id="testCase4">
+                URL with query params: https://example.com/search?q=test&category=docs
+            </div>
+        </div>
+        
+        <div class="test-description">Test Case 5: Long URL truncation</div>
+        <div class="message">
+            <div class="message-content test-case" id="testCase5">
+                Very long URL: https://example.com/this/is/a/very/long/path/with/many/segments/that/should/be/truncated/when/displayed/as/a/link/in/the/ui
+            </div>
+        </div>
+    </div>
+    
+    <a href="/" class="home-link">Back to Home</a>
+    
+    <script>
+        // Import formatMessage function logic from script.js
+        function formatMessage(text) {
+            // Simple markdown-like formatting (this could be expanded or replaced with a proper markdown library)
+            
+            // Code blocks
+            text = text.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
+            
+            // Inline code
+            text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+            
+            // Bold
+            text = text.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+            
+            // Italic
+            text = text.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+            
+            // Line breaks
+            text = text.replace(/\n/g, '<br>');
+            
+            // URL Detection - convert plain URLs to links
+            // Regular expression to match URLs
+            const urlRegex = /https?:\/\/[^\s<>"]+/gi;
+            
+            // Use placeholder markers for URLs with unique IDs
+            const urlPlaceholders = {};
+            let placeholderCounter = 0;
+            
+            // First step: Extract and protect URLs in HTML tags
+            let protectedHtml = text.replace(/<a\s+[^>]*>(.*?)<\/a>|<[^>]*>/g, match => {
+                // Only process <a> tags, leave other tags as is
+                if (match.startsWith('<a ')) {
+                    return match.replace(urlRegex, url => {
+                        const placeholder = `__PROTECTED_URL_${placeholderCounter++}__`;
+                        urlPlaceholders[placeholder] = url;
+                        return placeholder;
+                    });
+                }
+                return match;
+            });
+            
+            // Second step: Convert plain URLs to links
+            protectedHtml = protectedHtml.replace(urlRegex, url => {
+                // Create a safe display URL (truncate if too long)
+                let displayUrl = url;
+                if (url.length > 50) {
+                    displayUrl = url.substring(0, 47) + '...';
+                }
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer">${displayUrl}</a>`;
+            });
+            
+            // Final step: Restore protected URLs
+            text = protectedHtml.replace(/__PROTECTED_URL_(\d+)__/g, (match, id) => {
+                return urlPlaceholders[match] || match;
+            });
+            
+            return text;
+        }
+        
+        // Process test input when button is clicked
+        document.getElementById('testUrlBtn').addEventListener('click', function() {
+            const input = document.getElementById('urlTestInput').value;
+            const output = document.getElementById('urlTestOutput');
+            output.innerHTML = formatMessage(input);
+        });
+        
+        // Process predefined test cases on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get all test cases
+            const testCases = document.querySelectorAll('.test-case');
+            
+            // Process each test case
+            testCases.forEach(function(testCase) {
+                const originalText = testCase.innerHTML;
+                testCase.innerHTML = formatMessage(originalText);
+            });
+            
+            // Trigger the test button once to show initial results
+            document.getElementById('testUrlBtn').click();
+        });
+    </script>
+</body>
+</html>
