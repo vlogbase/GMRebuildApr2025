@@ -25,7 +25,7 @@
                 <div class="message-content">
                     {% if message.image_url %}
                     <div class="message-image">
-                        <img src="{{ message.image_url }}" alt="Shared image" class="shared-message-image" />
+                        <img src="{{ message.image_url }}" alt="Shared image" />
                     </div>
                     {% endif %}
                     
@@ -46,38 +46,4 @@
         <a href="{{ url_for('index') }}" class="btn primary-btn">Start your own conversation</a>
     </div>
 </div>
-
-<style>
-/* Fix for image overlapping with text in shared conversation view */
-.shared-container .message-content {
-    display: flex;
-    flex-direction: column;
-}
-
-.shared-container .message-image {
-    margin-bottom: 15px;
-    max-width: 100%;
-}
-
-.shared-container .shared-message-image {
-    max-width: 100%;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.shared-container .message-text {
-    width: 100%;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .shared-container .message-content {
-        padding: 10px;
-    }
-    
-    .shared-container .message-image {
-        margin-bottom: 10px;
-    }
-}
-</style>
 {% endblock %}
