@@ -2,6 +2,7 @@
 
 import json
 import os
+import datetime
 
 import requests
 from app import db
@@ -86,8 +87,24 @@ def callback():
     user = User.query.filter_by(email=users_email).first()
     if not user:
         is_new_user = True
-        user = User(username=users_name, email=users_email, enable_memory=True)
+        # Create user properly
+        user = User()
+        user.username = users_name
+        user.email = users_email
+        user.enable_memory = True  # Enable memory by default for new users
+        
+        # Set Google-specific fields
+        user.google_id = userinfo.get("sub")  # Use sub as the Google ID
+        user.profile_picture = userinfo.get("picture")
+        user.last_login_at = datetime.datetime.utcnow()
+        
         db.session.add(user)
+        db.session.commit()
+    else:
+        # Update existing user's Google info
+        user.google_id = userinfo.get("sub")
+        user.profile_picture = userinfo.get("picture")
+        user.last_login_at = datetime.datetime.utcnow()
         db.session.commit()
 
     # Log the user in
