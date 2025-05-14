@@ -1543,8 +1543,14 @@ document.addEventListener('DOMContentLoaded', function() {
             messageInput.style.height = newHeight + 'px';
         }
         
-        // Handle input event for continuous resizing as user types
-        messageInput.addEventListener('input', autoResizeTextarea);
+        // Handle input event for continuous resizing as user types and update send button state
+        messageInput.addEventListener('input', function() {
+            // Resize the textarea
+            autoResizeTextarea();
+            
+            // Update send button state based on new content
+            updateSendButtonState();
+        });
         
         // Handle keydown for Enter key and special cases
         messageInput.addEventListener('keydown', function(event) {
@@ -1561,6 +1567,9 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Initial resize in case there's content already
         autoResizeTextarea();
+        
+        // Initial button state update
+        updateSendButtonState();
     }
     
     // Add clipboard paste event listener to the message input
