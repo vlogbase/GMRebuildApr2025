@@ -116,6 +116,15 @@ function initMobileNavigation() {
         if (sidebarOverlay) {
             sidebarOverlay.classList.toggle('active');
         }
+        
+        // Prevent body scrolling when sidebar is open on mobile
+        if (deviceDetection.isMobileDevice) {
+            if (sidebar.classList.contains('active')) {
+                document.body.classList.add('sidebar-open');
+            } else {
+                document.body.classList.remove('sidebar-open');
+            }
+        }
     }
     
     // Open sidebar
@@ -3615,6 +3624,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                         if (sidebarOverlay) {
                                             sidebarOverlay.classList.remove('active');
                                         }
+                                        // Remove body lock
+                                        document.body.classList.remove('sidebar-open');
                                     }
                                 }
                             });

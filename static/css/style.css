@@ -816,6 +816,7 @@ body.account-page .tab-pane {
 .app-container {
     display: flex;
     min-height: 100vh;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
 }
 
 /* Sidebar Styles */
@@ -1193,6 +1194,8 @@ body.account-page .tab-pane {
     display: flex;
     flex-direction: column;
     height: 100vh;
+    max-height: 100vh; /* Ensure it doesn't exceed viewport height */
+    overflow: hidden; /* Prevent container from scrolling */
 }
 
 /* App Header Styles */
@@ -1209,7 +1212,12 @@ body.account-page .tab-pane {
 /* Mobile-specific header adjustments */
 @media (max-width: 768px) {
     .app-header {
+        position: sticky;
+        top: 0;
+        left: 0;
+        right: 0;
         padding-left: 60px; /* Make room for the mobile toggle button */
+        z-index: 100;
     }
 }
 
@@ -1253,6 +1261,17 @@ body.account-page .tab-pane {
     display: flex;
     flex-direction: column;
     height: calc(100vh - 120px); /* Account for app-header and chat-input-container */
+    -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
+}
+
+/* Mobile-specific message area adjustments */
+@media (max-width: 768px) {
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        height: auto; /* Let it take available space */
+        padding-bottom: 20px; /* Ensure last message is fully visible */
+    }
 }
 
 /* Welcome Section */
@@ -1660,6 +1679,36 @@ body.account-page .tab-pane {
 .chat-input-container {
     padding: 16px;
     border-top: 1px solid var(--border-color);
+}
+
+/* Mobile-specific input container adjustments */
+@media (max-width: 768px) {
+    .chat-input-container {
+        position: sticky;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-color);
+        z-index: 100;
+    }
+    
+    /* Add a subtle hint for long-press functionality */
+    .model-preset-btn .selector-icon-container {
+        position: relative;
+    }
+    
+    .model-preset-btn .selector-icon-container::after {
+        content: "";
+        position: absolute;
+        bottom: -3px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 4px;
+        height: 4px;
+        background-color: var(--accent-color);
+        border-radius: 50%;
+        opacity: 0.7;
+    }
 }
 
 .model-buttons {
@@ -3125,21 +3174,59 @@ code {
     text-align: right;
 }
 
+/* Touch optimizations for mobile devices */
+@media (pointer: coarse) {
+    /* Larger touch targets */
+    button, 
+    .send-btn,
+    .model-preset-btn,
+    .selector-icon-container,
+    .conversation-item,
+    .auth-btn {
+        min-height: 44px; /* Apple's recommended minimum touch target size */
+    }
+    
+    /* Add touch feedback */
+    button:active,
+    .send-btn:active,
+    .model-preset-btn:active,
+    .conversation-item:active {
+        transform: scale(0.98);
+        transition: transform 0.1s;
+    }
+}
+
 /* Media queries for responsiveness */
 @media (max-width: 768px) {
     /* Mobile sidebar behavior */
     .sidebar {
         position: fixed;
         width: 280px;
+        height: 100vh; /* Full viewport height */
         transform: translateX(-100%); /* Hide offscreen by default */
         box-shadow: none;
         z-index: 1001;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden; /* Prevent sidebar overflow */
+    }
+    
+    /* Make conversation list scrollable within fixed sidebar */
+    .sidebar .conversation-list {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling for iOS */
+        flex: 1; /* Take remaining space */
     }
     
     /* When sidebar is active/open */
     .sidebar.active {
         transform: translateX(0); /* Slide in */
         box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+    }
+    
+    /* Prevent body scrolling when sidebar is open */
+    body.sidebar-open {
+        overflow: hidden;
     }
     
     /* Show modal overlay when sidebar is active */

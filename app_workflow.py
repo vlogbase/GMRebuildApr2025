@@ -15,10 +15,11 @@ logging.basicConfig(
 
 def run():
     """
-    Run the Flask application on port 5000 with debugging
+    Run the Flask application on port 3000 with debugging (or use PORT from environment)
     """
+    port = int(os.environ.get('PORT', 3000))
     try:
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        app.run(host='0.0.0.0', port=port, debug=True)
     except Exception as e:
         logging.error(f"Error starting the app: {e}")
         sys.exit(1)
