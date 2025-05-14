@@ -2,16 +2,10 @@
 
 {% block title %}GloriaMundo Chat{% endblock %}
 
-{% block head %}
-    {{ super() }}
-    <!-- Mobile bottom sheet styles -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile-bottom-sheet.css') }}">
-{% endblock %}
-
 {% block content %}
     <div class="app-container">
-        <!-- Mobile Navigation Toggle Button (Sidebar Toggle) -->
-        <button id="sidebar-toggle" class="mobile-nav-toggle">
+        <!-- Mobile Navigation Toggle Button -->
+        <button id="mobile-nav-toggle" class="mobile-nav-toggle">
             <i class="fa-solid fa-chevron-right"></i>
         </button>
         
@@ -28,7 +22,7 @@
         {% endif %}
         
         <!-- Left Sidebar -->
-        <div id="sidebar" class="sidebar">
+        <div class="sidebar">
             <!-- Mobile Close Button -->
             <button id="sidebar-close-btn" class="sidebar-close-btn">
                 <i class="fa-solid fa-chevron-left"></i>
@@ -274,34 +268,6 @@
                 </div>
             </div>
         </div>
-        
-        <!-- Mobile Bottom Sheet for Model Selection -->
-        <div id="model-bottom-sheet-backdrop" class="bottom-sheet-backdrop"></div>
-        <div id="model-bottom-sheet" class="bottom-sheet-container">
-            <div class="bottom-sheet">
-                <div class="bottom-sheet-handle"></div>
-                <div class="bottom-sheet-header">
-                    <h3 class="bottom-sheet-title">Select Model</h3>
-                    <button id="close-bottom-sheet" class="close-bottom-sheet">
-                        <i class="fa-solid fa-times"></i>
-                    </button>
-                </div>
-                <div class="bottom-sheet-search">
-                    <input type="text" id="bottom-sheet-search-input" placeholder="Search models...">
-                    <i class="fa-solid fa-search"></i>
-                </div>
-                <div class="bottom-sheet-content">
-                    <div id="bottom-sheet-model-list">
-                        <!-- Will be populated dynamically with model list -->
-                    </div>
-                </div>
-                <div class="bottom-sheet-footer">
-                    <button id="bottom-sheet-reset" class="reset-model-btn">
-                        <i class="fa-solid fa-rotate-left"></i> Reset to Default
-                    </button>
-                </div>
-            </div>
-        </div>
         <!-- Login Prompt Modal (displayed after 3 messages for non-authenticated users) -->
         <div id="login-prompt-modal" class="modal" style="display: none;">
             <div class="modal-content login-prompt-modal-content">
@@ -339,38 +305,10 @@
         </div>
     </div>
     
-    
-    <!-- Mobile Model Selection Bottom Sheet -->
-    <div id="model-bottom-sheet-backdrop" class="bottom-sheet-backdrop"></div>
-    <div id="model-bottom-sheet" class="bottom-sheet-container">
-        <div class="bottom-sheet">
-            <div class="bottom-sheet-header">
-                <h3>Select Model</h3>
-                <div class="bottom-sheet-actions">
-                    <div class="bottom-sheet-search-container">
-                        <input type="text" id="model-bottom-sheet-search" class="bottom-sheet-search" placeholder="Search models...">
-                        <i class="fa-solid fa-search"></i>
-                    </div>
-                    <button id="model-bottom-sheet-close" class="bottom-sheet-close">
-                        <i class="fa-solid fa-times"></i>
-                    </button>
-                </div>
-            </div>
-            <div id="model-bottom-sheet-content" class="bottom-sheet-content">
-                <!-- Model options will be populated here by JavaScript -->
-                <div class="bottom-sheet-loading">
-                    <div class="loading-spinner"></div>
-                    <div>Loading models...</div>
-                </div>
-            </div>
-        </div>
-    </div>
 {% endblock %}
 
 {% block scripts %}
     {{ super() }}
-    <!-- Mobile interactions need to be loaded after the main script -->
-    <script src="{{ url_for('static', filename='js/mobile-interactions.js') }}"></script>
     <script>
         // Pass the login status to JavaScript
         const userIsLoggedIn = {{ is_logged_in|tojson }};

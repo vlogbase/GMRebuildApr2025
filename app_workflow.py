@@ -1,18 +1,27 @@
 """
-Simple Flask server workflow for GloriaMundo Chatbot
+Simple Flask server workflow for the chat app
 """
 import os
+import sys
+import logging
 from app import app
+
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filename='app_workflow.log'
+)
 
 def run():
     """
-    Run the Flask application for testing
+    Run the Flask application on port 5000 with debugging
     """
-    # Get the port from environment variable or use default
-    port = os.environ.get('PORT', 5000)
-    
-    # Run the app with host 0.0.0.0 to make it accessible externally
-    app.run(host='0.0.0.0', port=int(port), debug=True)
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    except Exception as e:
+        logging.error(f"Error starting the app: {e}")
+        sys.exit(1)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()
