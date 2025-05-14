@@ -1563,6 +1563,74 @@ def redirect_to_upload_file():
     """
     return upload_file()
 
+@app.route('/api/cleanup-empty-conversations', methods=['POST'])
+@login_required
+def cleanup_empty_conversations_api():
+    """Clean up all empty conversations for the current user"""
+    try:
+        from models import Conversation, Message
+        from conversation_utils import cleanup_empty_conversations
+        
+        # Clean up empty conversations for the current user
+        cleaned_count = cleanup_empty_conversations(db, Message, Conversation, current_user.id)
+        
+        logger.info(f"API call cleaned up {cleaned_count} empty conversations for user {current_user.id}")
+        
+        return jsonify({"success": True, "cleaned_count": cleaned_count})
+    except Exception as e:
+        logger.exception(f"Error cleaning up empty conversations for user {current_user.id}: {e}")
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/conversation/<int:conversation_id>/is-empty', methods=['GET'])
+@login_required
+def is_conversation_empty_api(conversation_id):
+    """Check if a conversation is empty (has no messages)"""
+    try:
+        from models import Message, Conversation
+        from conversation_utils import is_conversation_empty
+        
+        # First verify the conversation belongs to the current user
+        conversation = Conversation.query.filter_by(id=conversation_id, user_id=current_user.id).first()
+        if not conversation:
+            return jsonify({"success": False, "error": "Conversation not found"}), 404
+        
+        # Check if conversation is empty
+        empty = is_conversation_empty(db, Message, conversation_id)
+        
+        return jsonify({"success": True, "is_empty": empty})
+    except Exception as e:
+        logger.exception(f"Error checking if conversation {conversation_id} is empty: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+        
+@app.route('/api/conversation/<int:conversation_id>/delete-if-empty', methods=['POST'])
+@login_required
+def delete_conversation_if_empty_api(conversation_id):
+    """Delete a conversation if it has no messages"""
+    try:
+        from models import Message, Conversation
+        from conversation_utils import delete_conversation_if_empty
+        
+        # Verify the conversation belongs to the current user
+        conversation = Conversation.query.filter_by(id=conversation_id, user_id=current_user.id).first()
+        if not conversation:
+            return jsonify({"success": False, "error": "Conversation not found"}), 404
+        
+        # Check if conversation is empty and delete it if it is
+        deleted = delete_conversation_if_empty(db, Message, Conversation, conversation_id)
+        
+        if deleted:
+            logger.info(f"Deleted empty conversation {conversation_id} for user {current_user.id}")
+            return jsonify({"success": True, "deleted": True})
+        else:
+            logger.info(f"Conversation {conversation_id} not empty or couldn't be deleted")
+            return jsonify({"success": True, "deleted": False})
+            
+    except Exception as e:
+        logger.exception(f"Error deleting empty conversation {conversation_id}: {e}")
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/clear-conversations', methods=['POST'])
 @login_required
 def clear_conversations():
@@ -1612,7 +1680,13 @@ def clear_conversations():
 def create_conversation():
     """Create a new conversation for the current user"""
     try:
-        from models import Conversation
+        from models import Conversation, Message
+        from conversation_utils import cleanup_empty_conversations
+        
+        # First, clean up any existing empty conversations for this user
+        cleaned_count = cleanup_empty_conversations(db, Message, Conversation, current_user.id)
+        if cleaned_count > 0:
+            logger.info(f"Cleaned up {cleaned_count} empty conversations for user {current_user.id}")
         
         # Create a new conversation
         title = "New Conversation"

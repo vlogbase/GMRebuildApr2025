@@ -439,13 +439,32 @@ document.addEventListener('DOMContentLoaded', function() {
             // Create a new conversation if we don't have one already
             if (!currentConversationId) {
                 console.log("No current conversation, creating a new one on page load");
-                // Create a new conversation first, but delay fetching conversations
-                fetch('/api/create-conversation', {
+                
+                // First clean up any empty conversations
+                fetch('/api/cleanup-empty-conversations', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCSRFToken()
                     }
+                })
+                .then(response => response.json())
+                .then(cleanupData => {
+                    if (cleanupData.success) {
+                        const cleanedCount = cleanupData.cleaned_count || 0;
+                        if (cleanedCount > 0) {
+                            console.log(`Initial cleanup: removed ${cleanedCount} empty conversations`);
+                        }
+                    }
+                    
+                    // Now create a new conversation
+                    return fetch('/api/create-conversation', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
+                        }
+                    });
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -499,12 +518,32 @@ document.addEventListener('DOMContentLoaded', function() {
             // Create a new conversation if we don't have one already (fallback case)
             if (!currentConversationId) {
                 console.log("No current conversation (fallback case), creating a new one on page load");
-                fetch('/api/create-conversation', {
+                
+                // First clean up any empty conversations
+                fetch('/api/cleanup-empty-conversations', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCSRFToken()
                     }
+                })
+                .then(response => response.json())
+                .then(cleanupData => {
+                    if (cleanupData.success) {
+                        const cleanedCount = cleanupData.cleaned_count || 0;
+                        if (cleanedCount > 0) {
+                            console.log(`Initial cleanup (fallback): removed ${cleanedCount} empty conversations`);
+                        }
+                    }
+                    
+                    // Now create a new conversation
+                    return fetch('/api/create-conversation', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
+                        }
+                    });
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -2767,13 +2806,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 newChatButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
                 newChatButton.disabled = true;
                 
-                // Create a new conversation through the API
-                fetch('/api/create-conversation', {
+                // First clean up any empty conversations
+                fetch('/api/cleanup-empty-conversations', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCSRFToken()
                     }
+                })
+                .then(response => response.json())
+                .then(cleanupData => {
+                    if (cleanupData.success) {
+                        const cleanedCount = cleanupData.cleaned_count || 0;
+                        if (cleanedCount > 0) {
+                            console.log(`Cleaned up ${cleanedCount} empty conversations before creating new one`);
+                        }
+                    }
+                    
+                    // Now create a new conversation
+                    return fetch('/api/create-conversation', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
+                        }
+                    });
                 })
                 .then(response => response.json())
                 .then(data => {
