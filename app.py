@@ -1607,6 +1607,44 @@ def clear_conversations():
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/create-conversation', methods=['POST'])
+@login_required
+def create_conversation():
+    """Create a new conversation for the current user"""
+    try:
+        from models import Conversation
+        
+        # Create a new conversation
+        title = "New Conversation"
+        share_id = generate_share_id()
+        conversation_uuid = str(uuid.uuid4())
+        conversation = Conversation(
+            title=title, 
+            share_id=share_id,
+            user_id=current_user.id,
+            conversation_uuid=conversation_uuid
+        )
+        
+        db.session.add(conversation)
+        db.session.commit()
+        
+        logger.info(f"Created new conversation from API for user {current_user.id} with ID: {conversation.id}, UUID: {conversation_uuid}")
+        
+        # Return the conversation data
+        return jsonify({
+            "success": True, 
+            "conversation": {
+                "id": conversation.id,
+                "title": conversation.title,
+                "created_at": conversation.created_at.isoformat()
+            }
+        })
+        
+    except Exception as e:
+        logger.exception(f"Error creating new conversation for user {current_user.id}: {e}")
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/conversations', methods=['GET'])
 @login_required
 def get_conversations():

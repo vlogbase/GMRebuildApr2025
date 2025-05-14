@@ -1,5 +1,10 @@
 """
 Simple Flask server workflow for GloriaMundo Admin Panel
+
+This workflow now includes the conversation tracking fixes to test:
+1. The creation of new conversations when "New Chat" is clicked
+2. Proper tracking of conversations in the sidebar 
+3. Initial creation of conversations on page load
 """
 
 import os

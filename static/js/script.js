@@ -435,11 +435,45 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof userIsLoggedIn !== 'undefined') {
         if (userIsLoggedIn) {
             console.log("User is logged in according to server, fetching conversations");
-            // Defer conversation loading to improve initial page load speed
-            setTimeout(() => {
-                console.log('Deferred loading of conversation history');
-                fetchConversations();
-            }, 200);
+            
+            // Create a new conversation if we don't have one already
+            if (!currentConversationId) {
+                console.log("No current conversation, creating a new one on page load");
+                // Create a new conversation first, then fetch conversations
+                fetch('/api/create-conversation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.conversation) {
+                        // Set the current conversation ID to the new one
+                        currentConversationId = data.conversation.id;
+                        console.log(`Created initial conversation with ID: ${currentConversationId}`);
+                        
+                        // Now fetch all conversations including the new one
+                        fetchConversations(true);
+                    } else {
+                        console.error('Failed to create initial conversation:', data.error || 'Unknown error');
+                        // Fetch conversations anyway in case there are existing ones
+                        fetchConversations();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error creating initial conversation:', error);
+                    // Fetch conversations anyway in case there are existing ones
+                    fetchConversations();
+                });
+            } else {
+                // We already have a conversation ID, just fetch conversations
+                setTimeout(() => {
+                    console.log('Deferred loading of conversation history');
+                    fetchConversations();
+                }, 200);
+            }
         } else {
             console.log("User is not logged in according to server, showing login prompt");
             // For non-logged in users, show the login prompt in the sidebar
@@ -455,11 +489,38 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         // Fallback to DOM check if userIsLoggedIn is not defined
         if (isAuthenticated) {
-            // Defer conversation loading in fallback case too
-            setTimeout(() => {
-                console.log('Deferred loading of conversation history (fallback)');
-                fetchConversations();
-            }, 200);
+            // Create a new conversation if we don't have one already (fallback case)
+            if (!currentConversationId) {
+                console.log("No current conversation (fallback case), creating a new one on page load");
+                fetch('/api/create-conversation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.conversation) {
+                        currentConversationId = data.conversation.id;
+                        console.log(`Created initial conversation (fallback) with ID: ${currentConversationId}`);
+                        fetchConversations(true);
+                    } else {
+                        console.error('Failed to create initial conversation (fallback):', data.error || 'Unknown error');
+                        fetchConversations();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error creating initial conversation (fallback):', error);
+                    fetchConversations();
+                });
+            } else {
+                // We already have a conversation ID, just fetch conversations
+                setTimeout(() => {
+                    console.log('Deferred loading of conversation history (fallback)');
+                    fetchConversations();
+                }, 200);
+            }
         } else {
             // Show login prompt as a fallback
             if (conversationsList) {
@@ -2685,6 +2746,50 @@ document.addEventListener('DOMContentLoaded', function() {
         newChatButton.addEventListener('click', function() {
             // Clear chat messages except the welcome message
             clearChat();
+            
+            // Reset currentConversationId as a fallback in case API call fails
+            currentConversationId = null;
+            
+            // Call API to create a new conversation
+            if (isAuthenticated) {
+                // Add a loading effect to the button
+                const originalContent = newChatButton.innerHTML;
+                newChatButton.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Creating...';
+                newChatButton.disabled = true;
+                
+                // Create a new conversation through the API
+                fetch('/api/create-conversation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Restore button state
+                    newChatButton.innerHTML = originalContent;
+                    newChatButton.disabled = false;
+                    
+                    if (data.success && data.conversation) {
+                        // Set the current conversation ID to the new one
+                        currentConversationId = data.conversation.id;
+                        console.log(`Created new conversation with ID: ${currentConversationId}`);
+                        
+                        // Update the sidebar with the new conversation
+                        fetchConversations(true);
+                    } else {
+                        console.error('Failed to create new conversation:', data.error || 'Unknown error');
+                    }
+                })
+                .catch(error => {
+                    // Restore button state
+                    newChatButton.innerHTML = originalContent;
+                    newChatButton.disabled = false;
+                    
+                    console.error('Error creating new conversation:', error);
+                });
+            }
         });
     }
     
@@ -3193,6 +3298,12 @@ document.addEventListener('DOMContentLoaded', function() {
                             const conversationItem = document.createElement('div');
                             conversationItem.className = 'conversation-item';
                             conversationItem.dataset.id = conversation.id;
+                            
+                            // Add 'active' class if this is the current conversation
+                            if (conversation.id.toString() === currentConversationId?.toString()) {
+                                conversationItem.classList.add('active');
+                                console.log(`Marked conversation ${conversation.id} as active`);
+                            }
                             
                             // Create title and date elements to match the HTML structure
                             const titleDiv = document.createElement('div');
