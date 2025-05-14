@@ -83,14 +83,6 @@
                         <span class="account-link-text">My Account</span>
                     </a>
                 </div>
-                {% else %}
-                <!-- Prominent login button for non-authenticated users -->
-                <div class="app-account-access">
-                    <a href="{{ url_for('google_auth.login') }}" class="header-login-btn">
-                        <i class="fa-brands fa-google"></i>
-                        <span class="login-btn-text">Sign in with Google</span>
-                    </a>
-                </div>
                 {% endif %}
             </div>
             
@@ -107,11 +99,6 @@
                         Ask me anything and I'll provide helpful, accurate responses. Sign in to 
                         save your conversations and access them from any device.
                     </p>
-                    {% if not current_user.is_authenticated %}
-                    <a href="{{ url_for('google_auth.login') }}" class="welcome-login-btn">
-                        <i class="fa-brands fa-google"></i> Sign in with Google
-                    </a>
-                    {% endif %}
                     <button class="example-question-btn" id="example-question-btn">
                         <i class="fa-regular fa-lightbulb"></i> Try an example question
                     </button>
