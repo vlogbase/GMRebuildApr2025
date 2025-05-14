@@ -1551,7 +1551,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Handle input event for continuous resizing as user types
-        messageInput.addEventListener('input', autoResizeTextarea);
+        messageInput.addEventListener('input', function() {
+            autoResizeTextarea();
+            updateSendButtonState(); // Update send button state when input changes
+        });
         
         // Handle keydown for Enter key and special cases
         messageInput.addEventListener('keydown', function(event) {

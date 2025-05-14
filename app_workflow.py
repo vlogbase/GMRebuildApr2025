@@ -1,7 +1,7 @@
 """
-Flask app workflow to run the GloriaMundo application
+Simple Flask server workflow for testing the application
 """
-
+import os
 from app import app
 
 def run():
