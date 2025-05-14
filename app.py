@@ -2772,9 +2772,10 @@ def chat(): # Synchronous function
                                     json_data = json.loads(data_to_parse)
                                     logger.debug(f"JSON parsed successfully: type '{json_data.get('type', 'N/A')}'")
 
-                                    # --- Extract Content and Reasoning ---
+                                    # --- Extract Content, Reasoning and Citations ---
                                     content_chunk = None
                                     reasoning_chunk = None
+                                    citations = None
                                     
                                     if 'choices' in json_data and len(json_data['choices']) > 0:
                                         choice = json_data['choices'][0]
@@ -2788,6 +2789,12 @@ def chat(): # Synchronous function
                                         if delta.get('reasoning') is not None:
                                             reasoning_chunk = delta['reasoning']
                                             logger.debug(f"Received reasoning chunk: {reasoning_chunk[:50]}...")
+                                            
+                                    # Extract citations if available (for Perplexity models)
+                                    # Citations are at the top level in the OpenRouter response for Perplexity
+                                    if 'citations' in json_data and requested_model_id and 'perplexity' in requested_model_id:
+                                        citations = json_data.get('citations')
+                                        logger.debug(f"Found {len(citations) if citations else 0} citations in Perplexity response")
 
                                     # Handle content chunk
                                     if content_chunk:
@@ -2803,6 +2810,14 @@ def chat(): # Synchronous function
                                         reasoning_payload = {'type': 'reasoning', 'reasoning': reasoning_chunk, 'conversation_id': current_conv_id}
                                         reasoning_json_str = json.dumps(reasoning_payload)
                                         yield f"data: {reasoning_json_str}\n\n"
+                                    
+                                    # Handle citations if available (for Perplexity models)
+                                    if citations:
+                                        # Send citations as a separate event
+                                        citations_payload = {'type': 'citations', 'citations': citations, 'conversation_id': current_conv_id}
+                                        citations_json_str = json.dumps(citations_payload)
+                                        logger.debug(f"Sending {len(citations)} citations to client")
+                                        yield f"data: {citations_json_str}\n\n"
 
                                     # --- Extract Usage/Model ---
                                     if 'usage' in json_data and json_data['usage']: 

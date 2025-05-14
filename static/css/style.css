@@ -1432,6 +1432,49 @@ body.account-page .tab-pane {
     font-size: 10px;
 }
 
+/* Perplexity Citations Styles */
+.perplexity-citations {
+    margin-top: 12px;
+    padding: 8px 12px;
+    background-color: rgba(36, 185, 189, 0.05);
+    border-radius: 6px;
+    border-left: 3px solid var(--accent-color);
+    font-size: 13px;
+}
+
+.perplexity-citations .citations-header {
+    font-weight: 600;
+    color: var(--accent-color);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.perplexity-citations .citations-header i {
+    font-size: 12px;
+}
+
+.perplexity-citations ul {
+    list-style-type: none;
+    padding-left: 4px;
+}
+
+.perplexity-citations li {
+    margin-bottom: 4px;
+}
+
+.perplexity-citations a {
+    color: #9ecfd1;
+    text-decoration: none;
+    word-break: break-all;
+}
+
+.perplexity-citations a:hover {
+    text-decoration: underline;
+    color: var(--accent-color);
+}
+
 .document-reference.has-sources {
     cursor: pointer;
     padding-right: 14px;

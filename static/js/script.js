@@ -2934,6 +2934,66 @@ document.addEventListener('DOMContentLoaded', function() {
         clearAttachedPdf();
     }
     
+    // Function to add Perplexity citations to a message
+    function addPerplexityCitationsToMessage(messageElement, citations) {
+        if (!citations || !citations.length) return;
+        
+        // Find or create the citations container
+        let citationsContainer = messageElement.querySelector('.perplexity-citations');
+        if (!citationsContainer) {
+            citationsContainer = document.createElement('div');
+            citationsContainer.className = 'perplexity-citations';
+            
+            // Add header
+            const header = document.createElement('div');
+            header.className = 'citations-header';
+            header.innerHTML = '<i class="fa-solid fa-link"></i> Sources';
+            citationsContainer.appendChild(header);
+            
+            // Add the container to the message
+            const messageWrapper = messageElement.querySelector('.message-wrapper');
+            if (messageWrapper) {
+                messageWrapper.appendChild(citationsContainer);
+            } else {
+                messageElement.appendChild(citationsContainer);
+            }
+        }
+        
+        // Clear existing citations list
+        const linksList = citationsContainer.querySelector('ul') || document.createElement('ul');
+        linksList.innerHTML = '';
+        
+        // Add each citation as a link
+        citations.forEach((citation, index) => {
+            const li = document.createElement('li');
+            const link = document.createElement('a');
+            link.href = citation;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            
+            // Create a display URL (truncate if too long)
+            let displayUrl = citation;
+            if (citation.length > 50) {
+                // Extract domain for better display
+                try {
+                    const url = new URL(citation);
+                    displayUrl = url.hostname + url.pathname.substring(0, 20) + '...';
+                } catch (e) {
+                    displayUrl = citation.substring(0, 47) + '...';
+                }
+            }
+            
+            link.textContent = displayUrl;
+            li.appendChild(link);
+            linksList.appendChild(li);
+        });
+        
+        // Add the links list to the container if it's not already there
+        if (!citationsContainer.querySelector('ul')) {
+            citationsContainer.appendChild(linksList);
+        }
+    }
+    
     // Function to add message to chat
     function addMessage(content, sender, isTyping = false, metadata = null) {
         // Create the main message container
@@ -3746,6 +3806,24 @@ document.addEventListener('DOMContentLoaded', function() {
                                         reasoningContent.textContent += parsedData.reasoning;
                                     }
                                 
+                                } else if (parsedData.type === 'citations') {
+                                    console.log("==> Processing type: citations");
+                                    
+                                    if (parsedData.citations && parsedData.citations.length > 0) {
+                                        console.log(`Received ${parsedData.citations.length} citations from Perplexity`);
+                                        
+                                        // Store citations for this message
+                                        if (!assistantMessageElement._perplexityCitations) {
+                                            assistantMessageElement._perplexityCitations = parsedData.citations;
+                                        } else {
+                                            // Append new citations
+                                            assistantMessageElement._perplexityCitations = 
+                                                assistantMessageElement._perplexityCitations.concat(parsedData.citations);
+                                        }
+                                        
+                                        // Add citations to the message
+                                        addPerplexityCitationsToMessage(assistantMessageElement, assistantMessageElement._perplexityCitations);
+                                    }
                                 } else if (parsedData.type === 'metadata') {
                                     console.log("==> Processing type: metadata"); 
                                     // Metadata received (usually after content stream ends)
