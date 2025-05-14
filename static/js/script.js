@@ -37,8 +37,12 @@ function forceRepaint(element) {
 // Utility function to perform empty conversation cleanup when browser is idle
 // This prevents the cleanup from affecting initial page load performance
 function performIdleCleanup() {
+    // Check if user is authenticated by looking for the logout button
+    // Using this approach allows the function to work regardless of where it's called
+    const userIsLoggedIn = !!document.getElementById('logout-btn');
+    
     // Only run if user is authenticated
-    if (!isAuthenticated) return;
+    if (!userIsLoggedIn) return;
     
     // Check if requestIdleCallback is supported
     if ('requestIdleCallback' in window) {
@@ -2831,7 +2835,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // First, check if the current conversation is already empty
             // If it is, we can just reuse it instead of creating a new one
-            if (isAuthenticated && currentConversationId) {
+            const userIsLoggedIn = !!document.getElementById('logout-btn');
+            if (userIsLoggedIn && currentConversationId) {
                 fetch(`/api/conversation/${currentConversationId}/is-empty`)
                     .then(response => response.json())
                     .then(data => {
@@ -2871,7 +2876,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Reset currentConversationId as a fallback in case API call fails
                 currentConversationId = null;
                 
-                if (!isAuthenticated) {
+                // Check authentication status directly
+                const userIsLoggedIn = !!document.getElementById('logout-btn');
+                if (!userIsLoggedIn) {
                     // No authentication, just restore button state
                     newChatButton.innerHTML = originalContent;
                     newChatButton.disabled = false;

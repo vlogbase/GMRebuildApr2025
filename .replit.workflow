@@ -1,2 +1,2 @@
-[dev]
-run = "python -m workflows.admin_test"
+run = "python app_workflow.py"
+language = "python3"
