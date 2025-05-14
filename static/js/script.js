@@ -34,6 +34,91 @@ function forceRepaint(element) {
     console.debug(`forceRepaint applied to element: ${element.className || 'unnamed'}`);
 }
 
+// Global promise for conversation creation to allow other functions to wait for it
+let conversationCreationPromise = null;
+
+// Asynchronous function to create a new conversation
+async function createConversationAsync() {
+    if (currentConversationId) {
+        console.log(`Using existing conversation ID: ${currentConversationId}`);
+        return currentConversationId;
+    }
+    
+    console.log("Creating new conversation asynchronously");
+    
+    try {
+        const response = await fetch('/api/create-conversation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.conversation) {
+            currentConversationId = data.conversation.id;
+            console.log(`Created conversation with ID: ${currentConversationId}`);
+            
+            // Enable upload and send buttons now that we have a conversation ID
+            enableMessageControls();
+            
+            return currentConversationId;
+        } else {
+            console.error('Failed to create conversation:', data.error || 'Unknown error');
+            throw new Error(data.error || 'Failed to create conversation');
+        }
+    } catch (error) {
+        console.error('Error creating conversation:', error);
+        throw error;
+    }
+}
+
+// Function to enable the send button and upload button
+function enableMessageControls() {
+    const sendButton = document.getElementById('send-btn');
+    const fileUploadButton = document.getElementById('file-upload-button');
+    const cameraButton = document.getElementById('camera-button');
+    
+    if (sendButton) {
+        sendButton.disabled = false;
+        sendButton.classList.remove('disabled');
+    }
+    
+    if (fileUploadButton) {
+        fileUploadButton.disabled = false;
+        fileUploadButton.classList.remove('disabled');
+    }
+    
+    if (cameraButton) {
+        cameraButton.disabled = false;
+        cameraButton.classList.remove('disabled');
+    }
+}
+
+// Function to disable the send button and upload button
+function disableMessageControls() {
+    const sendButton = document.getElementById('send-btn');
+    const fileUploadButton = document.getElementById('file-upload-button');
+    const cameraButton = document.getElementById('camera-button');
+    
+    if (sendButton) {
+        sendButton.disabled = true;
+        sendButton.classList.add('disabled');
+    }
+    
+    if (fileUploadButton) {
+        fileUploadButton.disabled = true;
+        fileUploadButton.classList.add('disabled');
+    }
+    
+    if (cameraButton) {
+        cameraButton.disabled = true;
+        cameraButton.classList.add('disabled');
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
@@ -52,6 +137,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log('User credit balance:', userCreditBalance);
             }
         }
+        
+        // Disable messaging controls until conversation is created
+        disableMessageControls();
     }
     
     // Remove billing query parameters on first load to prevent redirect loops
@@ -430,109 +518,117 @@ document.addEventListener('DOMContentLoaded', function() {
     // Open selector variable - tracks which preset is being configured
     let currentlyEditingPresetId = null;
     
-    // Fetch conversations on load - rely on userIsLoggedIn from server
-    // userIsLoggedIn is set in the template and more reliable than DOM checks
-    if (typeof userIsLoggedIn !== 'undefined') {
-        if (userIsLoggedIn) {
-            console.log("User is logged in according to server, fetching conversations");
-            
-            // Create a new conversation if we don't have one already
-            if (!currentConversationId) {
-                console.log("No current conversation, creating a new one on page load");
-                // Create a new conversation first, then fetch conversations
-                fetch('/api/create-conversation', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.conversation) {
-                        // Set the current conversation ID to the new one
-                        currentConversationId = data.conversation.id;
-                        console.log(`Created initial conversation with ID: ${currentConversationId}`);
+    // Function to initialize conversation history sidebar
+    function initializeConversationSidebar() {
+        if (typeof userIsLoggedIn !== 'undefined') {
+            if (userIsLoggedIn) {
+                console.log("User is logged in according to server, fetching conversations");
+                
+                // First render the loading indicator in the sidebar
+                if (conversationsList) {
+                    conversationsList.innerHTML = `
+                        <div class="loading-indicator">
+                            <div class="loading-spinner"></div>
+                            <div class="loading-text">Loading conversations...</div>
+                        </div>
+                    `;
+                }
+                
+                // Start loading conversations asynchronously with a small delay
+                // This prevents it from blocking the initial render
+                setTimeout(() => {
+                    console.log('Starting async loading of conversation history');
+                    
+                    // Asynchronously fetch conversations - no longer blocking initial render
+                    fetchConversations();
+                    
+                    // Initialize conversation creation asynchronously - non-blocking 
+                    if (!currentConversationId) {
+                        console.log("Starting async conversation creation");
                         
-                        // Now fetch all conversations including the new one
-                        fetchConversations(true);
+                        // Create a promise that other functions can wait on
+                        conversationCreationPromise = createConversationAsync()
+                            .then(id => {
+                                console.log(`Conversation created successfully with ID: ${id}`);
+                                return id;
+                            })
+                            .catch(error => {
+                                console.error('Error in conversation creation process:', error);
+                                // Enable controls anyway to allow retry
+                                enableMessageControls();
+                                // Re-throw to maintain promise rejection state
+                                throw error;
+                            });
                     } else {
-                        console.error('Failed to create initial conversation:', data.error || 'Unknown error');
-                        // Fetch conversations anyway in case there are existing ones
-                        fetchConversations();
+                        console.log(`Using existing conversation ID: ${currentConversationId}`);
+                        conversationCreationPromise = Promise.resolve(currentConversationId);
+                        enableMessageControls();
                     }
-                })
-                .catch(error => {
-                    console.error('Error creating initial conversation:', error);
-                    // Fetch conversations anyway in case there are existing ones
-                    fetchConversations();
-                });
+                }, 100); // Small delay to prioritize UI rendering
             } else {
-                // We already have a conversation ID, just fetch conversations
-                setTimeout(() => {
-                    console.log('Deferred loading of conversation history');
-                    fetchConversations();
-                }, 200);
+                console.log("User is not logged in according to server, showing login prompt");
+                // For non-logged in users, show the login prompt in the sidebar
+                if (conversationsList) {
+                    conversationsList.innerHTML = `
+                        <div class="login-prompt">
+                            <p>Sign in to save your conversations and access them from any device.</p>
+                            <a href="/login" class="btn auth-btn">Sign in</a>
+                        </div>
+                    `;
+                }
             }
         } else {
-            console.log("User is not logged in according to server, showing login prompt");
-            // For non-logged in users, show the login prompt in the sidebar
-            if (conversationsList) {
-                conversationsList.innerHTML = `
-                    <div class="login-prompt">
-                        <p>Sign in to save your conversations and access them from any device.</p>
-                        <a href="/login" class="btn auth-btn">Sign in</a>
-                    </div>
-                `;
-            }
-        }
-    } else {
-        // Fallback to DOM check if userIsLoggedIn is not defined
-        if (isAuthenticated) {
-            // Create a new conversation if we don't have one already (fallback case)
-            if (!currentConversationId) {
-                console.log("No current conversation (fallback case), creating a new one on page load");
-                fetch('/api/create-conversation', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.conversation) {
-                        currentConversationId = data.conversation.id;
-                        console.log(`Created initial conversation (fallback) with ID: ${currentConversationId}`);
-                        fetchConversations(true);
-                    } else {
-                        console.error('Failed to create initial conversation (fallback):', data.error || 'Unknown error');
-                        fetchConversations();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error creating initial conversation (fallback):', error);
-                    fetchConversations();
-                });
-            } else {
-                // We already have a conversation ID, just fetch conversations
+            // Fallback to DOM check if userIsLoggedIn is not defined
+            if (isAuthenticated) {
+                console.log("User is authenticated via DOM check, fetching conversations");
+                
+                // Render loading indicator
+                if (conversationsList) {
+                    conversationsList.innerHTML = `
+                        <div class="loading-indicator">
+                            <div class="loading-spinner"></div>
+                            <div class="loading-text">Loading conversations...</div>
+                        </div>
+                    `;
+                }
+                
+                // Start non-blocking async loads
                 setTimeout(() => {
-                    console.log('Deferred loading of conversation history (fallback)');
                     fetchConversations();
-                }, 200);
-            }
-        } else {
-            // Show login prompt as a fallback
-            if (conversationsList) {
-                conversationsList.innerHTML = `
-                    <div class="login-prompt">
-                        <p>Sign in to save your conversations and access them from any device.</p>
-                        <a href="/login" class="btn auth-btn">Sign in</a>
-                    </div>
-                `;
+                    
+                    if (!currentConversationId) {
+                        conversationCreationPromise = createConversationAsync()
+                            .then(id => {
+                                console.log(`Conversation created successfully with ID (fallback): ${id}`);
+                                return id;
+                            })
+                            .catch(error => {
+                                console.error('Error in conversation creation process (fallback):', error);
+                                enableMessageControls();
+                                throw error;
+                            });
+                    } else {
+                        console.log(`Using existing conversation ID (fallback): ${currentConversationId}`);
+                        conversationCreationPromise = Promise.resolve(currentConversationId);
+                        enableMessageControls();
+                    }
+                }, 100);
+            } else {
+                // Show login prompt as a fallback
+                if (conversationsList) {
+                    conversationsList.innerHTML = `
+                        <div class="login-prompt">
+                            <p>Sign in to save your conversations and access them from any device.</p>
+                            <a href="/login" class="btn auth-btn">Sign in</a>
+                        </div>
+                    `;
+                }
             }
         }
     }
+    
+    // Initialize the conversation sidebar
+    initializeConversationSidebar();
     
     // For non-authenticated users, lock premium features regardless
     if (!isAuthenticated) {
@@ -900,6 +996,38 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         try {
+            // Wait for conversation ID if it doesn't exist yet
+            if (!currentConversationId && conversationCreationPromise) {
+                console.log("Waiting for conversation creation before uploading file...");
+                try {
+                    // Disable controls during wait
+                    disableMessageControls();
+                    
+                    // Show subtle loading indicator
+                    if (fileType === 'image' || 
+                        (fileType === 'auto' && file.type && file.type.startsWith('image/'))) {
+                        if (imageUploadButton) {
+                            imageUploadButton.classList.add('waiting');
+                        }
+                    }
+                    
+                    // Wait for conversation ID
+                    currentConversationId = await conversationCreationPromise;
+                    console.log(`Got conversation ID for file upload: ${currentConversationId}`);
+                    
+                    // Re-enable controls
+                    enableMessageControls();
+                    
+                    if (imageUploadButton) {
+                        imageUploadButton.classList.remove('waiting');
+                    }
+                } catch (error) {
+                    console.error("Failed to get conversation ID for file upload:", error);
+                    alert("Could not create conversation. Please try again.");
+                    return false;
+                }
+            }
+            
             // Set upload flag to true - this will disable the send button
             isUploadingFile = true;
             
@@ -2825,7 +2953,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to send message
-    function sendMessage() {
+    async function sendMessage() {
         // Add null check for messageInput
         if (!messageInput) {
             console.warn('Message input not found');
@@ -2837,6 +2965,38 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Don't send empty messages with no attachments
         if (!message && !hasAttachments) return;
+        
+        // Wait for conversation ID if it doesn't exist yet
+        if (!currentConversationId && conversationCreationPromise) {
+            console.log("Waiting for conversation creation before sending message...");
+            try {
+                // Show sending state
+                if (sendButton) {
+                    sendButton.classList.add('waiting');
+                    sendButton.disabled = true;
+                }
+                
+                // Wait for conversation ID
+                currentConversationId = await conversationCreationPromise;
+                console.log(`Got conversation ID for message: ${currentConversationId}`);
+                
+                // Reset sending state
+                if (sendButton) {
+                    sendButton.classList.remove('waiting');
+                    sendButton.disabled = false;
+                }
+            } catch (error) {
+                console.error("Failed to get conversation ID for message:", error);
+                alert("Could not create conversation. Please try again.");
+                
+                // Reset sending state
+                if (sendButton) {
+                    sendButton.classList.remove('waiting');
+                    sendButton.disabled = false;
+                }
+                return;
+            }
+        }
         
         // Check if user is not authenticated and handle message counting
         if (typeof userIsLoggedIn !== 'undefined' && !userIsLoggedIn) {
