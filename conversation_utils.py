@@ -33,6 +33,7 @@ def is_conversation_empty(db, Message, conversation_id):
 def cleanup_empty_conversations(db, Message, Conversation, user_id):
     """
     Find and delete all empty conversations for a user.
+    Uses a single efficient query to find empty conversations.
     
     Args:
         db: SQLAlchemy database instance
@@ -44,22 +45,29 @@ def cleanup_empty_conversations(db, Message, Conversation, user_id):
         int: Number of conversations deleted
     """
     try:
-        # Get all active conversations for the user
-        conversations = Conversation.query.filter_by(user_id=user_id, is_active=True).all()
+        # Find all conversation IDs that have messages (not empty)
+        conversations_with_messages = db.session.query(Message.conversation_id)\
+            .distinct()\
+            .subquery()
         
-        deleted_count = 0
-        for conversation in conversations:
-            # Check if the conversation has any messages
-            if is_conversation_empty(db, Message, conversation.id):
-                # Delete empty conversation (marking as inactive)
-                conversation.is_active = False
-                deleted_count += 1
-                logger.info(f"Marking empty conversation {conversation.id} as inactive for user {user_id}")
+        # Find all conversations for the user that don't have any messages
+        empty_conversations = Conversation.query\
+            .filter(Conversation.user_id == user_id)\
+            .filter(Conversation.is_active == True)\
+            .filter(~Conversation.id.in_(conversations_with_messages))\
+            .all()
         
-        # Commit changes if any conversations were deleted
+        deleted_count = len(empty_conversations)
+        
         if deleted_count > 0:
+            # Permanently delete the empty conversations
+            for conversation in empty_conversations:
+                db.session.delete(conversation)
+                logger.info(f"Deleting empty conversation {conversation.id} for user {user_id}")
+            
+            # Commit the changes
             db.session.commit()
-            logger.info(f"Cleaned up {deleted_count} empty conversations for user {user_id}")
+            logger.info(f"Permanently deleted {deleted_count} empty conversations for user {user_id}")
         
         return deleted_count
     
@@ -71,6 +79,7 @@ def cleanup_empty_conversations(db, Message, Conversation, user_id):
 def delete_conversation_if_empty(db, Message, Conversation, conversation_id):
     """
     Delete a specific conversation if it has no messages.
+    Performs hard delete to permanently remove empty conversations.
     
     Args:
         db: SQLAlchemy database instance
@@ -91,10 +100,10 @@ def delete_conversation_if_empty(db, Message, Conversation, conversation_id):
         
         # Check if conversation is empty
         if is_conversation_empty(db, Message, conversation_id):
-            # Mark conversation as inactive (soft delete)
-            conversation.is_active = False
+            # Permanently delete the conversation (hard delete)
+            db.session.delete(conversation)
             db.session.commit()
-            logger.info(f"Deleted empty conversation {conversation_id}")
+            logger.info(f"Permanently deleted empty conversation {conversation_id}")
             return True
         
         return False

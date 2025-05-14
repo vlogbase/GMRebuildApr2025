@@ -34,6 +34,67 @@ function forceRepaint(element) {
     console.debug(`forceRepaint applied to element: ${element.className || 'unnamed'}`);
 }
 
+// Utility function to perform empty conversation cleanup when browser is idle
+// This prevents the cleanup from affecting initial page load performance
+function performIdleCleanup() {
+    // Only run if user is authenticated
+    if (!isAuthenticated) return;
+    
+    // Check if requestIdleCallback is supported
+    if ('requestIdleCallback' in window) {
+        requestIdleCallback(() => {
+            console.log('Performing idle cleanup of empty conversations');
+            fetch('/api/cleanup-empty-conversations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                }
+            })
+            .then(response => response.json())
+            .then(cleanupData => {
+                if (cleanupData.success) {
+                    const cleanedCount = cleanupData.cleaned_count || 0;
+                    if (cleanedCount > 0) {
+                        console.log(`Idle cleanup: permanently deleted ${cleanedCount} empty conversations`);
+                        // Refresh the conversation list if any were deleted
+                        fetchConversations(true);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error during idle cleanup:', error);
+            });
+        }, { timeout: 2000 }); // 2 second timeout
+    } else {
+        // Fallback for browsers that don't support requestIdleCallback
+        setTimeout(() => {
+            console.log('Performing delayed cleanup of empty conversations (fallback)');
+            fetch('/api/cleanup-empty-conversations', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                }
+            })
+            .then(response => response.json())
+            .then(cleanupData => {
+                if (cleanupData.success) {
+                    const cleanedCount = cleanupData.cleaned_count || 0;
+                    if (cleanedCount > 0) {
+                        console.log(`Delayed cleanup: permanently deleted ${cleanedCount} empty conversations`);
+                        // Refresh the conversation list if any were deleted
+                        fetchConversations(true);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error during delayed cleanup:', error);
+            });
+        }, 2000);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
@@ -436,35 +497,20 @@ document.addEventListener('DOMContentLoaded', function() {
         if (userIsLoggedIn) {
             console.log("User is logged in according to server, creating conversation");
             
+            // Schedule cleanup to run when browser is idle (won't impact page load)
+            performIdleCleanup();
+            
             // Create a new conversation if we don't have one already
             if (!currentConversationId) {
                 console.log("No current conversation, creating a new one on page load");
                 
-                // First clean up any empty conversations
-                fetch('/api/cleanup-empty-conversations', {
+                // Create a new conversation immediately (no blocking cleanup)
+                fetch('/api/create-conversation', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCSRFToken()
                     }
-                })
-                .then(response => response.json())
-                .then(cleanupData => {
-                    if (cleanupData.success) {
-                        const cleanedCount = cleanupData.cleaned_count || 0;
-                        if (cleanedCount > 0) {
-                            console.log(`Initial cleanup: removed ${cleanedCount} empty conversations`);
-                        }
-                    }
-                    
-                    // Now create a new conversation
-                    return fetch('/api/create-conversation', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCSRFToken()
-                        }
-                    });
                 })
                 .then(response => response.json())
                 .then(data => {
@@ -515,35 +561,20 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         // Fallback to DOM check if userIsLoggedIn is not defined
         if (isAuthenticated) {
+            // Schedule cleanup to run when browser is idle (won't impact page load)
+            performIdleCleanup();
+            
             // Create a new conversation if we don't have one already (fallback case)
             if (!currentConversationId) {
                 console.log("No current conversation (fallback case), creating a new one on page load");
                 
-                // First clean up any empty conversations
-                fetch('/api/cleanup-empty-conversations', {
+                // Create a new conversation immediately (no blocking cleanup)
+                fetch('/api/create-conversation', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRFToken': getCSRFToken()
                     }
-                })
-                .then(response => response.json())
-                .then(cleanupData => {
-                    if (cleanupData.success) {
-                        const cleanedCount = cleanupData.cleaned_count || 0;
-                        if (cleanedCount > 0) {
-                            console.log(`Initial cleanup (fallback): removed ${cleanedCount} empty conversations`);
-                        }
-                    }
-                    
-                    // Now create a new conversation
-                    return fetch('/api/create-conversation', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCSRFToken()
-                        }
-                    });
                 })
                 .then(response => response.json())
                 .then(data => {
