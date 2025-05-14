@@ -1,8 +1,8 @@
+#!/usr/bin/env python3
 """
-Simple server runner for our Flask application
+Simple script to run the Flask app
 """
+from app import app
 
-from app_workflow import run
-
-if __name__ == "__main__":
-    run()
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
