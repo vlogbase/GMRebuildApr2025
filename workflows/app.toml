@@ -1,4 +1,2 @@
-[workflow]
-name = "chat-app"
-entrypoint = "app_workflow.py"
-requirements = []
+# Flask app workflow for testing the welcome message changes
+run = "python app.py"
