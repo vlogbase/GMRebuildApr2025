@@ -2012,12 +2012,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Dispatch an event to notify other scripts that preferences are loaded
                     // This helps mobile scripts synchronize their initialization
                     console.log('Script.js: User preferences successfully loaded, dispatching event');
-                    window.dispatchEvent(new CustomEvent('userPreferencesLoaded', {
+                    // Dispatch to both window (legacy) and document (standard approach)
+                    const userPrefsEvent = new CustomEvent('userPreferencesLoaded', {
                         detail: { 
                             preferences: userPreferences,
                             success: true 
                         }
-                    }));
+                    });
+                    
+                    // Dispatch on window for backward compatibility
+                    window.dispatchEvent(userPrefsEvent);
+                    
+                    // Dispatch on document (recommended approach)
+                    document.dispatchEvent(userPrefsEvent);
                 } else {
                     // Handle case where data.preferences is empty
                     console.warn('Script.js: data.preferences is empty, using defaults');
@@ -2034,13 +2041,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectPresetButton(isAuthenticated ? '1' : '6');
                     
                     // Dispatch with defaults
-                    window.dispatchEvent(new CustomEvent('userPreferencesLoaded', {
+                    // Create event for both window and document
+                    const userPrefsEvent = new CustomEvent('userPreferencesLoaded', {
                         detail: { 
                             preferences: userPreferences,
                             success: false,
                             defaultsUsed: true
                         }
-                    }));
+                    });
+                    
+                    // Dispatch to both targets
+                    window.dispatchEvent(userPrefsEvent);
+                    document.dispatchEvent(userPrefsEvent);
                 }
                 
                 // After loading preferences, fetch available models
@@ -2066,13 +2078,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Dispatch event to notify that preferences are ready (with defaults)
                 console.log('Script.js: User preferences set to defaults due to error, dispatching event');
-                window.dispatchEvent(new CustomEvent('userPreferencesLoaded', {
+                // Create event for user preferences error case
+                const userPrefsErrorEvent = new CustomEvent('userPreferencesLoaded', {
                     detail: { 
                         preferences: userPreferences, 
                         error: true,
                         defaultsUsed: true
                     }
-                }));
+                });
+                
+                // Dispatch to both targets
+                window.dispatchEvent(userPrefsErrorEvent);
+                document.dispatchEvent(userPrefsErrorEvent);
                 
                 // Select the appropriate preset - free for non-authenticated users
                 selectPresetButton(isAuthenticated ? '1' : '6');
@@ -2250,6 +2267,8 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Fetching available models...');
         // Create a promise that will resolve with the fetched models
         // Fetch ONLY from the endpoint that includes cost bands
+        // IMPORTANT: This function must always return a promise that resolves with the models
+        // to maintain proper promise chaining and event synchronization
         return fetch('/api/get_model_prices')
             .then(response => {
                 if (!response.ok) {
@@ -2315,13 +2334,18 @@ document.addEventListener('DOMContentLoaded', function() {
                     // Dispatch an event to notify other scripts that models are loaded
                     // Include detailed data about the models in the event
                     console.log(`Script.js: Models loaded (${allModels.length}), dispatching event`);
-                    window.dispatchEvent(new CustomEvent('modelsLoaded', {
+                    // Create event with model data
+                    const modelsEvent = new CustomEvent('modelsLoaded', {
                         detail: { 
                             models: allModels,
                             count: allModels.length,
                             success: hasValidModels
                         }
-                    }));
+                    });
+                    
+                    // Dispatch to both window and document
+                    window.dispatchEvent(modelsEvent);
+                    document.dispatchEvent(modelsEvent);
                     
                     // For non-authenticated users, ensure we have at least the default free models available
                     if (!isAuthenticated) {
@@ -2483,14 +2507,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Even in case of error, expose models to window and dispatch event to notify mobile UI
                 window.availableModels = allModels;
                 console.log(`Script.js: Error fetching models, dispatching event with ${allModels.length} models`);
-                window.dispatchEvent(new CustomEvent('modelsLoaded', {
+                // Create event for models error case
+                const modelsErrorEvent = new CustomEvent('modelsLoaded', {
                     detail: { 
                         models: allModels,
                         count: allModels.length, 
                         error: true,
                         success: false
                     }
-                }));
+                });
+                
+                // Dispatch to both window and document
+                window.dispatchEvent(modelsErrorEvent);
+                document.dispatchEvent(modelsErrorEvent);
                 
                 // Return the models for promise chaining
                 return allModels;

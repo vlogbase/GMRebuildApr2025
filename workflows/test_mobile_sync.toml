@@ -1,0 +1,2 @@
+run = "python workflows/test_mobile_sync.py"
+language = "python3"

@@ -70,44 +70,134 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Mobile: Mobile UI initialization complete');
     }
     
-    // Track initialization state
+    // Track initialization state with timestamps for debugging
     let preferencesReady = false;
     let modelsReady = false;
+    let preferencesTimestamp = null;
+    let modelsTimestamp = null;
+    let initializationAttempts = 0;
     
     // Set up event listeners for synchronization with main script
-    window.addEventListener('userPreferencesLoaded', function(event) {
+    document.addEventListener('userPreferencesLoaded', function(event) {
         console.log('Mobile: Received userPreferencesLoaded event', event.detail);
         preferencesReady = true;
+        preferencesTimestamp = new Date().getTime();
+        
+        // Extract preferences from event if available
+        if (event.detail && event.detail.preferences) {
+            console.log('Mobile: Using preferences data from event payload');
+            // Deep clone to prevent reference issues
+            window.userPreferences = JSON.parse(JSON.stringify(event.detail.preferences));
+            
+            // Validate preferences format
+            if (!window.userPreferences || typeof window.userPreferences !== 'object') {
+                console.warn('Mobile: Received invalid preferences format, setting empty object');
+                window.userPreferences = {};
+            }
+        } else {
+            console.log('Mobile: No preferences in event data, using global state');
+            // Ensure we have something valid
+            if (!window.userPreferences || typeof window.userPreferences !== 'object') {
+                console.warn('Mobile: Global userPreferences not valid, initializing empty object');
+                window.userPreferences = {};
+            }
+        }
+        
+        // Log the actual preferences we're using
+        console.log('Mobile: User preferences after event:', window.userPreferences);
         
         // Always update the model names when preferences change, even after initial load
-        updateSelectedModelNames();
+        if (window.availableModels && window.availableModels.length > 0) {
+            updateSelectedModelNames();
+        } else {
+            displayFallbackModelNames();
+        }
         
         attemptInitialization();
     });
     
-    window.addEventListener('modelsLoaded', function(event) {
+    document.addEventListener('modelsLoaded', function(event) {
         console.log('Mobile: Received modelsLoaded event', event.detail);
         modelsReady = true;
+        modelsTimestamp = new Date().getTime();
+        
+        // Extract models from event if available
+        if (event.detail && event.detail.models && Array.isArray(event.detail.models)) {
+            console.log(`Mobile: Using models data from event payload (${event.detail.models.length} models)`);
+            // Deep clone to prevent reference issues
+            window.availableModels = JSON.parse(JSON.stringify(event.detail.models));
+            
+            // Validate first few models
+            if (window.availableModels.length > 0) {
+                const sampleModels = window.availableModels.slice(0, 3);
+                console.log('Mobile: First few models from event:', sampleModels.map(m => m.id));
+            }
+        } else {
+            console.log('Mobile: No models in event data, using global state');
+            // Validate global models
+            if (!window.availableModels || !Array.isArray(window.availableModels)) {
+                console.warn('Mobile: Global availableModels not valid, initializing empty array');
+                window.availableModels = [];
+            }
+        }
+        
+        // Update the UI if we have both data points
+        if (window.userPreferences && window.availableModels && window.availableModels.length > 0) {
+            updateSelectedModelNames();
+        }
+        
         attemptInitialization();
     });
     
     // Function to check if we can initialize
     function attemptInitialization() {
+        initializationAttempts++;
+        console.log(`Mobile: Initialization attempt #${initializationAttempts}`);
+        
         if (preferencesReady && modelsReady) {
             console.log('Mobile: Both preferences and models are ready, initializing UI');
+            console.log(`Mobile: Timing - Preferences: ${preferencesTimestamp}, Models: ${modelsTimestamp}, Diff: ${Math.abs(preferencesTimestamp - modelsTimestamp)}ms`);
+            
+            // Log data state before initialization
+            console.log('Mobile: Data check before initialization:');
+            console.log(`- userPreferences: ${window.userPreferences ? 'Available' : 'Missing'}`);
+            console.log(`- availableModels: ${window.availableModels ? (window.availableModels.length + ' models') : 'Missing'}`);
+            
+            // Initialize UI with complete data
             initializeMobileUI();
         } else {
-            console.log(`Mobile: Waiting for initialization... Preferences: ${preferencesReady}, Models: ${modelsReady}`);
+            const waitingFor = [];
+            if (!preferencesReady) waitingFor.push('preferences');
+            if (!modelsReady) waitingFor.push('models');
+            
+            console.log(`Mobile: Still waiting for: ${waitingFor.join(', ')}`);
+            console.log(`Mobile: Timestamps - Preferences: ${preferencesTimestamp}, Models: ${modelsTimestamp}`);
         }
     }
     
-    // Fallback in case events don't fire (still initialize after a timeout)
+    // Fallback initialization with increasing timeouts to handle possible race conditions
+    // First timeout after 2 seconds
     setTimeout(function() {
         if (!preferencesReady || !modelsReady) {
-            console.log('Mobile: Fallback initialization due to timeout');
-            initializeMobileUI();
+            console.log('Mobile: First fallback check (2s) - some data still not ready');
+            console.log(`Mobile: Status - Preferences: ${preferencesReady ? 'Ready' : 'Not ready'}, Models: ${modelsReady ? 'Ready' : 'Not ready'}`);
+            
+            // If we have user preferences but not models after first timeout, still initialize
+            // This handles case where models might be slow to load
+            if (preferencesReady && window.userPreferences) {
+                console.log('Mobile: First fallback init - have preferences but waiting for models');
+                initializeMobileUI();
+            }
         }
     }, 2000);
+    
+    // Final failsafe timeout after 5 seconds
+    setTimeout(function() {
+        if (!preferencesReady || !modelsReady) {
+            console.warn('Mobile: Failsafe initialization (5s) - forced initialization regardless of data state');
+            initializeMobileUI();
+        }
+    }, 5000);
     
     // Handle preset button click
     function handlePresetButtonClick(presetId) {
@@ -191,9 +281,34 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update selected model names in the panel
     function updateSelectedModelNames() {
-        if (!window.userPreferences) return;
+        // Check for userPreferences
+        if (!window.userPreferences) {
+            console.warn('Mobile: updateSelectedModelNames called but window.userPreferences is not set.');
+            return;
+        }
         
-        console.log('Mobile: Updating selected model names in panel');
+        // Check for availableModels
+        if (!window.availableModels || window.availableModels.length === 0) {
+            console.warn('Mobile: updateSelectedModelNames called but window.availableModels is empty or not set.');
+            
+            // Log what's available to help with debugging
+            if (window.availableModels) {
+                console.log(`Mobile: availableModels exists but has ${window.availableModels.length} items`);
+            } else {
+                console.log('Mobile: availableModels is undefined');
+            }
+            
+            // Still try to update with fallback text if we have user preferences
+            // This at least shows something rather than blank buttons
+            displayFallbackModelNames();
+            return;
+        }
+        
+        console.log(`Mobile: Updating selected model names in panel with ${window.availableModels.length} available models`);
+        
+        // Check the first few models to help with debugging
+        const sampleModels = window.availableModels.slice(0, 3);
+        console.log('Mobile: Sample available models:', sampleModels.map(m => ({ id: m.id, name: m.name })));
         
         for (let i = 1; i <= 6; i++) {
             const presetId = i.toString();
@@ -202,21 +317,59 @@ document.addEventListener('DOMContentLoaded', function() {
             // Get the model display name
             let displayName = 'Not set';
             
-            if (modelId && window.availableModels) {
+            if (modelId) {
+                // Try to find the model in availableModels
                 const model = window.availableModels.find(m => m.id === modelId);
                 if (model) {
                     displayName = model.name || model.id;
+                    console.log(`Mobile: Found model for preset ${presetId}: ${displayName}`);
+                } else {
+                    // If model not found, use modelId as fallback with warning
+                    displayName = modelId;
+                    console.warn(`Mobile: Model not found for preset ${presetId} with ID ${modelId}`);
                 }
+            } else {
+                console.warn(`Mobile: No model ID set for preset ${presetId}`);
             }
             
             // Update the display
             const displayElement = document.getElementById(`mobile-selected-model-${presetId}`);
             if (displayElement) {
                 displayElement.textContent = displayName;
+            } else {
+                console.warn(`Mobile: Display element not found for preset ${presetId}`);
             }
         }
         
-        console.log('Mobile: Model names updated');
+        console.log('Mobile: Model names updated successfully');
+    }
+    
+    // Fallback display function when models aren't available
+    function displayFallbackModelNames() {
+        console.log('Mobile: Using fallback model names since availableModels is not available');
+        
+        for (let i = 1; i <= 6; i++) {
+            const presetId = i.toString();
+            const modelId = window.userPreferences && window.userPreferences[presetId];
+            
+            let displayName = modelId || 'Loading...';
+            
+            // Add a static prefix based on the preset number for better UX while loading
+            switch(presetId) {
+                case '1': displayName = modelId || 'General Model'; break;
+                case '2': displayName = modelId || 'Alternative'; break;
+                case '3': displayName = modelId || 'Reasoning'; break;
+                case '4': displayName = modelId || 'Vision Model'; break;
+                case '5': displayName = modelId || 'Search Model'; break;
+                case '6': displayName = modelId || 'Free Model'; break;
+            }
+            
+            // Update the display with fallback
+            const displayElement = document.getElementById(`mobile-selected-model-${presetId}`);
+            if (displayElement) {
+                displayElement.textContent = displayName;
+            }
+        }
     }
     
     // Fetch and update user preferences from server
