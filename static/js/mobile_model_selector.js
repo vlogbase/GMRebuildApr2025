@@ -322,15 +322,19 @@ document.addEventListener('DOMContentLoaded', function() {
             document.body.appendChild(notification);
         }
         
-        // Set notification content
-        notification.textContent = `Selected "${modelName}" for preset ${presetId}`;
+        // Set notification content - show custom message if provided, otherwise use default
+        if (modelName.startsWith('Selected ') || modelName.startsWith('Activated ')) {
+            notification.textContent = `${modelName} on Preset ${presetId}`;
+        } else {
+            notification.textContent = `Selected "${modelName}" for Preset ${presetId}`;
+        }
         
-        // Show notification
-        notification.classList.add('visible');
+        // Show notification with the correct 'show' class
+        notification.classList.add('show');
         
         // Hide after a delay (3 seconds)
         setTimeout(() => {
-            notification.classList.remove('visible');
+            notification.classList.remove('show');
         }, 3000);
     }
     
