@@ -62,9 +62,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update the selected model names in the panel with cost band indicators
     function updateSelectedModelNames() {
+        // Force a fresh look at the global userPreferences object
+        console.log('Mobile: Refreshing model names from preferences', window.userPreferences);
+        
         // For each preset, get the selected model from userPreferences or defaultModels
         for (let i = 1; i <= 6; i++) {
             const presetId = i.toString();
+            // Make sure we're getting the most up-to-date values 
             const modelId = window.userPreferences?.[presetId] || window.defaultModels?.[presetId];
             
             if (modelId) {
@@ -129,8 +133,17 @@ document.addEventListener('DOMContentLoaded', function() {
         mobileModelPanel.classList.add('visible');
         mobileBackdrop.classList.add('visible');
         
-        // Update selected model names
-        updateSelectedModelNames();
+        // Refresh preferences from server first if main script has the function
+        if (window.fetchUserPreferences && typeof window.fetchUserPreferences === 'function') {
+            // This will update the global userPreferences object
+            window.fetchUserPreferences().then(() => {
+                // Then update the UI after preferences are fetched
+                updateSelectedModelNames();
+            });
+        } else {
+            // Fallback to just updating from current values
+            updateSelectedModelNames();
+        }
     }
     
     // Hide mobile model panel
@@ -305,7 +318,17 @@ document.addEventListener('DOMContentLoaded', function() {
     function selectModelForPreset(presetId, modelId) {
         // If the main script's selectModelForPreset function exists, use it
         if (window.selectModelForPreset && typeof window.selectModelForPreset === 'function') {
-            window.selectModelForPreset(presetId, modelId);
+            // Call with true for skipActivation since we'll handle that ourselves
+            window.selectModelForPreset(presetId, modelId, true);
+            
+            // After selecting the model, activate the preset button to use this model
+            if (window.selectPresetButton && typeof window.selectPresetButton === 'function') {
+                // This is the key fix - actually activate the preset after selecting a model
+                window.selectPresetButton(presetId);
+                
+                // Log for debugging
+                console.log(`Mobile: Activated preset ${presetId} with model: ${modelId}`);
+            }
             
             // Close the mobile selection
             hideMobileModelSelection();

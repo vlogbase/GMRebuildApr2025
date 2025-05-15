@@ -1,30 +1,15 @@
 """
-Simple Flask server workflow for the main application with optimized cleanup
+Simple Flask server workflow for GloriaMundo Chat
+This workflow runs the main Flask application for testing
 """
-import os
-import logging
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    filename='app_workflow.log'
-)
-
-logger = logging.getLogger(__name__)
+from app import app
 
 def run():
     """
-    Run the Flask application for testing
+    Run the Flask application
     """
-    try:
-        logger.info("Starting Flask app with optimized conversation cleanup")
-        from app import app
-        
-        # Run the app
-        app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
-    except Exception as e:
-        logger.exception(f"Error running app: {e}")
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 if __name__ == "__main__":
     run()

@@ -1716,7 +1716,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // This allows the UI to render first before loading large model datasets
         setTimeout(() => {
             console.log('Deferred loading of model preferences and data');
-            fetchUserPreferences();
+            window.fetchUserPreferences();
         }, 100);
         
         // Model preset button click handlers
@@ -1965,8 +1965,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to fetch user preferences for model presets
-    function fetchUserPreferences() {
-        fetch('/get_preferences')
+    // Expose this globally for the mobile UI
+    window.fetchUserPreferences = function() {
+        return fetch('/get_preferences')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -2703,7 +2704,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to select a model for a preset and save the preference
     // Expose this function globally for mobile UI
-window.selectModelForPreset = function(presetId, modelId) {
+window.selectModelForPreset = function(presetId, modelId, skipActivation) {
         // Check if trying to assign a free model to a non-free preset
         const isFreeModel = modelId.includes(':free') || allModels.some(m => m.id === modelId && m.is_free === true);
         if (presetId !== '6' && isFreeModel) {
@@ -2749,6 +2750,16 @@ window.selectModelForPreset = function(presetId, modelId) {
         
         // Close the selector
         closeModelSelector();
+        
+        // For the desktop flow, automatically activate the preset we just updated
+        // For mobile, we'll handle this separately to avoid duplicate calls
+        if (!skipActivation && presetId !== currentPresetId) {
+            // Log for debugging
+            console.log(`Auto-activating preset ${presetId} after model selection`);
+            
+            // Select the preset button to actually use this model
+            window.selectPresetButton(presetId);
+        }
     }
     
     // Function to reset a preset or all presets to default
@@ -2821,7 +2832,7 @@ window.resetToDefault = function(presetId) {
                     }
                 } else {
                     // Full reset - reload all preferences from server
-                    fetchUserPreferences();
+                    window.fetchUserPreferences();
                 }
                 
                 // Show feedback
