@@ -245,14 +245,32 @@ window.addEventListener('load', function() {
             return;
         }
         
+        // Helper function to scroll and show the entire input box
+        // This ensures consistent behavior between focus and resize events
+        function scrollToShowEntireInput() {
+            // Get input container position and dimensions
+            const inputRect = inputContainer.getBoundingClientRect();
+            
+            // Calculate ideal scroll position that shows the entire input box plus padding
+            // This positions the input box comfortably above the keyboard
+            const scrollY = window.scrollY + inputRect.top - (window.innerHeight - inputRect.height - 20);
+            
+            // Smoothly scroll to the calculated position
+            window.scrollTo({
+                top: Math.max(0, scrollY), // Prevent negative scroll positions
+                behavior: 'smooth'
+            });
+            
+            console.log('Mobile: Scrolled to show entire input container');
+        }
+        
         // When input gets focus (keyboard appears), scroll to it
         messageInput.addEventListener('focus', function() {
             // Small delay to ensure keyboard has started to show up
             setTimeout(() => {
                 console.log('Mobile: Message input focused, scrolling into view');
-                // Align to the bottom of the viewport
-                inputContainer.scrollIntoView(false);
-            }, 100);
+                scrollToShowEntireInput();
+            }, 150); // Slightly longer delay to ensure keyboard has started showing
         });
         
         // Track viewport height changes (for keyboard appearance)
@@ -269,7 +287,7 @@ window.addEventListener('load', function() {
                     console.log('Mobile: Keyboard appears to be opening');
                     isKeyboardOpen = true;
                     setTimeout(() => {
-                        inputContainer.scrollIntoView(false);
+                        scrollToShowEntireInput();
                     }, 50);
                 }
             } else {
