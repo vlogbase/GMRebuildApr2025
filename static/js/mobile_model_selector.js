@@ -175,8 +175,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Hide mobile model panel
     function hideMobileModelPanel() {
-        mobileModelPanel.classList.remove('visible');
-        mobileBackdrop.classList.remove('visible');
+        if (mobileModelPanel) {
+            mobileModelPanel.classList.remove('visible');
+        }
+        if (mobileBackdrop) {
+            mobileBackdrop.classList.remove('visible');
+        }
     }
     
     // Show mobile model selection for a specific preset
@@ -185,11 +189,21 @@ document.addEventListener('DOMContentLoaded', function() {
         currentPresetId = presetId;
         
         // Hide the model panel
-        mobileModelPanel.classList.remove('visible');
+        if (mobileModelPanel) {
+            mobileModelPanel.classList.remove('visible');
+        }
         
         // Show the selection panel and backdrop
-        mobileModelSelection.classList.add('visible');
-        mobileBackdrop.classList.add('visible');
+        if (mobileModelSelection) {
+            mobileModelSelection.classList.add('visible');
+        } else {
+            console.error('Mobile: Element mobileModelSelection not found');
+            return; // Exit the function if critical elements aren't found
+        }
+        
+        if (mobileBackdrop) {
+            mobileBackdrop.classList.add('visible');
+        }
         
         // Populate the model list
         populateMobileModelList(presetId);
@@ -204,14 +218,22 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Hide mobile model selection
     function hideMobileModelSelection() {
-        mobileModelSelection.classList.remove('visible');
-        mobileBackdrop.classList.remove('visible');
+        if (mobileModelSelection) {
+            mobileModelSelection.classList.remove('visible');
+        }
+        if (mobileBackdrop) {
+            mobileBackdrop.classList.remove('visible');
+        }
     }
     
     // Back from selection to panel
     function backToModelPanel() {
-        mobileModelSelection.classList.remove('visible');
-        mobileModelPanel.classList.add('visible');
+        if (mobileModelSelection) {
+            mobileModelSelection.classList.remove('visible');
+        }
+        if (mobileModelPanel) {
+            mobileModelPanel.classList.add('visible');
+        }
         currentPresetId = null;
     }
     
@@ -310,7 +332,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const emptyMessage = document.createElement('div');
             emptyMessage.className = 'empty-models-message';
             emptyMessage.textContent = 'No models available for this category. Please try another preset.';
-            mobileModelList.appendChild(emptyMessage);
+            
+            if (mobileModelList) {
+                mobileModelList.appendChild(emptyMessage);
+            } else {
+                console.error('Mobile: mobileModelList is null, cannot append empty state message');
+            }
             return;
         }
         
@@ -381,7 +408,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectModelForPreset(presetId, model.id);
             });
             
-            mobileModelList.appendChild(li);
+            // Add the list item to the model list if it exists
+            if (mobileModelList) {
+                mobileModelList.appendChild(li);
+            } else {
+                console.error('Mobile: mobileModelList is null, cannot append model item');
+            }
         });
     }
     
@@ -500,8 +532,16 @@ document.addEventListener('DOMContentLoaded', function() {
         fetchAndUpdatePreferences();
         
         // Show the panel and backdrop
-        mobileModelPanel.classList.add('visible');
-        mobileBackdrop.classList.add('visible');
+        if (mobileModelPanel) {
+            mobileModelPanel.classList.add('visible');
+        } else {
+            console.error('Mobile: Element mobileModelPanel not found');
+            return; // Exit if critical element is missing
+        }
+        
+        if (mobileBackdrop) {
+            mobileBackdrop.classList.add('visible');
+        }
     }
     
     // Handle preset selection from other scripts
