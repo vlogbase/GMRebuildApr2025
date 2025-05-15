@@ -74,14 +74,17 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update the selected model names in the panel with cost band indicators
     function updateSelectedModelNames() {
-        // Force a fresh look at the global userPreferences object
+        // First ensure our preferences are up-to-date and then update the UI
         console.log('Mobile: Refreshing model names from preferences', window.userPreferences);
+        
+        // Ensure we're working with the most current preferences
+        const currentPreferences = window.userPreferences || {};
         
         // For each preset, get the selected model from userPreferences or defaultModels
         for (let i = 1; i <= 6; i++) {
             const presetId = i.toString();
             // Make sure we're getting the most up-to-date values 
-            const modelId = window.userPreferences?.[presetId] || window.defaultModels?.[presetId];
+            const modelId = currentPreferences[presetId] || window.defaultModels?.[presetId];
             
             console.log(`Mobile: For preset ${presetId}, using model: ${modelId}`);
             
@@ -348,20 +351,69 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Show notification that fades out after a delay
+    function showModelNotification(presetId, modelName) {
+        const notification = document.getElementById('mobile-model-notification');
+        const notificationText = document.getElementById('notification-text');
+        
+        if (!notification || !notificationText) return;
+        
+        // Set notification text
+        notificationText.textContent = `Selected ${modelName} on preset ${presetId}`;
+        
+        // Show the notification
+        notification.classList.add('show');
+        
+        // Clear any existing timers
+        if (window.notificationTimer) {
+            clearTimeout(window.notificationTimer);
+        }
+        
+        // Hide after 3 seconds (2s display + 1s fade)
+        window.notificationTimer = setTimeout(() => {
+            notification.classList.remove('show');
+        }, 3000);
+    }
+    
     // Select a model for a preset
     function selectModelForPreset(presetId, modelId) {
+        console.log(`Mobile: Selecting model ${modelId} for preset ${presetId}`);
+        
         // If the main script's selectModelForPreset function exists, use it
         if (window.selectModelForPreset && typeof window.selectModelForPreset === 'function') {
             // Call with true for skipActivation since we'll handle that ourselves
             window.selectModelForPreset(presetId, modelId, true);
             
+            // Update local user preferences immediately for UI responsiveness
+            if (window.userPreferences) {
+                window.userPreferences[presetId] = modelId;
+                console.log(`Mobile: Updated local preferences for preset ${presetId} to ${modelId}`);
+            }
+            
             // After selecting the model, activate the preset button to use this model
             if (window.selectPresetButton && typeof window.selectPresetButton === 'function') {
                 // This is the key fix - actually activate the preset after selecting a model
                 window.selectPresetButton(presetId);
-                
-                // Log for debugging
                 console.log(`Mobile: Activated preset ${presetId} with model: ${modelId}`);
+                
+                // Get formatted model name for the notification
+                let friendlyModelName = modelId;
+                if (window.formatModelName && typeof window.formatModelName === 'function') {
+                    friendlyModelName = window.formatModelName(modelId);
+                }
+                
+                // Show notification
+                showModelNotification(presetId, friendlyModelName);
+            }
+            
+            // Fetch the latest user preferences from the server to ensure we're in sync
+            if (window.fetchUserPreferences && typeof window.fetchUserPreferences === 'function') {
+                console.log('Mobile: Refreshing preferences from server after model selection');
+                window.fetchUserPreferences().then(() => {
+                    console.log('Mobile: Server preferences refreshed after model selection');
+                    // Now update the UI with the latest preferences
+                    updateSelectedModelNames();
+                });
             }
             
             // Close the mobile selection
@@ -370,9 +422,6 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update the mobile button state
             updateMobileActiveButton(presetId);
-            
-            // Update the mobile panel selected model names
-            updateSelectedModelNames();
         }
     }
     
@@ -384,6 +433,19 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update the mobile button state
             updateMobileActiveButton(presetId);
+            
+            // Get the selected model for this preset
+            const modelId = window.userPreferences?.[presetId] || window.defaultModels?.[presetId];
+            if (modelId) {
+                // Get friendly model name
+                let friendlyModelName = modelId;
+                if (window.formatModelName && typeof window.formatModelName === 'function') {
+                    friendlyModelName = window.formatModelName(modelId);
+                }
+                
+                // Show notification
+                showModelNotification(presetId, friendlyModelName);
+            }
         }
     }
     
@@ -398,6 +460,19 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Update the mobile panel selected model names
             updateSelectedModelNames();
+            
+            // Get the default model for this preset
+            const defaultModelId = window.defaultModels?.[presetId];
+            if (defaultModelId) {
+                // Get friendly model name
+                let friendlyModelName = defaultModelId;
+                if (window.formatModelName && typeof window.formatModelName === 'function') {
+                    friendlyModelName = window.formatModelName(defaultModelId);
+                }
+                
+                // Show notification for reset
+                showModelNotification(presetId, `Default (${friendlyModelName})`);
+            }
         }
     }
     

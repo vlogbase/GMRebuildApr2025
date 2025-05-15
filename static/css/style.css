@@ -3108,6 +3108,31 @@ code {
     }
 }
 
+/* Mobile Model Notification */
+.mobile-model-notification {
+    display: none;
+    position: fixed;
+    bottom: 80px; /* Position above the model buttons */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(50, 50, 50, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 14px;
+    text-align: center;
+    z-index: 1001; /* Above other elements */
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    max-width: 90%;
+    opacity: 0;
+    transition: opacity 1s ease-out;
+}
+
+.mobile-model-notification.show {
+    display: block;
+    opacity: 1;
+}
+
 /* Mobile Numbered Buttons (1-6) */
 .mobile-model-buttons {
     display: flex;
