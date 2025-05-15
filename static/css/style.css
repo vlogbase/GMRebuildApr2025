@@ -3168,28 +3168,50 @@ code {
     font-size: 16px;
 }
 
+/* Styling for the settings icon in preset buttons */
+.preset-settings-icon {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background-color: rgba(15, 15, 15, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+    font-size: 10px;
+    color: #24b9bd; /* Accent color */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.preset-settings-icon i {
+    font-size: 9px !important;
+}
+
 /* Color scheme for the buttons - applying colors to icons */
-.mobile-preset-btn[data-preset-id="1"] i {
+.mobile-preset-btn[data-preset-id="1"] > i {
     color: #5D8BF4; /* Blue */
 }
 
-.mobile-preset-btn[data-preset-id="2"] i {
+.mobile-preset-btn[data-preset-id="2"] > i {
     color: #9D65D0; /* Purple */
 }
 
-.mobile-preset-btn[data-preset-id="3"] i {
+.mobile-preset-btn[data-preset-id="3"] > i {
     color: #FF8C61; /* Orange */
 }
 
-.mobile-preset-btn[data-preset-id="4"] i {
+.mobile-preset-btn[data-preset-id="4"] > i {
     color: #24b9bd; /* Accent color - cyan for multimodal */
 }
 
-.mobile-preset-btn[data-preset-id="5"] i {
+.mobile-preset-btn[data-preset-id="5"] > i {
     color: #FC5C9C; /* Pink for search */
 }
 
-.mobile-preset-btn[data-preset-id="6"] i {
+.mobile-preset-btn[data-preset-id="6"] > i {
     color: #28a745; /* Green */
 }
 
@@ -3248,8 +3270,14 @@ code {
 }
 
 /* Make icons slightly brighter when active */
-.mobile-preset-btn.active i {
+.mobile-preset-btn.active > i {
     filter: brightness(1.2);
+}
+
+/* Settings icon hover effect */
+.preset-settings-icon:hover {
+    transform: scale(1.1);
+    background-color: rgba(10, 10, 10, 1);
 }
 
 /* Bottom indicator for active state - subtle ring */

@@ -199,10 +199,25 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 5000);
     
-    // Handle preset button click
+    // Handle preset button click (now for model selection only)
     function handlePresetButtonClick(presetId) {
-        console.log(`Mobile: Preset button ${presetId} clicked`);
+        console.log(`Mobile: Opening model selection for preset ${presetId}`);
         showMobileModelSelection(presetId);
+    }
+    
+    // Handle activating a preset
+    function activatePreset(presetId) {
+        console.log(`Mobile: Activating preset ${presetId}`);
+        // Use the global selectPresetButton function if available
+        if (typeof window.selectPresetButton === 'function') {
+            window.selectPresetButton(presetId);
+            // Update the active button in the UI
+            updateMobileActiveButton(presetId);
+            return true;
+        } else {
+            console.error('Mobile: selectPresetButton function not found');
+            return false;
+        }
     }
     
     // Update the active button in the numbered row (1-6)
@@ -691,11 +706,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set up event listeners
     
-    // Mobile preset buttons (1-6)
+    // Mobile preset buttons (1-6) - Now clicking directly activates the preset
     mobilePresetBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const presetId = this.getAttribute('data-preset-id');
-            handlePresetButtonClick(presetId);
+        // Add settings icon for model selection
+        let settingsIcon = document.createElement('div');
+        settingsIcon.className = 'preset-settings-icon';
+        settingsIcon.innerHTML = '<i class="fa-solid fa-gear"></i>';
+        btn.appendChild(settingsIcon);
+        
+        // Main button click activates the preset
+        btn.addEventListener('click', function(e) {
+            // If the click was on the settings icon, open model selection instead
+            if (e.target.closest('.preset-settings-icon')) {
+                const presetId = this.getAttribute('data-preset-id');
+                handlePresetButtonClick(presetId);
+            } else {
+                // Otherwise, activate the preset
+                const presetId = this.getAttribute('data-preset-id');
+                activatePreset(presetId);
+            }
         });
     });
     
