@@ -78,6 +78,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set initial loading state
     showLoadingState();
     
+    // Track if this is the first initialization (to avoid showing notification on first load)
+    let isFirstInit = true;
+    
     // Function to initialize mobile UI - this is directly called multiple times
     function initializeMobileUI() {
         console.log('Mobile: Running initialization');
@@ -113,6 +116,9 @@ document.addEventListener('DOMContentLoaded', function() {
         updateSelectedModelNames();
         setActivePreset();
         removeLoadingState();
+        
+        // Reset first init flag after successful initialization
+        isFirstInit = false;
     }
     
     // Set the active preset based on available data
@@ -177,8 +183,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update the active button in the numbered row
             updateMobileActiveButton(presetId);
             
-            // Show a confirmation notification
-            if (window.availableModels) {
+            // Show a confirmation notification - but only if this isn't the first initialization
+            if (!isFirstInit && window.availableModels) {
                 const model = window.availableModels.find(m => m.id === modelId);
                 if (model) {
                     showModelNotification(presetId, model.name || model.id);
@@ -581,12 +587,13 @@ document.addEventListener('DOMContentLoaded', function() {
         if (defaultModel) {
             console.log(`Mobile: Resetting preset ${currentPresetId} to default model ${defaultModel}`);
             
-            // Update the model selection
+            // Mark as not first init since this is a user-triggered action
+            isFirstInit = false;
+            
+            // Update the model selection - this already handles the notification
             selectModelForPreset(currentPresetId, defaultModel);
             
-            // Additional notification since we're closing the panel
-            const friendlyModelName = window.availableModels?.find(m => m.id === defaultModel)?.name || defaultModel;
-            showModelNotification(currentPresetId, `Default (${friendlyModelName})`);
+            // No need for additional notification as selectModelForPreset will handle it
         }
     }
     
