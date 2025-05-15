@@ -1569,6 +1569,9 @@ body.account-page .tab-pane {
 .chat-input-container {
     padding: 16px;
     border-top: 1px solid var(--border-color);
+    position: relative; /* For proper stacking context */
+    z-index: 10; /* Ensure input stays above other elements */
+    background-color: var(--bg-color); /* Ensure background is solid */
 }
 
 .model-buttons {
@@ -2187,6 +2190,8 @@ body.account-page .tab-pane {
     padding: 8px 16px;
     background-color: var(--input-bg);
     margin-bottom: 8px;
+    position: relative; /* For proper stacking */
+    z-index: 11; /* Higher than chat-input-container */
 }
 
 #message-input {
@@ -3055,6 +3060,103 @@ code {
         flex-wrap: wrap;
         width: 100%;
         box-sizing: border-box;
+    }
+}
+
+/* Mobile-specific fixes for keyboard issues */
+@media (max-width: 576px) {
+    /* Adjust chat container when keyboard is visible */
+    .chat-container {
+        display: flex;
+        flex-direction: column;
+        height: 100%; /* Use full height */
+    }
+    
+    /* General mobile chat container styling */
+    .mobile-device .chat-container {
+        padding-bottom: 0; /* Remove default padding */
+    }
+    
+    /* When the keyboard is visible */
+    .keyboard-visible .chat-messages {
+        padding-bottom: 60px; /* Add space for the input box */
+    }
+    
+    /* iPhone-specific additional padding (needs more space) */
+    .ios-device.keyboard-visible .chat-messages {
+        padding-bottom: 80px;
+    }
+    
+    /* More aggressive fixing for iOS */
+    .ios-keyboard-visible .chat-input-container {
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        transform: none !important; /* Override any JS-added transforms */
+    }
+    
+    /* Make sure content doesn't shift up too far on iOS */
+    .ios-keyboard-visible .chat-container {
+        padding-bottom: 60px;
+    }
+    
+    /* Adjust chat input positioning for all mobile */
+    .chat-input-container {
+        padding: 8px 12px; /* Slightly tighter padding on mobile */
+        position: sticky; /* Make the input container stick to bottom */
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background-color: var(--bg-color);
+        border-top: 1px solid var(--border-color);
+        box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1); /* Subtle shadow for distinction */
+        z-index: 100; /* High z-index to stay above content */
+    }
+    
+    /* When keyboard is fully active, ensure extra visibility */
+    .keyboard-active .chat-input-container {
+        box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.15); /* Stronger shadow when active */
+    }
+    
+    /* Ensure the input area doesn't get hidden */
+    .input-group {
+        margin-bottom: 0; /* Remove bottom margin on mobile */
+    }
+    
+    #message-input {
+        padding-right: 8px; /* Smaller padding on right for mobile */
+        padding-top: 10px; /* Slightly more padding on top for better tap targets */
+        min-height: 40px; /* Consistent minimum height */
+    }
+    
+    /* Adjust specific elements for better mobile usability */
+    .message-actions {
+        gap: 8px; /* Slightly tighter spacing for buttons */
+    }
+    
+    /* Make action buttons larger for better tapping on mobile */
+    .message-actions button {
+        min-width: 36px;
+        min-height: 36px;
+        padding: 8px;
+    }
+    
+    /* Ensure the textarea doesn't auto-zoom on iOS */
+    textarea {
+        font-size: 16px !important; /* iOS doesn't zoom on inputs larger than 16px */
+    }
+    
+    /* Focus styles for message input to make it more visible */
+    #message-input:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(36, 185, 189, 0.3);
+    }
+    
+    /* Special handling for Android */
+    .android-device.keyboard-visible .app-container {
+        height: auto !important; /* Allow container to resize with keyboard */
     }
 }
 
