@@ -42,6 +42,53 @@ document.addEventListener('DOMContentLoaded', function() {
     // Init variables
     let currentPresetId = null;
     
+    // Initialize on page load - fetch user preferences and update model names
+    console.log('Mobile: Initializing model selections on page load');
+    
+    // Function to initialize the mobile UI
+    function initializeMobileUI() {
+        // First, ensure the main script has initialized models
+        if (!window.availableModels || window.availableModels.length === 0) {
+            console.log('Mobile: Waiting for models to load...');
+            
+            // Try fetching models directly if the main populateModelList function exists
+            if (window.populateModelList && typeof window.populateModelList === 'function') {
+                // Load models for preset 1 by default
+                window.populateModelList('1');
+            }
+            
+            // If still no models, retry after a delay
+            if (!window.availableModels || window.availableModels.length === 0) {
+                console.log('Mobile: Models not yet available, retrying in 800ms');
+                setTimeout(initializeMobileUI, 800);
+                return;
+            }
+        }
+        
+        // Fetch and update preferences (model selections)
+        fetchAndUpdatePreferences(function() {
+            // After preferences are loaded, set the active button
+            if (window.activePresetId) {
+                console.log(`Mobile: Setting active button to ${window.activePresetId} from window.activePresetId`);
+                updateMobileActiveButton(window.activePresetId);
+            } else if (window.userPreferences && Object.keys(window.userPreferences).length > 0) {
+                // If no active preset ID but we have preferences, use the first one
+                const firstPresetId = Object.keys(window.userPreferences)[0];
+                console.log(`Mobile: Setting active button to ${firstPresetId} from first user preference`);
+                updateMobileActiveButton(firstPresetId);
+            } else {
+                // Fallback to preset 1
+                console.log('Mobile: Falling back to preset 1 as active button');
+                updateMobileActiveButton('1');
+            }
+            
+            console.log('Mobile: Mobile UI initialization complete');
+        });
+    }
+    
+    // Add a small delay to ensure the main script has time to initialize
+    setTimeout(initializeMobileUI, 300);
+    
     // Handle preset button click
     function handlePresetButtonClick(presetId) {
         console.log(`Mobile: Preset button ${presetId} clicked`);
@@ -153,7 +200,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Fetch and update user preferences from server
-    function fetchAndUpdatePreferences() {
+    function fetchAndUpdatePreferences(callback) {
         console.log('Mobile: Fetching user preferences');
         
         // If the main script's function exists, use it
@@ -162,14 +209,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(() => {
                     console.log('Mobile: User preferences fetched, updating UI');
                     updateSelectedModelNames();
+                    
+                    // Call callback function if provided
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
                 })
                 .catch(err => {
                     console.error('Mobile: Error fetching user preferences:', err);
+                    
+                    // Still call callback even if there was an error
+                    if (typeof callback === 'function') {
+                        callback();
+                    }
                 });
         } else {
             console.log('Mobile: fetchUserPreferences not available, using current values');
             // Fallback to just updating from current values
             updateSelectedModelNames();
+            
+            // Call callback function if provided
+            if (typeof callback === 'function') {
+                callback();
+            }
         }
     }
     
@@ -528,10 +590,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function showMobileModelPanel() {
         console.log('Mobile: Opening model panel');
         
-        // Update names before showing
-        fetchAndUpdatePreferences();
-        
-        // Show the panel and backdrop
+        // First show the loading state
         if (mobileModelPanel) {
             mobileModelPanel.classList.add('visible');
         } else {
@@ -542,6 +601,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (mobileBackdrop) {
             mobileBackdrop.classList.add('visible');
         }
+        
+        // Then update names - this ensures the panel is visible immediately
+        // rather than waiting for the data to load first
+        fetchAndUpdatePreferences();
     }
     
     // Handle preset selection from other scripts
