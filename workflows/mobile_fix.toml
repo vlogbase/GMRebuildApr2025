@@ -1,2 +1,0 @@
-run = "python workflows/mobile_fix_workflow.py"
-language = "python3"

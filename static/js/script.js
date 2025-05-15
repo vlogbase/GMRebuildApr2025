@@ -1998,8 +1998,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     
                     userPreferences = validatedPreferences;
-                    // Make sure the global window.userPreferences is always set
-                    window.userPreferences = userPreferences;
                     console.log('Loaded user preferences:', userPreferences);
                     
                     // Update button text to reflect preferences
@@ -2007,11 +2005,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Select default preset - use preset 6 (free) for non-authenticated users
                     selectPresetButton(isAuthenticated ? '1' : '6');
-                    
-                    // Dispatch event that preferences are loaded - for backward compatibility
-                    document.dispatchEvent(new CustomEvent('preferences-loaded', {
-                        detail: { userPreferences: userPreferences }
-                    }));
                 }
                 
                 // After loading preferences, fetch available models
@@ -2240,11 +2233,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     allModels = modelDataArray;
                     // Expose the models to window object for mobile interface
                     window.availableModels = allModels;
-                    
-                    // Dispatch event that models are loaded
-                    document.dispatchEvent(new CustomEvent('models-loaded', {
-                        detail: { availableModels: allModels }
-                    }));
                     
                     // For non-authenticated users, ensure we have at least the default free models available
                     if (!isAuthenticated) {
