@@ -41,8 +41,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Init variables
     let currentPresetId = null;
-    let preferencesLoaded = false;
-    let modelsLoaded = false;
     
     // Show loading state on all preset buttons initially
     function showLoadingState() {
@@ -80,53 +78,65 @@ document.addEventListener('DOMContentLoaded', function() {
     // Set initial loading state
     showLoadingState();
     
-    // Listen for events from the main script
-    document.addEventListener('preferences-loaded', function(e) {
-        console.log('Mobile: Received preferences-loaded event');
-        preferencesLoaded = true;
-        updateUIIfReady();
-    });
-    
-    document.addEventListener('models-loaded', function(e) {
-        console.log('Mobile: Received models-loaded event');
-        modelsLoaded = true;
-        updateUIIfReady();
-    });
-    
-    // Update the UI when both preferences and models are ready
-    function updateUIIfReady() {
-        if (preferencesLoaded && modelsLoaded) {
-            console.log('Mobile: Both preferences and models loaded, updating UI');
-            initializeMobileUI();
-        } else {
-            console.log(`Mobile: Waiting for data... Preferences: ${preferencesLoaded}, Models: ${modelsLoaded}`);
+    // Function to initialize mobile UI - this is directly called multiple times
+    function initializeMobileUI() {
+        console.log('Mobile: Running initialization');
+        
+        // Check if we have access to user preferences
+        if (!window.userPreferences) {
+            console.log('Mobile: userPreferences not available, trying to load from main script');
+            
+            // Try to call the main script's fetch function directly to force preferences to load
+            if (window.fetchUserPreferences && typeof window.fetchUserPreferences === 'function') {
+                console.log('Mobile: Directly calling window.fetchUserPreferences()');
+                window.fetchUserPreferences()
+                    .then(() => {
+                        console.log('Mobile: Preferences loaded from direct call, updating UI');
+                        updateSelectedModelNames();
+                        setActivePreset();
+                        removeLoadingState();
+                    })
+                    .catch(error => {
+                        console.error('Mobile: Error loading preferences:', error);
+                        removeLoadingState();
+                    });
+            } else {
+                console.log('Mobile: fetchUserPreferences not available, will retry initialization');
+                // If we can't fetch, retry after a delay
+                setTimeout(initializeMobileUI, 500);
+            }
+            return;
         }
+        
+        // If we have preferences, update UI immediately
+        console.log('Mobile: userPreferences available, updating UI directly');
+        updateSelectedModelNames();
+        setActivePreset();
+        removeLoadingState();
     }
     
-    // Initialize the mobile UI once data is ready
-    function initializeMobileUI() {
-        // Update model names in panel buttons
-        updateSelectedModelNames();
-        
-        // Set active button based on preferences
+    // Set the active preset based on available data
+    function setActivePreset() {
         if (window.activePresetId) {
-            console.log(`Mobile: Setting active button to ${window.activePresetId} from window.activePresetId`);
+            console.log(`Mobile: Setting active button to ${window.activePresetId}`);
             updateMobileActiveButton(window.activePresetId);
         } else if (window.userPreferences && Object.keys(window.userPreferences).length > 0) {
             // If no active preset ID but we have preferences, use the first one
             const firstPresetId = Object.keys(window.userPreferences)[0];
-            console.log(`Mobile: Setting active button to ${firstPresetId} from first user preference`);
+            console.log(`Mobile: Setting active button to ${firstPresetId}`);
             updateMobileActiveButton(firstPresetId);
         } else {
             // Fallback to preset 1
             console.log('Mobile: Falling back to preset 1 as active button');
             updateMobileActiveButton('1');
         }
-        
-        // Remove loading state from buttons
-        removeLoadingState();
-        console.log('Mobile: Mobile UI initialization complete');
     }
+    
+    // Run initialization immediately and then again after a delay
+    initializeMobileUI();
+    
+    // Also set up a backup initialization after a delay to catch any late-loading data
+    setTimeout(initializeMobileUI, 800);
     
     // Handle preset button click
     function handlePresetButtonClick(presetId) {
@@ -208,33 +218,46 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 3000);
     }
     
-    // Update selected model names in the panel
+    // Update selected model names in the panel - adapted from desktop implementation
     function updateSelectedModelNames() {
         console.log('Mobile: Updating selected model names in panel');
         
-        // Handle case where preferences or models aren't loaded yet
-        if (!window.userPreferences || !window.availableModels) {
-            console.log('Mobile: Cannot update model names yet - data not fully loaded');
+        // Handle case where preferences aren't loaded yet
+        if (!window.userPreferences) {
+            console.log('Mobile: Cannot update model names - userPreferences not loaded');
             return;
         }
         
-        for (let i = 1; i <= 6; i++) {
-            const presetId = i.toString();
+        // Log the current state to help with debugging
+        console.log('Mobile: Current userPreferences:', JSON.stringify(window.userPreferences));
+        console.log('Mobile: defaultModelDisplayNames available:', window.defaultModelDisplayNames ? 'yes' : 'no');
+        
+        for (const presetId in window.userPreferences) {
             const modelId = window.userPreferences[presetId];
+            console.log(`Mobile: Processing preset ${presetId} with model ${modelId}`);
             
-            // Get the model display name
-            let displayName = 'Not set';
-            
-            if (modelId && window.availableModels) {
-                const model = window.availableModels.find(m => m.id === modelId);
-                if (model) {
-                    displayName = model.name || model.id;
-                }
-            }
-            
-            // Update the display
+            // Update mobile panel model name (in the sliding panel)
             const displayElement = document.getElementById(`mobile-selected-model-${presetId}`);
             if (displayElement) {
+                // Get the formatted model name using the same function as desktop
+                let displayName = 'Not set';
+                
+                if (modelId) {
+                    // Use the same formatting logic as desktop
+                    if (window.formatModelName && typeof window.formatModelName === 'function') {
+                        // Special handling for preset 6 (Free)
+                        if (presetId === '6') {
+                            displayName = window.formatModelName(modelId, true);
+                        } else {
+                            displayName = window.formatModelName(modelId);
+                        }
+                    } else {
+                        // Fallback if formatModelName is not available
+                        displayName = modelId.split('/').pop().replace(/-/g, ' ');
+                    }
+                }
+                
+                console.log(`Mobile: Setting display name for preset ${presetId} to "${displayName}"`);
                 displayElement.textContent = displayName;
                 
                 // Also update the parent button's data-model-id attribute
@@ -242,6 +265,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (parentButton && modelId) {
                     parentButton.setAttribute('data-model-id', modelId);
                 }
+            } else {
+                console.error(`Mobile: Display element not found for preset ${presetId}`);
             }
         }
         
