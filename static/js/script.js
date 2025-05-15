@@ -2005,6 +2005,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Select default preset - use preset 6 (free) for non-authenticated users
                     selectPresetButton(isAuthenticated ? '1' : '6');
+                    
+                    // Dispatch an event to notify other scripts that preferences are loaded
+                    // This helps mobile scripts synchronize their initialization
+                    window.dispatchEvent(new CustomEvent('userPreferencesLoaded', {
+                        detail: { preferences: userPreferences }
+                    }));
                 }
                 
                 // After loading preferences, fetch available models
@@ -2233,6 +2239,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     allModels = modelDataArray;
                     // Expose the models to window object for mobile interface
                     window.availableModels = allModels;
+                    
+                    // Dispatch an event to notify other scripts that models are loaded
+                    window.dispatchEvent(new CustomEvent('modelsLoaded', {
+                        detail: { count: allModels.length }
+                    }));
                     
                     // For non-authenticated users, ensure we have at least the default free models available
                     if (!isAuthenticated) {

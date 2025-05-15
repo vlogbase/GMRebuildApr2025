@@ -47,47 +47,67 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Function to initialize the mobile UI
     function initializeMobileUI() {
-        // First, ensure the main script has initialized models
-        if (!window.availableModels || window.availableModels.length === 0) {
-            console.log('Mobile: Waiting for models to load...');
-            
-            // Try fetching models directly if the main populateModelList function exists
-            if (window.populateModelList && typeof window.populateModelList === 'function') {
-                // Load models for preset 1 by default
-                window.populateModelList('1');
-            }
-            
-            // If still no models, retry after a delay
-            if (!window.availableModels || window.availableModels.length === 0) {
-                console.log('Mobile: Models not yet available, retrying in 800ms');
-                setTimeout(initializeMobileUI, 800);
-                return;
-            }
+        console.log('Mobile: Starting UI initialization');
+        
+        // Update the UI with current preferences
+        updateSelectedModelNames();
+        
+        // Set the active button based on available information
+        if (window.activePresetId) {
+            console.log(`Mobile: Setting active button to ${window.activePresetId} from window.activePresetId`);
+            updateMobileActiveButton(window.activePresetId);
+        } else if (window.userPreferences && Object.keys(window.userPreferences).length > 0) {
+            // If no active preset ID but we have preferences, use the first one
+            const firstPresetId = Object.keys(window.userPreferences)[0];
+            console.log(`Mobile: Setting active button to ${firstPresetId} from first user preference`);
+            updateMobileActiveButton(firstPresetId);
+        } else {
+            // Fallback to preset 1
+            console.log('Mobile: Falling back to preset 1 as active button');
+            updateMobileActiveButton('1');
         }
         
-        // Fetch and update preferences (model selections)
-        fetchAndUpdatePreferences(function() {
-            // After preferences are loaded, set the active button
-            if (window.activePresetId) {
-                console.log(`Mobile: Setting active button to ${window.activePresetId} from window.activePresetId`);
-                updateMobileActiveButton(window.activePresetId);
-            } else if (window.userPreferences && Object.keys(window.userPreferences).length > 0) {
-                // If no active preset ID but we have preferences, use the first one
-                const firstPresetId = Object.keys(window.userPreferences)[0];
-                console.log(`Mobile: Setting active button to ${firstPresetId} from first user preference`);
-                updateMobileActiveButton(firstPresetId);
-            } else {
-                // Fallback to preset 1
-                console.log('Mobile: Falling back to preset 1 as active button');
-                updateMobileActiveButton('1');
-            }
-            
-            console.log('Mobile: Mobile UI initialization complete');
-        });
+        console.log('Mobile: Mobile UI initialization complete');
     }
     
-    // Add a small delay to ensure the main script has time to initialize
-    setTimeout(initializeMobileUI, 300);
+    // Track initialization state
+    let preferencesReady = false;
+    let modelsReady = false;
+    
+    // Set up event listeners for synchronization with main script
+    window.addEventListener('userPreferencesLoaded', function(event) {
+        console.log('Mobile: Received userPreferencesLoaded event', event.detail);
+        preferencesReady = true;
+        
+        // Always update the model names when preferences change, even after initial load
+        updateSelectedModelNames();
+        
+        attemptInitialization();
+    });
+    
+    window.addEventListener('modelsLoaded', function(event) {
+        console.log('Mobile: Received modelsLoaded event', event.detail);
+        modelsReady = true;
+        attemptInitialization();
+    });
+    
+    // Function to check if we can initialize
+    function attemptInitialization() {
+        if (preferencesReady && modelsReady) {
+            console.log('Mobile: Both preferences and models are ready, initializing UI');
+            initializeMobileUI();
+        } else {
+            console.log(`Mobile: Waiting for initialization... Preferences: ${preferencesReady}, Models: ${modelsReady}`);
+        }
+    }
+    
+    // Fallback in case events don't fire (still initialize after a timeout)
+    setTimeout(function() {
+        if (!preferencesReady || !modelsReady) {
+            console.log('Mobile: Fallback initialization due to timeout');
+            initializeMobileUI();
+        }
+    }, 2000);
     
     // Handle preset button click
     function handlePresetButtonClick(presetId) {
