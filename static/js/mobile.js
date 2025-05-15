@@ -214,5 +214,103 @@ window.addEventListener('load', function() {
         if (modelSelector) {
             modelSelector.classList.add('mobile-centered');
         }
+        
+        // Handle mobile input focus and keyboard behavior
+        handleMobileInputFocus();
+    }
+    
+    /**
+     * Handles mobile-specific text input behavior to address keyboard issues:
+     * 1. Scrolls the text input into view when the keyboard shows
+     * 2. Makes sure the UI adapts when the keyboard appears
+     */
+    function handleMobileInputFocus() {
+        // Only run on mobile devices
+        const isMobile = window.innerWidth <= 576;
+        if (!isMobile) return;
+        
+        console.log('Mobile: Setting up mobile input focus handlers');
+        
+        // Get the message input
+        const messageInput = document.getElementById('user-input');
+        if (!messageInput) {
+            console.error('Mobile: Message input not found');
+            return;
+        }
+        
+        // Find the chat input container (for scrolling into view)
+        const inputContainer = messageInput.closest('.chat-input-container');
+        if (!inputContainer) {
+            console.error('Mobile: Input container not found');
+            return;
+        }
+        
+        // When input gets focus (keyboard appears), scroll to it
+        messageInput.addEventListener('focus', function() {
+            // Small delay to ensure keyboard has started to show up
+            setTimeout(() => {
+                console.log('Mobile: Message input focused, scrolling into view');
+                // Align to the bottom of the viewport
+                inputContainer.scrollIntoView(false);
+            }, 100);
+        });
+        
+        // Track viewport height changes (for keyboard appearance)
+        let initialViewportHeight = window.innerHeight;
+        let isKeyboardOpen = false;
+        
+        window.addEventListener('resize', function() {
+            // Only run on mobile
+            if (window.innerWidth > 576) return;
+            
+            // If height decreased significantly, keyboard likely opened
+            if (window.innerHeight < initialViewportHeight * 0.75) {
+                if (!isKeyboardOpen && document.activeElement === messageInput) {
+                    console.log('Mobile: Keyboard appears to be opening');
+                    isKeyboardOpen = true;
+                    setTimeout(() => {
+                        inputContainer.scrollIntoView(false);
+                    }, 50);
+                }
+            } else {
+                // Keyboard likely closed
+                isKeyboardOpen = false;
+            }
+            
+            // Update for next comparison
+            initialViewportHeight = window.innerHeight;
+        });
+        
+        console.log('Mobile: Input focus handlers initialized');
+        
+        // Add visual feedback for send button on mobile
+        const sendButton = document.getElementById('send-button');
+        if (sendButton) {
+            // When the input has content, highlight the send button on mobile
+            messageInput.addEventListener('input', function() {
+                if (this.value.trim() !== '') {
+                    sendButton.classList.add('mobile-highlight');
+                } else {
+                    sendButton.classList.remove('mobile-highlight');
+                }
+            });
+            
+            // Add active state for send button on touchstart (for better feedback on mobile)
+            sendButton.addEventListener('touchstart', function() {
+                this.classList.add('active-touch');
+            }, { passive: true });
+            
+            // Remove active state on touchend
+            sendButton.addEventListener('touchend', function() {
+                this.classList.remove('active-touch');
+            }, { passive: true });
+            
+            // Remove active state if touch moves away
+            sendButton.addEventListener('touchcancel', function() {
+                this.classList.remove('active-touch');
+            }, { passive: true });
+            
+            console.log('Mobile: Send button enhancements added');
+        }
     }
 });

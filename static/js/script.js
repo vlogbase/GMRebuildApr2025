@@ -1659,9 +1659,21 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Handle keydown for Enter key and special cases
         messageInput.addEventListener('keydown', function(event) {
-            if (event.key === 'Enter' && !event.shiftKey) {
-                event.preventDefault();
-                sendMessage();
+            const isMobile = window.innerWidth <= 576; // Match mobile breakpoint
+            
+            if (event.key === 'Enter') {
+                if (isMobile) {
+                    // On mobile, we want Enter to create a new line
+                    // So we DON'T prevent default and DON'T send the message
+                    console.log('Mobile: Enter key pressed, allowing new line');
+                    // If Shift is pressed on mobile (external keyboard), also allow new line
+                } else {
+                    // Desktop behavior: Enter sends, Shift+Enter creates new line
+                    if (!event.shiftKey) {
+                        event.preventDefault();
+                        sendMessage();
+                    }
+                }
             }
             
             // For Backspace and Delete keys, resize after a brief delay

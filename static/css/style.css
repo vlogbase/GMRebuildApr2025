@@ -3133,6 +3133,34 @@ code {
     opacity: 1;
 }
 
+/* Mobile Send Button Enhancements */
+@media screen and (max-width: 576px) {
+    /* Highlighted state for send button on mobile */
+    #send-button.mobile-highlight {
+        background-color: #24b9bd;
+        box-shadow: 0 0 8px rgba(36, 185, 189, 0.5);
+        transform: scale(1.05);
+    }
+    
+    /* Active touch state */
+    #send-button.active-touch {
+        background-color: #1a8a8e;
+        transform: scale(0.95);
+    }
+    
+    /* Make the button slightly larger on mobile for easier tapping */
+    .chat-input-container #send-button {
+        width: 42px;
+        height: 42px;
+        transition: all 0.2s ease;
+    }
+    
+    /* Ensure the textarea has enough vertical padding to avoid getting hidden behind keyboard */
+    .chat-input-container .user-input {
+        padding-bottom: 12px;
+    }
+}
+
 /* Mobile Numbered Buttons (1-6) */
 .mobile-model-buttons {
     display: flex;
