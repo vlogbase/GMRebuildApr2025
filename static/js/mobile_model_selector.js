@@ -86,8 +86,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Extract preferences from event if available
         if (event.detail && event.detail.preferences) {
             console.log('Mobile: Using preferences data from event payload');
-            // Deep clone to prevent reference issues
-            window.userPreferences = JSON.parse(JSON.stringify(event.detail.preferences));
+            // Create a shallow copy which is sufficient for this non-nested object
+            window.userPreferences = Object.assign({}, event.detail.preferences);
             
             // Validate preferences format
             if (!window.userPreferences || typeof window.userPreferences !== 'object') {
@@ -124,8 +124,8 @@ document.addEventListener('DOMContentLoaded', function() {
         // Extract models from event if available
         if (event.detail && event.detail.models && Array.isArray(event.detail.models)) {
             console.log(`Mobile: Using models data from event payload (${event.detail.models.length} models)`);
-            // Deep clone to prevent reference issues
-            window.availableModels = JSON.parse(JSON.stringify(event.detail.models));
+            // Use array map to create a shallow copy of each model object
+            window.availableModels = event.detail.models.map(model => Object.assign({}, model));
             
             // Validate first few models
             if (window.availableModels.length > 0) {
@@ -635,7 +635,10 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        // Create list items
+        // Create a DocumentFragment for batch DOM updates
+        const fragment = document.createDocumentFragment();
+        
+        // Create list items and add them to the fragment
         filteredModels.forEach(model => {
             const li = document.createElement('li');
             li.setAttribute('data-model-id', model.id);
@@ -702,13 +705,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectModelForPreset(presetId, model.id);
             });
             
-            // Add the list item to the model list if it exists
-            if (mobileModelList) {
-                mobileModelList.appendChild(li);
-            } else {
-                console.error('Mobile: mobileModelList is null, cannot append model item');
-            }
+            // Add the list item to the fragment
+            fragment.appendChild(li);
         });
+        
+        // Add the entire fragment to the DOM in one operation
+        if (mobileModelList) {
+            mobileModelList.appendChild(fragment);
+        } else {
+            console.error('Mobile: mobileModelList is null, cannot append model items');
+        }
     }
     
     // Filter the mobile model list based on search term

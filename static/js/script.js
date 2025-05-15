@@ -2665,7 +2665,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             ];
             
-            // Add these fallback models to the dropdown
+            // Use DocumentFragment for batch DOM updates
+            const fragment = document.createDocumentFragment();
+            
+            // Add these fallback models to the fragment
             fallbackFreeModels.forEach(model => {
                 const li = document.createElement('li');
                 li.dataset.modelId = model.id;
@@ -2695,8 +2698,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectModelForPreset(presetId, model.id);
                 });
                 
-                modelList.appendChild(li);
+                // Add to the fragment instead of directly to DOM
+                fragment.appendChild(li);
             });
+            
+            // Add the fragment to the DOM in one operation
+            modelList.appendChild(fragment);
             
             // Exit early as we've already populated the list with fallback models
             return;
@@ -2758,7 +2765,10 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('[Debug] First few models in allModels before filtering:', JSON.stringify(allModels.slice(0, 3), null, 2));
         }
         
-        // Add each model to the list
+        // Use DocumentFragment for batch DOM updates
+        const fragment = document.createDocumentFragment();
+        
+        // Add each model to the fragment
         filteredModels.forEach(model => {
             // Log 7: Inside rendering loop
             console.log(`[Debug] Rendering list item for model: ${model.id}, Band: ${model.cost_band}`);
@@ -2820,8 +2830,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 selectModelForPreset(currentlyEditingPresetId, model.id);
             });
             
-            modelList.appendChild(li);
+            // Add to fragment instead of directly to DOM
+            fragment.appendChild(li);
         });
+        
+        // Add the fragment to the DOM in one operation
+        modelList.appendChild(fragment);
         
         // If no models match the filter
         if (filteredModels.length === 0) {
