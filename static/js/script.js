@@ -2023,6 +2023,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Use defaults and select the appropriate preset - free for non-authenticated users
                 selectPresetButton(isAuthenticated ? '1' : '6');
+                
+                // Use defaults for user preferences
+                userPreferences = {};
+                for (const presetId in defaultModels) {
+                    userPreferences[presetId] = defaultModels[presetId];
+                }
+                window.userPreferences = userPreferences;
+                
+                // Dispatch event even when there was an error loading preferences
+                window.dispatchEvent(new CustomEvent('userPreferencesLoaded', {
+                    detail: { preferences: userPreferences, error: true }
+                }));
             });
     }
     
@@ -2401,6 +2413,12 @@ document.addEventListener('DOMContentLoaded', function() {
                         modelList.innerHTML = '<li>Error loading models.</li>';
                     }
                 }
+                
+                // Even in case of error, expose models to window and dispatch event to notify mobile UI
+                window.availableModels = allModels;
+                window.dispatchEvent(new CustomEvent('modelsLoaded', {
+                    detail: { count: allModels.length, error: true }
+                }));
             });
     }
     
