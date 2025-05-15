@@ -28,154 +28,144 @@ document.addEventListener('DOMContentLoaded', function() {
     const mobilePanelClose = document.getElementById('mobile-panel-close');
     const mobilePanelPresetBtns = document.querySelectorAll('.mobile-panel-preset-btn');
     
-    // Debug panel elements
-    console.log('Mobile: Found model panel:', mobileModelPanel ? 'yes' : 'no');
-    console.log('Mobile: Found panel close:', mobilePanelClose ? 'yes' : 'no');
-    console.log('Mobile: Found panel preset buttons:', mobilePanelPresetBtns.length);
-    
     // Selection Elements
     const mobileModelSelection = document.getElementById('mobile-model-selection');
     const mobileSelectionBack = document.getElementById('mobile-selection-back');
     const mobileSelectionClose = document.getElementById('mobile-selection-close');
-    const mobileModelSearch = document.getElementById('mobile-model-search');
     const mobileModelList = document.getElementById('mobile-model-list');
+    const mobileModelSearch = document.getElementById('mobile-model-search');
     const mobileResetToDefault = document.getElementById('mobile-reset-to-default');
     
-    // Backdrop
-    const mobileBackdrop = document.getElementById('mobile-panel-backdrop');
+    // Common Elements
+    const mobileBackdrop = document.getElementById('mobile-backdrop');
     
-    // Current state
+    // Init variables
     let currentPresetId = null;
     
-    // Initialize the state - set the active button based on the current model
-    function initializeMobileModelUI() {
-        // Get the currently active preset ID from the desktop UI
-        const activeDesktopBtn = document.querySelector('.model-preset-btn.active');
-        if (activeDesktopBtn) {
-            const presetId = activeDesktopBtn.getAttribute('data-preset-id');
-            updateMobileActiveButton(presetId);
-            
-            // Update the selected model names in the panel
-            updateSelectedModelNames();
-        }
+    // Handle preset button click
+    function handlePresetButtonClick(presetId) {
+        console.log(`Mobile: Preset button ${presetId} clicked`);
+        showMobileModelSelection(presetId);
     }
     
-    // Update mobile active button
+    // Update the active button in the numbered row (1-6)
     function updateMobileActiveButton(presetId) {
-        // Clear active state from all buttons
-        mobilePresetBtns.forEach(btn => btn.classList.remove('active'));
+        if (!mobilePresetBtns) return;
         
-        // Set the active button
+        console.log(`Mobile: Updating active button to ${presetId}`);
+        
+        // Remove active class from all buttons
+        mobilePresetBtns.forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Add active class to the selected button
         const activeBtn = document.querySelector(`.mobile-preset-btn[data-preset-id="${presetId}"]`);
         if (activeBtn) {
             activeBtn.classList.add('active');
         }
     }
     
-    // Update the selected model names in the panel with cost band indicators
-    function updateSelectedModelNames() {
-        // First ensure our preferences are up-to-date and then update the UI
-        console.log('Mobile: Refreshing model names from preferences', window.userPreferences);
+    // Select a model for a specific preset
+    function selectModelForPreset(presetId, modelId) {
+        console.log(`Mobile: Selected model ${modelId} for preset ${presetId}`);
         
-        // Ensure we're working with the most current preferences
-        const currentPreferences = window.userPreferences || {};
-        
-        // For each preset, get the selected model from userPreferences or defaultModels
-        for (let i = 1; i <= 6; i++) {
-            const presetId = i.toString();
-            // Make sure we're getting the most up-to-date values 
-            const modelId = currentPreferences[presetId] || window.defaultModels?.[presetId];
+        // If the main script's selectPresetButton function exists, use it
+        if (window.selectPresetButton && typeof window.selectPresetButton === 'function') {
+            // Call the main script's select function (with presetId 1-6)
+            window.selectPresetButton(presetId, modelId);
             
-            console.log(`Mobile: For preset ${presetId}, using model: ${modelId}`);
+            // Update the UI to reflect the change
+            updateSelectedModelNames();
             
-            if (modelId) {
-                // Get the model name
-                let modelName = modelId;
-                
-                // Try to get a more friendly name from the list of models
-                if (window.formatModelName && typeof window.formatModelName === 'function') {
-                    const formattedName = window.formatModelName(modelId);
-                    console.log(`Mobile: Formatting model ${modelId} -> "${formattedName}"`);
-                    modelName = formattedName;
-                } else {
-                    console.warn(`Mobile: formatModelName function not available for ${modelId}`);
-                }
-                
-                // Update the display
-                const modelNameElement = document.getElementById(`mobile-selected-model-${presetId}`);
-                if (modelNameElement) {
-                    console.log(`Mobile: Updating display for preset ${presetId} to ${modelName}`);
-                    // Clear any existing content
-                    modelNameElement.innerHTML = '';
-                    
-                    // Create and add the model name span
-                    const nameSpan = document.createElement('span');
-                    nameSpan.textContent = modelName;
-                    nameSpan.className = 'selected-model-name-text';
-                    modelNameElement.appendChild(nameSpan);
-                    
-                    // Find the model in the global list to get its properties
-                    // Use the correct global array: window.availableModels
-                    const model = window.availableModels?.find(m => m.id === modelId);
-                    
-                    // Log for debugging
-                    if (!model) {
-                        console.warn(`Mobile: Model ${modelId} not found in availableModels (${window.availableModels?.length || 0} models available)`);
-                    }
-                    
-                    if (model) {
-                        // Add cost band indicator if available
-                        if (model.cost_band) {
-                            const costBandSpan = document.createElement('span');
-                            costBandSpan.textContent = model.cost_band;
-                            costBandSpan.className = 'preset-cost-band';
-                            
-                            // Add appropriate color class based on band value
-                            if (model.cost_band === '$$$$') {
-                                costBandSpan.classList.add('cost-band-4-danger');
-                            } else if (model.cost_band === '$$$') {
-                                costBandSpan.classList.add('cost-band-3-warn');
-                            } else if (model.cost_band === '$$') {
-                                costBandSpan.classList.add('cost-band-2');
-                            } else if (model.cost_band === '$') {
-                                costBandSpan.classList.add('cost-band-1');
-                            }
-                            
-                            modelNameElement.appendChild(costBandSpan);
-                        }
-                        // Add free indicator if it's a free model
-                        else if (model.is_free === true || modelId.includes(':free')) {
-                            const freeSpan = document.createElement('span');
-                            freeSpan.textContent = 'Free';
-                            freeSpan.className = 'preset-free-indicator';
-                            modelNameElement.appendChild(freeSpan);
-                        }
-                    }
+            // Update the active button in the numbered row
+            updateMobileActiveButton(presetId);
+            
+            // Show a confirmation notification
+            if (window.availableModels) {
+                const model = window.availableModels.find(m => m.id === modelId);
+                if (model) {
+                    showModelNotification(presetId, model.name || model.id);
                 }
             }
+        } else {
+            console.error('Mobile: selectPresetButton function not available');
         }
+        
+        // Hide both panels
+        hideMobileModelSelection();
+        hideMobileModelPanel();
     }
     
-    // Show mobile model panel
-    function showMobileModelPanel() {
-        mobileModelPanel.classList.add('visible');
-        mobileBackdrop.classList.add('visible');
+    // Show a notification when a model is selected
+    function showModelNotification(presetId, modelName) {
+        console.log(`Mobile: Showing notification for preset ${presetId} with model ${modelName}`);
         
-        // Refresh preferences from server first if main script has the function
-        if (window.fetchUserPreferences && typeof window.fetchUserPreferences === 'function') {
-            console.log('Mobile: Refreshing user preferences before showing panel');
+        // Create notification element if it doesn't exist
+        let notification = document.getElementById('mobile-model-notification');
+        if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'mobile-model-notification';
+            notification.className = 'mobile-model-notification';
+            document.body.appendChild(notification);
+        }
+        
+        // Set notification content
+        notification.textContent = `Selected "${modelName}" for preset ${presetId}`;
+        
+        // Show notification
+        notification.classList.add('visible');
+        
+        // Hide after a delay (3 seconds)
+        setTimeout(() => {
+            notification.classList.remove('visible');
+        }, 3000);
+    }
+    
+    // Update selected model names in the panel
+    function updateSelectedModelNames() {
+        if (!window.userPreferences) return;
+        
+        console.log('Mobile: Updating selected model names in panel');
+        
+        for (let i = 1; i <= 6; i++) {
+            const presetId = i.toString();
+            const modelId = window.userPreferences[presetId];
             
-            // This will update the global userPreferences object
-            window.fetchUserPreferences().then(() => {
-                console.log('Mobile: Successfully refreshed preferences from server:', window.userPreferences);
-                
-                // Then update the UI after preferences are fetched
-                updateSelectedModelNames();
-            }).catch(err => {
-                console.error('Mobile: Error refreshing preferences:', err);
-                // Still try to update with what we have
-                updateSelectedModelNames();
-            });
+            // Get the model display name
+            let displayName = 'Not set';
+            
+            if (modelId && window.availableModels) {
+                const model = window.availableModels.find(m => m.id === modelId);
+                if (model) {
+                    displayName = model.name || model.id;
+                }
+            }
+            
+            // Update the display
+            const displayElement = document.getElementById(`mobile-selected-model-${presetId}`);
+            if (displayElement) {
+                displayElement.textContent = displayName;
+            }
+        }
+        
+        console.log('Mobile: Model names updated');
+    }
+    
+    // Fetch and update user preferences from server
+    function fetchAndUpdatePreferences() {
+        console.log('Mobile: Fetching user preferences');
+        
+        // If the main script's function exists, use it
+        if (window.fetchUserPreferences && typeof window.fetchUserPreferences === 'function') {
+            window.fetchUserPreferences()
+                .then(() => {
+                    console.log('Mobile: User preferences fetched, updating UI');
+                    updateSelectedModelNames();
+                })
+                .catch(err => {
+                    console.error('Mobile: Error fetching user preferences:', err);
+                });
         } else {
             console.log('Mobile: fetchUserPreferences not available, using current values');
             // Fallback to just updating from current values
@@ -232,104 +222,167 @@ document.addEventListener('DOMContentLoaded', function() {
             mobileModelList.innerHTML = '';
         }
         
+        // Get reference to the loading element
+        const loadingElement = document.getElementById('mobile-models-loading');
+        
+        // Show the loading indicator
+        if (loadingElement) {
+            loadingElement.classList.remove('hidden');
+        }
+        
         // If the main script's populateModelList function exists, use it to get the models
         if (window.populateModelList && typeof window.populateModelList === 'function') {
             // We'll use our own list, but let the main script load the data first
             window.populateModelList(presetId);
             
-            // Now create our own list items with mobile-specific styling
-            const allModels = window.availableModels || [];
+            // Check if models are available immediately
+            let allModels = window.availableModels || [];
             
             // Log available models for debugging
             console.log(`Mobile: Found ${allModels.length} models from window.availableModels`);
             
-            // Use the same property names as in the main script
-            const filteredModels = presetId === '4' ? allModels.filter(model => model.is_multimodal) :
-                                  presetId === '5' ? allModels.filter(model => model.id.includes('perplexity')) :
-                                  presetId === '6' ? allModels.filter(model => model.is_free === true || model.id.includes(':free')) :
-                                  allModels.filter(model => !model.is_free); // Filter out free models for presets 1-3
-                                  
-            console.log(`Mobile: Filtered to ${filteredModels.length} models for preset ${presetId} (excluding free models for presets 1-3)`);
-            
-            // Get current selected model for this preset
-            const currentModel = window.userPreferences?.[presetId] || window.defaultModels?.[presetId];
-            
-            // Create list items
-            filteredModels.forEach(model => {
-                const li = document.createElement('li');
-                li.setAttribute('data-model-id', model.id);
+            // If no models are available yet, wait and retry a few times
+            if (allModels.length === 0) {
+                console.log('Mobile: No models available yet, will retry');
                 
-                if (model.id === currentModel) {
-                    li.classList.add('active');
-                }
+                let retryCount = 0;
+                const maxRetries = 5;
+                const retryInterval = 800; // milliseconds
                 
-                // Create model info div
-                const modelInfo = document.createElement('div');
-                modelInfo.className = 'model-info';
-                
-                // Model title
-                const modelTitle = document.createElement('div');
-                modelTitle.className = 'model-title';
-                modelTitle.textContent = model.name || model.id;
-                modelInfo.appendChild(modelTitle);
-                
-                // Model description (context window)
-                if (model.context_length) {
-                    const modelDesc = document.createElement('div');
-                    modelDesc.className = 'model-description';
-                    modelDesc.textContent = `Context: ${model.context_length.toLocaleString()} tokens`;
-                    modelInfo.appendChild(modelDesc);
-                }
-                
-                li.appendChild(modelInfo);
-                
-                // Model cost with proper cost band styling
-                const modelCost = document.createElement('div');
-                modelCost.className = 'model-cost';
-                
-                // Free model case
-                if (model.is_free === true || model.id.includes(':free')) {
-                    modelCost.textContent = 'Free';
-                    modelCost.classList.add('free-model');
-                } 
-                // Model with cost band
-                else if (model.cost_band) {
-                    // Create styled cost band span (similar to desktop UI)
-                    const costBandSpan = document.createElement('span');
-                    costBandSpan.textContent = model.cost_band;
-                    costBandSpan.className = 'cost-band-indicator';
+                const checkModels = () => {
+                    allModels = window.availableModels || [];
+                    console.log(`Mobile: Retry ${retryCount + 1}/${maxRetries} - Found ${allModels.length} models`);
                     
-                    // Add appropriate color class based on band value
-                    if (model.cost_band === '$$$$') {
-                        costBandSpan.classList.add('cost-band-4-danger');
-                    } else if (model.cost_band === '$$$') {
-                        costBandSpan.classList.add('cost-band-3-warn');
-                    } else if (model.cost_band === '$$') {
-                        costBandSpan.classList.add('cost-band-2');
-                    } else if (model.cost_band === '$') {
-                        costBandSpan.classList.add('cost-band-1');
+                    if (allModels.length > 0 || retryCount >= maxRetries) {
+                        // We have models or have exhausted retries, proceed to filtering and rendering
+                        finishPopulatingModels(allModels, presetId);
+                        
+                        // Hide loading indicator once we have models or have given up
+                        if (loadingElement) {
+                            loadingElement.classList.add('hidden');
+                        }
                     } else {
-                        costBandSpan.classList.add('cost-band-free');
+                        // No models yet and more retries available, try again after interval
+                        retryCount++;
+                        setTimeout(checkModels, retryInterval);
                     }
-                    
-                    modelCost.appendChild(costBandSpan);
+                };
+                
+                // Start the retry process
+                setTimeout(checkModels, retryInterval);
+            } else {
+                // We already have models, proceed immediately
+                finishPopulatingModels(allModels, presetId);
+                
+                // Hide loading indicator
+                if (loadingElement) {
+                    loadingElement.classList.add('hidden');
                 }
-                // Fallback for models with pricing but no cost band
-                else if (model.pricing && model.pricing.prompt) {
-                    const promptPrice = model.pricing.prompt;
-                    modelCost.textContent = `$${promptPrice.toFixed(4)}/1K in`;
-                }
-                
-                li.appendChild(modelCost);
-                
-                // Add click handler
-                li.addEventListener('click', function() {
-                    selectModelForPreset(presetId, model.id);
-                });
-                
-                mobileModelList.appendChild(li);
-            });
+            }
+        } else {
+            console.error('Mobile: populateModelList function not available in window context');
+            
+            // Hide loading indicator even if we can't load models
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
+            }
         }
+    }
+    
+    // Helper function to filter and display models after they're loaded
+    function finishPopulatingModels(allModels, presetId) {
+        // First filter out free models for all presets except 6
+        const nonFreeModels = presetId === '6' ? allModels : allModels.filter(model => !model.is_free && !model.id.includes(':free'));
+        
+        // Then apply specific filters based on preset
+        const filteredModels = presetId === '4' ? nonFreeModels.filter(model => model.is_multimodal) :
+                              presetId === '5' ? nonFreeModels.filter(model => model.id.includes('perplexity')) :
+                              presetId === '6' ? allModels.filter(model => model.is_free === true || model.id.includes(':free')) :
+                              nonFreeModels; // For presets 1-5, we already filtered out free models above
+                              
+        console.log(`Mobile: Filtered to ${filteredModels.length} models for preset ${presetId} (excluding free models for presets 1-5)`);
+        
+        // Get current selected model for this preset
+        const currentModel = window.userPreferences?.[presetId] || window.defaultModels?.[presetId];
+        
+        // Display empty state message if no models are available after filtering
+        if (filteredModels.length === 0) {
+            const emptyMessage = document.createElement('div');
+            emptyMessage.className = 'empty-models-message';
+            emptyMessage.textContent = 'No models available for this category. Please try another preset.';
+            mobileModelList.appendChild(emptyMessage);
+            return;
+        }
+        
+        // Create list items
+        filteredModels.forEach(model => {
+            const li = document.createElement('li');
+            li.setAttribute('data-model-id', model.id);
+            
+            if (model.id === currentModel) {
+                li.classList.add('active');
+            }
+            
+            // Create model info div
+            const modelInfo = document.createElement('div');
+            modelInfo.className = 'model-info';
+            
+            // Model title
+            const modelTitle = document.createElement('div');
+            modelTitle.className = 'model-title';
+            modelTitle.textContent = model.name || model.id;
+            modelInfo.appendChild(modelTitle);
+            
+            // Model description (context window)
+            if (model.context_length) {
+                const modelDesc = document.createElement('div');
+                modelDesc.className = 'model-description';
+                modelDesc.textContent = `Context: ${model.context_length.toLocaleString()} tokens`;
+                modelInfo.appendChild(modelDesc);
+            }
+            
+            // Cost information
+            const modelCost = document.createElement('div');
+            modelCost.className = 'model-cost';
+            
+            // Cost band indicator
+            const costBandIndicator = document.createElement('span');
+            costBandIndicator.className = 'cost-band-indicator';
+            
+            // Determine cost band class
+            let costBandClass = '';
+            if (model.is_free) {
+                modelCost.classList.add('free-model');
+                modelCost.textContent = 'Free';
+            } else if (model.input_cost_per_token > 0.000020 || model.output_cost_per_token > 0.000100) {
+                costBandClass = 'cost-band-4-danger';
+                costBandIndicator.textContent = '$$$$';
+            } else if (model.input_cost_per_token > 0.000010 || model.output_cost_per_token > 0.000050) {
+                costBandClass = 'cost-band-3-warn';
+                costBandIndicator.textContent = '$$$';
+            } else if (model.input_cost_per_token > 0.000005 || model.output_cost_per_token > 0.000020) {
+                costBandClass = 'cost-band-2';
+                costBandIndicator.textContent = '$$';
+            } else {
+                costBandClass = 'cost-band-1';
+                costBandIndicator.textContent = '$';
+            }
+            
+            if (costBandClass) {
+                costBandIndicator.classList.add(costBandClass);
+                modelCost.appendChild(costBandIndicator);
+            }
+            
+            modelInfo.appendChild(modelCost);
+            li.appendChild(modelInfo);
+            
+            // Add click handler
+            li.addEventListener('click', function() {
+                selectModelForPreset(presetId, model.id);
+            });
+            
+            mobileModelList.appendChild(li);
+        });
     }
     
     // Filter the mobile model list based on search term
@@ -343,7 +396,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const modelText = modelTitle ? modelTitle.textContent.toLowerCase() : '';
             const modelId = item.getAttribute('data-model-id').toLowerCase();
             
-            if (modelText.includes(searchTerm) || modelId.includes(searchTerm)) {
+            // Show item if search term is empty or matches model name or id
+            if (!searchTerm || modelText.includes(searchTerm) || modelId.includes(searchTerm)) {
                 item.style.display = '';
             } else {
                 item.style.display = 'none';
@@ -351,128 +405,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Show notification that fades out after a delay
-    function showModelNotification(presetId, modelName) {
-        const notification = document.getElementById('mobile-model-notification');
-        const notificationText = document.getElementById('notification-text');
+    // Reset the current preset to its default model
+    function resetCurrentPresetToDefault() {
+        if (!currentPresetId || !window.defaultModels) return;
         
-        if (!notification || !notificationText) return;
-        
-        // Set notification text
-        notificationText.textContent = `Selected ${modelName} on preset ${presetId}`;
-        
-        // Show the notification
-        notification.classList.add('show');
-        
-        // Clear any existing timers
-        if (window.notificationTimer) {
-            clearTimeout(window.notificationTimer);
-        }
-        
-        // Hide after 3 seconds (2s display + 1s fade)
-        window.notificationTimer = setTimeout(() => {
-            notification.classList.remove('show');
-        }, 3000);
-    }
-    
-    // Select a model for a preset
-    function selectModelForPreset(presetId, modelId) {
-        console.log(`Mobile: Selecting model ${modelId} for preset ${presetId}`);
-        
-        // If the main script's selectModelForPreset function exists, use it
-        if (window.selectModelForPreset && typeof window.selectModelForPreset === 'function') {
-            // Call with true for skipActivation since we'll handle that ourselves
-            window.selectModelForPreset(presetId, modelId, true);
+        const defaultModel = window.defaultModels[currentPresetId];
+        if (defaultModel) {
+            console.log(`Mobile: Resetting preset ${currentPresetId} to default model ${defaultModel}`);
             
-            // Update local user preferences immediately for UI responsiveness
-            if (window.userPreferences) {
-                window.userPreferences[presetId] = modelId;
-                console.log(`Mobile: Updated local preferences for preset ${presetId} to ${modelId}`);
-            }
+            // Update the model selection
+            selectModelForPreset(currentPresetId, defaultModel);
             
-            // After selecting the model, activate the preset button to use this model
-            if (window.selectPresetButton && typeof window.selectPresetButton === 'function') {
-                // This is the key fix - actually activate the preset after selecting a model
-                window.selectPresetButton(presetId);
-                console.log(`Mobile: Activated preset ${presetId} with model: ${modelId}`);
-                
-                // Get formatted model name for the notification
-                let friendlyModelName = modelId;
-                if (window.formatModelName && typeof window.formatModelName === 'function') {
-                    friendlyModelName = window.formatModelName(modelId);
-                }
-                
-                // Show notification
-                showModelNotification(presetId, friendlyModelName);
-            }
-            
-            // Fetch the latest user preferences from the server to ensure we're in sync
-            if (window.fetchUserPreferences && typeof window.fetchUserPreferences === 'function') {
-                console.log('Mobile: Refreshing preferences from server after model selection');
-                window.fetchUserPreferences().then(() => {
-                    console.log('Mobile: Server preferences refreshed after model selection');
-                    // Now update the UI with the latest preferences
-                    updateSelectedModelNames();
-                });
-            }
-            
-            // Close the mobile selection
-            hideMobileModelSelection();
-            hideMobileModelPanel();
-            
-            // Update the mobile button state
-            updateMobileActiveButton(presetId);
-        }
-    }
-    
-    // Handle numbered button click (1-6)
-    function handlePresetButtonClick(presetId) {
-        // If the main script's selectPresetButton function exists, use it
-        if (window.selectPresetButton && typeof window.selectPresetButton === 'function') {
-            window.selectPresetButton(presetId);
-            
-            // Update the mobile button state
-            updateMobileActiveButton(presetId);
-            
-            // Get the selected model for this preset
-            const modelId = window.userPreferences?.[presetId] || window.defaultModels?.[presetId];
-            if (modelId) {
-                // Get friendly model name
-                let friendlyModelName = modelId;
-                if (window.formatModelName && typeof window.formatModelName === 'function') {
-                    friendlyModelName = window.formatModelName(modelId);
-                }
-                
-                // Show notification
-                showModelNotification(presetId, friendlyModelName);
-            }
-        }
-    }
-    
-    // Reset to default model for current preset
-    function resetToDefault(presetId) {
-        // If the main script's resetToDefault function exists, use it
-        if (window.resetToDefault && typeof window.resetToDefault === 'function') {
-            window.resetToDefault(presetId);
-            
-            // Update the list to show the new active model
-            populateMobileModelList(presetId);
-            
-            // Update the mobile panel selected model names
-            updateSelectedModelNames();
-            
-            // Get the default model for this preset
-            const defaultModelId = window.defaultModels?.[presetId];
-            if (defaultModelId) {
-                // Get friendly model name
-                let friendlyModelName = defaultModelId;
-                if (window.formatModelName && typeof window.formatModelName === 'function') {
-                    friendlyModelName = window.formatModelName(defaultModelId);
-                }
-                
-                // Show notification for reset
-                showModelNotification(presetId, `Default (${friendlyModelName})`);
-            }
+            // Additional notification since we're closing the panel
+            const friendlyModelName = window.availableModels?.find(m => m.id === defaultModel)?.name || defaultModel;
+            showModelNotification(currentPresetId, `Default (${friendlyModelName})`);
         }
     }
     
@@ -493,20 +439,20 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Panel preset buttons
+    mobilePanelPresetBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const presetId = this.getAttribute('data-preset-id');
+            handlePresetButtonClick(presetId);
+        });
+    });
+    
     // Panel close button
     if (mobilePanelClose) {
         mobilePanelClose.addEventListener('click', function() {
             hideMobileModelPanel();
         });
     }
-    
-    // Panel preset buttons
-    mobilePanelPresetBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const presetId = this.getAttribute('data-preset-id');
-            showMobileModelSelection(presetId);
-        });
-    });
     
     // Selection back button
     if (mobileSelectionBack) {
@@ -523,38 +469,45 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Model search input
-    if (mobileModelSearch) {
-        mobileModelSearch.addEventListener('input', function() {
-            filterMobileModelList(this.value.toLowerCase());
+    // Reset to default button in selection
+    if (mobileResetToDefault) {
+        mobileResetToDefault.addEventListener('click', function() {
+            resetCurrentPresetToDefault();
         });
     }
     
-    // Reset to default button
-    if (mobileResetToDefault) {
-        mobileResetToDefault.addEventListener('click', function() {
-            if (currentPresetId) {
-                resetToDefault(currentPresetId);
-            }
+    // Search input
+    if (mobileModelSearch) {
+        mobileModelSearch.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            filterMobileModelList(searchTerm);
         });
     }
     
     // Backdrop click
     if (mobileBackdrop) {
         mobileBackdrop.addEventListener('click', function() {
-            hideMobileModelPanel();
             hideMobileModelSelection();
+            hideMobileModelPanel();
         });
     }
     
-    // Initialize the UI when window loads
-    window.addEventListener('load', function() {
-        initializeMobileModelUI();
-    });
+    // Show mobile model panel
+    function showMobileModelPanel() {
+        console.log('Mobile: Opening model panel');
+        
+        // Update names before showing
+        fetchAndUpdatePreferences();
+        
+        // Show the panel and backdrop
+        mobileModelPanel.classList.add('visible');
+        mobileBackdrop.classList.add('visible');
+    }
     
-    // Listen for changes to the active preset button from the main script
-    document.addEventListener('preset-button-selected', function(e) {
+    // Handle preset selection from other scripts
+    document.addEventListener('preset-selected', function(e) {
         if (e.detail && e.detail.presetId) {
+            console.log(`Mobile: Detected preset selection: ${e.detail.presetId}`);
             updateMobileActiveButton(e.detail.presetId);
         }
     });
@@ -571,49 +524,46 @@ document.addEventListener('DOMContentLoaded', function() {
             resetAllPresetsToDefault();
         });
     }
-});
-
-/**
- * Reset all presets to their default models
- */
-function resetAllPresetsToDefault() {
-    if (window.defaultModels) {
-        console.log('Mobile: Resetting all presets to default models');
-        
-        // Confirm with the user before resetting
-        if (confirm('Reset all presets to their default models?')) {
-            // Reset to default models
-            for (let i = 1; i <= 6; i++) {
-                const presetId = i.toString();
-                const defaultModel = window.defaultModels[presetId];
-                
-                if (defaultModel) {
-                    // Update user preferences
-                    if (!window.userPreferences) {
-                        window.userPreferences = {};
-                    }
-                    window.userPreferences[presetId] = defaultModel;
+    
+    /**
+     * Reset all presets to their default models
+     */
+    function resetAllPresetsToDefault() {
+        if (window.defaultModels) {
+            console.log('Mobile: Resetting all presets to default models');
+            
+            // Confirm with the user before resetting
+            if (confirm('Reset all presets to their default models?')) {
+                // Reset to default models
+                for (let i = 1; i <= 6; i++) {
+                    const presetId = i.toString();
+                    const defaultModel = window.defaultModels[presetId];
                     
-                    // Update the displayed model name
-                    const modelNameElement = document.getElementById(`mobile-selected-model-${presetId}`);
-                    if (modelNameElement) {
-                        modelNameElement.textContent = defaultModel.name || defaultModel.id;
+                    if (defaultModel) {
+                        // Update user preferences
+                        if (!window.userPreferences) {
+                            window.userPreferences = {};
+                        }
+                        window.userPreferences[presetId] = defaultModel;
+                        
+                        // Update the displayed model name
+                        const modelNameElement = document.getElementById(`mobile-selected-model-${presetId}`);
+                        if (modelNameElement) {
+                            modelNameElement.textContent = defaultModel.name || defaultModel.id;
+                        }
                     }
                 }
+                
+                // Save preferences to server
+                if (window.saveUserPreferences && typeof window.saveUserPreferences === 'function') {
+                    window.saveUserPreferences();
+                }
+                
+                // Hide the panel
+                hideMobileModelPanel();
             }
-            
-            // Save preferences to server
-            if (window.saveUserPreferences && typeof window.saveUserPreferences === 'function') {
-                window.saveUserPreferences();
-            }
-            
-            // Display confirmation
-            alert('All presets have been reset to default models');
-            
-            // Hide the panel
-            hideMobileModelPanel();
+        } else {
+            console.error('Mobile: Default models not available for reset');
         }
-    } else {
-        console.error('Mobile: Default models not available for reset');
     }
-}
+});
