@@ -803,43 +803,59 @@ document.addEventListener('DOMContentLoaded', function() {
     
     /**
      * Reset all presets to their default models
+     * 
+     * This function now uses the server's canonical defaults by calling
+     * the same resetToDefault function used by the desktop interface
+     * without specifying a preset_id, which resets all presets.
      */
     function resetAllPresetsToDefault() {
-        if (window.defaultModels) {
-            console.log('Mobile: Resetting all presets to default models');
+        console.log('Mobile: Resetting all presets to canonical server defaults');
+        
+        // Check if the main reset function exists
+        if (window.resetToDefault && typeof window.resetToDefault === 'function') {
+            // Show loading state in the UI
+            const resetBtn = document.getElementById('mobile-reset-all-presets');
+            if (resetBtn) {
+                resetBtn.textContent = 'Resetting...';
+                resetBtn.disabled = true;
+            }
             
-            // Confirm with the user before resetting
-            if (confirm('Reset all presets to their default models?')) {
-                // Reset to default models
-                for (let i = 1; i <= 6; i++) {
-                    const presetId = i.toString();
-                    const defaultModel = window.defaultModels[presetId];
+            try {
+                // Call the main script's reset function without a preset ID
+                // This makes a POST to /reset_preferences with an empty body,
+                // which signals the server to reset all preferences
+                window.resetToDefault();
+                
+                // The desktop function already handles:
+                // - Server communication
+                // - Re-fetching preferences
+                // - Showing confirmation messages
+                // - Updating the UI
+                
+                // Hide the mobile panel after reset is complete
+                setTimeout(() => {
+                    hideMobileModelPanel();
                     
-                    if (defaultModel) {
-                        // Update user preferences
-                        if (!window.userPreferences) {
-                            window.userPreferences = {};
-                        }
-                        window.userPreferences[presetId] = defaultModel;
-                        
-                        // Update the displayed model name
-                        const modelNameElement = document.getElementById(`mobile-selected-model-${presetId}`);
-                        if (modelNameElement) {
-                            modelNameElement.textContent = defaultModel.name || defaultModel.id;
-                        }
+                    // Reset the button state
+                    if (resetBtn) {
+                        resetBtn.textContent = 'Reset All Models to Defaults';
+                        resetBtn.disabled = false;
                     }
-                }
+                }, 500);
+            } catch (error) {
+                console.error('Mobile: Error while resetting all presets:', error);
+                alert('Error resetting model preferences. Please try again.');
                 
-                // Save preferences to server
-                if (window.saveUserPreferences && typeof window.saveUserPreferences === 'function') {
-                    window.saveUserPreferences();
+                // Reset the button state
+                if (resetBtn) {
+                    resetBtn.textContent = 'Reset All Models to Defaults';
+                    resetBtn.disabled = false;
                 }
-                
-                // Hide the panel
-                hideMobileModelPanel();
             }
         } else {
-            console.error('Mobile: Default models not available for reset');
+            // Fallback if the main reset function isn't available
+            console.error('Mobile: window.resetToDefault function not available');
+            alert('Cannot reset models at this time. Please try again later.');
         }
     }
 });
