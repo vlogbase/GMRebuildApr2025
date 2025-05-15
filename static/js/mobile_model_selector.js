@@ -211,8 +211,27 @@ document.addEventListener('DOMContentLoaded', function() {
         // Use the global selectPresetButton function if available
         if (typeof window.selectPresetButton === 'function') {
             window.selectPresetButton(presetId);
+            
             // Update the active button in the UI
             updateMobileActiveButton(presetId);
+            
+            // Get the model name for the notification
+            let modelName = "Unknown Model";
+            if (window.userPreferences && window.userPreferences[presetId]) {
+                const modelId = window.userPreferences[presetId];
+                if (window.availableModels) {
+                    const model = window.availableModels.find(m => m.id === modelId);
+                    if (model) {
+                        modelName = model.name || model.id;
+                    } else {
+                        modelName = modelId; // Fallback to ID if model not found
+                    }
+                }
+            }
+            
+            // Show notification when preset is activated
+            showModelNotification(presetId, `Activated ${modelName}`);
+            
             return true;
         } else {
             console.error('Mobile: selectPresetButton function not found');
@@ -242,10 +261,22 @@ document.addEventListener('DOMContentLoaded', function() {
     function selectModelForPreset(presetId, modelId) {
         console.log(`Mobile: Selected model ${modelId} for preset ${presetId}`);
         
-        // If the main script's selectPresetButton function exists, use it
-        if (window.selectPresetButton && typeof window.selectPresetButton === 'function') {
-            // Call the main script's select function (with presetId 1-6)
-            window.selectPresetButton(presetId, modelId);
+        // Get model name for notification
+        let modelName = modelId;
+        if (window.availableModels) {
+            const model = window.availableModels.find(m => m.id === modelId);
+            if (model) {
+                modelName = model.name || model.id;
+            }
+        }
+        
+        // Use the global selectModelForPreset function if available (don't skip activation)
+        if (window.selectModelForPreset && typeof window.selectModelForPreset === 'function') {
+            console.log(`Mobile: Using global selectModelForPreset for preset ${presetId} with model ${modelId}`);
+            
+            // Call the global selectModelForPreset with false for skipActivation
+            // This will both assign the model AND activate it
+            window.selectModelForPreset(presetId, modelId, false);
             
             // Update the UI to reflect the change
             updateSelectedModelNames();
@@ -254,14 +285,23 @@ document.addEventListener('DOMContentLoaded', function() {
             updateMobileActiveButton(presetId);
             
             // Show a confirmation notification
-            if (window.availableModels) {
-                const model = window.availableModels.find(m => m.id === modelId);
-                if (model) {
-                    showModelNotification(presetId, model.name || model.id);
-                }
-            }
+            showModelNotification(presetId, `Selected ${modelName}`);
         } else {
-            console.error('Mobile: selectPresetButton function not available');
+            console.error('Mobile: window.selectModelForPreset function not available, falling back to selectPresetButton');
+            
+            // Fallback to the old method if selectModelForPreset is not available
+            if (window.selectPresetButton && typeof window.selectPresetButton === 'function') {
+                window.selectPresetButton(presetId, modelId);
+                
+                // Update the UI
+                updateSelectedModelNames();
+                updateMobileActiveButton(presetId);
+                
+                // Show notification
+                showModelNotification(presetId, `Selected ${modelName}`);
+            } else {
+                console.error('Mobile: selectPresetButton function not available either');
+            }
         }
         
         // Hide both panels
