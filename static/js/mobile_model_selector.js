@@ -41,53 +41,92 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Init variables
     let currentPresetId = null;
+    let preferencesLoaded = false;
+    let modelsLoaded = false;
     
-    // Initialize on page load - fetch user preferences and update model names
-    console.log('Mobile: Initializing model selections on page load');
-    
-    // Function to initialize the mobile UI
-    function initializeMobileUI() {
-        // First, ensure the main script has initialized models
-        if (!window.availableModels || window.availableModels.length === 0) {
-            console.log('Mobile: Waiting for models to load...');
-            
-            // Try fetching models directly if the main populateModelList function exists
-            if (window.populateModelList && typeof window.populateModelList === 'function') {
-                // Load models for preset 1 by default
-                window.populateModelList('1');
-            }
-            
-            // If still no models, retry after a delay
-            if (!window.availableModels || window.availableModels.length === 0) {
-                console.log('Mobile: Models not yet available, retrying in 800ms');
-                setTimeout(initializeMobileUI, 800);
-                return;
-            }
-        }
+    // Show loading state on all preset buttons initially
+    function showLoadingState() {
+        console.log('Mobile: Setting initial loading state for buttons');
+        // Set loading state on mobile preset buttons
+        mobilePresetBtns.forEach(btn => {
+            btn.classList.add('loading');
+        });
         
-        // Fetch and update preferences (model selections)
-        fetchAndUpdatePreferences(function() {
-            // After preferences are loaded, set the active button
-            if (window.activePresetId) {
-                console.log(`Mobile: Setting active button to ${window.activePresetId} from window.activePresetId`);
-                updateMobileActiveButton(window.activePresetId);
-            } else if (window.userPreferences && Object.keys(window.userPreferences).length > 0) {
-                // If no active preset ID but we have preferences, use the first one
-                const firstPresetId = Object.keys(window.userPreferences)[0];
-                console.log(`Mobile: Setting active button to ${firstPresetId} from first user preference`);
-                updateMobileActiveButton(firstPresetId);
-            } else {
-                // Fallback to preset 1
-                console.log('Mobile: Falling back to preset 1 as active button');
-                updateMobileActiveButton('1');
+        // Set loading state on panel preset buttons
+        mobilePanelPresetBtns.forEach(btn => {
+            btn.classList.add('loading');
+            const modelNameSpan = btn.querySelector('.selected-model-name');
+            if (modelNameSpan) {
+                modelNameSpan.textContent = 'Loading...';
             }
-            
-            console.log('Mobile: Mobile UI initialization complete');
         });
     }
     
-    // Add a small delay to ensure the main script has time to initialize
-    setTimeout(initializeMobileUI, 300);
+    // Remove loading state when data is ready
+    function removeLoadingState() {
+        console.log('Mobile: Removing loading state from buttons');
+        
+        // Remove loading state from mobile preset buttons
+        mobilePresetBtns.forEach(btn => {
+            btn.classList.remove('loading');
+        });
+        
+        // Remove loading state from panel preset buttons
+        mobilePanelPresetBtns.forEach(btn => {
+            btn.classList.remove('loading');
+        });
+    }
+    
+    // Set initial loading state
+    showLoadingState();
+    
+    // Listen for events from the main script
+    document.addEventListener('preferences-loaded', function(e) {
+        console.log('Mobile: Received preferences-loaded event');
+        preferencesLoaded = true;
+        updateUIIfReady();
+    });
+    
+    document.addEventListener('models-loaded', function(e) {
+        console.log('Mobile: Received models-loaded event');
+        modelsLoaded = true;
+        updateUIIfReady();
+    });
+    
+    // Update the UI when both preferences and models are ready
+    function updateUIIfReady() {
+        if (preferencesLoaded && modelsLoaded) {
+            console.log('Mobile: Both preferences and models loaded, updating UI');
+            initializeMobileUI();
+        } else {
+            console.log(`Mobile: Waiting for data... Preferences: ${preferencesLoaded}, Models: ${modelsLoaded}`);
+        }
+    }
+    
+    // Initialize the mobile UI once data is ready
+    function initializeMobileUI() {
+        // Update model names in panel buttons
+        updateSelectedModelNames();
+        
+        // Set active button based on preferences
+        if (window.activePresetId) {
+            console.log(`Mobile: Setting active button to ${window.activePresetId} from window.activePresetId`);
+            updateMobileActiveButton(window.activePresetId);
+        } else if (window.userPreferences && Object.keys(window.userPreferences).length > 0) {
+            // If no active preset ID but we have preferences, use the first one
+            const firstPresetId = Object.keys(window.userPreferences)[0];
+            console.log(`Mobile: Setting active button to ${firstPresetId} from first user preference`);
+            updateMobileActiveButton(firstPresetId);
+        } else {
+            // Fallback to preset 1
+            console.log('Mobile: Falling back to preset 1 as active button');
+            updateMobileActiveButton('1');
+        }
+        
+        // Remove loading state from buttons
+        removeLoadingState();
+        console.log('Mobile: Mobile UI initialization complete');
+    }
     
     // Handle preset button click
     function handlePresetButtonClick(presetId) {
@@ -171,9 +210,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Update selected model names in the panel
     function updateSelectedModelNames() {
-        if (!window.userPreferences) return;
-        
         console.log('Mobile: Updating selected model names in panel');
+        
+        // Handle case where preferences or models aren't loaded yet
+        if (!window.userPreferences || !window.availableModels) {
+            console.log('Mobile: Cannot update model names yet - data not fully loaded');
+            return;
+        }
         
         for (let i = 1; i <= 6; i++) {
             const presetId = i.toString();
@@ -193,6 +236,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const displayElement = document.getElementById(`mobile-selected-model-${presetId}`);
             if (displayElement) {
                 displayElement.textContent = displayName;
+                
+                // Also update the parent button's data-model-id attribute
+                const parentButton = displayElement.closest('.mobile-panel-preset-btn');
+                if (parentButton && modelId) {
+                    parentButton.setAttribute('data-model-id', modelId);
+                }
             }
         }
         
