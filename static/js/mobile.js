@@ -223,6 +223,7 @@ window.addEventListener('load', function() {
      * Handles mobile-specific text input behavior to address keyboard issues:
      * 1. Scrolls the text input into view when the keyboard shows
      * 2. Makes sure the UI adapts when the keyboard appears
+     * 3. Uses Visual Viewport API when available for better keyboard detection
      */
     function handleMobileInputFocus() {
         // Only run on mobile devices
@@ -231,8 +232,8 @@ window.addEventListener('load', function() {
         
         console.log('Mobile: Setting up mobile input focus handlers');
         
-        // Get the message input
-        const messageInput = document.getElementById('user-input');
+        // Get the message input - note we're using message-input ID which is in the HTML
+        const messageInput = document.getElementById('message-input');
         if (!messageInput) {
             console.error('Mobile: Message input not found');
             return;
@@ -245,61 +246,103 @@ window.addEventListener('load', function() {
             return;
         }
         
-        // Helper function to scroll and show the entire input box
-        // This ensures consistent behavior between focus and resize events
+        // Enhanced helper function to scroll and show the entire input box
+        // Uses different scrolling technique to ensure entire container is visible
         function scrollToShowEntireInput() {
-            // Get input container position and dimensions
-            const inputRect = inputContainer.getBoundingClientRect();
+            console.log('Mobile: Scrolling to show entire input container');
             
-            // Calculate ideal scroll position that shows the entire input box plus padding
-            // This positions the input box comfortably above the keyboard
-            const scrollY = window.scrollY + inputRect.top - (window.innerHeight - inputRect.height - 20);
-            
-            // Smoothly scroll to the calculated position
-            window.scrollTo({
-                top: Math.max(0, scrollY), // Prevent negative scroll positions
-                behavior: 'smooth'
+            // Use scrollIntoView with block:'end' to align the bottom of the 
+            // container with the bottom of the viewport (above keyboard)
+            inputContainer.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'end'  // Align the bottom of the container with the bottom of the viewport
             });
-            
-            console.log('Mobile: Scrolled to show entire input container');
         }
         
         // When input gets focus (keyboard appears), scroll to it
         messageInput.addEventListener('focus', function() {
-            // Small delay to ensure keyboard has started to show up
+            // Slightly longer delay to ensure keyboard has started to show up
             setTimeout(() => {
                 console.log('Mobile: Message input focused, scrolling into view');
                 scrollToShowEntireInput();
-            }, 150); // Slightly longer delay to ensure keyboard has started showing
+            }, 200); // Increased from 150ms to 200ms for better reliability
         });
         
-        // Track viewport height changes (for keyboard appearance)
+        // Track viewport height changes for keyboard appearance
         let initialViewportHeight = window.innerHeight;
         let isKeyboardOpen = false;
         
-        window.addEventListener('resize', function() {
-            // Only run on mobile
-            if (window.innerWidth > 576) return;
+        // Use VisualViewport API if available (more reliable for keyboard detection)
+        if (window.visualViewport) {
+            console.log('Mobile: Using VisualViewport API for keyboard detection');
             
-            // If height decreased significantly, keyboard likely opened
-            if (window.innerHeight < initialViewportHeight * 0.75) {
-                if (!isKeyboardOpen && document.activeElement === messageInput) {
-                    console.log('Mobile: Keyboard appears to be opening');
+            // Store initial viewport height
+            initialViewportHeight = window.visualViewport.height;
+            
+            // Listen for viewport resize events (which happen when keyboard appears/disappears)
+            window.visualViewport.addEventListener('resize', () => {
+                // Check if focused element is our input and viewport height decreased significantly
+                if (document.activeElement === messageInput && 
+                    window.visualViewport.height < initialViewportHeight - 100) { // 100px threshold for keyboard
+                    
+                    console.log('Mobile: VisualViewport resized, keyboard likely up');
                     isKeyboardOpen = true;
+                    
+                    // Ensure DOM has settled after resize
                     setTimeout(() => {
                         scrollToShowEntireInput();
                     }, 50);
+                } else if (window.visualViewport.height >= initialViewportHeight - 100) {
+                    // Keyboard likely closed
+                    isKeyboardOpen = false;
                 }
-            } else {
-                // Keyboard likely closed
-                isKeyboardOpen = false;
-            }
+                
+                // Update height reference only if it's larger (keyboard closed)
+                if (window.visualViewport.height > initialViewportHeight) {
+                    initialViewportHeight = window.visualViewport.height;
+                }
+            });
+        } else {
+            // Fallback to window resize method if VisualViewport not available
+            console.log('Mobile: Using window resize fallback for keyboard detection');
             
-            // Update for next comparison
-            initialViewportHeight = window.innerHeight;
-        });
+            window.addEventListener('resize', function() {
+                // Only run on mobile
+                if (window.innerWidth > 576) return;
+                
+                // If height decreased significantly, keyboard likely opened
+                if (window.innerHeight < initialViewportHeight * 0.75) {
+                    if (!isKeyboardOpen && document.activeElement === messageInput) {
+                        console.log('Mobile: Keyboard appears to be opening');
+                        isKeyboardOpen = true;
+                        setTimeout(() => {
+                            scrollToShowEntireInput();
+                        }, 50);
+                    }
+                } else {
+                    // Keyboard likely closed
+                    isKeyboardOpen = false;
+                }
+                
+                // Update for next comparison
+                initialViewportHeight = window.innerHeight;
+            });
+        }
         
         console.log('Mobile: Input focus handlers initialized');
+        
+        // Ensure the Enter key creates new lines instead of sending on mobile
+        // This is already handled in script.js but we're adding it here for redundancy
+        messageInput.addEventListener('keydown', function(event) {
+            // Only handle on mobile
+            if (window.innerWidth <= 576) {
+                if (event.key === 'Enter') {
+                    // On mobile, allow Enter to create a new line without sending
+                    console.log('Mobile: Enter key pressed in input, allowing new line');
+                    // We don't prevent default or call sendMessage so a newline is created
+                }
+            }
+        });
         
         // Add visual feedback for send button on mobile
         const sendButton = document.getElementById('send-button');
