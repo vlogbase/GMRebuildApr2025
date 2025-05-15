@@ -2000,6 +2000,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     userPreferences = validatedPreferences;
                     console.log('Loaded user preferences:', userPreferences);
                     
+                    // Make sure the global window.userPreferences is set before dispatching event
+                    window.userPreferences = userPreferences;
+                    
                     // Update button text to reflect preferences
                     updatePresetButtonLabels();
                     
@@ -2008,21 +2011,51 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                     // Dispatch an event to notify other scripts that preferences are loaded
                     // This helps mobile scripts synchronize their initialization
+                    console.log('Script.js: User preferences successfully loaded, dispatching event');
                     window.dispatchEvent(new CustomEvent('userPreferencesLoaded', {
-                        detail: { preferences: userPreferences }
+                        detail: { 
+                            preferences: userPreferences,
+                            success: true 
+                        }
+                    }));
+                } else {
+                    // Handle case where data.preferences is empty
+                    console.warn('Script.js: data.preferences is empty, using defaults');
+                    
+                    // Use defaults
+                    userPreferences = {};
+                    for (const presetId in defaultModels) {
+                        userPreferences[presetId] = defaultModels[presetId];
+                    }
+                    window.userPreferences = userPreferences;
+                    
+                    // Update UI
+                    updatePresetButtonLabels();
+                    selectPresetButton(isAuthenticated ? '1' : '6');
+                    
+                    // Dispatch with defaults
+                    window.dispatchEvent(new CustomEvent('userPreferencesLoaded', {
+                        detail: { 
+                            preferences: userPreferences,
+                            success: false,
+                            defaultsUsed: true
+                        }
                     }));
                 }
                 
                 // After loading preferences, fetch available models
-                fetchAvailableModels();
+                // Return this promise to maintain the chain
+                return fetchAvailableModels().then(models => {
+                    // Return a combined result
+                    return {
+                        preferences: userPreferences,
+                        models: models,
+                        preferencesSuccess: !!data.preferences
+                    };
+                });
             })
             .catch(error => {
                 console.error('Error fetching preferences:', error);
-                // Still try to fetch models if preferences fail
-                fetchAvailableModels();
-                
-                // Use defaults and select the appropriate preset - free for non-authenticated users
-                selectPresetButton(isAuthenticated ? '1' : '6');
                 
                 // Use defaults for user preferences
                 userPreferences = {};
@@ -2031,10 +2064,28 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 window.userPreferences = userPreferences;
                 
-                // Dispatch event even when there was an error loading preferences
+                // Dispatch event to notify that preferences are ready (with defaults)
+                console.log('Script.js: User preferences set to defaults due to error, dispatching event');
                 window.dispatchEvent(new CustomEvent('userPreferencesLoaded', {
-                    detail: { preferences: userPreferences, error: true }
+                    detail: { 
+                        preferences: userPreferences, 
+                        error: true,
+                        defaultsUsed: true
+                    }
                 }));
+                
+                // Select the appropriate preset - free for non-authenticated users
+                selectPresetButton(isAuthenticated ? '1' : '6');
+                
+                // Important: Return the fetchAvailableModels promise to maintain the chain
+                return fetchAvailableModels().then(models => {
+                    // After models are loaded, return a combined result
+                    return {
+                        preferences: userPreferences,
+                        models: models,
+                        preferencesError: true
+                    };
+                });
             });
     }
     
@@ -2197,6 +2248,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to fetch available models from OpenRouter
     function fetchAvailableModels() {
         console.log('Fetching available models...');
+        // Create a promise that will resolve with the fetched models
         // Fetch ONLY from the endpoint that includes cost bands
         return fetch('/api/get_model_prices')
             .then(response => {
@@ -2249,12 +2301,26 @@ document.addEventListener('DOMContentLoaded', function() {
 
                     // Assign the fully processed data to the global variable
                     allModels = modelDataArray;
+                    
+                    // Validate that we have actual model data
+                    const hasValidModels = allModels && allModels.length > 0 && allModels.some(m => m.id && m.name);
+                    
+                    if (!hasValidModels) {
+                        console.warn('Script.js: Processed model data appears invalid or empty');
+                    }
+                    
                     // Expose the models to window object for mobile interface
                     window.availableModels = allModels;
                     
                     // Dispatch an event to notify other scripts that models are loaded
+                    // Include detailed data about the models in the event
+                    console.log(`Script.js: Models loaded (${allModels.length}), dispatching event`);
                     window.dispatchEvent(new CustomEvent('modelsLoaded', {
-                        detail: { count: allModels.length }
+                        detail: { 
+                            models: allModels,
+                            count: allModels.length,
+                            success: hasValidModels
+                        }
                     }));
                     
                     // For non-authenticated users, ensure we have at least the default free models available
@@ -2416,9 +2482,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Even in case of error, expose models to window and dispatch event to notify mobile UI
                 window.availableModels = allModels;
+                console.log(`Script.js: Error fetching models, dispatching event with ${allModels.length} models`);
                 window.dispatchEvent(new CustomEvent('modelsLoaded', {
-                    detail: { count: allModels.length, error: true }
+                    detail: { 
+                        models: allModels,
+                        count: allModels.length, 
+                        error: true,
+                        success: false
+                    }
                 }));
+                
+                // Return the models for promise chaining
+                return allModels;
             });
     }
     
