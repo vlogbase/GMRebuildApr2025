@@ -1385,15 +1385,18 @@ body.account-page .tab-pane {
 
 /* Mobile-specific adjustments */
 @media (max-width: 576px) {
+    /* Larger tap targets on mobile */
     .message-truncate-toggle {
-        width: 36px; /* Larger tap target on mobile */
-        height: 36px;
-        min-width: 36px;
-        min-height: 36px;
+        width: 40px; 
+        height: 40px;
+        min-width: 40px;
+        min-height: 40px;
+        bottom: -2px;
     }
     
+    /* Larger icon for better visibility */
     .message-truncate-toggle i {
-        font-size: 16px; /* Larger icon on mobile */
+        font-size: 18px;
     }
     
     /* Fix positioning in mobile view which may have different structure */
@@ -1402,15 +1405,32 @@ body.account-page .tab-pane {
         bottom: -4px;
     }
     
+    /* Better positioning for expanded state */
+    .message-content.collapsible.expanded + .message-truncate-toggle,
+    .message-content.collapsible.expanded ~ .message-truncate-toggle {
+        bottom: -20px;
+    }
+    
     /* Ensure message has margin for the toggle button */
     .message-content.collapsible.expanded {
-        margin-bottom: 30px;
+        margin-bottom: 35px;
     }
     
     /* Make sure the fade works on mobile */
     .message-content.collapsible.collapsed {
         -webkit-mask-image: linear-gradient(to bottom, black 160px, transparent 200px);
         mask-image: linear-gradient(to bottom, black 160px, transparent 200px);
+    }
+    
+    /* Ensure toggle remains visible */
+    .message .message-truncate-toggle,
+    .message-wrapper .message-truncate-toggle {
+        z-index: 100;
+    }
+    
+    /* Fix for interactions with on-screen keyboard */
+    .message-content.collapsible {
+        transform: translateZ(0); /* Force GPU acceleration */
     }
 }
 
