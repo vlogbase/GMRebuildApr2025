@@ -3315,9 +3315,15 @@ code {
     /* Better handle the send button and actions to prevent overflow */
     .input-group {
         display: flex;
-        flex-wrap: wrap;
+        flex-wrap: nowrap; /* Prevent wrapping */
         width: 100%;
         box-sizing: border-box;
+    }
+    
+    /* Ensure text area gets priority in space allocation */
+    #message-input {
+        flex: 1;
+        min-width: 0; /* Allow textarea to shrink if needed */
     }
 }
 
