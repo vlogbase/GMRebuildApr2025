@@ -2426,26 +2426,27 @@ body.account-page .tab-pane {
 
 .input-group {
     display: flex;
-    align-items: flex-end;
+    flex-direction: column;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 8px 16px;
     background-color: var(--input-bg);
     margin-bottom: 8px;
+    position: relative; /* For absolute positioning of message actions */
 }
 
 #message-input {
-    flex: 1;
+    width: 100%;
     background: transparent;
     border: none;
     color: var(--text-color);
     resize: none;
-    height: 40px;
+    height: 80px; /* Increased height to allow for icons at bottom */
     max-height: 200px;
     outline: none;
     font-size: 15px;
     line-height: 1.5;
-    padding: 8px 0;
+    padding: 8px 0 40px 0; /* Add bottom padding to accommodate the action buttons */
 }
 
 .send-btn {
@@ -2474,6 +2475,9 @@ body.account-page .tab-pane {
     display: flex;
     align-items: center;
     gap: 8px;
+    position: absolute;
+    bottom: 8px;
+    right: 16px;
 }
 
 #image-upload-button, #camera-button {
@@ -4292,9 +4296,10 @@ code {
         min-width: 36px; /* Ensure minimum width */
     }
     
-    /* Prevent textarea from growing too wide */
+    /* Textarea uses full width since buttons are below */
     #message-input {
-        max-width: calc(100% - 120px); /* Leave space for action buttons */
+        width: 100%; 
+        padding-right: 10px;
     }
 }
 
