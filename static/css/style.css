@@ -1260,6 +1260,8 @@ body.account-page .tab-pane {
     line-height: 1.5;
     overflow-wrap: break-word;
     word-break: break-word;
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 /* Truncated message styles */
@@ -2954,6 +2956,9 @@ pre {
     padding: 12px;
     overflow-x: auto;
     margin: 10px 0;
+    white-space: pre;
+    word-wrap: normal;
+    max-width: 100%;
 }
 
 code {
@@ -2965,6 +2970,17 @@ code {
     background-color: #2a2a2a;
     padding: 2px 4px;
     border-radius: 3px;
+}
+
+/* Mobile-specific code block styles */
+@media (max-width: 576px) {
+    .message-content pre,
+    .message-content code {
+        overflow-x: auto;
+        white-space: pre;
+        word-wrap: normal;
+        max-width: 100%;
+    }
 }
 
 /* System Message styling */
@@ -3896,10 +3912,12 @@ code {
     
     /* Fixed header */
     .app-header {
-        position: sticky;
+        position: fixed;
         top: 0;
+        left: 0;
+        width: 100%;
         padding: 8px 10px;
-        z-index: 10;
+        z-index: 1000;
         background-color: var(--sidebar-bg);
     }
     
@@ -3908,6 +3926,7 @@ code {
         flex: 1;
         overflow-y: auto;
         height: auto;
+        padding-top: 60px; /* Add padding equal to header height */
     }
     
     /* Fixed input area at the bottom */
