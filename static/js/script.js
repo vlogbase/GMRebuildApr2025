@@ -4162,6 +4162,27 @@ window.resetToDefault = function(presetId) {
                                 
                                 } else if (parsedData.type === 'content') {
                                     console.log("==> Processing type: content"); // ADD THIS LOG
+                                    
+                                    // If this is the first content chunk, collapse the reasoning section if it exists
+                                    if (!responseText && parsedData.content) {
+                                        // Find the reasoning container for this message
+                                        const reasoningContainer = assistantMessageElement.querySelector('.message-reasoning');
+                                        if (reasoningContainer) {
+                                            const reasoningContent = reasoningContainer.querySelector('.reasoning-content');
+                                            const reasoningToggle = reasoningContainer.querySelector('.reasoning-toggle');
+                                            
+                                            if (reasoningContent && reasoningContent.style.display === 'block') {
+                                                // Collapse the reasoning section
+                                                reasoningContent.style.display = 'none';
+                                                if (reasoningToggle) {
+                                                    reasoningToggle.textContent = '▶';
+                                                }
+                                                reasoningContainer.classList.remove('reasoning-expanded');
+                                                console.log("==> Automatically collapsed reasoning as content begins streaming");
+                                            }
+                                        }
+                                    }
+                                    
                                     // Append content
                                     if (parsedData.content) {
                                         // Track if we need to scroll (check if chatMessages exists first)
@@ -4232,20 +4253,20 @@ window.resetToDefault = function(presetId) {
                                             // Create content container
                                             const reasoningContent = document.createElement('div');
                                             reasoningContent.className = 'reasoning-content';
-                                            reasoningContent.style.display = 'none'; // Collapsed by default
+                                            reasoningContent.style.display = 'block'; // Initially visible when streaming
                                             
                                             reasoningContainer.appendChild(reasoningHeader);
                                             reasoningContainer.appendChild(reasoningContent);
                                             
-                                            // Insert after the main message content
+                                            // Insert BEFORE the main message content (at the top of the message)
                                             const messageWrapper = assistantMessageElement.querySelector('.message-wrapper');
-                                            if (messageWrapper) {
-                                                const metadataContainer = messageWrapper.querySelector('.message-metadata');
-                                                if (metadataContainer) {
-                                                    messageWrapper.insertBefore(reasoningContainer, metadataContainer);
-                                                } else {
-                                                    messageWrapper.appendChild(reasoningContainer);
-                                                }
+                                            const messageContent = assistantMessageElement.querySelector('.message-content');
+                                            if (messageWrapper && messageContent) {
+                                                // Insert before the message content
+                                                messageWrapper.insertBefore(reasoningContainer, messageContent);
+                                            } else if (messageWrapper) {
+                                                // Fallback: insert at the beginning of message wrapper
+                                                messageWrapper.insertBefore(reasoningContainer, messageWrapper.firstChild);
                                             }
                                         }
                                         
