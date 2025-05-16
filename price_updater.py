@@ -325,11 +325,20 @@ def fetch_and_store_openrouter_prices() -> bool:
                             
                     except Exception as model_error:
                         logger.error(f"Error updating model {model_id} in database: {model_error}")
+                        # Rollback the current transaction to avoid InFailedSqlTransaction errors
+                        db.session.rollback()
                         continue
                 
-                # Commit all changes in one transaction
-                db.session.commit()
-                logger.info(f"Database updated: {updated_count} models updated, {new_count} new models added")
+                try:
+                    # Commit all changes in one transaction
+                    db.session.commit()
+                    logger.info(f"Database updated: {updated_count} models updated, {new_count} new models added")
+                except SQLAlchemyError as commit_error:
+                    # If commit fails, rollback and log the error
+                    db.session.rollback()
+                    logger.error(f"Failed to commit database changes: {commit_error}")
+                    # The transaction failed but we don't want to report a complete failure
+                    # as we might have had some successful model updates
             
         except ImportError as e:
             logger.error(f"Failed to import database modules: {e}")

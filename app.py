@@ -3424,9 +3424,24 @@ def refresh_model_prices():
             
     except Exception as e:
         logger.exception(f"Error refreshing model prices: {e}")
+        
+        # Create a more user-friendly error message
+        user_friendly_message = "There was a problem updating model information."
+        
+        # Add specific information for common error types
+        if "InFailedSqlTransaction" in str(e):
+            user_friendly_message = "Database error while updating model information. This is a temporary issue - please try again in a few minutes."
+        elif "HTTPError" in str(e) or "ConnectionError" in str(e):
+            user_friendly_message = "Could not connect to the model provider API. Please check your internet connection and API key settings."
+        elif "Timeout" in str(e):
+            user_friendly_message = "The request to update model information timed out. Please try again later."
+        elif "OPENROUTER_API_KEY" in str(e):
+            user_friendly_message = "OpenRouter API key is missing or invalid. Please check your API key settings."
+            
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': user_friendly_message,
+            'technical_details': str(e)
         }), 500
 
 @app.route('/api/model-pricing', methods=['GET'])
