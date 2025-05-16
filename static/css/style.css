@@ -1264,9 +1264,75 @@ body.account-page .tab-pane {
     overflow-x: hidden;
 }
 
-/* Truncated message styles */
+/* Collapsible message styles */
+.message-content.collapsible {
+    position: relative; /* Needed for positioning the toggle button and gradient */
+    overflow: hidden; /* Hide the overflowing content */
+    transition: max-height 0.3s ease-out;
+}
+
+.message-content.collapsible.collapsed {
+    max-height: 200px; /* Initial height of the bubble */
+    /* The mask-image provides the fade-out effect at the bottom */
+    -webkit-mask-image: linear-gradient(to bottom, black 170px, transparent 200px);
+    mask-image: linear-gradient(to bottom, black 170px, transparent 200px);
+}
+
+/* Remove the mask when expanded */
+.message-content.collapsible.expanded {
+    max-height: none; /* Allow full height */
+    -webkit-mask-image: none;
+    mask-image: none;
+}
+
+/* Toggle Button Styling (Arrow Icon) */
+.message-truncate-toggle {
+    display: none; /* Hidden by default, shown by JS if message is too long */
+    position: absolute;
+    bottom: 5px; /* Position near the bottom of the collapsed message */
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--button-bg); /* Match bubble style */
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    border-radius: 50%; /* Circular button */
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    z-index: 5; /* Ensure it's above the faded text */
+    transition: background-color 0.2s, transform 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.message-truncate-toggle:hover {
+    background-color: var(--hover-color);
+}
+
+.message-truncate-toggle i {
+    font-size: 14px;
+    transition: transform 0.3s ease-in-out;
+}
+
+/* Style for the "see less" (up arrow) state */
+.message-truncate-toggle.expanded i {
+    transform: rotate(180deg);
+}
+
+/* Make sure the toggle button is shown when needed */
+.message-content.collapsible.collapsed + .message-truncate-toggle {
+    display: flex;
+}
+
+.message-content.collapsible.expanded + .message-truncate-toggle {
+    display: flex;
+    bottom: -15px; /* Position slightly outside the bubble when expanded */
+}
+
+/* Legacy styles maintained for backwards compatibility */
 .truncated-message {
-    max-height: 200px; /* Limit max height for long messages */
+    max-height: 200px;
     overflow: hidden;
     position: relative;
     mask-image: linear-gradient(to bottom, black 160px, transparent 200px);
