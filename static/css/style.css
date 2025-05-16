@@ -1310,8 +1310,9 @@ body.account-page .tab-pane {
 /* Remove the mask when expanded */
 .message-content.collapsible.expanded {
     max-height: none !important; /* Allow full height */
-    max-height: 10000px !important; /* Very large value as fallback for browsers that don't support 'none' */
-    overflow: hidden !important; /* Keep content within the message bubble */
+    max-height: 10000000px !important; /* Much larger fallback value (10 million pixels) for enormous content */
+    overflow-y: visible !important; /* Allow vertical overflow */
+    overflow-x: hidden !important; /* Prevent horizontal overflow */
     -webkit-mask-image: none !important;
     mask-image: none !important;
     /* Add bottom margin to create space for the toggle button */
