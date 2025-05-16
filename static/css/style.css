@@ -4233,6 +4233,9 @@ code {
     /* Adjust spacing for message actions */
     .message-actions {
         gap: 8px;
+        display: flex;
+        align-items: center;
+        flex-shrink: 0; /* Prevent the action buttons from shrinking */
     }
     
     .model-buttons {
@@ -4280,12 +4283,18 @@ code {
     /* Adjust input group and send button to prevent overflow */
     .input-group {
         padding-right: 4px;
+        align-items: center; /* Better vertical alignment */
     }
     
     .send-btn {
         width: 36px;
         height: 36px;
         min-width: 36px; /* Ensure minimum width */
+    }
+    
+    /* Prevent textarea from growing too wide */
+    #message-input {
+        max-width: calc(100% - 120px); /* Leave space for action buttons */
     }
 }
 
