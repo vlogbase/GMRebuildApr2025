@@ -3582,7 +3582,7 @@ window.resetToDefault = function(presetId) {
                 // Add metadata display for assistant messages
                 if (metadata) {
                     const metadataContainer = document.createElement('div');
-                    metadataContainer.className = 'message-metadata';
+                    metadataContainer.className = 'message-metadata message-metadata-outside';
                     
                     // If we have model and token information, display it
                     let metadataText = '';
