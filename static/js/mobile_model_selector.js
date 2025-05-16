@@ -678,18 +678,39 @@ document.addEventListener('DOMContentLoaded', function() {
             if (model.is_free) {
                 modelCost.classList.add('free-model');
                 modelCost.textContent = 'Free';
-            } else if (model.input_cost_per_token > 0.000020 || model.output_cost_per_token > 0.000100) {
-                costBandClass = 'cost-band-4-danger';
-                costBandIndicator.textContent = '$$$$';
-            } else if (model.input_cost_per_token > 0.000010 || model.output_cost_per_token > 0.000050) {
-                costBandClass = 'cost-band-3-warn';
-                costBandIndicator.textContent = '$$$';
-            } else if (model.input_cost_per_token > 0.000005 || model.output_cost_per_token > 0.000020) {
-                costBandClass = 'cost-band-2';
-                costBandIndicator.textContent = '$$';
+            } else if (model.cost_band) {
+                // Use the cost_band directly from the model data if it exists
+                costBandIndicator.textContent = model.cost_band;
+                
+                // Apply the appropriate class based on the cost band value
+                if (model.cost_band === '$$$$') {
+                    costBandClass = 'cost-band-4-danger';
+                } else if (model.cost_band === '$$$') {
+                    costBandClass = 'cost-band-3-warn';
+                } else if (model.cost_band === '$$') {
+                    costBandClass = 'cost-band-2';
+                } else if (model.cost_band === '$') {
+                    costBandClass = 'cost-band-1';
+                }
             } else {
-                costBandClass = 'cost-band-1';
-                costBandIndicator.textContent = '$';
+                // Fallback to using pricing calculations if cost_band isn't available
+                const inputPrice = model.input_price || 0;
+                const outputPrice = model.output_price || 0;
+                const maxPrice = Math.max(inputPrice, outputPrice);
+                
+                if (maxPrice >= 100.0) {
+                    costBandClass = 'cost-band-4-danger';
+                    costBandIndicator.textContent = '$$$$';
+                } else if (maxPrice >= 10.0) {
+                    costBandClass = 'cost-band-3-warn';
+                    costBandIndicator.textContent = '$$$';
+                } else if (maxPrice >= 1.0) {
+                    costBandClass = 'cost-band-2';
+                    costBandIndicator.textContent = '$$';
+                } else {
+                    costBandClass = 'cost-band-1';
+                    costBandIndicator.textContent = '$';
+                }
             }
             
             if (costBandClass) {
