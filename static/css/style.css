@@ -4320,6 +4320,16 @@ code {
     /* No fixed/sticky positioning - it will be at the end of the scrollable content */
 }
 
+/* Compressed footer for mobile devices */
+@media (max-width: 576px) {
+    .footer-legal-links {
+        padding: 5px 10px 0; 
+        margin-top: 10px;
+        font-size: 10px;
+        line-height: 1.2;
+    }
+}
+
 .footer-legal-links a {
     color: var(--secondary-text);
     text-decoration: none;
@@ -4336,10 +4346,43 @@ code {
     font-size: 11px;
 }
 
+/* Compact footer links for mobile */
+@media (max-width: 576px) {
+    .footer-legal-links a {
+        margin: 0 3px;
+    }
+    
+    .footer-legal-links a:after {
+        content: "•";
+        display: inline-block;
+        margin-left: 6px;
+        opacity: 0.5;
+    }
+    
+    .footer-legal-links a:last-of-type:after {
+        content: "";
+        margin-left: 0;
+    }
+    
+    .footer-legal-links .copyright {
+        margin-left: 3px;
+        font-size: 9px;
+    }
+}
+
 .footer-legal-links .disclaimer-text {
     margin: 0 8px; /* Reduced from 12px to 8px */
     font-size: 11px;
     font-style: italic;
+}
+
+/* Compact disclaimer for mobile */
+@media (max-width: 576px) {
+    .footer-legal-links .disclaimer-text {
+        margin: 0 4px;
+        font-size: 9px;
+        display: inline-block;
+    }
 }
 
 /* Policy Pages Styles */
