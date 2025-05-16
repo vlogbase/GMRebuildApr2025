@@ -138,7 +138,7 @@
             processedMessages.add(messageId);
             
             // Only continue if message is long enough to need truncation
-            if (scrollHeight <= MAX_COLLAPSED_HEIGHT + 20) {
+            if (scrollHeight <= MAX_COLLAPSED_HEIGHT) {
                 // Message too short, ensure it has no collapsible classes
                 safeDOM(() => {
                     contentElement.classList.remove('collapsible', 'collapsed', 'expanded');

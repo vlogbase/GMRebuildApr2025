@@ -1286,6 +1286,11 @@ body.account-page .tab-pane {
     overflow-x: hidden;
 }
 
+/* Make sure message-wrapper has positioning context for absolute elements */
+.message-wrapper {
+    position: relative;
+}
+
 /* Collapsible message styles */
 .message-content.collapsible {
     position: relative; /* Needed for positioning the toggle button and gradient */
@@ -1322,20 +1327,20 @@ body.account-page .tab-pane {
     transform: translateX(-50%);
     background-color: var(--button-bg); /* Match bubble style */
     color: var(--text-color);
-    border: 1px solid var(--border-color);
+    border: 2px solid var(--border-color); /* Thicker border for visibility */
     border-radius: 50%; /* Circular button */
-    width: 32px;
-    height: 32px;
-    min-width: 32px;
-    min-height: 32px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    min-height: 36px;
     padding: 0;
     margin: 0;
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    z-index: 50; /* Ensure it's above other content */
+    z-index: 100; /* Higher z-index to ensure it's above other content */
     transition: background-color 0.2s, transform 0.3s;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    box-shadow: 0 3px 8px rgba(0,0,0,0.3); /* Stronger shadow for better visibility */
 }
 
 .message-truncate-toggle:hover,
