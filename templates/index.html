@@ -60,6 +60,9 @@
                         <i class="fa-brands fa-google"></i> Sign in with Google
                     </button>
                     {% endif %}
+                    <a href="#mainFooter" id="view-footer-link" class="view-footer-link">
+                        <i class="fa-solid fa-info-circle"></i> Site Policies
+                    </a>
                 </div>
             </div>
         </div>
@@ -254,7 +257,7 @@
                     </div>
                 </div>
                 
-                <div class="footer-legal-links">
+                <div id="mainFooter" class="footer-legal-links">
                     <a href="{{ url_for('terms_of_service') }}">Terms of Service</a>
                     <a href="{{ url_for('privacy_policy') }}">Privacy Policy</a>
                     <a href="{{ url_for('cookie_policy') }}">Cookie Policy</a>
