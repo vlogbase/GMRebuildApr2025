@@ -202,18 +202,21 @@
                 
                 <div class="input-group">
                     <textarea id="message-input" placeholder="Message GloriaMundo..."></textarea>
-                    <div class="message-actions">
+                    <!-- Separate buttons into their own container -->
+                    <div class="message-actions-container">
                         <input type="file" id="file-upload-input" name="file" accept="image/*,.pdf" style="display: none;">
-                        <button id="file-upload-button" class="btn btn-secondary" title="Upload image or PDF">
-                            <i class="fa-solid fa-paperclip"></i>
-                        </button>
-                        <button id="camera-button" class="btn btn-secondary">
-                            <i class="fa-solid fa-camera"></i>
-                        </button>
-                        <!-- Unified file upload button handles both images and PDFs based on model capabilities -->
-                        <button id="send-btn" class="send-btn">
-                            <i class="fa-solid fa-paper-plane"></i>
-                        </button>
+                        <div class="message-actions">
+                            <button id="file-upload-button" class="btn btn-secondary" title="Upload image or PDF">
+                                <i class="fa-solid fa-paperclip"></i>
+                            </button>
+                            <button id="camera-button" class="btn btn-secondary">
+                                <i class="fa-solid fa-camera"></i>
+                            </button>
+                            <!-- Unified file upload button handles both images and PDFs based on model capabilities -->
+                            <button id="send-btn" class="send-btn">
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
                 

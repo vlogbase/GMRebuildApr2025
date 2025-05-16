@@ -257,6 +257,16 @@ window.addEventListener('load', function() {
                 behavior: 'smooth', 
                 block: 'end'  // Align the bottom of the container with the bottom of the viewport
             });
+            
+            // Make sure the message actions container is visible above the keyboard
+            const messageActionsContainer = document.querySelector('.message-actions-container');
+            if (messageActionsContainer) {
+                console.log('Mobile: Ensuring message actions container is visible');
+                // Add a slight delay to ensure scrolling has completed
+                setTimeout(() => {
+                    messageActionsContainer.scrollIntoView({behavior: 'smooth', block: 'end'});
+                }, 100);
+            }
         }
         
         // When input gets focus (keyboard appears), scroll to it
