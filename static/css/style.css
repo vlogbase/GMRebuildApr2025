@@ -1571,6 +1571,8 @@ body.account-page .tab-pane {
 .chat-input-container {
     padding: 16px;
     border-top: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    /* We'll let the mobile media query handle the fixed positioning */
 }
 
 .model-buttons {
@@ -3927,15 +3929,18 @@ code {
         overflow-y: auto;
         height: auto;
         padding-top: 60px; /* Add padding equal to header height */
+        padding-bottom: 120px; /* Add padding for the chat input container */
     }
     
     /* Fixed input area at the bottom */
     .chat-input-container {
-        position: sticky;
+        position: fixed;
         bottom: 0;
+        left: 0;
+        width: 100%;
         padding: 12px 8px;
         background-color: var(--bg-color);
-        z-index: 10;
+        z-index: 900;
         border-top: 1px solid var(--border-color);
     }
     
@@ -4065,8 +4070,8 @@ code {
 /* Footer Legal Links */
 .footer-legal-links {
     text-align: center;
-    padding: 5px 0; /* Reduced from 10px to 5px */
-    margin-top: 5px; /* Reduced from 8px to 5px */
+    padding: 15px 0; 
+    margin-top: 5px;
     border-top: 1px solid var(--border-color);
     color: var(--secondary-text);
     font-size: 12px;
@@ -4074,6 +4079,8 @@ code {
     flex-wrap: wrap;
     justify-content: center;
     align-items: center;
+    /* Ensure it's accessible but doesn't take up screen space by default */
+    width: 100%;
 }
 
 .footer-legal-links a {
