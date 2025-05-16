@@ -1290,7 +1290,8 @@ body.account-page .tab-pane {
 .message-content.collapsible {
     position: relative; /* Needed for positioning the toggle button and gradient */
     overflow: hidden; /* Hide the overflowing content */
-    transition: max-height 0.4s ease-out;
+    transition: max-height 0.5s ease-out;
+    will-change: max-height; /* Optimize for animations */
 }
 
 .message-content.collapsible.collapsed {
@@ -1298,21 +1299,25 @@ body.account-page .tab-pane {
     /* The mask-image provides the fade-out effect at the bottom */
     -webkit-mask-image: linear-gradient(to bottom, black 170px, transparent 200px);
     mask-image: linear-gradient(to bottom, black 170px, transparent 200px);
+    overflow: hidden; /* Force hidden overflow in collapsed state */
 }
 
 /* Remove the mask when expanded */
 .message-content.collapsible.expanded {
-    max-height: 10000px !important; /* Very large value to ensure all content is shown */
-    overflow: visible; /* Show overflow content */
+    max-height: none !important; /* Allow full height */
+    max-height: 10000px !important; /* Very large value as fallback for browsers that don't support 'none' */
+    overflow: visible !important; /* Show overflow content */
     -webkit-mask-image: none !important;
     mask-image: none !important;
+    /* Add bottom margin to create space for the toggle button */
+    margin-bottom: 20px;
 }
 
 /* Toggle Button Styling (Arrow Icon) */
 .message-truncate-toggle {
     display: none; /* Hidden by default, shown by JS if message is too long */
-    position: absolute;
-    bottom: 5px; /* Position near the bottom of the collapsed message */
+    position: absolute; 
+    bottom: 0px;
     left: 50%;
     transform: translateX(-50%);
     background-color: var(--button-bg); /* Match bubble style */
@@ -1321,22 +1326,29 @@ body.account-page .tab-pane {
     border-radius: 50%; /* Circular button */
     width: 32px;
     height: 32px;
+    min-width: 32px;
+    min-height: 32px;
     padding: 0;
+    margin: 0;
     cursor: pointer;
     align-items: center;
     justify-content: center;
     z-index: 50; /* Ensure it's above other content */
-    transition: background-color 0.2s, transform 0.2s;
+    transition: background-color 0.2s, transform 0.3s;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-.message-truncate-toggle:hover {
+.message-truncate-toggle:hover,
+.message-truncate-toggle:focus,
+.message-truncate-toggle:active {
     background-color: var(--hover-color);
+    outline: none; /* Remove focus outline */
 }
 
 .message-truncate-toggle i {
     font-size: 14px;
     transition: transform 0.3s ease-in-out;
+    pointer-events: none; /* Make sure icon doesn't interfere with clicks */
 }
 
 /* Style for the "see less" (up arrow) state */
@@ -1344,20 +1356,31 @@ body.account-page .tab-pane {
     transform: rotate(180deg);
 }
 
-/* Make sure the toggle button is shown when needed */
-.message .message-truncate-toggle {
+/* Make sure the toggle button is shown when needed - multiple selectors for different DOM structures */
+.message .message-truncate-toggle,
+.message-wrapper .message-truncate-toggle {
     display: none; /* Default state */
 }
 
+/* Show button when message is collapsed */
 .message-content.collapsible.collapsed ~ .message-truncate-toggle,
-.message-content.collapsible.collapsed + .message-truncate-toggle {
-    display: flex !important; /* Show button when message is collapsed */
+.message-content.collapsible.collapsed + .message-truncate-toggle,
+.message-wrapper .message-content.collapsible.collapsed ~ .message-truncate-toggle,
+.message-wrapper .message-content.collapsible.collapsed + .message-truncate-toggle {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
 }
 
+/* Keep button visible when expanded */
 .message-content.collapsible.expanded ~ .message-truncate-toggle,
-.message-content.collapsible.expanded + .message-truncate-toggle {
-    display: flex !important; /* Keep button visible when expanded */
-    bottom: -15px; /* Position slightly outside the bubble when expanded */
+.message-content.collapsible.expanded + .message-truncate-toggle,
+.message-wrapper .message-content.collapsible.expanded ~ .message-truncate-toggle,
+.message-wrapper .message-content.collapsible.expanded + .message-truncate-toggle {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    bottom: -16px; /* Position outside the bubble when expanded */
 }
 
 /* Mobile-specific adjustments */
@@ -1365,10 +1388,29 @@ body.account-page .tab-pane {
     .message-truncate-toggle {
         width: 36px; /* Larger tap target on mobile */
         height: 36px;
+        min-width: 36px;
+        min-height: 36px;
     }
     
     .message-truncate-toggle i {
         font-size: 16px; /* Larger icon on mobile */
+    }
+    
+    /* Fix positioning in mobile view which may have different structure */
+    .message-bubble .message-truncate-toggle,
+    .message-content + .message-truncate-toggle {
+        bottom: -4px;
+    }
+    
+    /* Ensure message has margin for the toggle button */
+    .message-content.collapsible.expanded {
+        margin-bottom: 30px;
+    }
+    
+    /* Make sure the fade works on mobile */
+    .message-content.collapsible.collapsed {
+        -webkit-mask-image: linear-gradient(to bottom, black 160px, transparent 200px);
+        mask-image: linear-gradient(to bottom, black 160px, transparent 200px);
     }
 }
 

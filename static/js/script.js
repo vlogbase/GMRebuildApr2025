@@ -3489,32 +3489,11 @@ window.resetToDefault = function(presetId) {
                 // Apply the repaint to ensure content is visible
                 forceRepaint(messageContent);
                 
-                // Only add "Show more" for user messages that are long
-                if (sender === 'user' && shouldTruncateMessage(content)) {
-                    // Add truncated class
-                    messageContent.classList.add('truncated-message');
-                    
-                    // Create "Show more" toggle button
-                    const showMoreToggle = document.createElement('div');
-                    showMoreToggle.className = 'show-more-toggle';
-                    showMoreToggle.textContent = 'Show more';
-                    showMoreToggle.addEventListener('click', function() {
-                        if (messageContent.classList.contains('truncated-message')) {
-                            // Expand message
-                            messageContent.classList.remove('truncated-message');
-                            showMoreToggle.textContent = 'Show less';
-                        } else {
-                            // Collapse message
-                            messageContent.classList.add('truncated-message');
-                            showMoreToggle.textContent = 'Show more';
-                            
-                            // Scroll to make sure the message is visible
-                            messageElement.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-                        }
-                    });
-                    
-                    // Add toggle after message content
-                    messageWrapper.insertBefore(showMoreToggle, messageWrapper.firstChild.nextSibling);
+                // Old truncation system disabled in favor of message-collapse.js
+                // The shouldTruncateMessage function now always returns false
+                if (false) {
+                    // This block will never execute, but kept for compatibility
+                    console.log('Legacy truncation system disabled');
                 }
                 
                 // Check if this message has an image (from metadata)
@@ -4484,15 +4463,16 @@ window.resetToDefault = function(presetId) {
     // Function to format message with markdown, code blocks, etc.
     // Helper function to determine if a message should be truncated
     function shouldTruncateMessage(text) {
-        // Count characters in the message (excluding code blocks)
-        const textWithoutCodeBlocks = text.replace(/```[^`]+```/g, '');
-        const characterCount = textWithoutCodeBlocks.length;
+        // This function is now disabled in favor of the message-collapse.js implementation
+        // Keep it here for backwards compatibility but always return false
         
-        // Get number of newlines (approximation of text height)
-        const newlineCount = (text.match(/\n/g) || []).length;
+        // The old logic is preserved in comments for reference:
+        // const textWithoutCodeBlocks = text.replace(/```[^`]+```/g, '');
+        // const characterCount = textWithoutCodeBlocks.length;
+        // const newlineCount = (text.match(/\n/g) || []).length;
+        // return characterCount > 500 || newlineCount > 12;
         
-        // Truncate if text is long OR has many newlines
-        return characterCount > 500 || newlineCount > 12;
+        return false; // Never truncate via this method
     }
     
     function formatMessage(text) {

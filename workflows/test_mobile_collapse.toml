@@ -1,0 +1,2 @@
+# Mobile UI Message Collapse Test Workflow
+run = "python app.py"
