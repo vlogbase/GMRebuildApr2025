@@ -3342,7 +3342,7 @@ code {
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.5);
-    z-index: 98;
+    z-index: 1090; /* Just below sidebar but above other elements */
     opacity: 0;
     transition: opacity 0.3s ease;
 }
@@ -4123,7 +4123,7 @@ code {
         left: -280px; /* Start off-screen */
         width: 280px;
         height: 100vh;
-        z-index: 99;
+        z-index: 1100; /* Higher than fixed input container */
         transition: left 0.3s ease;
         box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
     }
@@ -4167,7 +4167,7 @@ code {
         flex: 1;
         padding: 20px;
         /* Ensure enough bottom padding to account for fixed input */
-        padding-bottom: calc(120px + 20px); /* Mobile input height + extra padding */
+        padding-bottom: 90px; /* Enough room for input container to not overlap content */
     }
     
     /* Fixed input area at the bottom for mobile */
@@ -4181,6 +4181,12 @@ code {
         z-index: 999;
         border-top: 1px solid var(--border-color);
         box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+        transition: bottom 0.3s ease;
+    }
+    
+    /* Class added when keyboard is visible */
+    .chat-input-container.keyboard-visible {
+        bottom: 0;
     }
     
     .app-title h1 {
@@ -4326,13 +4332,13 @@ code {
 /* Compressed footer for mobile devices */
 @media (max-width: 576px) {
     .footer-legal-links {
-        padding: 5px 10px 0; 
+        padding: 5px 10px 10px; 
         margin-top: 10px;
-        margin-bottom: 30px; /* Add space at the bottom to ensure visibility when scrolling */
+        margin-bottom: 5px;
         font-size: 10px;
         line-height: 1.2;
         position: relative; /* Ensure it's in the normal content flow */
-        z-index: 900; /* Below the input container */
+        z-index: 500; /* Well below the input container */
     }
 }
 

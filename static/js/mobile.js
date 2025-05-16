@@ -288,6 +288,15 @@ window.addEventListener('load', function() {
                     console.log('Mobile: VisualViewport resized, keyboard likely up');
                     isKeyboardOpen = true;
                     
+                    // Add class to input container to position it properly 
+                    inputContainer.classList.add('keyboard-visible');
+                    
+                    // Hide the footer when keyboard is open
+                    const footer = document.getElementById('mainFooter');
+                    if (footer) {
+                        footer.style.display = 'none';
+                    }
+                    
                     // Ensure DOM has settled after resize
                     setTimeout(() => {
                         scrollToShowEntireInput();
@@ -295,6 +304,15 @@ window.addEventListener('load', function() {
                 } else if (window.visualViewport.height >= initialViewportHeight - 100) {
                     // Keyboard likely closed
                     isKeyboardOpen = false;
+                    
+                    // Remove keyboard-visible class
+                    inputContainer.classList.remove('keyboard-visible');
+                    
+                    // Show the footer again when keyboard is closed
+                    const footer = document.getElementById('mainFooter');
+                    if (footer) {
+                        footer.style.display = '';
+                    }
                 }
                 
                 // Update height reference only if it's larger (keyboard closed)
@@ -315,6 +333,16 @@ window.addEventListener('load', function() {
                     if (!isKeyboardOpen && document.activeElement === messageInput) {
                         console.log('Mobile: Keyboard appears to be opening');
                         isKeyboardOpen = true;
+                        
+                        // Add class to input container to position it properly
+                        inputContainer.classList.add('keyboard-visible');
+                        
+                        // Hide the footer when keyboard is open
+                        const footer = document.getElementById('mainFooter');
+                        if (footer) {
+                            footer.style.display = 'none';
+                        }
+                        
                         setTimeout(() => {
                             scrollToShowEntireInput();
                         }, 50);
@@ -322,6 +350,15 @@ window.addEventListener('load', function() {
                 } else {
                     // Keyboard likely closed
                     isKeyboardOpen = false;
+                    
+                    // Remove keyboard-visible class
+                    inputContainer.classList.remove('keyboard-visible');
+                    
+                    // Show the footer again when keyboard is closed
+                    const footer = document.getElementById('mainFooter');
+                    if (footer) {
+                        footer.style.display = '';
+                    }
                 }
                 
                 // Update for next comparison
