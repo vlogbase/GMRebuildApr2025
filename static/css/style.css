@@ -2429,10 +2429,10 @@ body.account-page .tab-pane {
     flex-direction: column;
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 8px 16px;
+    padding: 8px 16px 2px 16px; /* Reduced bottom padding */
     background-color: var(--input-bg);
-    margin-bottom: 8px;
-    position: relative; /* For absolute positioning of message actions */
+    margin-bottom: 4px; /* Reduced margin */
+    position: relative;
 }
 
 #message-input {
@@ -2441,12 +2441,13 @@ body.account-page .tab-pane {
     border: none;
     color: var(--text-color);
     resize: none;
-    height: 80px;
-    max-height: 200px;
+    min-height: 80px; /* Starting height */
+    max-height: calc(100vh - 200px); /* Maximum height based on viewport minus space for header and buttons */
     outline: none;
     font-size: 15px;
     line-height: 1.5;
-    padding: 8px 0; /* Removed bottom padding as buttons are now in separate container */
+    padding: 8px 0 4px 0; /* Reduced padding */
+    overflow-y: auto; /* Add scrollbar when content exceeds max-height */
 }
 
 .send-btn {
@@ -2475,41 +2476,47 @@ body.account-page .tab-pane {
 .message-actions-container {
     width: 100%;
     border-top: 1px solid var(--border-color-light);
-    padding: 8px 0 4px 0;
+    padding: 4px 0 2px 0; /* Reduced padding */
     display: flex;
     justify-content: flex-end;
-    min-height: 44px; /* Minimum height to ensure buttons have enough space */
+    min-height: 36px; /* Reduced minimum height */
     background-color: var(--input-bg); /* Match with input background */
 }
 
 .message-actions {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 4px; /* Reduced gap between buttons */
 }
 
 /* Mobile-specific adjustments for message action buttons */
 @media screen and (max-width: 576px) {
     .message-actions {
-        gap: 16px; /* Increase space between buttons for easier tapping */
-        padding-right: 8px; /* Add padding on the right side */
+        gap: 10px; /* Moderate space between buttons for tapping (reduced from 16px) */
+        padding-right: 6px; /* Reduced right padding */
     }
     
     /* Adjust spacing for the message actions container on mobile */
     .message-actions-container {
-        padding: 10px 8px 6px 8px; /* Slightly more padding for better touch targets */
+        padding: 6px 8px 4px 8px; /* Reduced padding for more compact layout */
         background-color: var(--input-bg); /* Match input background */
+        min-height: 32px; /* Even smaller minimum height on mobile */
     }
     
     /* Position the send button with better spacing */
     .message-actions .send-btn {
-        margin-left: 8px; /* Space from other buttons */
+        margin-left: 4px; /* Reduced space from other buttons */
     }
     
     /* Group the document upload and camera buttons */
     .message-actions #file-upload-button,
     .message-actions #camera-button {
-        margin-right: 4px; /* Add a bit more spacing between these two */
+        margin-right: 2px; /* Reduced spacing between these two */
+    }
+    
+    /* Ensure text area gets more space on mobile */
+    #message-input {
+        height: 100px; /* Ensure height is maintained on mobile */
     }
 }
 
@@ -4244,8 +4251,14 @@ code {
     
     /* Ensure message input doesn't push buttons off screen when keyboard is visible */
     .chat-input-container.keyboard-visible #message-input {
-        height: 50px; /* Reduced height when keyboard is visible */
         min-height: 40px;
+        max-height: calc(100vh - 240px); /* Adjusted max height when keyboard is visible */
+        height: auto; /* Allow height to adjust based on content */
+    }
+    
+    /* Make the border between text area and button container more subtle */
+    .chat-input-container .message-actions-container {
+        border-top-color: rgba(128, 128, 128, 0.2);
     }
     
     .app-title h1 {

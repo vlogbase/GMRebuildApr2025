@@ -1646,9 +1646,32 @@ document.addEventListener('DOMContentLoaded', function() {
             // Reset height to auto first to get the correct scrollHeight
             messageInput.style.height = 'auto';
             
-            // Set the height based on scrollHeight (with a minimum height)
-            const newHeight = Math.max(40, Math.min(messageInput.scrollHeight, 200));
+            // Calculate available space (viewport height minus space for header, padding, and button area)
+            const viewportHeight = window.innerHeight;
+            const appHeader = document.querySelector('.app-header');
+            const headerHeight = appHeader ? appHeader.offsetHeight : 60;
+            const buttonAreaHeight = 50; // Approximate height for buttons and margins
+            const padding = 40; // Extra padding for visual comfort
+            
+            // Maximum height available is viewport minus header, button area and padding
+            const maxAvailableHeight = viewportHeight - headerHeight - buttonAreaHeight - padding;
+            
+            // Get CSS max-height and convert to number
+            const computedStyle = window.getComputedStyle(messageInput);
+            const cssMaxHeight = parseInt(computedStyle.maxHeight, 10);
+            
+            // Use the smaller of the calculated height or CSS max-height
+            const effectiveMaxHeight = Math.min(maxAvailableHeight, cssMaxHeight || 1000);
+            
+            // Set the height based on scrollHeight (with minimum and maximum constraints)
+            const minHeight = 80; // Minimum height to start with
+            const newHeight = Math.max(minHeight, Math.min(messageInput.scrollHeight, effectiveMaxHeight));
             messageInput.style.height = newHeight + 'px';
+            
+            // Log effective heights in debug mode
+            if (window.debugMode) {
+                console.log(`Auto-resize: scrollHeight=${messageInput.scrollHeight}, newHeight=${newHeight}, maxHeight=${effectiveMaxHeight}`);
+            }
         }
         
         // Handle input event for continuous resizing as user types
