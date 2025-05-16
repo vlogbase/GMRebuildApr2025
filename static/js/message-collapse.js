@@ -198,10 +198,44 @@
                                 icon.classList.remove('fa-chevron-down');
                                 icon.classList.add('fa-chevron-up');
                                 toggleButton.setAttribute('aria-label', 'Show less');
+                                
+                                // Add top collapse button
+                                let topCollapseButton = messageElement.querySelector('.message-truncate-toggle-top');
+                                
+                                if (!topCollapseButton) {
+                                    topCollapseButton = document.createElement('button');
+                                    topCollapseButton.className = 'message-truncate-toggle message-truncate-toggle-top expanded';
+                                    topCollapseButton.setAttribute('aria-label', 'Show less');
+                                    topCollapseButton.setAttribute('type', 'button');
+                                    topCollapseButton.innerHTML = '<i class="fa-solid fa-chevron-up"></i>';
+                                    
+                                    // Insert at the top of the content element
+                                    contentElement.insertAdjacentElement('beforebegin', topCollapseButton);
+                                    
+                                    // Add click handler that triggers the bottom button's click event
+                                    topCollapseButton.addEventListener('click', function(e) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        
+                                        // Trigger the original toggle button's click event
+                                        toggleButton.click();
+                                    });
+                                }
+                                
+                                // Make sure top button is visible
+                                topCollapseButton.style.display = 'flex';
+                                topCollapseButton.style.visibility = 'visible';
+                                topCollapseButton.style.opacity = '1';
                             } else {
                                 icon.classList.remove('fa-chevron-up');
                                 icon.classList.add('fa-chevron-down');
                                 toggleButton.setAttribute('aria-label', 'Show more');
+                                
+                                // Remove top collapse button when collapsed
+                                const topCollapseButton = messageElement.querySelector('.message-truncate-toggle-top');
+                                if (topCollapseButton) {
+                                    topCollapseButton.remove();
+                                }
                             }
                         });
                         
