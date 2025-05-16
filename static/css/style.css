@@ -1290,11 +1290,11 @@ body.account-page .tab-pane {
 .message-content.collapsible {
     position: relative; /* Needed for positioning the toggle button and gradient */
     overflow: hidden; /* Hide the overflowing content */
-    transition: max-height 0.3s ease-out;
+    transition: max-height 0.4s ease-out;
 }
 
 .message-content.collapsible.collapsed {
-    max-height: 200px; /* Initial height of the bubble */
+    max-height: 200px !important; /* Initial height of the bubble - !important to override other styles */
     /* The mask-image provides the fade-out effect at the bottom */
     -webkit-mask-image: linear-gradient(to bottom, black 170px, transparent 200px);
     mask-image: linear-gradient(to bottom, black 170px, transparent 200px);
@@ -1302,9 +1302,10 @@ body.account-page .tab-pane {
 
 /* Remove the mask when expanded */
 .message-content.collapsible.expanded {
-    max-height: none; /* Allow full height */
-    -webkit-mask-image: none;
-    mask-image: none;
+    max-height: 10000px !important; /* Very large value to ensure all content is shown */
+    overflow: visible; /* Show overflow content */
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
 }
 
 /* Toggle Button Styling (Arrow Icon) */
@@ -1318,12 +1319,13 @@ body.account-page .tab-pane {
     color: var(--text-color);
     border: 1px solid var(--border-color);
     border-radius: 50%; /* Circular button */
-    width: 30px;
-    height: 30px;
+    width: 32px;
+    height: 32px;
+    padding: 0;
     cursor: pointer;
     align-items: center;
     justify-content: center;
-    z-index: 5; /* Ensure it's above the faded text */
+    z-index: 50; /* Ensure it's above other content */
     transition: background-color 0.2s, transform 0.2s;
     box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
@@ -1343,13 +1345,31 @@ body.account-page .tab-pane {
 }
 
 /* Make sure the toggle button is shown when needed */
-.message-content.collapsible.collapsed + .message-truncate-toggle {
-    display: flex;
+.message .message-truncate-toggle {
+    display: none; /* Default state */
 }
 
+.message-content.collapsible.collapsed ~ .message-truncate-toggle,
+.message-content.collapsible.collapsed + .message-truncate-toggle {
+    display: flex !important; /* Show button when message is collapsed */
+}
+
+.message-content.collapsible.expanded ~ .message-truncate-toggle,
 .message-content.collapsible.expanded + .message-truncate-toggle {
-    display: flex;
+    display: flex !important; /* Keep button visible when expanded */
     bottom: -15px; /* Position slightly outside the bubble when expanded */
+}
+
+/* Mobile-specific adjustments */
+@media (max-width: 576px) {
+    .message-truncate-toggle {
+        width: 36px; /* Larger tap target on mobile */
+        height: 36px;
+    }
+    
+    .message-truncate-toggle i {
+        font-size: 16px; /* Larger icon on mobile */
+    }
 }
 
 /* Legacy styles maintained for backwards compatibility */
