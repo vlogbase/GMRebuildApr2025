@@ -1,258 +1,405 @@
 /**
- * Message Collapsing Functionality
+ * Message Collapsing Functionality - Improved Version
  * 
  * This script adds collapsible messages to the chat interface,
  * with an arrow toggle to expand and collapse long messages.
+ * 
+ * Features:
+ * - Handles dynamic content
+ * - Prevents infinite mutation observer loops
+ * - Works on both desktop and mobile devices
+ * - Has failsafes to prevent UI breakage
  */
 
-document.addEventListener('DOMContentLoaded', function() {
-    const MAX_COLLAPSED_HEIGHT = 200; // Must match CSS max-height for .message-content.collapsible.collapsed
-    let observer; // Store observer reference so we can disconnect/reconnect
+(function() {
+    // Enforce running only once
+    if (window.messageCollapseInitialized) return;
+    window.messageCollapseInitialized = true;
     
-    // Set to track which messages have already been processed
+    // Configuration
+    const MAX_COLLAPSED_HEIGHT = 200; // Must match CSS max-height for .message-content.collapsible.collapsed
+    const DEBOUNCE_TIME = 250; // Debounce time for events in ms
+    
+    // State
+    let observer = null; // Store observer reference so we can disconnect/reconnect
+    let observerActive = false; // Track if observer is active
+    let observerPaused = false; // Track if observer is intentionally paused
+    let processingContentId = null; // Store ID of content being processed
+    
+    // Set to track processed messages to prevent duplicate processing 
     const processedMessages = new Set();
-
+    const collapsibleMessages = new Set(); // Track actually collapsible messages
+    
     /**
-     * Initialize truncation for a message element
-     * @param {HTMLElement} messageElement - The message container element
+     * Safe wrapper for DOM operations to avoid cascading errors
      */
-    function initializeTruncation(messageElement) {
-        // Skip typing messages
-        if (messageElement.querySelector('.typing-indicator')) {
-            return;
+    function safeDOM(fn, fallback) {
+        try {
+            return fn();
+        } catch (error) {
+            console.error('[Message Collapse] DOM operation failed:', error);
+            return fallback;
+        }
+    }
+    
+    /**
+     * Safely disconnect the observer to prevent feedback loops
+     */
+    function safeDisconnect() {
+        if (observer && observerActive) {
+            observer.disconnect();
+            observerActive = false;
+        }
+    }
+    
+    /**
+     * Safely reconnect the observer when it's safe to do so
+     */
+    function safeReconnect() {
+        if (observerPaused || !observer) return;
+        
+        // Use RAF to ensure DOM is settled before reconnecting
+        requestAnimationFrame(() => {
+            const chatMessagesContainer = document.getElementById('chat-messages');
+            if (chatMessagesContainer && observer && !observerActive) {
+                observer.observe(chatMessagesContainer, { 
+                    childList: true,    // Watch for new messages
+                    subtree: true,      // Look inside added nodes
+                    characterData: false, // Don't watch for text changes (reduces events)
+                    attributes: false     // Don't watch for attribute changes (reduces events)
+                });
+                observerActive = true;
+            }
+        });
+    }
+    
+    /**
+     * Process a single message for collapsibility
+     * @param {HTMLElement} messageElement - The message container element
+     * @returns {boolean} - Whether the message was processed
+     */
+    function processMessage(messageElement) {
+        // Skip invalid elements and typing indicators
+        if (!messageElement || 
+            !messageElement.classList || 
+            messageElement.querySelector('.typing-indicator')) {
+            return false;
         }
         
-        // Skip already processed messages to prevent infinite loops
-        const messageId = messageElement.dataset.messageId || messageElement.id || null;
-        if (messageId && processedMessages.has(messageId)) {
-            return;
+        // Skip already processed messages to prevent loops
+        const messageId = messageElement.dataset.messageId || messageElement.id || 
+                          `msg-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+                          
+        if (processedMessages.has(messageId)) {
+            return false;
         }
         
         // Find the message content element
         const contentElement = messageElement.querySelector('.message-content');
         if (!contentElement) {
-            return;
+            return false;
         }
-
-        // Don't process messages already being processed
-        if (contentElement.dataset.processingCollapsible === 'true') {
-            return;
+        
+        // Skip if already being processed (prevent race conditions)
+        if (contentElement.dataset.processingCollapsible === 'true' || 
+            processingContentId === messageId) {
+            return false;
         }
         
         // Mark as being processed
         contentElement.dataset.processingCollapsible = 'true';
+        processingContentId = messageId;
         
         try {
-            // Get the parent container for the toggle button
-            // Use a consistent approach: prefer immediate parent of content element
-            const buttonContainer = contentElement.parentNode;
+            // Measure content height when fully expanded
+            let scrollHeight = 0;
             
-            // Temporarily disconnect observer to prevent feedback loop
-            if (observer) {
-                observer.disconnect();
-            }
-            
-            // Temporarily remove collapsed state to measure full height
+            // Temporarily remove any collapsed/expanded states
             const wasCollapsed = contentElement.classList.contains('collapsed');
-            contentElement.classList.remove('collapsed');
-            
-            // Save current max-height and temporarily remove it for accurate measurement
-            const currentMaxHeight = contentElement.style.maxHeight;
-            contentElement.style.maxHeight = 'none';
-    
-            // Get the full content height
-            const scrollHeight = contentElement.scrollHeight;
-            
-            // Restore previous state and styles
-            if (wasCollapsed) {
-                contentElement.classList.add('collapsed');
-            }
-            contentElement.style.maxHeight = currentMaxHeight;
-            
-            // Only process if message is long enough - prevents unnecessary DOM changes
-            if (scrollHeight > MAX_COLLAPSED_HEIGHT + 20) {
-                // Check if toggle button already exists
-                let toggleButton = messageElement.querySelector('.message-truncate-toggle');
+            safeDOM(() => {
+                // Store current max-height
+                const currentMaxHeight = contentElement.style.maxHeight;
                 
-                // Add collapsible class if needed
+                // Remove collapse/expand state temporarily
+                contentElement.classList.remove('collapsed', 'expanded');
+                contentElement.style.maxHeight = 'none';
+                
+                // Measure full content height
+                scrollHeight = contentElement.scrollHeight;
+                
+                // Restore previous state
+                if (wasCollapsed) {
+                    contentElement.classList.add('collapsed');
+                }
+                contentElement.style.maxHeight = currentMaxHeight;
+            });
+            
+            // Store this message as processed
+            processedMessages.add(messageId);
+            
+            // Only continue if message is long enough to need truncation
+            if (scrollHeight <= MAX_COLLAPSED_HEIGHT + 20) {
+                // Message too short, ensure it has no collapsible classes
+                safeDOM(() => {
+                    contentElement.classList.remove('collapsible', 'collapsed', 'expanded');
+                    
+                    // Hide any existing toggle button
+                    const toggleButton = messageElement.querySelector('.message-truncate-toggle');
+                    if (toggleButton) {
+                        toggleButton.style.display = 'none';
+                    }
+                });
+                return true;
+            }
+            
+            // Message is collapsible
+            collapsibleMessages.add(messageId);
+            
+            // Get or create the toggle button
+            let toggleButton = messageElement.querySelector('.message-truncate-toggle');
+            
+            safeDOM(() => {
+                // Add collapsible classes 
                 if (!contentElement.classList.contains('collapsible')) {
                     contentElement.classList.add('collapsible', 'collapsed');
                 }
                 
+                // Create toggle button if it doesn't exist
                 if (!toggleButton) {
-                    // Create toggle button
                     toggleButton = document.createElement('button');
                     toggleButton.className = 'message-truncate-toggle';
-                    toggleButton.setAttribute('aria-label', 'Toggle message visibility');
+                    toggleButton.setAttribute('aria-label', 'Show more');
                     toggleButton.setAttribute('type', 'button');
                     toggleButton.innerHTML = '<i class="fa-solid fa-chevron-down"></i>';
                     
-                    // Insert the button immediately after content
+                    // Insert button after content
                     contentElement.insertAdjacentElement('afterend', toggleButton);
-    
-                    // Add click handler - only do this once
+                    
+                    // Add click handler
                     toggleButton.addEventListener('click', function(e) {
                         e.preventDefault();
                         e.stopPropagation();
                         
-                        // Disconnect observer temporarily to prevent feedback loop
-                        if (observer) observer.disconnect();
+                        // Pause observer during toggle
+                        observerPaused = true;
+                        safeDisconnect();
                         
-                        // Toggle classes for content
-                        contentElement.classList.toggle('expanded');
-                        contentElement.classList.toggle('collapsed');
+                        safeDOM(() => {
+                            // Toggle classes
+                            contentElement.classList.toggle('expanded');
+                            contentElement.classList.toggle('collapsed');
+                            toggleButton.classList.toggle('expanded');
+                            
+                            // Update button appearance
+                            const icon = toggleButton.querySelector('i');
+                            const isExpanded = contentElement.classList.contains('expanded');
+                            
+                            if (isExpanded) {
+                                icon.classList.remove('fa-chevron-down');
+                                icon.classList.add('fa-chevron-up');
+                                toggleButton.setAttribute('aria-label', 'Show less');
+                            } else {
+                                icon.classList.remove('fa-chevron-up');
+                                icon.classList.add('fa-chevron-down');
+                                toggleButton.setAttribute('aria-label', 'Show more');
+                            }
+                        });
                         
-                        // Toggle classes for button
-                        this.classList.toggle('expanded');
-    
-                        // Update icon
-                        const icon = this.querySelector('i');
-                        if (contentElement.classList.contains('expanded')) {
-                            icon.classList.remove('fa-chevron-down');
-                            icon.classList.add('fa-chevron-up');
-                        } else {
-                            icon.classList.remove('fa-chevron-up');
-                            icon.classList.add('fa-chevron-down');
-                        }
-                        
-                        // Reconnect observer after changes
-                        reconnectObserver();
+                        // Resume observer after a delay
+                        setTimeout(() => {
+                            observerPaused = false;
+                            safeReconnect();
+                        }, 100);
                     });
                 }
                 
                 // Ensure button is visible
                 toggleButton.style.display = 'flex';
-                
-                // Add to processed messages set if we have an ID
-                if (messageId) {
-                    processedMessages.add(messageId);
-                }
-            } else {
-                // Message is not long enough, remove classes
-                contentElement.classList.remove('collapsible', 'collapsed', 'expanded');
-                
-                // Hide toggle button if it exists
-                const toggleButton = messageElement.querySelector('.message-truncate-toggle');
-                if (toggleButton) {
-                    toggleButton.style.display = 'none';
-                }
-            }
+                toggleButton.style.visibility = 'visible';
+                toggleButton.style.opacity = '1';
+            });
+            
+            return true;
         } catch (error) {
-            console.error('Error in initializeTruncation:', error);
+            console.error('[Message Collapse] Error processing message:', error);
+            return false;
         } finally {
-            // Always clear processing flag and reconnect observer
+            // Always clear processing flags
             contentElement.dataset.processingCollapsible = 'false';
-            reconnectObserver();
+            if (processingContentId === messageId) {
+                processingContentId = null;
+            }
         }
     }
     
     /**
-     * Safely reconnect the mutation observer
-     */
-    function reconnectObserver() {
-        // Reconnect using requestAnimationFrame to ensure DOM is settled
-        requestAnimationFrame(() => {
-            const chatMessagesContainer = document.getElementById('chat-messages');
-            if (chatMessagesContainer && observer) {
-                observer.observe(chatMessagesContainer, { 
-                    childList: true,
-                    subtree: true,
-                    characterData: false, // Reduce sensitivity - we don't need this
-                    attributes: false     // Reduce sensitivity - we don't need this
-                });
-            }
-        });
-    }
-
-    /**
-     * Process all existing messages
+     * Process all existing messages in the DOM
      */
     function processAllMessages() {
+        // Don't process if observer is paused
+        if (observerPaused) return;
+        
+        // Pause the observer during bulk processing
+        observerPaused = true;
+        safeDisconnect();
+        
         const messages = document.querySelectorAll('.message');
-        // Temporarily disconnect observer during bulk processing
-        if (observer) observer.disconnect();
+        let processed = 0;
         
-        messages.forEach(message => {
-            // Stagger processing slightly to allow DOM to update
-            setTimeout(() => initializeTruncation(message), 10);
-        });
-        
-        // Reconnect observer after all messages processed
-        setTimeout(reconnectObserver, 100);
-    }
-
-    // Disable older truncation system from script.js if it exists
-    if (window.shouldTruncateMessage) {
-        // Store the original function
-        const originalShouldTruncate = window.shouldTruncateMessage;
-        // Replace with a function that always returns false
-        window.shouldTruncateMessage = function() {
-            return false;
-        };
-    }
-
-    // Process all messages after DOM is loaded
-    setTimeout(processAllMessages, 500);
-
-    // Setup mutation observer with reduced sensitivity
-    const chatMessagesContainer = document.getElementById('chat-messages');
-    if (chatMessagesContainer) {
-        observer = new MutationObserver(function(mutationsList) {
-            // Process in batches to avoid rapid re-processing
-            let messagesToProcess = new Set();
+        // Process messages in small batches to avoid blocking the main thread
+        const processBatch = (index, batchSize = 5) => {
+            const endIndex = Math.min(index + batchSize, messages.length);
             
-            for (const mutation of mutationsList) {
-                // Only handle new nodes - ignore attribute changes
-                if (mutation.type === 'childList') {
-                    mutation.addedNodes.forEach(node => {
-                        if (node.nodeType === 1) { // Element node
-                            if (node.classList && node.classList.contains('message')) {
-                                messagesToProcess.add(node);
-                            } else if (node.querySelector) {
-                                // Add any messages inside this node
-                                node.querySelectorAll('.message').forEach(msg => {
-                                    messagesToProcess.add(msg);
-                                });
-                            }
-                        }
-                    });
+            for (let i = index; i < endIndex; i++) {
+                if (processMessage(messages[i])) {
+                    processed++;
                 }
             }
             
-            // Disconnect during batch processing
-            observer.disconnect();
+            if (endIndex < messages.length) {
+                // Process next batch
+                setTimeout(() => processBatch(endIndex, batchSize), 0);
+            } else {
+                // All done, reconnect observer
+                setTimeout(() => {
+                    observerPaused = false;
+                    safeReconnect();
+                }, 50);
+            }
+        };
+        
+        // Start processing in batches
+        processBatch(0);
+    }
+    
+    // Setup mutation observer to watch for new messages
+    function setupObserver() {
+        if (!observer) {
+            const chatMessagesContainer = document.getElementById('chat-messages');
+            if (!chatMessagesContainer) return;
             
-            // Process discovered messages
-            messagesToProcess.forEach(msg => {
-                initializeTruncation(msg);
+            observer = new MutationObserver((mutations) => {
+                // If observer is paused, do nothing
+                if (observerPaused) return;
+                
+                // Pause observer while processing
+                observerPaused = true;
+                safeDisconnect();
+                
+                // Find new messages to process
+                const newMessages = new Set();
+                
+                mutations.forEach(mutation => {
+                    // Only look at childList mutations (new nodes added)
+                    if (mutation.type === 'childList') {
+                        mutation.addedNodes.forEach(node => {
+                            if (node.nodeType !== 1) return; // Skip non-elements
+                            
+                            // If node is a message, add it
+                            if (node.classList && node.classList.contains('message')) {
+                                newMessages.add(node);
+                            } else if (node.querySelectorAll) {
+                                // Otherwise, find messages inside the node
+                                node.querySelectorAll('.message').forEach(msg => {
+                                    newMessages.add(msg);
+                                });
+                            }
+                        });
+                    }
+                });
+                
+                // Process any new messages found
+                if (newMessages.size > 0) {
+                    newMessages.forEach(msg => processMessage(msg));
+                }
+                
+                // Reconnect observer after processing
+                setTimeout(() => {
+                    observerPaused = false;
+                    safeReconnect();
+                }, 50);
             });
             
-            // Reconnect observer
-            reconnectObserver();
-        });
-
-        // Initial observation - only watch for new nodes, not attribute changes
-        observer.observe(chatMessagesContainer, { 
-            childList: true,
-            subtree: true,
-            characterData: false, // Don't observe text content changes
-            attributes: false     // Don't observe attribute changes
-        });
+            // Start observing
+            observer.observe(chatMessagesContainer, {
+                childList: true,
+                subtree: true,
+                characterData: false, // Don't observe text changes
+                attributes: false     // Don't observe attribute changes
+            });
+            
+            observerActive = true;
+        }
     }
-
-    // Process messages again when window is resized
-    let resizeTimeout;
-    window.addEventListener('resize', function() {
-        // Debounce the resize event
-        clearTimeout(resizeTimeout);
-        resizeTimeout = setTimeout(processAllMessages, 300);
-    });
-
-    // Run again after full page load
-    window.addEventListener('load', function() {
-        setTimeout(processAllMessages, 800);
-    });
-
-    // Expose for manual calls from other scripts
-    window.reinitializeMessageTruncation = processAllMessages;
-});
+    
+    // Initialize when DOM is ready
+    function initialize() {
+        // Disable old truncation system
+        if (window.shouldTruncateMessage) {
+            window.shouldTruncateMessage = function() { return false; };
+        }
+        
+        // Process existing messages
+        setTimeout(processAllMessages, 300);
+        
+        // Set up observer for new messages
+        setupObserver();
+        
+        // Process messages on window resize (debounced)
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            if (resizeTimeout) clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                // Reprocess collapsible messages on resize
+                if (collapsibleMessages.size > 0) {
+                    observerPaused = true;
+                    safeDisconnect();
+                    
+                    // Only reprocess messages that are known to be collapsible
+                    collapsibleMessages.forEach(id => {
+                        let element = null;
+                        // Find by messageId data attribute
+                        const messages = document.querySelectorAll('.message');
+                        for (let i = 0; i < messages.length; i++) {
+                            if (messages[i].dataset.messageId === id || messages[i].id === id) {
+                                element = messages[i];
+                                break;
+                            }
+                        }
+                        
+                        if (element) processMessage(element);
+                    });
+                    
+                    setTimeout(() => {
+                        observerPaused = false;
+                        safeReconnect();
+                    }, 50);
+                }
+            }, DEBOUNCE_TIME);
+        });
+        
+        // Also process after fonts and images load (can affect heights)
+        window.addEventListener('load', () => setTimeout(processAllMessages, 500));
+        
+        // Expose the reinitialization function globally
+        window.reinitializeMessageTruncation = function() {
+            observerPaused = true;
+            safeDisconnect();
+            setTimeout(() => {
+                processAllMessages();
+                setTimeout(() => {
+                    observerPaused = false;
+                    safeReconnect();
+                }, 100);
+            }, 50);
+        };
+    }
+    
+    // Start initialization when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize);
+    } else {
+        // DOM already loaded, initialize immediately
+        initialize();
+    }
+})();
