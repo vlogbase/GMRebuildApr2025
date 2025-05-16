@@ -4295,7 +4295,7 @@ window.resetToDefault = function(presetId) {
                                             let metadataContainer = messageWrapper.querySelector('.message-metadata');
                                             if (!metadataContainer) {
                                                 metadataContainer = document.createElement('div');
-                                                metadataContainer.className = 'message-metadata';
+                                                metadataContainer.className = 'message-metadata message-metadata-outside';
                                                 // Insert metadata before action buttons if they exist
                                                 const actionsContainer = messageWrapper.querySelector('.message-actions');
                                                 if (actionsContainer) {

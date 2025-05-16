@@ -1459,6 +1459,11 @@ body.account-page .tab-pane {
         padding-top: 10px;
     }
     
+    /* Ensure metadata is visible on mobile */
+    .message-metadata-outside {
+        padding-right: 45px; /* Add extra padding to avoid overlap with the toggle button */
+    }
+    
     /* Make sure the fade works on mobile */
     .message-content.collapsible.collapsed {
         -webkit-mask-image: linear-gradient(to bottom, black 160px, transparent 200px);
@@ -1663,6 +1668,19 @@ body.account-page .tab-pane {
     padding-bottom: 4px;
     border-top: 1px solid rgba(255, 255, 255, 0.05);
     display: block;
+}
+
+/* Make sure metadata is visible outside of collapsed message content */
+.message-metadata-outside {
+    position: relative;
+    z-index: 10; /* Ensure it's above the collapsible content */
+    background-color: var(--bg-color); /* Match the background to make it look seamless */
+    /* Ensure it's always visible regardless of message collapse state */
+    max-height: none !important;
+    overflow: visible !important;
+    /* No mask image to ensure text is fully visible */
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
 }
 
 /* Document reference indicator */
