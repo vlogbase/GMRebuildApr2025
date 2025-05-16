@@ -2274,6 +2274,40 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Function to calculate cost band based on model pricing data
+    function calculateCostBand(modelData) {
+        // If the model already has a valid cost band, use it
+        if (modelData.cost_band && ['$$$$', '$$$', '$$', '$'].includes(modelData.cost_band)) {
+            return modelData.cost_band;
+        }
+        
+        // Otherwise calculate based on input and output prices
+        const inputPrice = modelData.input_price || 0;
+        const outputPrice = modelData.output_price || 0;
+        const maxPrice = Math.max(inputPrice, outputPrice);
+        
+        // Determine if this is a free model
+        const isFreeModel = (inputPrice === 0 || inputPrice <= 0.01) && 
+                           (outputPrice === 0 || outputPrice <= 0.01);
+        
+        if (isFreeModel) {
+            return '';  // Free models don't show a cost band
+        }
+        
+        // Calculate band based on maximum price
+        if (maxPrice >= 100.0) {
+            return '$$$$';
+        } else if (maxPrice >= 10.0) {
+            return '$$$';
+        } else if (maxPrice >= 1.0) {
+            return '$$';
+        } else if (maxPrice >= 0.01) {
+            return '$';
+        }
+        
+        return '';  // Default for very low prices
+    }
+    
     // Function to fetch available models from OpenRouter
     function fetchAvailableModels() {
         console.log('Fetching available models...');
@@ -2293,6 +2327,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.success && data.prices) {
                     // Log 1: Raw API response
                     console.log('[Debug] Raw API Response:', JSON.stringify(data, null, 2));
+                    
+                    // Debug logging for cost bands in the API response
+                    console.log('[Debug] Cost band examples from API:');
+                    const sampleModelIds = Object.keys(data.prices).slice(0, 5);
+                    sampleModelIds.forEach(modelId => {
+                        console.log(`Model ${modelId} cost band: ${data.prices[modelId].cost_band}`);
+                    });
                     
                     // Create model data array directly from pricing data
                     const modelDataArray = [];
@@ -2325,8 +2366,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                 prompt: modelData.input_price,
                                 completion: modelData.output_price
                             },
-                            // Directly include the cost band provided by the API
-                            cost_band: modelData.cost_band || ''
+                            // Calculate cost band if not provided by API or if it's empty
+                            cost_band: calculateCostBand(modelData)
                         });
                     }
 
@@ -2377,6 +2418,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                     is_free: true,
                                     is_multimodal: false,
                                     pricing: { prompt: 0, completion: 0 },
+                                    input_price: 0,
+                                    output_price: 0,
                                     cost_band: ''
                                 },
                                 {
@@ -2385,6 +2428,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                     is_free: true,
                                     is_multimodal: false,
                                     pricing: { prompt: 0, completion: 0 },
+                                    input_price: 0,
+                                    output_price: 0,
                                     cost_band: ''
                                 },
                                 {
@@ -2393,6 +2438,8 @@ document.addEventListener('DOMContentLoaded', function() {
                                     is_free: true,
                                     is_multimodal: false,
                                     pricing: { prompt: 0, completion: 0 },
+                                    input_price: 0,
+                                    output_price: 0,
                                     cost_band: ''
                                 }
                             ];
