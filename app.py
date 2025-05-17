@@ -468,10 +468,10 @@ if not app.secret_key:
      logger.warning("SESSION_SECRET environment variable not set. Using default for development.")
      app.secret_key = "default-dev-secret-key-please-change"
 
-# Initialize SQLAlchemy with our app
-# Import the db instance instead of init_db to avoid duplicate registration
-from database import db
-db.init_app(app)
+# Get SQLAlchemy db instance but don't initialize it in app.py
+# (It's already initialized in main.py to avoid duplication)
+from database import db 
+# Not calling db.init_app(app) here to prevent duplicate registration
 
 # Initialize CSRF protection
 from flask_wtf.csrf import CSRFProtect
@@ -3647,8 +3647,8 @@ def get_models():
         }), 200  # Using 200 so frontend can handle gracefully
 
 
-@app.route('/test-fallback')
-def test_fallback():
+@app.route('/test-fallback-page')
+def test_fallback_page():
     """Test page for model fallback confirmation feature"""
     return render_template('test_fallback.html')
 

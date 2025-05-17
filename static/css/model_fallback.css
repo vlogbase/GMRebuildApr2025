@@ -1,137 +1,169 @@
-/* 
+/**
  * Model Fallback Confirmation Dialog Styles
  * 
- * Styling for the confirmation dialog that appears when a selected
- * model is unavailable and a fallback model is suggested.
+ * This stylesheet contains all the styles for the model fallback confirmation dialog
+ * and the non-blocking notification that appears when auto-fallback is enabled.
  */
 
-/* Container for the dialog */
-.fallback-dialog-container {
+/* Dialog Container */
+.fallback-dialog {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent overlay */
+    background-color: rgba(0, 0, 0, 0.5);
     display: flex;
+    align-items: center;
     justify-content: center;
-    align-items: center;
-    z-index: 1000; /* Ensure it's above other content */
-    transition: opacity 0.3s ease-in-out;
+    z-index: 9999;
+    opacity: 1;
+    transition: opacity 0.3s ease;
 }
 
-/* Dialog content box */
-.fallback-dialog-content {
-    background-color: var(--background-color, #fff);
-    color: var(--text-color, #333);
-    border-radius: 8px;
-    padding: 24px;
-    width: 90%;
-    max-width: 480px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border: 1px solid var(--border-color, #ddd);
-}
-
-/* Dialog title */
-.fallback-dialog-title {
-    margin-top: 0;
-    margin-bottom: 16px;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: var(--title-color, #222);
-}
-
-/* Dialog message */
-.fallback-dialog-message {
-    margin-bottom: 20px;
-    line-height: 1.5;
-    font-size: 1rem;
-}
-
-/* Highlighted model names */
-#original-model-name,
-#fallback-model-name {
-    font-weight: 600;
-    color: var(--highlight-color, #1a73e8);
-}
-
-/* Button container */
-.fallback-dialog-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-/* Base button styles */
-.fallback-btn {
-    padding: 10px 16px;
-    border-radius: 4px;
-    font-size: 0.95rem;
-    font-weight: 500;
-    cursor: pointer;
-    border: none;
-    transition: all 0.2s ease;
-}
-
-/* Yes button style */
-.fallback-yes-btn {
-    background-color: var(--primary-color, #1a73e8);
-    color: white;
-}
-
-.fallback-yes-btn:hover {
-    background-color: var(--primary-hover-color, #1557b0);
-}
-
-/* No button style */
-.fallback-no-btn {
-    background-color: var(--secondary-color, #f1f3f4);
-    color: var(--secondary-text-color, #5f6368);
-}
-
-.fallback-no-btn:hover {
-    background-color: var(--secondary-hover-color, #e8eaed);
-}
-
-/* Remember choice checkbox container */
-.fallback-remember-choice {
-    font-size: 0.9rem;
-    color: var(--text-secondary-color, #5f6368);
-    display: flex;
-    align-items: center;
-}
-
-.fallback-remember-choice input[type="checkbox"] {
-    margin-right: 8px;
-}
-
-/* Utility class to hide the dialog */
-.hidden {
+.fallback-dialog.hidden {
     opacity: 0;
     pointer-events: none;
 }
 
-/* Notification for auto-fallback (non-blocking) */
+/* Dialog Content */
+.fallback-dialog-content {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+    width: 90%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+}
+
+/* Dialog Header */
+.fallback-dialog-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid #e5e5e5;
+}
+
+.fallback-dialog-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+    font-weight: 600;
+}
+
+.fallback-close-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+    padding: 0;
+    margin: 0;
+    line-height: 1;
+}
+
+.fallback-close-btn:hover {
+    color: #333;
+}
+
+/* Dialog Body */
+.fallback-dialog-body {
+    padding: 20px;
+    overflow-y: auto;
+    color: #333;
+    line-height: 1.5;
+}
+
+.fallback-dialog-body p {
+    margin: 0 0 12px;
+}
+
+.fallback-dialog-body strong {
+    font-weight: 600;
+    color: #4a6baf;
+}
+
+/* Dialog Footer */
+.fallback-dialog-footer {
+    padding: 16px 20px;
+    border-top: 1px solid #e5e5e5;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+/* Remember checkbox */
+.fallback-remember {
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    color: #666;
+    cursor: pointer;
+    margin-right: 10px;
+}
+
+.fallback-remember input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* Buttons Container */
+.fallback-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+/* Button Styles */
+.fallback-btn {
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.fallback-btn.primary {
+    background-color: #4a6baf;
+    color: white;
+}
+
+.fallback-btn.primary:hover {
+    background-color: #3a5694;
+}
+
+.fallback-btn.secondary {
+    background-color: #e5e5e5;
+    color: #333;
+}
+
+.fallback-btn.secondary:hover {
+    background-color: #d5d5d5;
+}
+
+/* Non-blocking Fallback Notification */
 .fallback-notification {
     position: fixed;
-    bottom: 20px;
+    top: 20px;
     right: 20px;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     padding: 12px 16px;
-    background-color: var(--notification-bg, rgba(0, 0, 0, 0.8));
-    color: var(--notification-color, white);
-    border-radius: 6px;
+    z-index: 9990;
     max-width: 320px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    z-index: 999;
-    display: flex;
-    transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+    opacity: 1;
     transform: translateY(0);
+    transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .fallback-notification.hidden {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(-20px);
     pointer-events: none;
 }
 
@@ -139,44 +171,49 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    width: 100%;
+    color: #333;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.fallback-notification-content strong {
+    color: #4a6baf;
+    font-weight: 600;
 }
 
 .fallback-notification-close {
     background: none;
     border: none;
-    color: var(--notification-close-color, rgba(255, 255, 255, 0.7));
-    font-size: 1.2rem;
+    font-size: 18px;
+    color: #999;
+    cursor: pointer;
     padding: 0;
     margin-left: 12px;
-    cursor: pointer;
     line-height: 1;
 }
 
 .fallback-notification-close:hover {
-    color: var(--notification-close-hover, white);
+    color: #333;
 }
 
-/* Dark theme support */
-@media (prefers-color-scheme: dark) {
-    .fallback-dialog-content {
-        --background-color: #2c2c2c;
-        --text-color: #e0e0e0;
-        --title-color: #ffffff;
-        --border-color: #444;
-        --highlight-color: #8ab4f8;
-        --primary-color: #8ab4f8;
-        --primary-hover-color: #669df6;
-        --secondary-color: #3c4043;
-        --secondary-text-color: #c5c5c5;
-        --secondary-hover-color: #4e4e4e;
-        --text-secondary-color: #a9a9a9;
+/* Media Queries for Mobile */
+@media (max-width: 576px) {
+    .fallback-dialog-footer {
+        flex-direction: column;
+        align-items: stretch;
     }
     
-    .fallback-notification {
-        --notification-bg: rgba(44, 44, 44, 0.95);
-        --notification-color: #e0e0e0;
-        --notification-close-color: rgba(224, 224, 224, 0.7);
-        --notification-close-hover: #ffffff;
+    .fallback-remember {
+        margin-bottom: 12px;
+        margin-right: 0;
+    }
+    
+    .fallback-buttons {
+        display: flex;
+        width: 100%;
+    }
+    
+    .fallback-btn {
+        flex: 1;
     }
 }

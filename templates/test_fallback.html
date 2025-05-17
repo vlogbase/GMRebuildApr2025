@@ -1,123 +1,212 @@
-{% extends "base.html" %}
-
-{% block title %}Test Model Fallback{% endblock %}
-
-{% block content %}
-<div class="container mt-5">
-    <div class="row">
-        <div class="col-12 col-md-8 mx-auto">
-            <div class="card">
-                <div class="card-header">
-                    <h4>Model Fallback Test</h4>
-                </div>
-                <div class="card-body">
-                    <p class="mb-4">This page tests the model fallback confirmation feature.</p>
-                    
-                    <form id="testForm" class="mb-4">
-                        <div class="mb-3">
-                            <label for="message" class="form-label">Message:</label>
-                            <input type="text" class="form-control" id="message" value="Hello, this is a test message" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="requestedModel" class="form-label">Requested Model:</label>
-                            <input type="text" class="form-control" id="requestedModel" value="GPT-4 Turbo" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="fallbackModel" class="form-label">Fallback Model:</label>
-                            <input type="text" class="form-control" id="fallbackModel" value="Claude-3 Haiku" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="originalModelId" class="form-label">Original Model ID:</label>
-                            <input type="text" class="form-control" id="originalModelId" value="openai/gpt-4-turbo" required>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="fallbackModelId" class="form-label">Fallback Model ID:</label>
-                            <input type="text" class="form-control" id="fallbackModelId" value="anthropic/claude-3-haiku-20240307" required>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary">Test Fallback Dialog</button>
-                    </form>
-                    
-                    <hr>
-                    
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="autoFallbackEnabled">
-                        <label class="form-check-label" for="autoFallbackEnabled">Automatically fallback when models are unavailable</label>
-                    </div>
-                    
-                    <div id="result" class="mt-4">
-                        <h5>Result:</h5>
-                        <div class="alert alert-secondary">Test results will appear here</div>
-                    </div>
-                </div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Fallback Test</title>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #4a6baf;
+            margin-bottom: 20px;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 15px;
+            background-color: #4a6baf;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        .btn:hover {
+            background-color: #3a5694;
+        }
+        .btn.secondary {
+            background-color: #6c757d;
+        }
+        .btn.secondary:hover {
+            background-color: #5a6268;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-left: 5px solid #4a6baf;
+            min-height: 100px;
+        }
+        .checkbox-wrapper {
+            margin: 15px 0;
+        }
+        .checkbox-wrapper label {
+            display: flex;
+            align-items: center;
+            font-weight: normal;
+            cursor: pointer;
+        }
+        .checkbox-wrapper input[type="checkbox"] {
+            margin-right: 10px;
+        }
+    </style>
+    <!-- Import any required CSS -->
+    <link rel="stylesheet" href="/static/css/model_fallback.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Model Fallback Test</h1>
+        
+        <div class="test-section">
+            <h2>Test Fallback Dialog</h2>
+            <p>This test will show the fallback confirmation dialog as if a model was unavailable.</p>
+            <button id="testFallbackBtn" class="btn">Show Fallback Dialog</button>
+            
+            <div class="checkbox-wrapper">
+                <label for="autoFallbackCheckbox">
+                    <input type="checkbox" id="autoFallbackCheckbox">
+                    Automatically use fallback model (preference setting)
+                </label>
+            </div>
+            
+            <div id="result">
+                <p>Test results will appear here...</p>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Auto-Fallback Notification</h2>
+            <p>This test will show the non-blocking notification when auto-fallback is enabled.</p>
+            <button id="testNotificationBtn" class="btn">Show Fallback Notification</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>Check Auto-Fallback Preference API</h2>
+            <p>Check your current auto-fallback preference on the server.</p>
+            <button id="checkPreferenceBtn" class="btn">Check Preference</button>
+            <button id="updatePreferenceBtn" class="btn secondary">Update Preference</button>
+            <div id="preferenceResult" class="result">
+                <p>Preference results will appear here...</p>
             </div>
         </div>
     </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const testForm = document.getElementById('testForm');
-    const resultDiv = document.getElementById('result');
     
-    // Add event listener to form submission
-    testForm.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
-        // Get values from form
-        const message = document.getElementById('message').value;
-        const requestedModel = document.getElementById('requestedModel').value;
-        const fallbackModel = document.getElementById('fallbackModel').value;
-        const originalModelId = document.getElementById('originalModelId').value;
-        const fallbackModelId = document.getElementById('fallbackModelId').value;
-        
-        // Display fallback dialog
-        if (typeof window.ModelFallback !== 'undefined' && 
-            typeof window.ModelFallback.showFallbackDialog === 'function') {
-            
-            window.ModelFallback.showFallbackDialog(
-                requestedModel,
-                fallbackModel,
-                originalModelId,
-                fallbackModelId,
-                message
-            );
-            
-            // Add custom event listener for tracking dialog actions
-            document.addEventListener('fallbackDialogAction', function(event) {
-                const action = event.detail.action;
-                const modelId = event.detail.modelId;
+    <!-- Import required JavaScript -->
+    <script src="/static/js/model_fallback.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Test showing the fallback dialog
+            document.getElementById('testFallbackBtn').addEventListener('click', function() {
+                const result = document.getElementById('result');
+                const userMessage = "This is a test message";
+                const originalModel = "Claude 3 Opus";
+                const fallbackModel = "GPT-4o";
                 
-                let resultHTML = `
-                    <h5>Dialog Action:</h5>
-                    <div class="alert alert-success">
-                        <p><strong>Action:</strong> ${action}</p>
-                        <p><strong>Model ID:</strong> ${modelId}</p>
-                    </div>
-                `;
+                // Set auto-fallback preference from checkbox
+                const autoFallback = document.getElementById('autoFallbackCheckbox').checked;
+                saveAutoFallbackPreference(autoFallback);
                 
-                resultDiv.innerHTML = resultHTML;
-            }, { once: true }); // Only listen once per test
+                // First, check if auto-fallback is enabled
+                shouldAutoFallback(function(shouldAuto) {
+                    if (shouldAuto) {
+                        // If auto-fallback is enabled, just show notification
+                        showFallbackNotification(originalModel, fallbackModel);
+                        result.innerHTML = `<p>Auto-fallback enabled. Using <strong>${fallbackModel}</strong> automatically.</p>`;
+                    } else {
+                        // Otherwise show the confirmation dialog
+                        showFallbackConfirmation(originalModel, fallbackModel, userMessage, function(accepted) {
+                            result.innerHTML = `<p>User ${accepted ? 'accepted' : 'declined'} fallback to <strong>${fallbackModel}</strong>.</p>`;
+                            
+                            if (!accepted) {
+                                result.innerHTML += `<p>Original message returned to input: "${userMessage}"</p>`;
+                            }
+                        });
+                    }
+                });
+            });
             
-            resultDiv.innerHTML = `
-                <h5>Result:</h5>
-                <div class="alert alert-info">
-                    Fallback dialog displayed. Check for the dialog popup.
-                </div>
-            `;
-        } else {
-            resultDiv.innerHTML = `
-                <h5>Error:</h5>
-                <div class="alert alert-danger">
-                    ModelFallback module not available. Make sure model_fallback.js is loaded.
-                </div>
-            `;
-        }
-    });
-});
-</script>
-{% endblock %}
+            // Test showing just the fallback notification
+            document.getElementById('testNotificationBtn').addEventListener('click', function() {
+                showFallbackNotification("Claude 3 Opus", "GPT-4o");
+            });
+            
+            // Test checking fallback preference from server
+            document.getElementById('checkPreferenceBtn').addEventListener('click', function() {
+                const preferenceResult = document.getElementById('preferenceResult');
+                
+                fetch('/api/fallback/check_preference')
+                    .then(response => response.json())
+                    .then(data => {
+                        preferenceResult.innerHTML = `<p>Server preference: Auto-fallback is <strong>${data.auto_fallback_enabled ? 'enabled' : 'disabled'}</strong>.</p>`;
+                        
+                        // Update checkbox to match server setting
+                        document.getElementById('autoFallbackCheckbox').checked = data.auto_fallback_enabled;
+                    })
+                    .catch(error => {
+                        preferenceResult.innerHTML = `<p>Error checking preference: ${error}</p>`;
+                    });
+            });
+            
+            // Test updating fallback preference on server
+            document.getElementById('updatePreferenceBtn').addEventListener('click', function() {
+                const preferenceResult = document.getElementById('preferenceResult');
+                const autoFallback = document.getElementById('autoFallbackCheckbox').checked;
+                
+                fetch('/api/fallback/update_preference', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        auto_fallback_enabled: autoFallback
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        preferenceResult.innerHTML = `<p>Successfully updated preference. Auto-fallback is now <strong>${data.auto_fallback_enabled ? 'enabled' : 'disabled'}</strong>.</p>`;
+                    } else {
+                        preferenceResult.innerHTML = `<p>Error: ${data.error || 'Unknown error'}</p>`;
+                    }
+                })
+                .catch(error => {
+                    preferenceResult.innerHTML = `<p>Error updating preference: ${error}</p>`;
+                });
+            });
+            
+            // Check preference on load to set checkbox state
+            fetch('/api/fallback/check_preference')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('autoFallbackCheckbox').checked = data.auto_fallback_enabled;
+                })
+                .catch(error => {
+                    console.error('Error checking initial preference:', error);
+                });
+        });
+    </script>
+</body>
+</html>

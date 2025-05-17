@@ -1,274 +1,179 @@
 /**
  * Model Fallback Integration
  * 
- * This script integrates the model fallback confirmation dialog
- * with the main chat interface script (script.js).
+ * This file integrates the model fallback confirmation dialog with the main chat interface,
+ * intercepting model unavailability errors and showing the fallback confirmation to users.
  */
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Only initialize on the chat page
-    if (!document.getElementById('chat-container')) {
-        return;
-    }
+// Store original message when fallback is needed
+let savedUserMessage = "";
+let originalModelId = "";
+let fallbackModelId = "";
+
+// Flag to prevent duplicate fallback handling
+let handlingFallback = false;
+
+/**
+ * Initialize fallback integration by setting up necessary event listeners
+ */
+function initFallbackIntegration() {
+    // Listen for model validation errors from the chat system
+    document.addEventListener('modelUnavailableError', handleModelUnavailableError);
     
-    initializeFallbackIntegration();
-});
-
-// Initialize model fallback integration with the main chat interface
-function initializeFallbackIntegration() {
-    // Wait for the main script to load and initialize
-    const checkMainScriptLoaded = setInterval(() => {
-        if (window.sendMessage) {
-            clearInterval(checkMainScriptLoaded);
-            
-            // Store the original sendMessage function
-            const originalSendMessage = window.sendMessage;
-            
-            // Override the sendMessage function with our fallback-aware version
-            window.sendMessage = function(message, modelId) {
-                // Check if we need to confirm model availability first
-                if (modelId) {
-                    handleModelSendWithFallback(message, modelId);
-                } else {
-                    // No specific model selected, use the original function
-                    originalSendMessage(message);
-                }
-            };
-            
-            console.log('Model fallback integration initialized');
-        }
-    }, 100);
-}
-
-// Handle model fallback check before sending message
-function handleModelSendWithFallback(msgText, requestedModelId) {
-    // First check if auto-fallback is enabled
-    shouldAutoFallback(function(autoFallback) {
-        if (autoFallback) {
-            // Automatically use fallback model if needed (no confirmation)
-            checkModelAndSend(msgText, requestedModelId, true);
-        } else {
-            // Show confirmation dialog if fallback is needed
-            checkModelAndSend(msgText, requestedModelId, false);
-        }
+    // Re-initialize when the page content changes (for SPA-like behavior)
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('Fallback integration initialized');
     });
 }
 
-// Check model availability and send with appropriate fallback handling
-function checkModelAndSend(msgText, modelId, autoFallback) {
-    // Get current message input element
-    const messageInput = document.getElementById('message-input');
+/**
+ * Handle model unavailable error event
+ * @param {CustomEvent} event - The model unavailable error event with model details
+ */
+function handleModelUnavailableError(event) {
+    if (handlingFallback) return; // Prevent duplicate handling
     
-    // Get CSRF token
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    handlingFallback = true;
     
-    // Check model availability on the backend
-    fetch(`/api/chat/check_model?model_id=${encodeURIComponent(modelId)}`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.available) {
-                // Model is available, send as normal
-                sendWithSelectedModel(msgText, modelId);
-            } else {
-                // Model is not available, handle fallback
-                const fallbackModel = data.fallback_model;
-                
-                if (autoFallback) {
-                    // Auto-fallback enabled, use fallback model without confirmation
-                    sendWithSelectedModel(msgText, fallbackModel);
-                    
-                    // Show non-blocking notification
-                    showFallbackNotification(data.model_name, data.fallback_model_name);
-                } else {
-                    // Show confirmation dialog
-                    showFallbackConfirmation(
-                        data.model_name, 
-                        data.fallback_model_name,
-                        msgText,
-                        function(confirmed) {
-                            if (confirmed) {
-                                // User confirmed fallback
-                                sendWithSelectedModel(msgText, fallbackModel);
-                            } else {
-                                // User rejected fallback
-                                // Put message back in input field
-                                if (messageInput) {
-                                    messageInput.value = msgText;
-                                    messageInput.focus();
-                                }
-                                
-                                // Highlight the model selector to indicate a change is needed
-                                highlightModelSelector();
-                            }
-                        }
-                    );
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error checking model availability:', error);
-            // On error, proceed with original model as a fallback
-            showErrorMessage('Could not check model availability, sending with selected model.');
-            sendWithSelectedModel(msgText, modelId);
-        });
+    // Extract event details
+    const { originalModel, fallbackModel, userMessage } = event.detail;
+    
+    // Store original message and model IDs for later
+    savedUserMessage = userMessage;
+    originalModelId = originalModel.id;
+    fallbackModelId = fallbackModel.id;
+    
+    console.log(`Model unavailable: ${originalModel.name}. Suggested fallback: ${fallbackModel.name}`);
+    
+    // First check if auto-fallback is enabled in user preferences
+    checkAutoFallbackPreference(originalModel.name, fallbackModel.name, userMessage);
 }
 
-// Send message with the selected model
-function sendWithSelectedModel(message, modelId) {
-    // Get original sendMessage function
-    const origSendMessageFn = window.originalSendMessage || 
-                             (typeof sendChatMessage === 'function' ? sendChatMessage : null);
-    
-    if (origSendMessageFn) {
-        // Use the original function with the selected model
-        origSendMessageFn(message, modelId);
-    } else {
-        // Fallback if original function not found
-        console.error('Original send function not found, using direct implementation');
-        
-        // Add user message to UI
-        addMessageToUI('user', message);
-        
-        // Clear input
-        const messageInput = document.getElementById('message-input');
-        if (messageInput) {
-            messageInput.value = '';
-        }
-        
-        // Send API request
-        fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCsrfToken()
-            },
-            body: JSON.stringify({
-                content: message,
-                model: modelId,
-                conversation_id: getCurrentConversationId()
-            })
-        })
+/**
+ * Check if auto-fallback is enabled in user preferences
+ * @param {string} originalModelName - The name of the original model
+ * @param {string} fallbackModelName - The name of the fallback model
+ * @param {string} userMessage - The user's message
+ */
+function checkAutoFallbackPreference(originalModelName, fallbackModelName, userMessage) {
+    fetch('/api/fallback/check_preference')
         .then(response => response.json())
         .then(data => {
-            if (data.error) {
-                showErrorMessage(data.error);
+            if (data.auto_fallback_enabled) {
+                // Auto-fallback is enabled, use fallback model automatically
+                console.log('Auto-fallback enabled, switching models automatically');
+                
+                // Show non-blocking notification
+                showFallbackNotification(originalModelName, fallbackModelName);
+                
+                // Switch model and proceed with chat
+                switchToFallbackModel();
             } else {
-                // Add AI response to UI
-                addMessageToUI('assistant', data.message);
+                // Auto-fallback is disabled, show confirmation dialog
+                showFallbackConfirmation(originalModelName, fallbackModelName, userMessage, (accepted) => {
+                    if (accepted) {
+                        // User accepted fallback, switch model
+                        switchToFallbackModel();
+                    } else {
+                        // User declined fallback, return message to input
+                        returnMessageToInput(userMessage);
+                    }
+                    handlingFallback = false;
+                });
             }
         })
         .catch(error => {
-            console.error('Error sending message:', error);
-            showErrorMessage('Error sending message');
+            console.error('Error checking fallback preference:', error);
+            
+            // On error, default to showing confirmation dialog
+            showFallbackConfirmation(originalModelName, fallbackModelName, userMessage, (accepted) => {
+                if (accepted) {
+                    switchToFallbackModel();
+                } else {
+                    returnMessageToInput(userMessage);
+                }
+                handlingFallback = false;
+            });
         });
-    }
 }
 
-// Add message to UI (minimal implementation, should be handled by main chat script)
-function addMessageToUI(role, content) {
-    // Check if main script has a function for this
-    if (typeof addMessage === 'function') {
-        addMessage(role, content);
+/**
+ * Switch to the fallback model and resend the message
+ */
+function switchToFallbackModel() {
+    // Find model selector
+    const modelSelector = document.getElementById('model-selector');
+    if (!modelSelector) {
+        console.error('Model selector not found');
+        handlingFallback = false;
         return;
     }
     
-    // Fallback implementation
-    const chatContainer = document.querySelector('.chat-messages');
-    if (!chatContainer) return;
+    // Set value to fallback model ID
+    modelSelector.value = fallbackModelId;
     
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${role}`;
-    messageDiv.innerHTML = `
-        <div class="message-content">
-            ${content}
-        </div>
-    `;
+    // Trigger change event to update UI
+    const changeEvent = new Event('change', { bubbles: true });
+    modelSelector.dispatchEvent(changeEvent);
     
-    chatContainer.appendChild(messageDiv);
-    chatContainer.scrollTop = chatContainer.scrollHeight;
+    // Resend the message with the new model
+    sendMessageWithFallbackModel(savedUserMessage);
+    
+    handlingFallback = false;
 }
 
-// Get current conversation ID
-function getCurrentConversationId() {
-    // Try to get from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const idFromUrl = urlParams.get('id');
-    if (idFromUrl) return idFromUrl;
-    
-    // Try to get from a data attribute in the DOM
-    const conversationElement = document.querySelector('[data-conversation-id]');
-    if (conversationElement) {
-        return conversationElement.getAttribute('data-conversation-id');
+/**
+ * Send the user's message with the fallback model
+ * @param {string} message - The user's message
+ */
+function sendMessageWithFallbackModel(message) {
+    // Find message input
+    const messageInput = document.getElementById('message-input');
+    if (!messageInput) {
+        console.error('Message input not found');
+        return;
     }
     
-    // Fallback to session storage if supported
-    if (typeof sessionStorage !== 'undefined') {
-        return sessionStorage.getItem('current_conversation_id');
+    // Set input value to original message
+    messageInput.value = message;
+    
+    // Find send button
+    const sendButton = document.querySelector('.send-button');
+    if (!sendButton) {
+        console.error('Send button not found');
+        return;
     }
     
-    // Last resort
-    return null;
+    // Click send button to resend message
+    sendButton.click();
 }
 
-// Highlight the model selector to indicate user should change model
-function highlightModelSelector() {
+/**
+ * Return the original message to the input field
+ * @param {string} message - The original user message
+ */
+function returnMessageToInput(message) {
+    // Find message input
+    const messageInput = document.getElementById('message-input');
+    if (!messageInput) {
+        console.error('Message input not found');
+        return;
+    }
+    
+    // Set input value to original message
+    messageInput.value = message;
+    messageInput.focus();
+    
+    // Reset the original model in the selector
     const modelSelector = document.getElementById('model-selector');
-    if (!modelSelector) return;
-    
-    // Add highlight class
-    modelSelector.classList.add('highlight-model-selector');
-    
-    // Scroll into view if needed
-    modelSelector.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    
-    // Remove highlight after a few seconds
-    setTimeout(() => {
-        modelSelector.classList.remove('highlight-model-selector');
-    }, 3000);
+    if (modelSelector) {
+        modelSelector.value = originalModelId;
+        
+        // Trigger change event to update UI
+        const changeEvent = new Event('change', { bubbles: true });
+        modelSelector.dispatchEvent(changeEvent);
+    }
 }
 
-// Show error message in UI
-function showErrorMessage(message) {
-    // Add toast notification
-    const toastId = 'toast-' + Date.now();
-    const toast = document.createElement('div');
-    toast.id = toastId;
-    toast.className = 'toast error-toast';
-    toast.setAttribute('role', 'alert');
-    
-    toast.innerHTML = `
-        <div class="toast-header">
-            <strong class="me-auto">Error</strong>
-            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-        <div class="toast-body">${message}</div>
-    `;
-    
-    // Add to toast container or create one
-    let toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toast-container';
-        toastContainer.className = 'toast-container position-fixed bottom-0 end-0 p-3';
-        document.body.appendChild(toastContainer);
-    }
-    
-    toastContainer.appendChild(toast);
-    
-    // Initialize and show toast
-    const bsToast = new bootstrap.Toast(toast);
-    bsToast.show();
-}
-
-// Initialize when DOM is loaded
-document.addEventListener('DOMContentLoaded', function() {
-    // Store a reference to the original sendMessage function
-    if (window.sendMessage) {
-        window.originalSendMessage = window.sendMessage;
-    }
-});
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', initFallbackIntegration);

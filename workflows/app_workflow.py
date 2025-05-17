@@ -1,43 +1,52 @@
 """
-Simple Flask server workflow for GloriaMundo Chat Mobile UI Testing
+Application workflow for GloriaMundo
 
-This workflow runs the Flask application to test the mobile UI improvements:
-1. Model selection buttons and interface
-2. Sidebar behavior on mobile
-3. Fixed layout with scrollable content
+This script starts the application server using the correct gunicorn configuration
+with gevent worker class for optimal performance.
 """
-
 import logging
 import os
 import sys
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
+def main():
+    """Main function to start the application server"""
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    logger = logging.getLogger(__name__)
+    
+    logger.info("Starting GloriaMundo application server...")
+    
+    # Set the correct working directory
+    os.chdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    
+    # Configure Gunicorn command
+    bind_address = "0.0.0.0:5000"  # Bind to all interfaces on port 5000
+    workers = 1  # Use 1 worker for simplicity in development
+    worker_class = "gevent"  # Use gevent for async support
+    timeout = 120  # Increase timeout for long-running requests
+    
+    # Build the Gunicorn command
+    cmd = [
+        "gunicorn",
+        f"--bind={bind_address}",
+        f"--workers={workers}",
+        f"--worker-class={worker_class}",
+        f"--timeout={timeout}",
+        "main:app"  # Use main.py's app as the WSGI entry point
     ]
-)
-logger = logging.getLogger(__name__)
-
-def run():
-    """Run the Flask application with development settings enabled."""
-    logger.info("Starting GloriaMundo Chat application workflow")
     
-    # Environment setup
-    os.environ["FLASK_APP"] = "app.py"
-    os.environ["FLASK_ENV"] = "development"
-    os.environ["FLASK_DEBUG"] = "1"
+    # Print command for debugging
+    logger.info(f"Running command: {' '.join(cmd)}")
     
-    # Import and run the Flask application
-    logger.info("Importing Flask application")
-    import app
-    
-    logger.info("Starting Flask server")
-    
-    # Run with host='0.0.0.0' to make the app accessible from outside
-    app.app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    # Execute Gunicorn
+    try:
+        os.execvp(cmd[0], cmd)
+    except Exception as e:
+        logger.error(f"Failed to start application server: {e}")
+        sys.exit(1)
 
 if __name__ == "__main__":
-    run()
+    main()
