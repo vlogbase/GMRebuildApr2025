@@ -1,15 +1,16 @@
-# --- Complete app.py (Module Version - Refactored for main.py) ---
-"""
-Core functionality module for GloriaMundo Chatbot
+# --- Complete app.py (Synchronous Version - Reverted & Fixed) ---
+# IMPORTANT: Monkey patching must happen at the very top, before any other imports
+from gevent import monkey
+monkey.patch_all()
 
-This file contains the utility functions and global variables for the application.
-It is imported by main.py and routes.py, which handle initialization and routing.
-"""
 import os
 import io
 import logging
+# Configure pymongo logging to reduce noise
+logging.getLogger('pymongo').setLevel(logging.WARNING)
 import json
-import requests
+import requests # Use requests for synchronous calls
+# import httpx # No longer needed
 import uuid
 import time
 import base64
@@ -21,411 +22,16 @@ import atexit
 import traceback
 import sys
 from pathlib import Path
-from PIL import Image
-from urllib.parse import urlparse
-from werkzeug.datastructures import FileStorage
-from flask_login import current_user, login_required, login_user, logout_user
-from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Text, DateTime, Boolean, Float, ForeignKey, inspect
-from database import db
-
-# Configure logging
-logger = logging.getLogger(__name__)
-
-# Note: Flask app instance is now imported from main
-# The app instance and database are initialized in main.py, not here
-
-# Version information
-VERSION = "1.7.4"
-
-# Environment variables
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
-OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
-TEMPERATURE = float(os.environ.get('TEMPERATURE', '0.7'))
-
-# Default values
-DEFAULT_MODEL = os.environ.get('DEFAULT_MODEL', 'anthropic/claude-3-haiku')
-DEFAULT_TEMPERATURE = float(os.environ.get('DEFAULT_TEMPERATURE', '0.7'))
-DEFAULT_MAX_TOKENS = int(os.environ.get('DEFAULT_MAX_TOKENS', '4000'))
-DEFAULT_TOP_P = float(os.environ.get('DEFAULT_TOP_P', '0.9'))
-MAX_HISTORY_LENGTH = int(os.environ.get('MAX_HISTORY_LENGTH', '20'))
-
-# System prompt used for all conversations
-SYSTEM_PROMPT = os.environ.get('SYSTEM_PROMPT', 'You are Claude, a helpful AI assistant created by Anthropic.')
-
-# Set for tracking multimodal models
-MULTIMODAL_MODELS = {
-    'anthropic/claude-3-opus', 
-    'anthropic/claude-3-sonnet', 
-    'anthropic/claude-3-haiku',
-    'google/gemini-pro-vision',
-    'openai/gpt-4-vision-preview',
-    'openai/gpt-4o'
-}
-
-# Set for tracking models with PDF/document support
-DOCUMENT_MODELS = {
-    'anthropic/claude-3-opus', 
-    'anthropic/claude-3-sonnet', 
-    'anthropic/claude-3-haiku',
-    'openai/gpt-4o'
-}
-
-# Model information dictionary with capabilities
-MODEL_INFO = {
-    'anthropic/claude-3-opus': {
-        'name': 'Claude 3 Opus',
-        'provider': 'Anthropic',
-        'is_multimodal': True,
-        'supports_documents': True,
-        'max_tokens': 200000
-    },
-    'anthropic/claude-3-sonnet': {
-        'name': 'Claude 3 Sonnet',
-        'provider': 'Anthropic',
-        'is_multimodal': True,
-        'supports_documents': True,
-        'max_tokens': 200000
-    },
-    'anthropic/claude-3-haiku': {
-        'name': 'Claude 3 Haiku',
-        'provider': 'Anthropic',
-        'is_multimodal': True,
-        'supports_documents': True,
-        'max_tokens': 200000
-    },
-    'google/gemini-pro-vision': {
-        'name': 'Gemini Pro Vision',
-        'provider': 'Google',
-        'is_multimodal': True,
-        'supports_documents': False,
-        'max_tokens': 8192
-    },
-    'openai/gpt-4-vision-preview': {
-        'name': 'GPT-4 Vision',
-        'provider': 'OpenAI',
-        'is_multimodal': True,
-        'supports_documents': False,
-        'max_tokens': 4096
-    },
-    'openai/gpt-4o': {
-        'name': 'GPT-4o',
-        'provider': 'OpenAI',
-        'is_multimodal': True,
-        'supports_documents': True,
-        'max_tokens': 8192
-    }
-}
-
-# Default token prices in USD (per million tokens)
-TOKEN_PRICES = {
-    'anthropic/claude-3-opus': {'input': 15.0, 'output': 75.0},
-    'anthropic/claude-3-sonnet': {'input': 3.0, 'output': 15.0},
-    'anthropic/claude-3-haiku': {'input': 0.25, 'output': 1.25},
-    'openai/gpt-4o': {'input': 5.0, 'output': 15.0},
-    'google/gemini-pro-vision': {'input': 0.0, 'output': 0.0},
-    'openai/gpt-4-vision-preview': {'input': 10.0, 'output': 30.0}
-}
-
-# Utility Functions
-def get_user_identifier():
-    """
-    Get or create a user identifier for the current session.
-    """
-    if 'user_id' not in session:
-        session['user_id'] = str(uuid.uuid4())
-    return session['user_id']
-
-def truncate_conversation_history(messages, max_messages=20):
-    """
-    Truncate the conversation history to the specified maximum number of messages.
-    
-    Args:
-        messages: List of message objects from the database
-        max_messages: Maximum number of messages to retain
-        
-    Returns:
-        List of messages in format ready for the API
-    """
-    # Convert from SQLAlchemy objects to dictionaries for the API
-    history = []
-    for msg in messages[-max_messages:]:
-        history.append({
-            'role': msg.role,
-            'content': msg.content
-        })
-    return history
-
-def get_openrouter_chat_completion(messages, model=DEFAULT_MODEL, temperature=DEFAULT_TEMPERATURE, max_tokens=DEFAULT_MAX_TOKENS):
-    """
-    Get a chat completion from the OpenRouter API.
-    
-    Args:
-        messages: List of message objects (system, user, assistant)
-        model: Model ID to use for completion
-        temperature: Temperature parameter for randomness
-        max_tokens: Maximum tokens to generate
-        
-    Returns:
-        API response data
-    """
-    # Create API request
-    headers = {
-        'Content-Type': 'application/json',
-        'Authorization': f'Bearer {OPENROUTER_API_KEY}'
-    }
-    
-    # Support for multimodal messages (with images)
-    processed_messages = []
-    for msg in messages:
-        # If the message has image content, process it
-        if 'image_url' in msg:
-            content = []
-            # Add text content if present
-            if msg.get('content'):
-                content.append({
-                    'type': 'text',
-                    'text': msg['content']
-                })
-            # Add image content
-            content.append({
-                'type': 'image_url',
-                'image_url': {
-                    'url': msg['image_url']
-                }
-            })
-            processed_msg = {
-                'role': msg['role'],
-                'content': content
-            }
-        else:
-            # Regular text message
-            processed_msg = {
-                'role': msg['role'],
-                'content': msg['content']
-            }
-        processed_messages.append(processed_msg)
-    
-    # Create the payload
-    payload = {
-        'model': model,
-        'messages': processed_messages,
-        'temperature': temperature,
-        'max_tokens': max_tokens
-    }
-    
-    # Make the API call
-    try:
-        response = requests.post('https://openrouter.ai/api/v1/chat/completions', headers=headers, json=payload)
-        return response.json()
-    except Exception as e:
-        logger.exception(f"Error calling OpenRouter API: {e}")
-        return {"error": str(e)}
-
-def parse_openrouter_response(response_data):
-    """
-    Parse the OpenRouter API response to extract the assistant's message.
-    
-    Args:
-        response_data: JSON response data from the API
-        
-    Returns:
-        Extracted assistant message or error
-    """
-    try:
-        # Check for API errors
-        if 'error' in response_data:
-            return f"Error: {response_data['error']}"
-        
-        # Extract assistant message
-        choices = response_data.get('choices', [])
-        if not choices:
-            return "Error: No response from the API"
-            
-        message = choices[0].get('message', {})
-        content = message.get('content', '')
-        
-        return content
-    except Exception as e:
-        logger.exception(f"Error parsing OpenRouter response: {e}")
-        return f"Error parsing response: {str(e)}"
-
-def get_available_models():
-    """
-    Get a list of available models from the database or default list.
-    
-    Returns:
-        List of model objects with name, id, etc.
-    """
-    try:
-        # Query the database for models
-        from models import OpenRouterModel
-        
-        # Get models from the database
-        models = OpenRouterModel.query.filter_by(is_available=True).order_by(OpenRouterModel.provider_name, OpenRouterModel.model_name).all()
-        
-        # If we have models in the database, return them
-        if models and len(models) > 0:
-            return [
-                {
-                    'id': model.model_id,
-                    'name': f"{model.model_name}",
-                    'provider': model.provider_name,
-                    'context_length': model.context_length,
-                    'is_multimodal': model.is_multimodal,
-                    'is_recommended': model.is_recommended,
-                    'price_input': model.price_input,
-                    'price_output': model.price_output,
-                    'capabilities': model.capabilities
-                }
-                for model in models
-            ]
-        
-        # Fallback to hardcoded models if database is empty
-        default_models = []
-        for model_id, info in MODEL_INFO.items():
-            default_models.append({
-                'id': model_id,
-                'name': info['name'],
-                'provider': info['provider'],
-                'is_multimodal': info.get('is_multimodal', False),
-                'is_recommended': model_id == DEFAULT_MODEL,
-                'price_input': TOKEN_PRICES.get(model_id, {}).get('input', 0.0),
-                'price_output': TOKEN_PRICES.get(model_id, {}).get('output', 0.0)
-            })
-        
-        return default_models
-    except Exception as e:
-        logger.exception(f"Error getting available models: {e}")
-        return []
-
-def get_conversation_by_id(conversation_id):
-    """
-    Get a conversation by ID.
-    
-    Args:
-        conversation_id: ID of the conversation to retrieve
-        
-    Returns:
-        Conversation object or None
-    """
-    try:
-        from models import Conversation
-        return Conversation.query.get(conversation_id)
-    except Exception as e:
-        logger.exception(f"Error getting conversation by ID: {e}")
-        return None
-
-def get_user_conversations(user_id):
-    """
-    Get all conversations for a user.
-    
-    Args:
-        user_id: ID of the user
-        
-    Returns:
-        List of conversation objects
-    """
-    try:
-        from models import Conversation
-        return Conversation.query.filter_by(user_id=user_id).order_by(Conversation.updated_at.desc()).all()
-    except Exception as e:
-        logger.exception(f"Error getting user conversations: {e}")
-        return []
-
-def create_new_conversation(user_id=None, title="New Conversation"):
-    """
-    Create a new conversation.
-    
-    Args:
-        user_id: ID of the user or None for anonymous
-        title: Title of the conversation
-        
-    Returns:
-        New conversation object
-    """
-    try:
-        from models import Conversation
-        
-        # Create a new conversation with the provided user_id
-        conversation = Conversation(
-            user_id=user_id,
-            title=title,
-            created_at=datetime.datetime.utcnow(),
-            updated_at=datetime.datetime.utcnow()
-        )
-        
-        # Add to database and commit
-        db.session.add(conversation)
-        db.session.commit()
-        
-        return conversation
-    except Exception as e:
-        db.session.rollback()
-        logger.exception(f"Error creating new conversation: {e}")
-        return None
-
-def save_message(conversation_id, role, content, user_id=None):
-    """
-    Save a message to the database.
-    
-    Args:
-        conversation_id: ID of the conversation
-        role: Message role (user, assistant, system)
-        content: Message content
-        user_id: ID of the user or None for anonymous
-        
-    Returns:
-        New message object
-    """
-    try:
-        from models import Message, Conversation
-        
-        # Create a new message
-        message = Message(
-            conversation_id=conversation_id,
-            role=role,
-            content=content,
-            created_at=datetime.datetime.utcnow(),
-            metadata={}
-        )
-        
-        # Add to database and commit
-        db.session.add(message)
-        
-        # Update conversation timestamp
-        conversation = Conversation.query.get(conversation_id)
-        if conversation:
-            conversation.updated_at = datetime.datetime.utcnow()
-            
-            # Update title if this is the first user message
-            if role == 'user' and not conversation.title or conversation.title == "New Conversation":
-                # Use the first 30 characters of the message as the title
-                conversation.title = content[:30] + ("..." if len(content) > 30 else "")
-        
-        db.session.commit()
-        
-        return message
-    except Exception as e:
-        db.session.rollback()
-        logger.exception(f"Error saving message: {e}")
-        return None
-
-def get_conversation_messages(conversation_id):
-    """
-    Get all messages for a conversation.
-    
-    Args:
-        conversation_id: ID of the conversation
-        
-    Returns:
-        List of message objects
-    """
-    try:
-        from models import Message
-        return Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
-    except Exception as e:
-        logger.exception(f"Error getting conversation messages: {e}")
-        return []
+from PIL import Image  # For image processing
+from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory # Added send_from_directory
+from urllib.parse import urlparse # For URL analysis in image handling
+from werkzeug.datastructures import FileStorage # For file handling in upload routes
+from flask_login import LoginManager, current_user, login_required, login_user, logout_user
+from flask_wtf.csrf import CSRFProtect
+from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure Blob Storage
+from apscheduler.schedulers.background import BackgroundScheduler
+from database import db, init_app
+from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
 
 # Check if we should enable advanced memory features
 ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
@@ -451,15 +57,12 @@ else:
 # The system now processes PDFs directly through OpenRouter PDF capabilities
 
 
-# Import required Flask components
-import os
-import logging
-from flask import Flask, request, render_template, redirect, url_for, jsonify, session, abort, Response, stream_with_context
-from flask_wtf.csrf import CSRFProtect
-
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+# Import SQLAlchemy from database module
+from database import db
 
 # Create Flask app
 app = Flask(__name__)
@@ -468,13 +71,7 @@ if not app.secret_key:
      logger.warning("SESSION_SECRET environment variable not set. Using default for development.")
      app.secret_key = "default-dev-secret-key-please-change"
 
-# Get SQLAlchemy db instance but don't initialize it in app.py
-# (It's already initialized in main.py to avoid duplication)
-from database import db 
-# Not calling db.init_app(app) here to prevent duplicate registration
-
 # Initialize CSRF protection
-from flask_wtf.csrf import CSRFProtect
 csrf = CSRFProtect(app)
 
 # Add global template context variables
@@ -484,9 +81,6 @@ def inject_now():
 
 # Initialize Azure Blob Storage for image uploads
 try:
-    # Import Azure modules with proper error handling
-    from azure.storage.blob import BlobServiceClient, ContentSettings
-    
     # Get connection string and container name from environment variables
     azure_connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
     azure_container_name = os.environ.get("AZURE_STORAGE_CONTAINER_NAME")
@@ -521,19 +115,12 @@ except Exception as e:
 
 
 # Configure database
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
+init_app(app)  # Initialize database with the app (from database.py)
 if not app.config["SQLALCHEMY_DATABASE_URI"]:
     logger.error("DATABASE_URL environment variable not set.")
     # Handle this critical error appropriately
 
-app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-    "pool_recycle": 300,
-    "pool_pre_ping": True,
-}
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
-
-# Initialize SQLAlchemy with the app
-db.init_app(app)
 
 # Create or update database tables for models
 with app.app_context():
@@ -558,10 +145,21 @@ with app.app_context():
             logger.info("OpenRouterModel table already exists, skipping migrations")
     except Exception as e:
         logger.exception(f"Error checking or running OpenRouter migrations: {e}")
+        
+    # Run UserChatSettings migration
+    try:
+        logger.info("Running UserChatSettings migration...")
+        from migrations_user_chat_settings import run_migration
+        success = run_migration()
+        if success:
+            logger.info("UserChatSettings migration completed successfully")
+        else:
+            logger.warning("UserChatSettings migration failed")
+    except Exception as e:
+        logger.error(f"Error running UserChatSettings migration: {e}")
         # Continue anyway as this is not critical for application startup
 
 # Initialize LoginManager
-from flask_login import LoginManager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
@@ -588,17 +186,64 @@ except Exception as e:
 try:
     from affiliate import affiliate_bp
     app.register_blueprint(affiliate_bp, url_prefix='/affiliate')
+    
+    # Register user settings blueprint
+    from user_settings import user_settings_bp, init_user_settings
+    init_user_settings(app)
     logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
 
-# Register fallback API blueprint
+# Register admin blueprint
 try:
-    from fallback_api import fallback_api
-    app.register_blueprint(fallback_api)
-    logger.info("Fallback API blueprint registered successfully")
+    # Define custom error handler function that will be passed to admin module
+    def handle_admin_exception(e):
+        logger.error(f"Admin exception: {str(e)}", exc_info=True)
+        return """
+        <html>
+            <head><title>Admin Error</title></head>
+            <body>
+                <h1>Error in Admin Panel</h1>
+                <p>An unexpected error occurred in the admin panel. This has been logged for investigation.</p>
+                <p>Error details: {}</p>
+                <a href="/">Return to Home</a>
+            </body>
+        </html>
+        """.format(str(e)), 500
+    
+    # Now import and initialize the admin blueprint
+    from admin import init_admin
+    init_admin(app)
+    
+    # Log success
+    logger.info("Admin blueprint registered successfully with prefix /admin_simple")
+    
+    # Add redirects from old admin routes to new admin routes
+    @app.route('/admin')
+    @app.route('/admin/')
+    @app.route('/admin_portal')
+    @app.route('/admin_portal/')
+    @app.route('/admin_dash')
+    @app.route('/admin_dash/')
+    def redirect_to_admin_portal():
+        return redirect(url_for('admin_simple.index'))
+        
+    @app.route('/admin/<path:subpath>')
+    @app.route('/admin_portal/<path:subpath>')
+    @app.route('/admin_dash/<path:subpath>')
+    def redirect_admin_subpaths(subpath):
+        # Redirect all admin routes to our new admin implementation
+        return redirect('/admin_simple/' + subpath)
+        
 except Exception as e:
-    logger.error(f"Error registering Fallback API blueprint: {e}")
+    logger.error(f"Error registering Admin blueprint: {str(e)}", exc_info=True)
+
+# Helper function for admin access control
+def is_admin():
+    """Check if the current user is an admin (specifically andy@sentigral.com)"""
+    # Check if user is authenticated and has the specific email
+    admin_email = os.environ.get('ADMIN_EMAIL', 'andy@sentigral.com').lower()
+    return current_user.is_authenticated and current_user.email.lower() == admin_email
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -845,8 +490,10 @@ try:
     from price_updater import fetch_and_store_openrouter_prices
     from models import OpenRouterModel
     
-    # Check if we have models in the database
-    model_count = OpenRouterModel.query.count()
+    # Create an application context for database operations
+    with app.app_context():
+        # Check if we have models in the database
+        model_count = OpenRouterModel.query.count()
     
     if model_count > 0:
         logger.info(f"Found {model_count} OpenRouter models in database at startup")
@@ -860,18 +507,20 @@ try:
         
         if price_success:
             # Check if models were stored in the database
-            model_count = OpenRouterModel.query.count()
+            with app.app_context():
+                model_count = OpenRouterModel.query.count()
             logger.info(f"Successfully fetched and stored {model_count} OpenRouter models in database")
         else:
             # If that fails, log a warning - we'll rely on the scheduler to retry soon
             logger.warning("Initial model fetching failed. The scheduler will retry shortly.")
     
-    # Final verification of database state
-    model_count = OpenRouterModel.query.count()
-    if model_count > 0:
-        logger.info(f"OpenRouter model database initialized with {model_count} models")
-    else:
-        logger.warning("No models available in the database. Application may have limited functionality.")
+    # Final verification of database state - use with app_context to ensure DB operations work
+    with app.app_context():
+        model_count = OpenRouterModel.query.count()
+        if model_count > 0:
+            logger.info(f"OpenRouter model database initialized with {model_count} models")
+        else:
+            logger.warning("No models available in the database. Application may have limited functionality.")
         
 except Exception as e:
     logger.error(f"Critical error fetching model data at startup: {e}")
@@ -1217,17 +866,18 @@ def get_object_storage_url(object_name, public=True, expires_in=3600, clean_url=
         return None
 
 # --- Routes ---
-@app.route('/test-fallback')
-def test_fallback():
-    """
-    Test page for the model fallback confirmation feature.
-    """
-    return render_template('test_fallback.html')
+@app.route('/test_url_formatting')
+def test_url_formatting():
+    """Render the URL formatting test page"""
+    return render_template('test_url_formatting.html')
 
 @app.route('/')
 def index():
     # Allow non-authenticated users to use the app with limited functionality
     is_logged_in = current_user.is_authenticated
+    
+    # Check if there's a specific conversation to load (used for redirects from share links)
+    conversation_id = request.args.get('conversation_id')
     
     # Fetch conversations only if user is logged in
     conversations = []
@@ -1245,7 +895,8 @@ def index():
         'index.html', 
         user=current_user, 
         is_logged_in=is_logged_in,
-        conversations=conversations
+        conversations=conversations,
+        initial_conversation_id=conversation_id
     )
 
 @app.route('/login')
@@ -1625,8 +1276,13 @@ def upload_file():
             # Handle image uploads (pass through the request as-is)
             return upload_image()
         elif extension == '.pdf':
-            # Handle PDF uploads
-            return upload_pdf()
+            # If we don't have a conversation_id yet, pass this parameter in the query string to upload_pdf
+            if conversation_id:
+                # Pass through the original request with conversation_id
+                return upload_pdf()
+            else:
+                # Create a redirect URL with conversation_id as None to trigger conversation creation
+                return upload_pdf()
         else:
             return jsonify({
                 "error": f"File type {extension} is not supported. Please upload an image (jpg, png, gif, webp) or PDF file."
@@ -1657,6 +1313,13 @@ def upload_pdf():
         JSON with pdf_data_url containing the base64 data URL needed for OpenRouter's PDF handling
     """
     try:
+        # Get conversation ID if provided (useful for tracking uploads)
+        conversation_id = request.args.get('conversation_id')
+        if conversation_id:
+            logger.info(f"PDF upload associated with conversation: {conversation_id}")
+        else:
+            logger.info(f"PDF upload with no conversation ID - will create a new conversation")
+        
         # Verify a file was uploaded
         if 'file' not in request.files:
             return jsonify({"error": "No file provided"}), 400
@@ -1681,6 +1344,56 @@ def upload_pdf():
         # Read the PDF into memory
         pdf_data = file.read()
         pdf_stream = io.BytesIO(pdf_data)
+        
+        # Get or create a conversation to associate with this PDF
+        # This ensures we have a valid conversation_id before trying to save the PDF
+        from models import Conversation
+        conversation = None
+        
+        # If conversation_id was provided, try to fetch that conversation
+        if conversation_id:
+            try:
+                conversation = Conversation.query.get(conversation_id)
+                logger.info(f"Found existing conversation with ID: {conversation_id}")
+            except Exception as e:
+                logger.error(f"Error finding conversation {conversation_id}: {e}")
+                conversation_id = None
+        
+        # If no valid conversation found or provided, create a new one
+        if not conversation:
+            # Create a new conversation for this PDF upload
+            try:
+                # Import the function to generate a unique share ID
+                from ensure_app_context import ensure_app_context
+                
+                # Use a descriptive title for PDF-initiated conversations
+                title = f"PDF Document: {filename}"
+                share_id = generate_share_id()
+                
+                # Create with app context to avoid "working outside of application context" errors
+                with ensure_app_context():
+                    # Generate a UUID for the conversation
+                    conversation_uuid = str(uuid.uuid4())
+                    
+                    # Create the conversation with required fields including conversation_uuid
+                    conversation = Conversation(
+                        title=title, 
+                        share_id=share_id,
+                        conversation_uuid=conversation_uuid  # Add the required conversation_uuid field
+                    )
+                    
+                    # Associate conversation with the authenticated user if available
+                    if current_user and current_user.is_authenticated:
+                        conversation.user_id = current_user.id
+                        logger.info(f"Associating new PDF conversation with user ID: {current_user.id}")
+                    
+                    db.session.add(conversation)
+                    db.session.commit()
+                    conversation_id = conversation.id
+                    logger.info(f"Created new conversation for PDF with ID: {conversation_id} and UUID: {conversation_uuid}")
+            except Exception as e:
+                logger.exception(f"Error creating conversation for PDF: {e}")
+                return jsonify({"error": f"Database error: {str(e)}"}), 500
         
         # Storage path for Azure Blob Storage
         storage_path = unique_filename
@@ -1725,13 +1438,37 @@ def upload_pdf():
                 base64_pdf = base64.b64encode(pdf_stream.read()).decode('utf-8')
                 pdf_data_url = f"data:application/pdf;base64,{base64_pdf}"
                 
+                # Now save a Message record with the PDF URL so it's properly associated with the conversation
+                try:
+                    from models import Message
+                    from ensure_app_context import ensure_app_context
+                    
+                    # Create a placeholder message to hold the PDF data
+                    # This ensures PDFs are properly tracked in conversation history
+                    with ensure_app_context():
+                        pdf_message = Message(
+                            conversation_id=conversation.id,
+                            role='user',
+                            content='', # Empty content since the PDF is the content
+                            pdf_url=pdf_data_url,
+                            pdf_filename=filename
+                        )
+                        db.session.add(pdf_message)
+                        db.session.commit()
+                        logger.info(f"Saved PDF message {pdf_message.id} for conversation {conversation.id}")
+                except Exception as e:
+                    logger.exception(f"Error saving PDF message to database: {e}")
+                    # Continue even if this fails - we'll at least return the PDF URL
+                
                 logger.info(f"Uploaded PDF to Azure Blob Storage: {unique_filename}")
                 
                 return jsonify({
                     "success": True,
                     "pdf_url": blob_client.url,
                     "pdf_data_url": pdf_data_url,
-                    "filename": filename
+                    "filename": filename,
+                    "document_name": filename,  # Add document_name for display in UI
+                    "conversation_id": conversation.id  # Return the conversation ID to the client
                 })
             except Exception as e:
                 logger.exception(f"Error uploading to Azure Blob Storage: {e}")
@@ -1751,13 +1488,37 @@ def upload_pdf():
                 base64_pdf = base64.b64encode(pdf_stream.read()).decode('utf-8')
                 pdf_data_url = f"data:application/pdf;base64,{base64_pdf}"
                 
+                # Save a Message record with the PDF URL so it's properly associated with the conversation
+                try:
+                    from models import Message
+                    from ensure_app_context import ensure_app_context
+                    
+                    # Create a placeholder message to hold the PDF data
+                    # This ensures PDFs are properly tracked in conversation history
+                    with ensure_app_context():
+                        pdf_message = Message(
+                            conversation_id=conversation.id,
+                            role='user',
+                            content='', # Empty content since the PDF is the content
+                            pdf_url=pdf_data_url,
+                            pdf_filename=filename
+                        )
+                        db.session.add(pdf_message)
+                        db.session.commit()
+                        logger.info(f"Saved PDF message {pdf_message.id} for conversation {conversation.id}")
+                except Exception as e:
+                    logger.exception(f"Error saving PDF message to database: {e}")
+                    # Continue even if this fails - we'll at least return the PDF URL
+                
                 logger.info(f"Fallback: Saved PDF to local filesystem: {file_path}")
                 
                 return jsonify({
                     "success": True,
                     "pdf_url": pdf_url,
                     "pdf_data_url": pdf_data_url,
-                    "filename": filename
+                    "filename": filename,
+                    "document_name": filename,  # Add document_name for display in UI
+                    "conversation_id": conversation.id  # Return the conversation ID to the client
                 })
         else:
             # Azure Blob Storage not available, use local filesystem
@@ -1776,13 +1537,37 @@ def upload_pdf():
             base64_pdf = base64.b64encode(pdf_stream.read()).decode('utf-8')
             pdf_data_url = f"data:application/pdf;base64,{base64_pdf}"
             
+            # Save a Message record with the PDF URL so it's properly associated with the conversation
+            try:
+                from models import Message
+                from ensure_app_context import ensure_app_context
+                
+                # Create a placeholder message to hold the PDF data
+                # This ensures PDFs are properly tracked in conversation history
+                with ensure_app_context():
+                    pdf_message = Message(
+                        conversation_id=conversation.id,
+                        role='user',
+                        content='', # Empty content since the PDF is the content
+                        pdf_url=pdf_data_url,
+                        pdf_filename=filename
+                    )
+                    db.session.add(pdf_message)
+                    db.session.commit()
+                    logger.info(f"Saved PDF message {pdf_message.id} for conversation {conversation.id}")
+            except Exception as e:
+                logger.exception(f"Error saving PDF message to database: {e}")
+                # Continue even if this fails - we'll at least return the PDF URL
+            
             logger.info(f"Saved PDF to local filesystem: {file_path}")
             
             return jsonify({
                 "success": True,
                 "pdf_url": pdf_url,
                 "pdf_data_url": pdf_data_url,
-                "filename": filename
+                "filename": filename,
+                "document_name": filename,  # Add document_name for display in UI
+                "conversation_id": conversation.id  # Return the conversation ID to the client
             })
     except Exception as e:
         logger.exception(f"Error handling PDF upload: {e}")
@@ -1797,6 +1582,74 @@ def redirect_to_upload_file():
     to maintain compatibility with any existing code using the /upload endpoint.
     """
     return upload_file()
+
+@app.route('/api/cleanup-empty-conversations', methods=['POST'])
+@login_required
+def cleanup_empty_conversations_api():
+    """Clean up all empty conversations for the current user"""
+    try:
+        from models import Conversation, Message
+        from conversation_utils import cleanup_empty_conversations
+        
+        # Clean up empty conversations for the current user
+        cleaned_count = cleanup_empty_conversations(db, Message, Conversation, current_user.id)
+        
+        logger.info(f"API call cleaned up {cleaned_count} empty conversations for user {current_user.id}")
+        
+        return jsonify({"success": True, "cleaned_count": cleaned_count})
+    except Exception as e:
+        logger.exception(f"Error cleaning up empty conversations for user {current_user.id}: {e}")
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/conversation/<int:conversation_id>/is-empty', methods=['GET'])
+@login_required
+def is_conversation_empty_api(conversation_id):
+    """Check if a conversation is empty (has no messages)"""
+    try:
+        from models import Message, Conversation
+        from conversation_utils import is_conversation_empty
+        
+        # First verify the conversation belongs to the current user
+        conversation = Conversation.query.filter_by(id=conversation_id, user_id=current_user.id).first()
+        if not conversation:
+            return jsonify({"success": False, "error": "Conversation not found"}), 404
+        
+        # Check if conversation is empty
+        empty = is_conversation_empty(db, Message, conversation_id)
+        
+        return jsonify({"success": True, "is_empty": empty})
+    except Exception as e:
+        logger.exception(f"Error checking if conversation {conversation_id} is empty: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+        
+@app.route('/api/conversation/<int:conversation_id>/delete-if-empty', methods=['POST'])
+@login_required
+def delete_conversation_if_empty_api(conversation_id):
+    """Delete a conversation if it has no messages"""
+    try:
+        from models import Message, Conversation
+        from conversation_utils import delete_conversation_if_empty
+        
+        # Verify the conversation belongs to the current user
+        conversation = Conversation.query.filter_by(id=conversation_id, user_id=current_user.id).first()
+        if not conversation:
+            return jsonify({"success": False, "error": "Conversation not found"}), 404
+        
+        # Check if conversation is empty and delete it if it is
+        deleted = delete_conversation_if_empty(db, Message, Conversation, conversation_id)
+        
+        if deleted:
+            logger.info(f"Deleted empty conversation {conversation_id} for user {current_user.id}")
+            return jsonify({"success": True, "deleted": True})
+        else:
+            logger.info(f"Conversation {conversation_id} not empty or couldn't be deleted")
+            return jsonify({"success": True, "deleted": False})
+            
+    except Exception as e:
+        logger.exception(f"Error deleting empty conversation {conversation_id}: {e}")
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
 
 @app.route('/clear-conversations', methods=['POST'])
 @login_required
@@ -1824,18 +1677,65 @@ def clear_conversations():
         # Create a new conversation
         title = "New Conversation"
         share_id = generate_share_id()
+        conversation_uuid = str(uuid.uuid4())
         conversation = Conversation(
             title=title, 
             share_id=share_id,
-            user_id=current_user.id
+            user_id=current_user.id,
+            conversation_uuid=conversation_uuid
         )
         db.session.add(conversation)
         db.session.commit()
+        logger.info(f"Created new conversation for user {current_user.id} with ID: {conversation.id}, UUID: {conversation_uuid}")
         
         return jsonify({"success": True, "message": f"Cleared {count} conversations", "new_conversation_id": conversation.id})
     
     except Exception as e:
         logger.exception(f"Error clearing conversations for user {current_user.id}: {e}")
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/create-conversation', methods=['POST'])
+@login_required
+def create_conversation():
+    """Create a new conversation for the current user"""
+    try:
+        from models import Conversation, Message
+        from conversation_utils import cleanup_empty_conversations
+        
+        # First, clean up any existing empty conversations for this user
+        cleaned_count = cleanup_empty_conversations(db, Message, Conversation, current_user.id)
+        if cleaned_count > 0:
+            logger.info(f"Cleaned up {cleaned_count} empty conversations for user {current_user.id}")
+        
+        # Create a new conversation
+        title = "New Conversation"
+        share_id = generate_share_id()
+        conversation_uuid = str(uuid.uuid4())
+        conversation = Conversation(
+            title=title, 
+            share_id=share_id,
+            user_id=current_user.id,
+            conversation_uuid=conversation_uuid
+        )
+        
+        db.session.add(conversation)
+        db.session.commit()
+        
+        logger.info(f"Created new conversation from API for user {current_user.id} with ID: {conversation.id}, UUID: {conversation_uuid}")
+        
+        # Return the conversation data
+        return jsonify({
+            "success": True, 
+            "conversation": {
+                "id": conversation.id,
+                "title": conversation.title,
+                "created_at": conversation.created_at.isoformat()
+            }
+        })
+        
+    except Exception as e:
+        logger.exception(f"Error creating new conversation for user {current_user.id}: {e}")
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
@@ -1845,6 +1745,9 @@ def get_conversations():
     """Get all conversations for the current user"""
     try:
         from models import Conversation
+        
+        # Check if this is a request for metadata only (faster loading)
+        metadata_only = request.args.get('metadata_only', 'false').lower() == 'true'
         
         # Log if this is a cache-busting request
         if request.args.get('_'):
@@ -1862,15 +1765,17 @@ def get_conversations():
             # Create a new conversation for this user if none exist
             title = "New Conversation"
             share_id = generate_share_id()
+            conversation_uuid = str(uuid.uuid4())
             conversation = Conversation(
                 title=title, 
                 share_id=share_id,
-                user_id=current_user.id  # Associate conversation with user
+                user_id=current_user.id,  # Associate conversation with user
+                conversation_uuid=conversation_uuid
             )
             db.session.add(conversation)
             try:
                 db.session.commit()
-                logger.info(f"Created initial conversation for user {current_user.id}")
+                logger.info(f"Created initial conversation for user {current_user.id} with ID: {conversation.id}, UUID: {conversation_uuid}")
                 # Include created_at timestamp for proper date formatting in the UI
                 conversations = [{"id": conversation.id, "title": conversation.title, "created_at": conversation.created_at.isoformat()}]
             except Exception as e:
@@ -1882,11 +1787,15 @@ def get_conversations():
             # Include created_at date for proper date formatting in the UI
             conversations = [{"id": conv.id, "title": conv.title, "created_at": conv.created_at.isoformat()} for conv in all_conversations]
             
-            # Log each conversation's details for debugging
-            for conv in conversations:
-                print(f"[CONVERSATIONS] ID: {conv['id']}, Title: '{conv['title']}', Created: {conv['created_at']}")
-            
-            logger.info(f"Returning {len(conversations)} conversations")
+            # Log information based on request type
+            if metadata_only:
+                logger.info(f"Returning metadata-only for {len(conversations)} conversations - optimized load")
+            else:
+                # Log each conversation's details for debugging (only in full data mode)
+                for conv in conversations:
+                    print(f"[CONVERSATIONS] ID: {conv['id']}, Title: '{conv['title']}', Created: {conv['created_at']}")
+                
+                logger.info(f"Returning {len(conversations)} conversations with full details")
 
         return jsonify({"conversations": conversations})
     except Exception as e:
@@ -2144,8 +2053,9 @@ def chat(): # Synchronous function
         if not conversation_id: 
             # Always start with "New Conversation" title to allow for automatic title generation later
             title = "New Conversation"
-            share_id = generate_share_id() 
-            conversation = Conversation(title=title, share_id=share_id)
+            share_id = generate_share_id()
+            conversation_uuid = str(uuid.uuid4())
+            conversation = Conversation(title=title, share_id=share_id, conversation_uuid=conversation_uuid)
             # Associate conversation with the authenticated user
             if current_user and current_user.is_authenticated:
                 conversation.user_id = current_user.id
@@ -2154,7 +2064,7 @@ def chat(): # Synchronous function
             try:
                 db.session.commit()
                 conversation_id = conversation.id 
-                logger.info(f"Created new conversation with ID: {conversation_id}")
+                logger.info(f"Created new conversation with ID: {conversation_id}, UUID: {conversation_uuid}")
             except Exception as e:
                  logger.exception("Error committing new conversation")
                  db.session.rollback()
@@ -2205,25 +2115,34 @@ def chat(): # Synchronous function
                 logger.info(f"✅ Valid image URL format: {image_url[:50]}...")
         
         # Log what we're saving to the database
-        logger.info(f"Saving user message to DB. Text: '{message_text[:50]}...' Image URL: {image_url[:50] if image_url else 'None'}")
+        logger.info(f"Saving user message to DB. Text: '{message_text[:50]}...' Image URL: {image_url[:50] if image_url else 'None'} PDF URL: {'Present' if pdf_url else 'None'}")
         
-        user_db_message = Message(
-            conversation_id=conversation.id, 
-            role='user', 
-            content=message_text,  # Store the text component
-            image_url=image_url    # Still store the image URL separately
-        )
-        db.session.add(user_db_message)
-        try:
-             db.session.commit()
-             logger.info(f"Saved user message {user_db_message.id} for conversation {conversation.id}")
-             # Log if multimodal content was included
-             if image_url:
-                logger.info(f"Image URL saved with message: {image_url[:50]}...")
-        except Exception as e:
-             logger.exception(f"Error committing user message {user_db_message.id}")
-             db.session.rollback()
-             abort(500, description="Database error saving user message")
+        # Import our app context manager
+        from ensure_app_context import ensure_app_context
+        
+        # Ensure all database operations are performed within the app context
+        with ensure_app_context():
+            user_db_message = Message(
+                conversation_id=conversation.id, 
+                role='user', 
+                content=message_text,  # Store the text component
+                image_url=image_url,   # Store the image URL separately
+                pdf_url=pdf_url,       # Store the PDF URL separately
+                pdf_filename=pdf_filename if pdf_url else None  # Store the PDF filename if we have a PDF
+            )
+            db.session.add(user_db_message)
+            try:
+                db.session.commit()
+                logger.info(f"Saved user message {user_db_message.id} for conversation {conversation.id}")
+                # Log if multimodal content was included
+                if image_url:
+                    logger.info(f"Image URL saved with message: {image_url[:50]}...")
+                if pdf_url:
+                    logger.info(f"PDF information saved with message: {pdf_filename}")
+            except Exception as e:
+                logger.exception(f"Error committing user message to database: {e}")
+                db.session.rollback()
+                abort(500, description="Database error saving user message")
 
 
         # --- Prepare Message History ---
@@ -2288,7 +2207,16 @@ def chat(): # Synchronous function
         has_pdfs = pdf_url or (pdf_urls and len(pdf_urls) > 0)
         
         # Check if model supports multimodal content or PDF documents
+        # First try to look up the model in the database
         model_supports_documents = openrouter_model in DOCUMENT_MODELS
+        try:
+            # Check the database for more accurate information
+            from models import OpenRouterModel
+            db_model = OpenRouterModel.query.get(openrouter_model)
+            if db_model and db_model.supports_pdf:
+                model_supports_documents = True
+        except Exception as e:
+            logger.warning(f"Error checking database for PDF support: {e}")
         
         # Include multimedia content if we have images or PDFs and the model supports them
         if (has_images and model_supports_multimodal) or (has_pdfs and model_supports_documents):
@@ -2461,19 +2389,27 @@ def chat(): # Synchronous function
         if has_pdfs and not model_supports_documents:
             logger.warning(f"⚠️ PDF document(s) provided but model {openrouter_model} doesn't support PDF handling. PDFs ignored.")
 
-        # --- Enrich with memory if needed ---
+        # --- Enrich with memory if needed and user has it enabled ---
         if ENABLE_MEMORY_SYSTEM:
-            try:
-                memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation.id}"
-                enriched_messages = enrich_prompt_with_memory(
-                     session_id=str(conversation.id), user_id=memory_user_id, 
-                     user_message=user_message, conversation_history=messages
-                )
-                if len(enriched_messages) > len(messages):
-                     logger.info(f"Added {len(enriched_messages) - len(messages)} context messages from memory system")
-                messages = enriched_messages
-            except Exception as e:
-                 logger.error(f"Error enriching with memory: {e}")
+            memory_enabled = True
+            if current_user and current_user.is_authenticated:
+                memory_enabled = current_user.enable_memory
+                logger.info(f"User {current_user.id} memory preference: {'enabled' if memory_enabled else 'disabled'}")
+            
+            if memory_enabled:
+                try:
+                    memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{conversation.id}"
+                    enriched_messages = enrich_prompt_with_memory(
+                        session_id=str(conversation.id), user_id=memory_user_id, 
+                        user_message=user_message, conversation_history=messages
+                    )
+                    if len(enriched_messages) > len(messages):
+                        logger.info(f"Added {len(enriched_messages) - len(messages)} context messages from memory system")
+                    messages = enriched_messages
+                except Exception as e:
+                    logger.error(f"Error enriching with memory: {e}")
+            else:
+                logger.info("Memory enrichment skipped - user has disabled memory across sessions")
                  
         # --- Incorporate document context from RAG system ---
         if ENABLE_RAG:
@@ -2676,6 +2612,27 @@ def chat(): # Synchronous function
             'include_reasoning': True  # Enable reasoning tokens for all models that support it
         }
         
+        # Apply user's advanced chat parameter settings if available
+        if current_user and current_user.is_authenticated:
+            try:
+                import json
+                from user_settings import get_chat_settings_for_user, validate_model_specific_parameters
+                
+                # Get the user's chat settings
+                user_settings = get_chat_settings_for_user(current_user.id)
+                
+                # Validate and adjust parameters based on model constraints
+                if user_settings:
+                    user_settings = validate_model_specific_parameters(user_settings, openrouter_model)
+                    
+                    # Add validated settings to the payload
+                    payload.update(user_settings)
+                    
+                    logger.info(f"Applied user chat settings: {json.dumps(user_settings)}")
+            except Exception as e:
+                logger.error(f"Error applying user chat settings: {e}")
+                # Continue without user settings if there's an error
+        
         # Add PDF plugin configuration if this model supports documents (native engine for PDFs)
         # This ensures PDFs are processed by the native model capabilities instead of falling back to OCR
         has_pdf_content = False
@@ -2687,7 +2644,18 @@ def chat(): # Synchronous function
                         has_pdf_content = True
                         break
         
-        if has_pdf_content and openrouter_model in DOCUMENT_MODELS:
+        # Check if model supports PDF files (from database or hardcoded list)
+        model_supports_pdf = openrouter_model in DOCUMENT_MODELS
+        try:
+            # Check the database for more accurate information
+            from models import OpenRouterModel
+            db_model = OpenRouterModel.query.get(openrouter_model)
+            if db_model and db_model.supports_pdf:
+                model_supports_pdf = True
+        except Exception as e:
+            logger.warning(f"Error checking database for PDF support: {e}")
+            
+        if has_pdf_content and model_supports_pdf:
             logger.info(f"PDF content detected for document-capable model {openrouter_model}, adding native PDF plugin config")
             payload['plugins'] = [
                 {
@@ -2762,9 +2730,11 @@ def chat(): # Synchronous function
             # Verify content format matches model capabilities
             if model_supports_multimodal != has_multimodal_message:
                 if model_supports_multimodal and not has_multimodal_message:
-                    logger.warning("⚠️ Model supports multimodal content but we're sending text-only!")
+                    # This is completely fine, just log as info
+                    logger.info("ℹ️ Using text-only message with a multimodal-capable model")
                 elif not model_supports_multimodal and has_multimodal_message:
-                    logger.warning("⚠️ Model does NOT support multimodal but we're still sending multimodal content!")
+                    # This could be a real issue, keep as warning
+                    logger.warning("⚠️ Model does NOT support multimodal but we're sending multimodal content!")
             else:
                 logger.info(f"✅ Content format correctly matched to model capabilities: multimodal={model_supports_multimodal}")
             
@@ -2946,9 +2916,10 @@ def chat(): # Synchronous function
                                     json_data = json.loads(data_to_parse)
                                     logger.debug(f"JSON parsed successfully: type '{json_data.get('type', 'N/A')}'")
 
-                                    # --- Extract Content and Reasoning ---
+                                    # --- Extract Content, Reasoning and Citations ---
                                     content_chunk = None
                                     reasoning_chunk = None
+                                    citations = None
                                     
                                     if 'choices' in json_data and len(json_data['choices']) > 0:
                                         choice = json_data['choices'][0]
@@ -2962,6 +2933,12 @@ def chat(): # Synchronous function
                                         if delta.get('reasoning') is not None:
                                             reasoning_chunk = delta['reasoning']
                                             logger.debug(f"Received reasoning chunk: {reasoning_chunk[:50]}...")
+                                            
+                                    # Extract citations if available (for Perplexity models)
+                                    # Citations are at the top level in the OpenRouter response for Perplexity
+                                    if 'citations' in json_data and requested_model_id and 'perplexity' in requested_model_id:
+                                        citations = json_data.get('citations')
+                                        logger.debug(f"Found {len(citations) if citations else 0} citations in Perplexity response")
 
                                     # Handle content chunk
                                     if content_chunk:
@@ -2977,6 +2954,14 @@ def chat(): # Synchronous function
                                         reasoning_payload = {'type': 'reasoning', 'reasoning': reasoning_chunk, 'conversation_id': current_conv_id}
                                         reasoning_json_str = json.dumps(reasoning_payload)
                                         yield f"data: {reasoning_json_str}\n\n"
+                                    
+                                    # Handle citations if available (for Perplexity models)
+                                    if citations:
+                                        # Send citations as a separate event
+                                        citations_payload = {'type': 'citations', 'citations': citations, 'conversation_id': current_conv_id}
+                                        citations_json_str = json.dumps(citations_payload)
+                                        logger.debug(f"Sending {len(citations)} citations to client")
+                                        yield f"data: {citations_json_str}\n\n"
 
                                     # --- Extract Usage/Model ---
                                     if 'usage' in json_data and json_data['usage']: 
@@ -3010,21 +2995,25 @@ def chat(): # Synchronous function
 
                 if full_response_text: # Only save if there was actual content
                     try:
-                        from models import Message 
-                        assistant_db_message = Message(
-                            conversation_id=current_conv_id, 
-                            role='assistant', 
-                            content=full_response_text,
-                            model=requested_model_id, 
-                            model_id_used=final_model_id_used, 
-                            prompt_tokens=final_prompt_tokens, 
-                            completion_tokens=final_completion_tokens,
-                            rating=None 
-                        )
-                        db.session.add(assistant_db_message)
-                        db.session.commit()
-                        assistant_message_id = assistant_db_message.id 
-                        logger.info(f"Saved assistant message {assistant_message_id} with metadata.")
+                        from models import Message
+                        from ensure_app_context import ensure_app_context
+                        
+                        # Use our app context manager to avoid "outside application context" errors
+                        with ensure_app_context():
+                            assistant_db_message = Message(
+                                conversation_id=current_conv_id, 
+                                role='assistant', 
+                                content=full_response_text,
+                                model=requested_model_id, 
+                                model_id_used=final_model_id_used, 
+                                prompt_tokens=final_prompt_tokens, 
+                                completion_tokens=final_completion_tokens,
+                                rating=None 
+                            )
+                            db.session.add(assistant_db_message)
+                            db.session.commit()
+                            assistant_message_id = assistant_db_message.id 
+                            logger.info(f"Saved assistant message {assistant_message_id} with metadata.")
                         
                         # --- Record usage for billing ---
                         if current_user and current_user.is_authenticated and final_prompt_tokens and final_completion_tokens:
@@ -3057,16 +3046,23 @@ def chat(): # Synchronous function
                                 logger.error(f"Error recording billing usage: {billing_error}")
                                 # Don't fail the whole request if billing recording fails
 
-                        # Save to memory system if enabled
+                        # Save to memory system if enabled and user hasn't disabled it
                         if ENABLE_MEMORY_SYSTEM:
-                             try:
-                                 memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{current_conv_id}"
-                                 save_message_with_memory(
-                                     session_id=str(current_conv_id), user_id=memory_user_id, 
-                                     role='assistant', content=full_response_text
-                                 )
-                             except Exception as e:
-                                 logger.error(f"Error saving assistant message to memory: {e}")
+                             memory_enabled = True
+                             if current_user and current_user.is_authenticated:
+                                 memory_enabled = current_user.enable_memory
+                             
+                             if memory_enabled:
+                                 try:
+                                     memory_user_id = str(current_user.id) if current_user and current_user.is_authenticated else f"anonymous_{current_conv_id}"
+                                     save_message_with_memory(
+                                         session_id=str(current_conv_id), user_id=memory_user_id, 
+                                         role='assistant', content=full_response_text
+                                     )
+                                 except Exception as e:
+                                     logger.error(f"Error saving assistant message to memory: {e}")
+                             else:
+                                 logger.info("Message not saved to memory - user has disabled memory across sessions")
                         
                         # Check if this is the first assistant message and generate a title
                         try:
@@ -3190,7 +3186,7 @@ def _fetch_openrouter_models():
                     },
                     'is_free': model.is_free,
                     'is_multimodal': model.is_multimodal,
-                    'supports_pdf': model.model_id in DOCUMENT_MODELS,
+                    'supports_pdf': model.supports_pdf or model.model_id in DOCUMENT_MODELS,
                     'is_perplexity': 'perplexity/' in model.model_id.lower(),
                     'is_reasoning': model.supports_reasoning,
                     'created_at': model.created_at.isoformat() if model.created_at else None,
@@ -3229,7 +3225,7 @@ def _fetch_openrouter_models():
                         },
                         'is_free': model.is_free,
                         'is_multimodal': model.is_multimodal,
-                        'supports_pdf': model.model_id in DOCUMENT_MODELS,
+                        'supports_pdf': model.supports_pdf or model.model_id in DOCUMENT_MODELS,
                         'is_perplexity': 'perplexity/' in model.model_id.lower(),
                         'is_reasoning': model.supports_reasoning,
                         'created_at': model.created_at.isoformat() if model.created_at else None,
@@ -3428,9 +3424,24 @@ def refresh_model_prices():
             
     except Exception as e:
         logger.exception(f"Error refreshing model prices: {e}")
+        
+        # Create a more user-friendly error message
+        user_friendly_message = "There was a problem updating model information."
+        
+        # Add specific information for common error types
+        if "InFailedSqlTransaction" in str(e):
+            user_friendly_message = "Database error while updating model information. This is a temporary issue - please try again in a few minutes."
+        elif "HTTPError" in str(e) or "ConnectionError" in str(e):
+            user_friendly_message = "Could not connect to the model provider API. Please check your internet connection and API key settings."
+        elif "Timeout" in str(e):
+            user_friendly_message = "The request to update model information timed out. Please try again later."
+        elif "OPENROUTER_API_KEY" in str(e):
+            user_friendly_message = "OpenRouter API key is missing or invalid. Please check your API key settings."
+            
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': user_friendly_message,
+            'technical_details': str(e)
         }), 500
 
 @app.route('/api/model-pricing', methods=['GET'])
@@ -3591,7 +3602,7 @@ def get_models():
                         'completion': str(db_model.output_price_usd_million / 1000000)
                     },
                     'is_multimodal': db_model.is_multimodal,
-                    'supports_pdf': db_model.model_id in DOCUMENT_MODELS,
+                    'supports_pdf': db_model.supports_pdf or db_model.model_id in DOCUMENT_MODELS,
                     'is_free': db_model.input_price_usd_million == 0 and db_model.output_price_usd_million == 0,
                     'is_perplexity': 'perplexity/' in db_model.model_id.lower(),
                     'is_reasoning': any(keyword in db_model.model_id.lower() or 
@@ -3646,11 +3657,6 @@ def get_models():
             "message": "Please try refreshing the page or contact support if the problem persists."
         }), 200  # Using 200 so frontend can handle gracefully
 
-
-@app.route('/test-fallback-page')
-def test_fallback_page():
-    """Test page for model fallback confirmation feature"""
-    return render_template('test_fallback.html')
 
 @app.route('/save_preference', methods=['POST'])
 def save_preference():
@@ -3872,20 +3878,77 @@ def share_conversation(conversation_id):
 
 @app.route('/share/<share_id>')
 def view_shared_conversation(share_id):
-    """ Display shared conversation (Placeholder) """
+    """Display a shared conversation for anyone with the link"""
     try:
-        from models import Conversation 
+        from models import Conversation, Message
+        from datetime import datetime
+        
+        logger.info(f"Starting to process shared conversation view for share_id: {share_id}")
+        
+        # Find the conversation by share_id
         conversation = Conversation.query.filter_by(share_id=share_id).first()
         if not conversation:
+            logger.warning(f"No conversation found with share_id: {share_id}")
             flash("The shared conversation link is invalid or has expired.", "warning")
             return redirect(url_for('index'))
-
-        logger.info(f"Viewing shared conversation placeholder for ID: {share_id}")
-        flash(f"Shared conversation view not yet implemented (ID: {share_id}).", "info")
-        return redirect(url_for('index'))
-
+            
+        # Check if this is the owner of the conversation viewing through a shared link
+        # If so, redirect them to the home page with the current conversation ID
+        # The JavaScript will load the correct conversation
+        if current_user.is_authenticated and conversation.user_id == current_user.id:
+            logger.info(f"Owner of conversation {conversation.id} viewing their own shared link - redirecting to home with conversation ID")
+            return redirect(url_for('index', conversation_id=conversation.id))
+        
+        # For authenticated users who are not the owner, explicitly set is_logged_in flag
+        # to pass to the template (ensures consistent rendering regardless of auth status)
+        is_logged_in = current_user.is_authenticated
+        
+        logger.info(f"Found conversation with ID: {conversation.id}, title: {conversation.title}")
+        
+        # Get all messages for this conversation
+        messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.id).all()
+        logger.info(f"Found {len(messages)} messages for conversation ID: {conversation.id}")
+        
+        # Convert messages to a format suitable for the template
+        formatted_messages = []
+        for message in messages:
+            # Skip system messages in shared view
+            if message.role == 'system':
+                continue
+                
+            formatted_message = {
+                'id': message.id,
+                'role': message.role,
+                'content': message.content,
+                'model': message.model,
+                'created_at': message.created_at.isoformat() if message.created_at else '',
+                'image_url': message.image_url
+            }
+            formatted_messages.append(formatted_message)
+        
+        logger.info(f"Formatted {len(formatted_messages)} messages for template")
+        
+        # Fix for potential date formatting issue
+        if hasattr(conversation, 'created_at') and conversation.created_at:
+            created_at_str = conversation.created_at.strftime('%B %d, %Y')
+            logger.info(f"Conversation created date: {created_at_str}")
+        else:
+            logger.warning("Conversation has no created_at attribute or it's None")
+            # Provide a default date if missing
+            conversation.created_at = datetime.now()
+            
+        # Return the shared conversation template
+        logger.info("Rendering shared_conversation.html template")
+        return render_template(
+            'shared_conversation.html',
+            conversation=conversation,
+            messages=formatted_messages,
+            is_logged_in=is_logged_in,
+            user=current_user
+        )
+    
     except Exception as e:
-        logger.exception(f"Error viewing shared conversation {share_id}")
+        logger.exception(f"Error viewing shared conversation {share_id}: {e}")
         flash("An error occurred while trying to load the shared conversation.", "error")
         return redirect(url_for('index'))
 
@@ -3895,18 +3958,18 @@ def rag_diagnostics():
     Diagnostic endpoint to check the state of document processing.
     This endpoint now returns information about direct PDF handling capabilities.
     """
-    # Get models that support PDF handling
-    pdf_capable_models = []
-    
     try:
-        models = _fetch_openrouter_models()
-        for model_id, model_info in models.items():
-            if model_info.get('pdf', False) or model_info.get('supports_pdf', False):
-                pdf_capable_models.append(model_id)
-    except Exception as e:
-        logger.error(f"Error fetching PDF-capable models: {e}")
-    
-    try:
+        # Get models that support PDF handling
+        pdf_capable_models = []
+        
+        try:
+            models = _fetch_openrouter_models()
+            for model_id, model_info in models.items():
+                if model_info.get('pdf', False) or model_info.get('supports_pdf', False):
+                    pdf_capable_models.append(model_id)
+        except Exception as e:
+            logger.error(f"Error fetching PDF-capable models: {e}")
+        
         return jsonify({
             "status": "transitioned",
             "message": "RAG system replaced with direct PDF handling through OpenRouter",

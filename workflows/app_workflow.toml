@@ -1,2 +1,2 @@
-[commands]
-start = ["python", "app.py"]
+# Flask app workflow configuration
+run = "python app_workflow.py"

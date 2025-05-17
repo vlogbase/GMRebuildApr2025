@@ -1,2 +1,0 @@
-[commands]
-start = ["python", "model_fallback_demo.py"]

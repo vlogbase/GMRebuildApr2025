@@ -7,12 +7,11 @@ advanced chat parameters like temperature, top_p, etc.
 
 import logging
 import json
-from flask import Blueprint, jsonify, request, current_app, g, session
+from flask import Blueprint, jsonify, request, current_app, g
 from flask_login import current_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
 
-# Import database from the shared instance
-from database import db
+from app import db
 from models import UserChatSettings
 
 # Configure logging
@@ -42,8 +41,7 @@ def get_chat_settings():
                     'presence_penalty': settings.presence_penalty,
                     'top_k': settings.top_k,
                     'stop_sequences': settings.stop_sequences,
-                    'response_format': settings.response_format,
-                    'auto_fallback_enabled': settings.auto_fallback_enabled
+                    'response_format': settings.response_format
                 }
             })
         else:
@@ -58,8 +56,7 @@ def get_chat_settings():
                     'presence_penalty': None,
                     'top_k': None,
                     'stop_sequences': None,
-                    'response_format': None,
-                    'auto_fallback_enabled': False
+                    'response_format': None
                 }
             })
             
@@ -202,12 +199,6 @@ def save_chat_settings():
             settings = UserChatSettings(user_id=current_user.id)
             db.session.add(settings)
         
-        # Get auto fallback preference
-        auto_fallback_enabled = data.get('auto_fallback_enabled')
-        if auto_fallback_enabled is not None:
-            # Convert to boolean
-            auto_fallback_enabled = bool(auto_fallback_enabled)
-        
         # Update settings with new values
         settings.temperature = temperature
         settings.top_p = top_p
@@ -217,10 +208,6 @@ def save_chat_settings():
         settings.top_k = top_k
         settings.stop_sequences = stop_sequences
         settings.response_format = response_format
-        
-        # Update auto fallback preference if provided
-        if auto_fallback_enabled is not None:
-            settings.auto_fallback_enabled = auto_fallback_enabled
         
         # Save to database
         db.session.commit()

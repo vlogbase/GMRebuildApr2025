@@ -1,4 +1,0 @@
-run = "python fallback_test_workflow.py"
-language = "python3"
-onBoot = "echo Starting model fallback test workflow..."
-hidden = false

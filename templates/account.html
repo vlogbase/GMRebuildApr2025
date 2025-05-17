@@ -555,31 +555,9 @@
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="enableMemory" {% if user.enable_memory %}checked{% endif %}>
                         <label class="form-check-label" for="enableMemory">Enable chat memory across sessions</label>
-                    </div>
-                    
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="autoFallbackToggle" 
-                               {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}checked{% endif %}>
-                        <label class="form-check-label" for="autoFallbackToggle">
-                            Automatically use fallback models when selected model is unavailable
-                        </label>
-                        <p class="text-muted mt-1 small">
-                            When enabled, if your selected model is unavailable, the system will automatically 
-                            use an alternative model without asking for confirmation.
-                        </p>
-                    </div>
                         <small class="form-text text-muted d-block mt-1">
                             When enabled, the AI can remember and reference information from your previous conversations.
                             Disabling this may reduce token usage for new chats.
-                        </small>
-                    </div>
-                    
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="autoFallbackEnabled" {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}checked{% endif %}>
-                        <label class="form-check-label" for="autoFallbackEnabled">Automatically fall back when models are unavailable</label>
-                        <small class="form-text text-muted d-block mt-1">
-                            When enabled, if your selected model is unavailable, the system will automatically use the best available alternative.
-                            When disabled, you'll be asked to confirm before using a different model.
                         </small>
                     </div>
                     
@@ -773,19 +751,6 @@
                     
                     <hr class="my-4" style="border-color: #3f4246;">
                     
-                    <h5>Chat Preferences</h5>
-                    <div class="mb-3 form-check">
-                        <input type="checkbox" class="form-check-input" id="autoFallbackToggle" {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}checked{% endif %}>
-                        <label class="form-check-label" for="autoFallbackToggle">Automatically use fallback models when selected model is unavailable</label>
-                        <div class="form-text text-muted small">
-                            When enabled, the system will automatically use an alternative model if your selected model is unavailable, without showing a confirmation dialog.
-                        </div>
-                    </div>
-                    <!-- Add a hidden input to store the value for JavaScript access -->
-                    <input type="hidden" id="auto-fallback-enabled" value="{{ 'true' if user_chat_settings and user_chat_settings.auto_fallback_enabled else 'false' }}">
-
-                    <hr class="my-4" style="border-color: #3f4246;">
-                    
                     <h5>Notification Preferences</h5>
                     <div class="mb-3 form-check">
                         <input type="checkbox" class="form-check-input" id="emailNotifications" checked>
@@ -826,47 +791,6 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/advanced_chat_preferences.js') }}"></script>
-<script>
-// Auto Fallback Toggle Handler
-document.addEventListener('DOMContentLoaded', function() {
-    const autoFallbackToggle = document.getElementById('autoFallbackToggle');
-    if (autoFallbackToggle) {
-        autoFallbackToggle.addEventListener('change', function() {
-            const enabled = this.checked;
-            
-            // Save the preference via API
-            fetch('/api/user/chat_settings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCsrfToken()
-                },
-                body: JSON.stringify({
-                    auto_fallback_enabled: enabled
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Show success message
-                    showToast('Preferences saved', 'Auto-fallback preference has been updated.');
-                } else {
-                    // Show error message
-                    showToast('Error', 'Failed to save preference: ' + data.error, 'error');
-                    // Revert the toggle to its previous state
-                    autoFallbackToggle.checked = !enabled;
-                }
-            })
-            .catch(error => {
-                console.error('Error saving preference:', error);
-                showToast('Error', 'Failed to save preference. Please try again.', 'error');
-                // Revert the toggle to its previous state
-                autoFallbackToggle.checked = !enabled;
-            });
-        });
-    }
-});
-</script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired - Initializing account page functions');
@@ -2004,60 +1928,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error updating memory preference:', error);
                 showToast('error', 'An error occurred while saving your preference');
                 enableMemoryToggle.checked = !enableMemory;
-            });
-        });
-    }
-    
-    // Auto-fallback preference toggle handler
-    const autoFallbackToggle = document.getElementById('autoFallbackEnabled');
-    if (autoFallbackToggle) {
-        // Load initial state from user settings
-        fetch('/api/user/chat_settings')
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.settings && data.settings.auto_fallback_enabled !== undefined) {
-                    autoFallbackToggle.checked = data.settings.auto_fallback_enabled;
-                }
-            })
-            .catch(error => {
-                console.error('Error loading auto-fallback setting:', error);
-            });
-        
-        // Handle toggle changes
-        autoFallbackToggle.addEventListener('change', function() {
-            const autoFallbackEnabled = this.checked;
-            
-            // Show toggle indicator
-            const toggleStatus = autoFallbackEnabled ? 'enabled' : 'disabled';
-            const toastMessage = `Automatic model fallback ${toggleStatus}`;
-            
-            // Show loading state
-            showToast('info', 'Saving preference...');
-            
-            // Call API to update preference
-            fetch('/api/user/chat_settings', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': '{{ csrf_token() }}'
-                },
-                body: JSON.stringify({ auto_fallback_enabled: autoFallbackEnabled })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    // Show success notification
-                    showToast('success', toastMessage);
-                } else {
-                    // Show error and revert toggle
-                    showToast('error', 'Failed to update preference: ' + (data.error || 'Unknown error'));
-                    autoFallbackToggle.checked = !autoFallbackEnabled;
-                }
-            })
-            .catch(error => {
-                console.error('Error updating auto-fallback preference:', error);
-                showToast('error', 'An error occurred while saving your preference');
-                autoFallbackToggle.checked = !autoFallbackEnabled;
             });
         });
     }
