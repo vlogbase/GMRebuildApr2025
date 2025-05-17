@@ -104,18 +104,13 @@ function performIdleCleanup() {
     }
 }
 
-// Debug mode disabled by default for better performance
-// Enable it only when troubleshooting is needed
-window.debugMode = false;
+// Enable debug mode by default to help troubleshoot mobile issues
+window.debugMode = true;
 
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
-    
-    // Only log if debug mode is on
-    if (window.debugMode) {
-        console.log('User authentication status:', isAuthenticated ? 'Logged in' : 'Not logged in');
-    }
+    console.log('User authentication status:', isAuthenticated ? 'Logged in' : 'Not logged in');
     
     // Get user's credit balance if logged in
     let userCreditBalance = 0;
@@ -127,9 +122,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const matches = balanceText.match(/Credits: \$([0-9.]+)/);
             if (matches && matches[1]) {
                 userCreditBalance = parseFloat(matches[1]);
-                if (window.debugMode) {
-                    console.log('User credit balance:', userCreditBalance);
-                }
+                console.log('User credit balance:', userCreditBalance);
             }
         }
     }
@@ -210,12 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const supportsImages = checkModelCapabilities('image');
         const supportsPDFs = checkModelCapabilities('pdf');
         
-        // Get the file upload input element once
-        const fileUploadInput = document.getElementById('fileUpload');
-        
-        if (window.debugMode) {
-            console.log(`Current model capabilities - Images: ${supportsImages}, PDFs: ${supportsPDFs}`);
-        }
+        console.log(`Current model capabilities - Images: ${supportsImages}, PDFs: ${supportsPDFs}`);
         
         // Update upload buttons visibility/state based on capabilities
         if (imageUploadButton) {
@@ -3832,17 +3820,10 @@ window.resetToDefault = function(presetId) {
         return addMessage('', 'assistant', true);
     }
     
-    // Track if initial conversations have been loaded
-    window.initialConversationsLoaded = false;
-    
-    // Function to fetch conversations from the backend with performance optimizations
-    function fetchConversations(bustCache = false, metadataOnly = true, delayed = false) {
-        // Performance tracking
-        const startTime = performance.now();
-        
+    // Function to fetch conversations from the backend
+    function fetchConversations(bustCache = false, metadataOnly = true) {
         // Make this function globally available for other scripts
         window.fetchConversations = fetchConversations;
-        
         // Check if user is logged in - if not, show login prompt instead of loading
         // userIsLoggedIn is passed from the template
         if (typeof userIsLoggedIn !== 'undefined' && !userIsLoggedIn) {
@@ -3857,23 +3838,15 @@ window.resetToDefault = function(presetId) {
                     </div>
                 `;
             }
-            return Promise.resolve([]); // Exit early if user is not logged in
+            return; // Exit early if user is not logged in
         }
         
-        // Build URL with optimized parameters
-        // 1. Use cache busting to ensure we get the latest data
+        // Build URL with parameters
+        // 1. Always use cache busting to ensure we get the latest titles
         // 2. Use metadata_only to optimize initial loading (titles only, without content)
-        // 3. Add delayed parameter to help with staggered loading and prevent database contention
-        let url = `/conversations?_=${Date.now()}&metadata_only=${metadataOnly}`;
+        const url = `/conversations?_=${Date.now()}&metadata_only=${metadataOnly}`;
         
-        // Add delayed loading parameter for non-critical requests
-        // This prevents database contention during page load
-        if (delayed && !window.initialConversationsLoaded) {
-            url += '&delayed=true&delay=0.2';
-            console.log('Using delayed loading for better page performance');
-        }
-        
-        console.log(`Fetching conversations (metadata_only=${metadataOnly})`);
+        console.log(`Fetching conversations list with cache busting (metadata_only=${metadataOnly})`);
         
         // Show loading indicator if conversations list element exists
         if (conversationsList) {
@@ -3892,7 +3865,7 @@ window.resetToDefault = function(presetId) {
             }
         }
         
-        return fetch(url)
+        fetch(url)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -3900,21 +3873,16 @@ window.resetToDefault = function(presetId) {
                 return response.json();
             })
             .then(data => {
-                // Mark initial conversations as loaded to prevent redundant loading
-                window.initialConversationsLoaded = true;
-                
-                // Performance tracking
-                const fetchTime = performance.now() - startTime;
-                console.log(`Got conversations data in ${fetchTime.toFixed(2)}ms`);
-                
+                console.log("Got conversations data:", data);
                 if (data.conversations && data.conversations.length > 0) {
-                    // Clear existing conversations - use efficient DOM operations
+                    // Clear existing conversations
                     if (conversationsList) {
-                        // Prepare fragment to avoid multiple DOM repaint operations
-                        const fragment = document.createDocumentFragment();
+                        console.log("Clearing and rebuilding conversation list...");
+                        conversationsList.innerHTML = '';
                         
-                        // Add each conversation to the fragment (not directly to DOM)
+                        // Add each conversation to the sidebar
                         data.conversations.forEach(conversation => {
+                            console.log(`Adding conversation to UI: ID=${conversation.id}, Title='${conversation.title}'`);
                             const conversationItem = document.createElement('div');
                             conversationItem.className = 'conversation-item';
                             conversationItem.dataset.id = conversation.id;
@@ -3922,6 +3890,7 @@ window.resetToDefault = function(presetId) {
                             // Add 'active' class if this is the current conversation
                             if (conversation.id.toString() === currentConversationId?.toString()) {
                                 conversationItem.classList.add('active');
+                                console.log(`Marked conversation ${conversation.id} as active`);
                             }
                             
                             // Create title and date elements to match the HTML structure

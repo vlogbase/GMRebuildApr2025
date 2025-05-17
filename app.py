@@ -387,12 +387,11 @@ def init_scheduler():
             jitter=120  # Add random jitter (in seconds) to avoid thundering herd
         )
         
-        # Delay the initial price fetching job to avoid slowing down application startup
-        # This gives the web page time to load before running expensive operations
+        # Run the price fetching job immediately at scheduler startup to ensure we have fresh data
         scheduler.add_job(
             func=fetch_and_store_openrouter_prices,
             trigger='date',  # Run once at a specific time
-            run_date=datetime.datetime.now() + datetime.timedelta(seconds=60),  # Run 60 seconds after startup
+            run_date=datetime.datetime.now() + datetime.timedelta(seconds=15),  # Run 15 seconds after startup
             id='initial_fetch_model_prices_job',
             replace_existing=True,
             max_instances=1
@@ -483,28 +482,48 @@ scheduler = init_scheduler()
 if not scheduler or not scheduler.running:
     logger.critical("Failed to initialize the scheduler! This may affect model data availability.")
 
-# Completely disable initial model fetch for much faster page loads
-# We'll rely entirely on the scheduled job from the background scheduler
-logger.info("Skipping initial model data check to improve page load time")
+# Initial fetch of model data at startup - crucial for application functionality
+logger.info("Performing initial fetch of OpenRouter models at startup")
 try:
-    # Import the model class to check if we have data
+    # First ensure proper Python imports
+    import traceback
+    from price_updater import fetch_and_store_openrouter_prices
     from models import OpenRouterModel
     
-    # Just check if we have any models at all, but don't do any updates now
+    # Create an application context for database operations
+    with app.app_context():
+        # Check if we have models in the database
+        model_count = OpenRouterModel.query.count()
+    
+    if model_count > 0:
+        logger.info(f"Found {model_count} OpenRouter models in database at startup")
+    else:
+        logger.info("No OpenRouter models found in database, fetching from API...")
+        
+        # Attempt to fetch model prices directly (which includes model info)
+        # This bypasses the scheduler to ensure we get data at startup
+        logger.info("Fetching initial model data directly...")
+        price_success = fetch_and_store_openrouter_prices()
+        
+        if price_success:
+            # Check if models were stored in the database
+            with app.app_context():
+                model_count = OpenRouterModel.query.count()
+            logger.info(f"Successfully fetched and stored {model_count} OpenRouter models in database")
+        else:
+            # If that fails, log a warning - we'll rely on the scheduler to retry soon
+            logger.warning("Initial model fetching failed. The scheduler will retry shortly.")
+    
+    # Final verification of database state - use with app_context to ensure DB operations work
     with app.app_context():
         model_count = OpenRouterModel.query.count()
         if model_count > 0:
-            logger.info(f"Found {model_count} OpenRouter models in database")
-            logger.info("Model updates will be handled by the scheduled job only")
+            logger.info(f"OpenRouter model database initialized with {model_count} models")
         else:
-            logger.info("No OpenRouter models in database. First-time users will see default models.")
-            logger.info("Models will be populated by the scheduled job in the background")
-    
-    # The scheduled job will handle checking and updating models
-    # This avoids any database deadlocks and significantly improves page load time
-    
+            logger.warning("No models available in the database. Application may have limited functionality.")
+        
 except Exception as e:
-    logger.error(f"Error checking model database: {e}")
+    logger.error(f"Critical error fetching model data at startup: {e}")
     logger.error(traceback.format_exc())
     logger.warning("Application may have limited functionality until models are fetched.")
 
@@ -860,15 +879,23 @@ def index():
     # Check if there's a specific conversation to load (used for redirects from share links)
     conversation_id = request.args.get('conversation_id')
     
-    # Don't fetch conversations during initial page load to improve performance
-    # The frontend will request this data via AJAX after the page loads
-    # This significantly improves initial page render time
+    # Fetch conversations only if user is logged in
+    conversations = []
+    if is_logged_in:
+        try:
+            from models import Conversation
+            conversations = Conversation.query.filter_by(
+                is_active=True, 
+                user_id=current_user.id
+            ).order_by(Conversation.updated_at.desc()).all()
+        except Exception as e:
+            logger.error(f"Error fetching conversations: {e}")
     
     return render_template(
         'index.html', 
         user=current_user, 
         is_logged_in=is_logged_in,
-        conversations=[], # Empty list - data will be loaded via AJAX
+        conversations=conversations,
         initial_conversation_id=conversation_id
     )
 
@@ -1717,58 +1744,22 @@ def create_conversation():
 def get_conversations():
     """Get all conversations for the current user"""
     try:
-        start_time = time.time()
         from models import Conversation
         
         # Check if this is a request for metadata only (faster loading)
         metadata_only = request.args.get('metadata_only', 'false').lower() == 'true'
         
-        # Support delayed loading to prevent database contention during page load
-        # Frontend can request a delay to improve initial page rendering
-        if request.args.get('delayed', 'false').lower() == 'true':
-            delay_time = min(float(request.args.get('delay', '0.2')), 0.5)  # Cap at 500ms for safety
-            time.sleep(delay_time)
-            logger.info(f"Applied {delay_time}s delay to conversation fetch for staggered loading")
-            
         # Log if this is a cache-busting request
         if request.args.get('_'):
             logger.info(f"Received cache-busting request for conversations at timestamp: {request.args.get('_')}")
         
         # Get all conversations for the current user, ordered by most recently updated first
-        # Optimize query based on what data is actually needed
-        if metadata_only:
-            # Optimized query with only essential fields for faster response
-            conversations_data = db.session.query(
-                Conversation.id, 
-                Conversation.title,
-                Conversation.created_at,
-                Conversation.updated_at,
-                Conversation.share_id
-            ).filter(
-                Conversation.is_active == True,
-                Conversation.user_id == current_user.id
-            ).order_by(Conversation.updated_at.desc()).all()
-            
-            # Convert to list of objects with only needed attributes
-            all_conversations = []
-            for conv in conversations_data:
-                # Create a lightweight object with just the needed fields
-                conversation = type('obj', (object,), {
-                    'id': conv.id,
-                    'title': conv.title,
-                    'created_at': conv.created_at,
-                    'updated_at': conv.updated_at,
-                    'share_id': conv.share_id
-                })
-                all_conversations.append(conversation)
-                
-            logger.debug(f"Optimized conversation query returned {len(all_conversations)} results in {time.time() - start_time:.3f}s")
-        else:
-            # Standard full query when all data is needed
-            all_conversations = Conversation.query.filter_by(
-                is_active=True, 
-                user_id=current_user.id
-            ).order_by(Conversation.updated_at.desc()).all()
+        # Force a fresh query from the database (don't use cached results)
+        db.session.expire_all()
+        all_conversations = Conversation.query.filter_by(
+            is_active=True, 
+            user_id=current_user.id
+        ).order_by(Conversation.updated_at.desc()).all()
         
         if not all_conversations:
             # Create a new conversation for this user if none exist

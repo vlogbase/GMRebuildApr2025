@@ -1,1 +1,2 @@
-[{"id":"repl-flask","name":"flask","source":"repl.sh","command":"python -m workflows.flask_app"}]
+[app_workflow]
+run = "python app.py"

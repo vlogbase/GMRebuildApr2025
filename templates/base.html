@@ -19,75 +19,16 @@
     <meta name="apple-mobile-web-app-title" content="GloriaMundo" />
     <link rel="manifest" href="{{ url_for('static', filename='img/site.webmanifest') }}" />
     
-    <!-- Font Awesome - preload with stylesheet loading after page begins to render -->
-    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"></noscript>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     {% block styles %}
-    <!-- Critical CSS for first paint - inlined for faster rendering -->
-    <style>
-        /* Minimal critical CSS for initial render */
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #f8f9fa;
-        }
-        .app-container {
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
-        .sidebar {
-            width: 280px;
-            background-color: #fff;
-            border-right: 1px solid #e9ecef;
-            display: flex;
-            flex-direction: column;
-            transition: transform 0.3s ease;
-        }
-        .chat-container {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
-            overflow: hidden;
-        }
-        .app-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 20px;
-            background-color: #fff;
-            border-bottom: 1px solid #e9ecef;
-        }
-        .welcome-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 2rem;
-            margin: auto;
-            max-width: 600px;
-            text-align: center;
-        }
-    </style>
-    
-    <!-- Defer non-critical CSS -->
-    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"></noscript>
-    
-    <link rel="preload" href="{{ url_for('static', filename='css/style.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"></noscript>
-    
-    <link rel="preload" href="{{ url_for('static', filename='css/cookie_consent.css') }}" as="style" onload="this.onload=null;this.rel='stylesheet'">
-    <noscript><link rel="stylesheet" href="{{ url_for('static', filename='css/cookie_consent.css') }}"></noscript>
-    
-    <!-- Fallback for browsers that don't support preload -->
-    <script>
-      // Simple CSS loader fallback
-      !function(w){"use strict";var loadCSS=function(href,before,media,attributes){var doc=w.document;var ss=doc.createElement("link");var ref;if(before){ref=before}else{var refs=(doc.body||doc.getElementsByTagName("head")[0]).childNodes;ref=refs[refs.length-1]}var sheets=doc.styleSheets;ss.rel="stylesheet";ss.href=href;ss.media="only x";function ready(cb){if(doc.body){return cb()}setTimeout(function(){ready(cb)})}ready(function(){ref.parentNode.insertBefore(ss,(before?ref:ref.nextSibling))});var onloadcssdefined=function(cb){var resolvedHref=ss.href;var i=sheets.length;while(i--){if(sheets[i].href===resolvedHref){return cb()}}setTimeout(function(){onloadcssdefined(cb)})};function loadCB(){if(ss.addEventListener){ss.removeEventListener("load",loadCB)}ss.media=media||"all"}if(ss.addEventListener){ss.addEventListener("load",loadCB)}ss.onloadcssdefined=onloadcssdefined;onloadcssdefined(loadCB);return ss};if(typeof exports!=="undefined"){exports.loadCSS=loadCSS}else{w.loadCSS=loadCSS}}(typeof global!=="undefined"?global:this);
-    </script>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Main CSS (must be after Bootstrap for proper overrides) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Cookie Consent CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie_consent.css') }}">
     {% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -136,91 +77,26 @@
     {% endblock %}
     
     {% block scripts %}
-    <!-- Initial page loading indicator -->
-    <style>
-        /* Loading indicator styling */
-        #page-loading-indicator {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 3px;
-            background: #4cd964;
-            z-index: 9999;
-            transform: scaleX(0);
-            transform-origin: left;
-            transition: transform 0.5s ease-out;
-        }
-        
-        /* Quick styling to avoid layout shifts during loading */
-        .loading-spinner {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 2px solid rgba(0,0,0,0.1);
-            border-radius: 50%;
-            border-top-color: #4cd964;
-            animation: spin 1s ease-in-out infinite;
-        }
-        
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-    </style>
+    <!-- Bootstrap JS Bundle with Popper (critical for UI functionality) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
-    <script>
-        // Create loading indicator for immediate visual feedback
-        document.addEventListener('DOMContentLoaded', function() {
-            var loadingBar = document.createElement('div');
-            loadingBar.id = 'page-loading-indicator';
-            document.body.appendChild(loadingBar);
-            
-            // Start loading visualization
-            requestAnimationFrame(function() {
-                loadingBar.style.transform = 'scaleX(0.05)'; 
-            });
-            
-            // Fix text input to show loading state
-            const messageInput = document.getElementById('message-input');
-            if (messageInput) {
-                messageInput.setAttribute('placeholder', 'Message GloriaMundo... (loading)');
-            }
-            
-            // Complete loading indicator (called by script-loader.js)
-            window.completeLoading = function() {
-                loadingBar.style.transform = 'scaleX(1)';
-                setTimeout(function() {
-                    loadingBar.style.opacity = '0';
-                    setTimeout(function() {
-                        loadingBar.remove();
-                    }, 500);
-                }, 500);
-                
-                // Update message input placeholder when fully loaded
-                if (messageInput) {
-                    messageInput.setAttribute('placeholder', 'Message GloriaMundo...');
-                }
-            };
-        });
-    </script>
+    <!-- Main JavaScript (deferred to not block rendering) -->
+    <script defer src="{{ url_for('static', filename='js/script.js') }}"></script>
     
-    <!-- Bootstrap JS - essential for layout -->
-    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Cookie Consent JavaScript (non-critical, can be deferred) -->
+    <script defer src="{{ url_for('static', filename='js/cookie_consent.js') }}"></script>
     
-    <!-- Script loader - manages loading all other scripts in optimal order -->
-    <script src="{{ url_for('static', filename='js/script-loader.js') }}"></script>
+    <!-- Mobile responsiveness JavaScript -->
+    <script defer src="{{ url_for('static', filename='js/mobile.js') }}"></script>
     
-    <!-- Third-party scripts - loaded with delay -->
-    <script>
-        // Load lowest priority third-party scripts with a delay
-        window.addEventListener('load', function() {
-            setTimeout(function() {
-                var skimScript = document.createElement('script');
-                skimScript.src = 'https://s.skimresources.com/js/44501X1766367.skimlinks.js';
-                document.body.appendChild(skimScript);
-            }, 2500);
-        });
-    </script>
+    <!-- Mobile model selector JavaScript -->
+    <script defer src="{{ url_for('static', filename='js/mobile_model_selector.js') }}"></script>
+    
+    <!-- Message collapsing functionality -->
+    <script defer src="{{ url_for('static', filename='js/message-collapse.js') }}"></script>
+    
+    <!-- Skimlinks - Automatic Affiliate Link Generator (non-critical, can be deferred) -->
+    <script defer type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js"></script>
     {% endblock %}
 </body>
 </html>

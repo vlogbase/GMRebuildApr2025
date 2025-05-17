@@ -33,11 +33,10 @@ def fetch_and_store_openrouter_prices() -> bool:
     Fetch current model prices from OpenRouter API and store them in the database.
     
     This function now:
-    1. First checks if an update is actually needed (only once every 3 hours)
-    2. If needed, fetches models from the OpenRouter API
-    3. Stores them in the database using the OpenRouterModel model
-    4. Also updates the legacy cache for backward compatibility
-    5. Updates the global OPENROUTER_MODELS_INFO variable for consistency
+    1. Fetches models from the OpenRouter API
+    2. Stores them in the database using the OpenRouterModel model
+    3. Also updates the legacy cache for backward compatibility
+    4. Updates the global OPENROUTER_MODELS_INFO variable for consistency
     
     Returns:
         bool: True if successful, False otherwise
@@ -45,13 +44,6 @@ def fetch_and_store_openrouter_prices() -> bool:
     # Mark the start time for performance tracking
     start_time = time.time()
     logger.info("Scheduled job: fetch_and_store_openrouter_prices started")
-    
-    # Import here to avoid circular imports
-    from models import OpenRouterModel
-    
-    # The check for update timing is now done at the app.py level
-    # We'll skip this check here to avoid application context issues
-    # This function now assumes it should proceed with the update when called
     
     try:
         api_key = os.environ.get('OPENROUTER_API_KEY')
