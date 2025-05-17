@@ -1820,62 +1820,16 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Special handling for mobile
             if (isMobile) {
-                // For mobile, use a more adaptive approach to ensure textarea expands properly
+                // For mobile, use a more aggressive approach to ensure textarea expands properly
                 const isKeyboardVisible = window.visualViewport && 
                     window.visualViewport.height < window.innerHeight - 100;
                 
                 if (isKeyboardVisible) {
-                    // Get the CSS viewport constraint if available
-                    let cssViewportConstraint = 0;
-                    try {
-                        // Read the CSS variable we set in the stylesheet
-                        const computedStyle = window.getComputedStyle(messageInput);
-                        const cssVarValue = computedStyle.getPropertyValue('--viewport-keyboard-max-height').trim();
-                        
-                        if (cssVarValue) {
-                            // If it's a calc expression, make a best effort to evaluate it
-                            if (cssVarValue.startsWith('calc')) {
-                                // Simple evaluation by replacing calc and executing
-                                const viewportHeight = window.innerHeight;
-                                const calcExpression = cssVarValue
-                                    .replace('calc', '')
-                                    .replace('(', '')
-                                    .replace(')', '')
-                                    .replace('100vh', viewportHeight)
-                                    .trim();
-                                    
-                                // Evaluate the processed expression
-                                cssViewportConstraint = eval(calcExpression);
-                            } else {
-                                // Direct conversion if it's a px value
-                                cssViewportConstraint = parseInt(cssVarValue, 10);
-                            }
-                        }
-                    } catch (e) {
-                        console.warn("Error reading CSS viewport constraint:", e);
-                    }
-                    
-                    // Use both our JavaScript calculation and CSS constraints
-                    let finalMaxHeight = absoluteMinAllowableMaxHeight;
-                    
-                    // If we have a valid CSS constraint, make sure we don't exceed it
-                    if (cssViewportConstraint > 0) {
-                        // Log what's happening for debugging
-                        console.log("Mobile keyboard visible - CSS constraint:", cssViewportConstraint, 
-                                   "Target height:", absoluteMinAllowableMaxHeight);
-                                   
-                        // Don't exceed viewport constraints, but ensure at least 150px for usability
-                        finalMaxHeight = Math.min(finalMaxHeight, cssViewportConstraint);
-                        finalMaxHeight = Math.max(finalMaxHeight, 150);
-                    } else {
-                        console.log("Mobile keyboard visible, using target height:", absoluteMinAllowableMaxHeight);
-                    }
-                    
-                    // Apply the final calculated height
-                    messageInput.style.maxHeight = finalMaxHeight + 'px';
+                    console.log("Mobile keyboard is visible, setting fixed max height");
+                    // When keyboard is visible, use our minimum guaranteed height
+                    messageInput.style.maxHeight = absoluteMinAllowableMaxHeight + 'px';
                 } else {
                     // When keyboard is not visible, use the calculated height
-                    console.log("Mobile keyboard not visible, using full height:", effectiveMaxHeight);
                     messageInput.style.maxHeight = effectiveMaxHeight + 'px';
                 }
             } else {
