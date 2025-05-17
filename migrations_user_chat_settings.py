@@ -1,87 +1,76 @@
 """
-Migration script to add UserChatSettings model.
-This script creates the user_chat_settings table for advanced chat parameter settings.
+Database migration to add auto_fallback_enabled to UserChatSettings model.
+
+This script handles the migration to add the auto_fallback_enabled column
+to the user_chat_settings table in the database.
 """
-import os
 import logging
 import traceback
-from sqlalchemy import create_engine, text, MetaData, Table, Column, Integer, Float, String, Text, DateTime, ForeignKey, exc
-from sqlalchemy.sql import func
+from datetime import datetime
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
 def run_migration():
-    """Run the database migration to create the user_chat_settings table."""
-    logger.info("Starting UserChatSettings migration...")
+    """
+    Run the migration to add auto_fallback_enabled to UserChatSettings table.
     
-    # Get database URL from environment variables
-    db_url = os.environ.get("DATABASE_URL")
-    if not db_url:
-        logger.error("DATABASE_URL environment variable not set.")
-        return False
-    
-    # Create database engine
-    engine = create_engine(db_url)
-    connection = engine.connect()
-    
+    This checks if the column exists and adds it if it doesn't.
+    """
     try:
-        # Start a transaction
-        transaction = connection.begin()
+        logger.info("Starting UserChatSettings migration...")
         
-        # Check if user_chat_settings table exists
-        check_table_sql = text("""
-            SELECT EXISTS (
-                SELECT FROM information_schema.tables 
-                WHERE table_name = 'user_chat_settings'
-            )
-        """)
-        result = connection.execute(check_table_sql)
-        table_exists = result.scalar()
+        # Import what we need to run the migration
+        from app import app, db
+        from sqlalchemy import inspect, text
         
-        if not table_exists:
-            # Create user_chat_settings table
-            logger.info("Creating user_chat_settings table...")
-            create_table_sql = text("""
-                CREATE TABLE user_chat_settings (
-                    id SERIAL PRIMARY KEY,
-                    user_id INTEGER NOT NULL REFERENCES "user" (id) ON DELETE CASCADE,
-                    temperature FLOAT,
-                    top_p FLOAT,
-                    max_tokens INTEGER,
-                    frequency_penalty FLOAT,
-                    presence_penalty FLOAT,
-                    top_k INTEGER,
-                    stop_sequences TEXT,
-                    response_format VARCHAR(20),
-                    updated_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now(),
-                    created_at TIMESTAMP WITHOUT TIME ZONE DEFAULT now()
-                );
-                
-                CREATE INDEX ix_user_chat_settings_user_id ON user_chat_settings (user_id);
-            """)
-            connection.execute(create_table_sql)
-            logger.info("user_chat_settings table created successfully.")
-        else:
-            logger.info("user_chat_settings table already exists.")
-        
-        # Commit the transaction
-        transaction.commit()
-        logger.info("UserChatSettings migration completed successfully.")
-        return True
+        with app.app_context():
+            # Check if the user_chat_settings table exists
+            inspector = inspect(db.engine)
+            if 'user_chat_settings' not in inspector.get_table_names():
+                logger.warning("user_chat_settings table does not exist, will be created during the next db.create_all()")
+                db.create_all()
+                logger.info("Created user_chat_settings table.")
+                return
+            
+            # Check if the auto_fallback_enabled column already exists
+            columns = [col['name'] for col in inspector.get_columns('user_chat_settings')]
+            if 'auto_fallback_enabled' in columns:
+                logger.info("auto_fallback_enabled column already exists in user_chat_settings table.")
+                return
+            
+            # Column doesn't exist, add it
+            logger.info("Adding auto_fallback_enabled column to user_chat_settings table.")
+            
+            # Run SQL to add the column with a default value
+            with db.engine.connect() as conn:
+                # SQLite syntax
+                if 'sqlite' in db.engine.url.get_backend_name():
+                    conn.execute(text(
+                        "ALTER TABLE user_chat_settings ADD COLUMN auto_fallback_enabled BOOLEAN DEFAULT 0 NOT NULL"
+                    ))
+                # PostgreSQL syntax
+                else:
+                    conn.execute(text(
+                        "ALTER TABLE user_chat_settings ADD COLUMN auto_fallback_enabled BOOLEAN DEFAULT FALSE NOT NULL"
+                    ))
+                conn.commit()
+            
+            logger.info("Successfully added auto_fallback_enabled column to user_chat_settings table.")
         
     except Exception as e:
-        # Rollback in case of error
-        if 'transaction' in locals():
-            transaction.rollback()
-        logger.error(f"Migration failed: {str(e)}")
+        logger.error(f"Error during UserChatSettings migration: {e}")
         logger.error(traceback.format_exc())
-        return False
-        
-    finally:
-        # Close connection
-        connection.close()
+        raise
 
 if __name__ == "__main__":
-    run_migration()
+    try:
+        run_migration()
+        logger.info("UserChatSettings migration completed successfully.")
+    except Exception as e:
+        logger.error(f"UserChatSettings migration failed: {e}")
+        logger.error(traceback.format_exc())

@@ -698,23 +698,16 @@ def generate_summary(conversation_id, retry_attempt=0, max_retries=2):
         
         print(f"[SUMMARIZE {conversation_id}] API call finished. Status: {response.status_code}") 
         
-        try:
-            pass  # Placeholder for try block
         except Exception as api_error:
                     logger.error(f"Error making API call to OpenRouter: {api_error}")
                     logger.error(traceback.format_exc())
                     # Generate error response for client
-                    yield f'data: {{"type": "error", "error": "Connection error while reaching OpenRouter API."}}\n\n'
+                    yield f'data: {{"type": "error", "error": "Connection error while reaching OpenRouter API."}}
+
+'
                     return
                     
-                            if response.status_code != 200:
-            print(f"[SUMMARIZE {conversation_id}] API error: {response.status_code} - {response.text[:300]}") 
-            logger.error(f"OpenRouter API error while generating title: {response.status_code} - {response.text}")
-            
-            # Retry on non-200 response if we haven't exceeded max retries
-            if retry_attempt < max_retries:
-            print(f"[SUMMARIZE {conversation_id}] Scheduling retry {retry_attempt+1}/{max_retries}")
-                import threading
+                if response.status_code != 200:
             print(f"[SUMMARIZE {conversation_id}] API error: {response.status_code} - {response.text[:300]}") 
             logger.error(f"OpenRouter API error while generating title: {response.status_code} - {response.text}")
             
@@ -2088,7 +2081,7 @@ def chat():
                     original_model_name = openrouter_model.split('/')[-1] if '/' in openrouter_model else openrouter_model
                     fallback_model_name = fallback_model.split('/')[-1] if '/' in fallback_model else fallback_model
                     
-                                        # Return a streaming response with a model_fallback event
+                    # Return a streaming response with a model_fallback event
                     def generate_fallback_notification():
                         try:
                             import json
@@ -2105,7 +2098,6 @@ def chat():
                             logger.error(traceback.format_exc())
                             # Return a simplified error fallback notification
                             try:
-                                import json
                                 error_json = json.dumps({
                                     'type': 'error', 
                                     'error': 'Failed to generate fallback notification'
@@ -2114,8 +2106,15 @@ def chat():
                             except Exception as e:
                                 logger.error(f"Critical failure in fallback notification system: {e}")
                                 yield f'data: {{\"type\":\"error\",\"error\":\"Internal server error\"}}\n\n'
+
+'
                     
-                    return app.response_class(
+                            except Exception as api_prep_error:
+            logger.error(f"Error in API call preparation: {api_prep_error}")
+            logger.error(traceback.format_exc())
+            abort(500, description="Error in chat endpoint setup: API preparation failed")
+        
+        return app.response_class(
                         generate_fallback_notification(),
                         mimetype='text/event-stream'
                     )
@@ -2967,11 +2966,12 @@ def chat():
                     logger.error(f"Error making API call to OpenRouter: {api_error}")
                     logger.error(traceback.format_exc())
                     # Generate error response for client
-                    yield f'data: {{"type": "error", "error": "Connection error while reaching OpenRouter API."}}\n\n'
+                    yield f'data: {{"type": "error", "error": "Connection error while reaching OpenRouter API."}}
+
+'
                     return
                     
-                            if response.status_code != 200:
-                        error_text = response.text 
+                if response.status_code != 200:
                         error_text = response.text 
                         # Attempt to parse the error response for more details
                         try:
