@@ -44,10 +44,11 @@
         </div>
     </div>
 
-    <!-- Tab Navigation -->
+    <!-- Tab Navigation with Mobile-Friendly Layout -->
     <div class="row">
         <div class="col-12">
-            <ul class="nav nav-tabs" id="accountTabs" role="tablist">
+            <!-- Visible on desktop -->
+            <ul class="nav nav-tabs d-none d-md-flex" id="accountTabs" role="tablist">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link active" id="funds-tab" data-bs-toggle="tab" data-bs-target="#funds" 
                             type="button" role="tab" aria-controls="funds" aria-selected="true">
@@ -85,6 +86,42 @@
                     </button>
                 </li>
             </ul>
+            
+            <!-- Mobile-friendly tab navigation (displayed only on mobile) -->
+            <div class="d-md-none mb-3">
+                <select class="form-select mobile-tab-selector" aria-label="Account sections">
+                    <option value="funds" selected>💳 Add Credits</option>
+                    <option value="history">📝 Purchase History</option>
+                    <option value="usage">📊 Usage Analytics</option>
+                    <option value="pricing">🏷️ Pricing</option>
+                    <option value="settings">⚙️ Account Settings</option>
+                    <option value="tellFriend">👥 Tell a Friend</option>
+                </select>
+            </div>
+            
+            <!-- Mobile-friendly navigation buttons -->
+            <div class="d-md-none mb-3">
+                <div class="d-flex justify-content-between flex-wrap" style="gap: 8px;">
+                    <button class="btn btn-outline-primary mobile-tab-btn flex-grow-1" data-tab="funds">
+                        <i class="fas fa-credit-card"></i> Add Credits
+                    </button>
+                    <button class="btn btn-outline-secondary mobile-tab-btn flex-grow-1" data-tab="history">
+                        <i class="fas fa-receipt"></i> History
+                    </button>
+                    <button class="btn btn-outline-secondary mobile-tab-btn flex-grow-1" data-tab="usage">
+                        <i class="fas fa-chart-line"></i> Usage
+                    </button>
+                    <button class="btn btn-outline-secondary mobile-tab-btn flex-grow-1" data-tab="pricing">
+                        <i class="fas fa-tag"></i> Pricing
+                    </button>
+                    <button class="btn btn-outline-secondary mobile-tab-btn flex-grow-1" data-tab="settings">
+                        <i class="fas fa-cog"></i> Settings
+                    </button>
+                    <button class="btn btn-outline-secondary mobile-tab-btn flex-grow-1" data-tab="tellFriend">
+                        <i class="fas fa-users"></i> Refer
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -803,6 +840,101 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired - Initializing account page functions');
+    
+    // Initialize mobile tab navigation
+    initMobileTabNavigation();
+    
+    // Function to initialize mobile tab navigation
+    function initMobileTabNavigation() {
+        // Handle dropdown selector for mobile
+        const mobileTabSelector = document.querySelector('.mobile-tab-selector');
+        if (mobileTabSelector) {
+            mobileTabSelector.addEventListener('change', function(e) {
+                const selectedTab = e.target.value;
+                console.log('Mobile tab selector changed to:', selectedTab);
+                
+                // Update active button states
+                document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+                    if (btn.dataset.tab === selectedTab) {
+                        btn.classList.remove('btn-outline-secondary');
+                        btn.classList.add('btn-outline-primary');
+                    } else {
+                        btn.classList.remove('btn-outline-primary');
+                        btn.classList.add('btn-outline-secondary');
+                    }
+                });
+                
+                // Find the Bootstrap tab trigger and activate it
+                const tabTrigger = document.querySelector(`[data-bs-target="#${selectedTab}"]`);
+                if (tabTrigger) {
+                    const bsTab = new bootstrap.Tab(tabTrigger);
+                    bsTab.show();
+                }
+            });
+        }
+        
+        // Handle mobile tab buttons
+        document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const tabName = this.dataset.tab;
+                console.log('Mobile tab button clicked:', tabName);
+                
+                // Update dropdown value
+                if (mobileTabSelector) {
+                    mobileTabSelector.value = tabName;
+                }
+                
+                // Update active button states
+                document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+                    if (btn.dataset.tab === tabName) {
+                        btn.classList.remove('btn-outline-secondary');
+                        btn.classList.add('btn-outline-primary');
+                    } else {
+                        btn.classList.remove('btn-outline-primary');
+                        btn.classList.add('btn-outline-secondary');
+                    }
+                });
+                
+                // Find the Bootstrap tab trigger and activate it
+                const tabTrigger = document.querySelector(`[data-bs-target="#${tabName}"]`);
+                if (tabTrigger) {
+                    const bsTab = new bootstrap.Tab(tabTrigger);
+                    bsTab.show();
+                }
+            });
+        });
+        
+        // Check URL for tab parameter
+        const urlParams = new URLSearchParams(window.location.search);
+        const tabParam = urlParams.get('tab');
+        if (tabParam) {
+            // Update mobile UI if on mobile
+            if (window.innerWidth < 768) {
+                // Update dropdown value
+                if (mobileTabSelector) {
+                    mobileTabSelector.value = tabParam;
+                }
+                
+                // Update active button states
+                document.querySelectorAll('.mobile-tab-btn').forEach(btn => {
+                    if (btn.dataset.tab === tabParam) {
+                        btn.classList.remove('btn-outline-secondary');
+                        btn.classList.add('btn-outline-primary');
+                    } else {
+                        btn.classList.remove('btn-outline-primary');
+                        btn.classList.add('btn-outline-secondary');
+                    }
+                });
+            }
+            
+            // Find the Bootstrap tab trigger and activate it
+            const tabTrigger = document.querySelector(`[data-bs-target="#${tabParam}"]`);
+            if (tabTrigger) {
+                const bsTab = new bootstrap.Tab(tabTrigger);
+                bsTab.show();
+            }
+        }
+    }
     
     // Utility function for toast notifications
     function showToast(type, message) {
