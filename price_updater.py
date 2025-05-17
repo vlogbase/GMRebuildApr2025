@@ -55,42 +55,77 @@ def should_update_prices() -> bool:
             pass
                 
         # Get app context safely without relying on current_app
-        from app import app, db
-        from models import OpenRouterModel
-        
-        # Use app context for database operations
-        with app.app_context():
-            # Get the most recent update timestamp from any active model
-            last_model = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).order_by(
-                OpenRouterModel.last_fetched_at.desc()
-            ).first()
+        try:
+            from app import app, db
+            from models import OpenRouterModel
             
-            if last_model and last_model.last_fetched_at:
-                last_update_time = last_model.last_fetched_at
-                now = datetime.utcnow()
-                hours_since_update = (now - last_update_time).total_seconds() / 3600
+            # Use app context for database operations and capture in a variable
+            # to ensure the context is properly managed
+            with app.app_context():
+                # Get the most recent update timestamp from any active model
+                last_model = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).order_by(
+                    OpenRouterModel.last_fetched_at.desc()
+                ).first()
                 
-                # Update the startup cache with this information
-                try:
-                    from startup_cache import startup_cache
-                    startup_cache.update_service_data('model_prices', {
-                        'last_db_update': last_update_time.isoformat(),
-                        'hours_since_update': hours_since_update,
-                        'model_count': OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).count()
-                    })
-                except ImportError:
-                    pass
-                
-                if hours_since_update < 3:
-                    logger.info(f"Skipping price update - last update was {hours_since_update:.1f} hours ago")
-                    return False
+                # Process the results within the app context
+                if last_model and last_model.last_fetched_at:
+                    last_update_time = last_model.last_fetched_at
+                    now = datetime.utcnow()
+                    hours_since_update = (now - last_update_time).total_seconds() / 3600
                     
-                logger.info(f"Updating prices - it's been {hours_since_update:.1f} hours since the last update")
-                return True
-            else:
-                # No models in database yet or no timestamp, so we should update
-                logger.info("No existing models with timestamps found - will update prices")
-                return True
+                    # Store results to use after the app context is closed
+                    need_update = hours_since_update >= 3
+                    
+                    # Update the startup cache with this information
+                    try:
+                        from startup_cache import startup_cache
+                        
+                        # Get count within the app context
+                        model_count = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).count()
+                        
+                        # Create cache update data
+                        cache_data = {
+                            'last_db_update': last_update_time.isoformat(),
+                            'hours_since_update': hours_since_update,
+                            'model_count': model_count
+                        }
+                        
+                        # Update the cache outside of this block
+                    except ImportError:
+                        cache_data = None
+                        
+                    # Return from within the app context to ensure proper closure
+                    if hours_since_update < 3:
+                        logger.info(f"Skipping price update - last update was {hours_since_update:.1f} hours ago")
+                        
+                        # Update the cache if we have data
+                        if cache_data:
+                            try:
+                                from startup_cache import startup_cache
+                                startup_cache.update_service_data('model_prices', cache_data)
+                            except Exception as cache_error:
+                                logger.warning(f"Failed to update startup cache: {cache_error}")
+                        
+                        return False
+                        
+                    logger.info(f"Updating prices - it's been {hours_since_update:.1f} hours since the last update")
+                    
+                    # Update the cache if we have data
+                    if cache_data:
+                        try:
+                            from startup_cache import startup_cache
+                            startup_cache.update_service_data('model_prices', cache_data)
+                        except Exception as cache_error:
+                            logger.warning(f"Failed to update startup cache: {cache_error}")
+                    
+                    return True
+                else:
+                    # No models in database yet or no timestamp, so we should update
+                    logger.info("No existing models with timestamps found - will update prices")
+                    return True
+        except ImportError as import_error:
+            logger.warning(f"Could not import required modules: {import_error}. Will update prices to be safe.")
+            return True
             
     except Exception as e:
         logger.warning(f"Error checking last price update time: {e}. Will update prices to be safe.")

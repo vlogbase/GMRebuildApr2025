@@ -33,6 +33,13 @@
 - Added configurable update intervals (now 3 hours) to reduce API calls
 - Integrated with startup cache to prevent redundant API calls
 - Added connection timeouts and retry limits
+- Fixed application context issues in database queries to eliminate warnings
+
+### 6. Application Context Management
+- Resolved "Working outside of application context" warnings in price_updater.py
+- Ensured all database queries run within proper Flask application context
+- Improved context scope management for better memory efficiency
+- Enhanced error handling for database access during initialization
 
 ## Expected Performance Gains
 
