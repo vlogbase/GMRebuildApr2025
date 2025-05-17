@@ -419,6 +419,32 @@ class OpenRouterModel(db.Model):
         return cls.query.filter_by(is_multimodal=True, model_is_active=True).order_by(cls.name).all()
         
     @classmethod
+    def needs_update(cls):
+        """
+        Check if the model data needs to be updated from the API.
+        Only updates once every 3 hours to prevent excessive API calls.
+        
+        Returns:
+            bool: True if models should be updated, False otherwise
+        """
+        try:
+            # Get the most recently updated model
+            most_recent = cls.query.order_by(cls.last_fetched_at.desc()).first()
+            
+            if most_recent is None:
+                # No models in database, definitely need an update
+                return True
+                
+            # Check if last fetch was more than 3 hours ago
+            three_hours_ago = datetime.utcnow() - timedelta(hours=3)
+            return most_recent.last_fetched_at < three_hours_ago
+        except Exception as e:
+            # Log error but return True to be safe
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error checking if model data needs update: {e}")
+            return True
+        
+    @classmethod
     def get_pdf_models(cls):
         """Return only active models that support PDF files"""
         return cls.query.filter_by(supports_pdf=True, model_is_active=True).order_by(cls.name).all()
