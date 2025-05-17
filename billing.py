@@ -535,6 +535,36 @@ def update_memory_preference():
             "message": f"Error updating preference: {str(e)}"
         }), 500
 
+
+@billing_bp.route('/update-fallback-preference', methods=['POST'])
+@login_required
+def update_fallback_preference():
+    """
+    Update the user's model fallback preference setting.
+    """
+    try:
+        # Get the preference value from the request
+        enable_model_fallback = request.json.get('enable_model_fallback', True)
+        
+        # Update the user's preference
+        current_user.enable_model_fallback = enable_model_fallback
+        db.session.commit()
+        
+        logger.info(f"Updated model fallback preference for user {current_user.id} to {enable_model_fallback}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Model fallback preference updated successfully",
+            "enable_model_fallback": enable_model_fallback
+        })
+    
+    except Exception as e:
+        logger.error(f"Error updating model fallback preference: {e}")
+        return jsonify({
+            "success": False,
+            "message": f"Error updating preference: {str(e)}"
+        }), 500
+
 @billing_bp.route('/transactions', methods=['GET'])
 @login_required
 def transaction_history():

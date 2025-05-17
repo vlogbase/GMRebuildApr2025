@@ -560,6 +560,15 @@
                             Disabling this may reduce token usage for new chats.
                         </small>
                     </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="enableModelFallback" {% if user.enable_model_fallback %}checked{% endif %}>
+                        <label class="form-check-label" for="enableModelFallback">Enable model fallback</label>
+                        <small class="form-text text-muted d-block mt-1">
+                            When enabled, if your chosen model is unavailable, the system will automatically use a similar alternative.
+                            When disabled, you'll be notified if your selected model can't be reached.
+                        </small>
+                    </div>
                     
                     <!-- Advanced Chat Preferences Section -->
                     <div class="mt-4">
@@ -1928,6 +1937,44 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error updating memory preference:', error);
                 showToast('error', 'An error occurred while saving your preference');
                 enableMemoryToggle.checked = !enableMemory;
+            });
+        });
+    }
+    
+    // Model fallback preference toggle handler
+    const enableModelFallbackToggle = document.getElementById('enableModelFallback');
+    if (enableModelFallbackToggle) {
+        enableModelFallbackToggle.addEventListener('change', function() {
+            const enableModelFallback = this.checked;
+            
+            // Show toggle indicator
+            const toggleStatus = enableModelFallback ? 'enabled' : 'disabled';
+            const toastMessage = `Model fallback ${toggleStatus}`;
+            
+            // Call API to update preference
+            fetch('/billing/update-fallback-preference', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ enable_model_fallback: enableModelFallback })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success notification using existing toast system
+                    showToast('success', toastMessage);
+                } else {
+                    // Show error and revert toggle
+                    showToast('error', 'Failed to update preference: ' + (data.message || 'Unknown error'));
+                    enableModelFallbackToggle.checked = !enableModelFallback;
+                }
+            })
+            .catch(error => {
+                console.error('Error updating model fallback preference:', error);
+                showToast('error', 'An error occurred while saving your preference');
+                enableModelFallbackToggle.checked = !enableModelFallback;
             });
         });
     }

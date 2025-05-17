@@ -2004,25 +2004,42 @@ def chat(): # Synchronous function
             # Check if the requested model is available
             if not model_validator.is_model_available(openrouter_model, available_models) or has_rag_content:
                 
-                # Try to select a fallback model
-                fallback_model = model_validator.get_fallback_model(
-                    openrouter_model, 
-                    SAFE_FALLBACK_MODELS,
-                    available_models
-                )
+                # Check if user wants fallback behavior
+                enable_fallback = True  # Default for non-authenticated users
                 
-                if fallback_model:
-                    logger.info(f"Using fallback model: {fallback_model} instead of {openrouter_model}")
-                    openrouter_model = fallback_model
-                else:
-                    # If no fallback found, select model based on content type
-                    adaptive_model = model_validator.select_multimodal_fallback(
-                        has_image_content=has_image, 
-                        available_models=available_models,
-                        has_rag_content=has_rag_content
+                # For authenticated users, respect their preference
+                if current_user and current_user.is_authenticated:
+                    enable_fallback = current_user.enable_model_fallback
+                    logger.info(f"User {current_user.id} fallback preference: {enable_fallback}")
+                
+                if enable_fallback:
+                    # Try to select a fallback model
+                    fallback_model = model_validator.get_fallback_model(
+                        openrouter_model, 
+                        SAFE_FALLBACK_MODELS,
+                        available_models
                     )
-                    logger.info(f"Using adaptive model selection: {adaptive_model} (image content: {has_image}, RAG content: {has_rag_content})")
-                    openrouter_model = adaptive_model
+                    
+                    if fallback_model:
+                        logger.info(f"Using fallback model: {fallback_model} instead of {openrouter_model}")
+                        openrouter_model = fallback_model
+                    else:
+                        # If no fallback found, select model based on content type
+                        adaptive_model = model_validator.select_multimodal_fallback(
+                            has_image_content=has_image, 
+                            available_models=available_models,
+                            has_rag_content=has_rag_content
+                        )
+                        logger.info(f"Using adaptive model selection: {adaptive_model} (image content: {has_image}, RAG content: {has_rag_content})")
+                        openrouter_model = adaptive_model
+                else:
+                    # User has disabled fallback behavior
+                    logger.info(f"Model fallback disabled by user preference. Requested model {openrouter_model} is unavailable.")
+                    return jsonify({
+                        "text": f"The model '{openrouter_model}' is currently unavailable. Please select a different model or enable model fallback in your account settings.",
+                        "model": openrouter_model,
+                        "error": True
+                    }), 400
         except Exception as validation_error:
             logger.error(f"Error during model validation: {validation_error}")
             logger.error(traceback.format_exc())

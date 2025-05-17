@@ -49,6 +49,7 @@ class User(UserMixin, db.Model):
     
     # User preferences
     enable_memory = db.Column(db.Boolean, default=True)  # Whether to enable chat memory across sessions
+    enable_model_fallback = db.Column(db.Boolean, default=True)  # Whether to automatically use similar fallback models when selected model is unavailable
     
     # Billing fields
     credits = db.Column(db.Integer, nullable=False, default=0)  # User's credit balance in credits (1 credit = $0.00001)
