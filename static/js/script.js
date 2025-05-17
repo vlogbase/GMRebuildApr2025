@@ -1795,22 +1795,14 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Determine max percentage based on device type
             const isMobile = window.innerWidth <= 576;
-            const maxPercentageOfViewableArea = isMobile ? 0.50 : 0.50; // 50% for both mobile and desktop
+            const maxPercentageOfViewableArea = isMobile ? 0.75 : 0.50; // 75% for mobile, 50% for desktop
             
             // Calculate max height based on percentage of available space
             const calculatedMaxTextareaHeight = (availableHeightForChatAndInput - otherInputBarElementsHeight) * maxPercentageOfViewableArea;
             
-            // Ensure the max height is not too small - always at least 500px
-            const absoluteMinAllowableMaxHeight = 500;
-            
-            // On mobile, ensure textarea can grow to at least 500px or 50% of screen height, whichever is greater
-            const screenHeightBasedMin = window.innerHeight * 0.50;
-            const mobileMinHeight = Math.max(absoluteMinAllowableMaxHeight, screenHeightBasedMin);
-            
-            // Final effective max height: use the mobile calculation on mobile, otherwise standard calculation
-            const effectiveMaxHeight = isMobile ? 
-                mobileMinHeight : 
-                Math.max(absoluteMinAllowableMaxHeight, calculatedMaxTextareaHeight);
+            // Ensure the max height is not too small
+            const absoluteMinAllowableMaxHeight = 500; // Increased from 100px to 500px
+            const effectiveMaxHeight = Math.max(absoluteMinAllowableMaxHeight, calculatedMaxTextareaHeight);
             
             // Debug logging for mobile
             if (isMobile && window.debugMode) {

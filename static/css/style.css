@@ -2485,10 +2485,10 @@ body.account-page .tab-pane {
 .message-actions-container {
     width: 100%;
     border-top: 1px solid var(--border-color-light);
-    padding: 2px 0 2px 0; /* Further reduced padding */
+    padding: 4px 0 2px 0; /* Reduced padding */
     display: flex;
     justify-content: flex-end;
-    min-height: 32px; /* Further reduced minimum height */
+    min-height: 36px; /* Reduced minimum height */
     background-color: var(--input-bg); /* Match with input background */
 }
 
