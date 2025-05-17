@@ -1,9 +1,8 @@
-{
-  "workflows": [
-    {
-      "name": "app",
-      "run": "python app.py",
-      "ports": [5000]
-    }
-  ]
-}
+workflows:
+  model_fallback_test:
+    run: python model_fallback_test_workflow.py
+    persistent: true
+  
+  app:
+    run: python app.py
+    persistent: true

@@ -5307,4 +5307,59 @@ window.resetToDefault = function(presetId) {
             });
         }
     }
+    
+    // Event listener for the model fallback test events
+    // This allows the test page to trigger the fallback dialog
+    document.addEventListener('modelFallbackEvent', function(event) {
+        console.log('Model fallback event received:', event.detail);
+        
+        // Extract data from the event
+        const requestedModel = event.detail.requestedModel;
+        const fallbackModel = event.detail.fallbackModel;
+        const message = event.detail.message || "Test message";
+        const fallbackModelId = event.detail.fallbackModelId || "";
+        
+        // Check if we have the ModelFallback module
+        if (typeof window.ModelFallback !== 'undefined' && 
+            typeof window.ModelFallback.showFallbackDialog === 'function') {
+            
+            console.log("Using ModelFallback dialog for confirmation");
+            
+            // Check if auto-fallback is enabled in user preferences
+            const autoFallbackEnabled = window.ModelFallback.getUserAutoFallbackPreference();
+            
+            if (autoFallbackEnabled) {
+                console.log("Auto-fallback is enabled, proceeding without confirmation");
+                // Automatically proceed with fallback model
+                sendChatMessageWithFallback(message, fallbackModelId);
+                
+                // Dispatch a custom event for testing purposes
+                document.dispatchEvent(new CustomEvent('fallbackDialogAction', {
+                    detail: {
+                        action: 'auto-accept',
+                        modelId: fallbackModelId
+                    }
+                }));
+            } else {
+                // Show confirmation dialog
+                window.ModelFallback.showFallbackDialog(
+                    requestedModel,
+                    fallbackModel,
+                    message,
+                    fallbackModelId
+                );
+                
+                // Dispatch a custom event for testing purposes
+                document.dispatchEvent(new CustomEvent('fallbackDialogAction', {
+                    detail: {
+                        action: 'show-dialog',
+                        modelId: fallbackModelId
+                    }
+                }));
+            }
+        } else {
+            console.error("ModelFallback module not available");
+            alert(`Model ${requestedModel} is unavailable. Please select a different model.`);
+        }
+    });
 });

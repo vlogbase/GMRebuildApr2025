@@ -3492,15 +3492,16 @@ def rag_diagnostics():
     except Exception as e:
         logger.error(f"Error fetching PDF-capable models: {e}")
     
-    return jsonify({
-        "status": "transitioned",
-        "message": "RAG system replaced with direct PDF handling through OpenRouter",
-        "pdf_handling": {
-            "enabled": True,
-            "container": os.environ.get("AZURE_STORAGE_PDF_CONTAINER_NAME", "gloriamundopdfs"),
-            "supported_models": pdf_capable_models
-        }
-    })
+    try:
+        return jsonify({
+            "status": "transitioned",
+            "message": "RAG system replaced with direct PDF handling through OpenRouter",
+            "pdf_handling": {
+                "enabled": True,
+                "container": os.environ.get("AZURE_STORAGE_PDF_CONTAINER_NAME", "gloriamundopdfs"),
+                "supported_models": pdf_capable_models
+            }
+        })
     except Exception as e:
         logger.exception(f"Error in RAG diagnostics: {e}")
         return jsonify({"error": str(e)}), 500

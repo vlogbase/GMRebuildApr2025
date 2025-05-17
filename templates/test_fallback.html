@@ -1,245 +1,158 @@
 {% extends "base.html" %}
 
-{% block title %}Test Model Fallback Confirmation{% endblock %}
+{% block title %}Model Fallback Test{% endblock %}
 
-{% block styles %}
-{{ super() }}
-<style>
-    .test-card {
-        background-color: #2a2a2a;
-        border-radius: 10px;
-        padding: 20px;
-        margin-bottom: 20px;
-        color: white;
-    }
-    .test-header {
-        font-size: 1.5rem;
-        margin-bottom: 15px;
-        border-bottom: 1px solid #3a3a3a;
-        padding-bottom: 10px;
-    }
-    .test-description {
-        margin-bottom: 20px;
-        color: #ccc;
-    }
-    .test-button {
-        background-color: #4CAF50;
-        color: white;
-        border: none;
-        padding: 10px 15px;
-        border-radius: 4px;
-        cursor: pointer;
-        margin-right: 10px;
-    }
-    .test-button:hover {
-        background-color: #45a049;
-    }
-    .test-button.secondary {
-        background-color: #607D8B;
-    }
-    .test-button.secondary:hover {
-        background-color: #546E7A;
-    }
-    .test-result {
-        margin-top: 20px;
-        padding: 15px;
-        background-color: #1a1a1a;
-        border-radius: 5px;
-        font-family: monospace;
-        display: none;
-    }
-    .current-setting {
-        padding: 10px;
-        background-color: #333;
-        border-radius: 5px;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-    }
-    .setting-indicator {
-        width: 15px;
-        height: 15px;
-        border-radius: 50%;
-        margin-right: 10px;
-        display: inline-block;
-    }
-    .setting-indicator.enabled {
-        background-color: #4CAF50;
-    }
-    .setting-indicator.disabled {
-        background-color: #F44336;
-    }
-</style>
-{% endblock %}
+{% block body_class %}test-page{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row mb-4">
-        <div class="col-12">
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
             <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h1 class="h4 mb-0">Model Fallback Confirmation Test</h1>
+                </div>
                 <div class="card-body">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h1 class="card-title mb-1">Model Fallback Confirmation Testing</h1>
-                            <p class="text-muted">Test the model fallback confirmation dialog and auto-fallback setting</p>
+                    <div class="alert alert-info">
+                        <p><strong>Purpose:</strong> This page tests the model fallback confirmation dialog that appears when a requested model is unavailable.</p>
+                        <p><strong>Current Setting:</strong> Auto-fallback is {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}enabled{% else %}disabled{% endif %}.</p>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Test the Fallback Dialog</h5>
+                        <p>Click the button below to simulate requesting an unavailable model:</p>
+                        <button id="testFallbackBtn" class="btn btn-primary">Test Fallback Dialog</button>
+                    </div>
+                    
+                    {% if user and user.is_authenticated %}
+                    <div class="mb-4">
+                        <h5>Toggle Auto-Fallback Setting</h5>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="autoFallbackToggle" 
+                                {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}checked{% endif %}>
+                            <label class="form-check-label" for="autoFallbackToggle">
+                                Automatically fall back when models are unavailable
+                            </label>
                         </div>
-                        <a href="{{ url_for('index') }}" class="btn btn-primary">
-                            <i class="fas fa-arrow-left me-2"></i>Back to Chat
-                        </a>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning">
+                        <p><i class="fas fa-exclamation-triangle"></i> You must be logged in to change the auto-fallback setting.</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-4">
+                        <h5>Test Results</h5>
+                        <div id="testResults" class="border p-3 bg-light" style="min-height: 150px;">
+                            <p class="text-muted">Results will appear here...</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Current Setting Status -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="test-card">
-                <h2 class="test-header">Current Auto-Fallback Setting</h2>
-                
-                <div class="current-setting">
-                    <span class="setting-indicator {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}enabled{% else %}disabled{% endif %}"></span>
-                    <span>
-                        Auto-fallback is currently 
-                        <strong>{% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}ENABLED{% else %}DISABLED{% endif %}</strong>
-                    </span>
-                </div>
-                
-                <p class="test-description">
-                    When auto-fallback is enabled, the system will automatically use an alternative model when the 
-                    selected model is unavailable, without showing a confirmation dialog.
-                </p>
-                
-                <button id="toggleSetting" class="test-button secondary">
-                    {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}
-                        Disable Auto-Fallback
-                    {% else %}
-                        Enable Auto-Fallback
-                    {% endif %}
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Test Fallback Dialog -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="test-card">
-                <h2 class="test-header">Test Fallback Dialog</h2>
-                <p class="test-description">
-                    This test will simulate a situation where the selected model (e.g., Claude 3 Haiku) is unavailable,
-                    and the system needs to offer a fallback model (e.g., Gemini Flash). 
-                    If auto-fallback is disabled, you should see a confirmation dialog.
-                </p>
-                
-                <div class="mb-3">
-                    <label for="selectedModel" class="form-label">Select model to test:</label>
-                    <select id="selectedModel" class="form-select">
-                        <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
-                        <option value="anthropic/claude-3-sonnet">Claude 3 Sonnet</option>
-                        <option value="anthropic/claude-3-opus">Claude 3 Opus</option>
-                        <option value="google/gemini-pro">Gemini Pro</option>
-                    </select>
-                </div>
-                
-                <div class="mb-3">
-                    <label for="testMessage" class="form-label">Test message:</label>
-                    <input type="text" id="testMessage" class="form-control" 
-                           value="This is a test message to trigger the model fallback dialog.">
-                </div>
-                
-                <button id="testFallbackBtn" class="test-button">Test Fallback Dialog</button>
-                
-                <div id="testResult" class="test-result"></div>
-            </div>
-        </div>
-    </div>
 </div>
-
 {% endblock %}
 
 {% block scripts %}
 {{ super() }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Toggle auto-fallback setting
-        const toggleSettingBtn = document.getElementById('toggleSetting');
-        toggleSettingBtn.addEventListener('click', function() {
-            // Get current setting
-            const currentSetting = {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}true{% else %}false{% endif %};
+        const testButton = document.getElementById('testFallbackBtn');
+        const resultsDiv = document.getElementById('testResults');
+        const autoFallbackToggle = document.getElementById('autoFallbackToggle');
+        
+        // Function to add a result message
+        function addResult(message, isError = false) {
+            const p = document.createElement('p');
+            p.textContent = message;
+            if (isError) {
+                p.classList.add('text-danger');
+            }
+            resultsDiv.innerHTML = '';
+            resultsDiv.appendChild(p);
+        }
+        
+        // Test button click handler
+        testButton.addEventListener('click', function() {
+            addResult('Testing fallback dialog...');
             
-            // Save opposite setting
-            fetch('/api/user/chat_settings', {
+            fetch('/api/test-fallback', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
                 },
                 body: JSON.stringify({
-                    auto_fallback_enabled: !currentSetting
+                    model: 'anthropic/claude-3-sonnet'
                 })
             })
             .then(response => response.json())
             .then(data => {
-                if (data.success) {
-                    // Reload page to show updated setting
-                    window.location.reload();
+                if (data.type === 'model_fallback') {
+                    addResult(`Fallback scenario triggered: ${data.requested_model} → ${data.fallback_model}`);
+                    
+                    // Create a simulated chat message to trigger the fallback dialog
+                    const fallbackEvent = new CustomEvent('modelFallbackEvent', {
+                        detail: {
+                            requestedModel: data.requested_model,
+                            fallbackModel: data.fallback_model,
+                            originalModelId: data.original_model_id,
+                            fallbackModelId: data.fallback_model_id,
+                            message: "This is a test message",
+                            reason: data.reason
+                        }
+                    });
+                    
+                    document.dispatchEvent(fallbackEvent);
                 } else {
-                    alert('Failed to update setting: ' + data.error);
+                    addResult('Error: Unexpected response from server', true);
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to update setting');
+                addResult(`Error: ${error.message}`, true);
             });
         });
         
-        // Test fallback dialog
-        const testFallbackBtn = document.getElementById('testFallbackBtn');
-        testFallbackBtn.addEventListener('click', function() {
-            const selectedModel = document.getElementById('selectedModel').value;
-            const testMessage = document.getElementById('testMessage').value;
-            const testResult = document.getElementById('testResult');
-            
-            testResult.style.display = 'block';
-            testResult.innerHTML = 'Testing fallback dialog...';
-            
-            // Call API to simulate fallback
-            fetch('/test/api/simulate_fallback', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    model: selectedModel,
-                    message: testMessage
+        // Auto-fallback toggle handler (if user is logged in)
+        if (autoFallbackToggle) {
+            autoFallbackToggle.addEventListener('change', function() {
+                const enabled = this.checked;
+                
+                fetch('/user/settings/update', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        setting: 'auto_fallback_enabled',
+                        value: enabled
+                    })
                 })
-            })
-            .then(response => response.json())
-            .then(data => {
-                testResult.innerHTML = '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
-                
-                // If auto-fallback is disabled, show the fallback dialog
-                const autoFallbackEnabled = {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}true{% else %}false{% endif %};
-                
-                if (!autoFallbackEnabled && window.ModelFallback) {
-                    window.ModelFallback.showFallbackDialog(
-                        data.requested_model,
-                        data.fallback_model,
-                        testMessage
-                    );
-                } else if (autoFallbackEnabled) {
-                    testResult.innerHTML += '<p>Auto-fallback is enabled, so no dialog is shown.</p>';
-                } else {
-                    testResult.innerHTML += '<p>ERROR: ModelFallback is not available.</p>';
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                testResult.innerHTML = 'Error: ' + error.message;
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        addResult(`Auto-fallback setting updated: ${enabled ? 'Enabled' : 'Disabled'}`);
+                        setTimeout(() => {
+                            window.location.reload(); // Reload to update the page status
+                        }, 1500);
+                    } else {
+                        addResult(`Error updating setting: ${data.message}`, true);
+                    }
+                })
+                .catch(error => {
+                    addResult(`Error: ${error.message}`, true);
+                });
             });
+        }
+        
+        // Listen for fallback dialog events for integration testing
+        document.addEventListener('fallbackDialogAction', function(e) {
+            const action = e.detail.action;
+            const modelId = e.detail.modelId;
+            
+            addResult(`Fallback Dialog Action: ${action} (Model: ${modelId})`);
         });
     });
 </script>
