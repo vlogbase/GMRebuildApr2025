@@ -28,8 +28,30 @@ from main import app, document_processor, ENABLE_RAG
 # Import database models and other needed modules
 from database import db
 from models import User, Conversation, Message, UserPreference, UserChatSettings
-from models import OpenRouterModel, SystemPrompt, CustomCSSJS
-from user_settings import get_user_settings, save_user_settings, get_user_chat_settings
+from models import OpenRouterModel
+
+# Import user settings functions
+from user_settings import get_chat_settings_for_user as get_user_settings
+from user_settings import validate_model_specific_parameters
+from user_functions import get_user_chat_settings, save_user_settings
+
+# Define available fallback models
+FALLBACK_MODEL_MAP = {
+    # Map from requested model to fallback model
+    'anthropic/claude-3-opus-20240229': 'anthropic/claude-3-sonnet-20240229',
+    'anthropic/claude-3-sonnet-20240229': 'anthropic/claude-3-haiku-20240307',
+    'anthropic/claude-3-haiku-20240307': 'google/gemini-pro',
+    'openai/gpt-4o': 'openai/gpt-4-turbo',
+    'openai/gpt-4-turbo': 'openai/gpt-3.5-turbo',
+    'openai/gpt-4-vision-preview': 'openai/gpt-4',
+    'google/gemini-pro-vision': 'google/gemini-pro',
+    'google/gemini-pro': 'openai/gpt-3.5-turbo',
+    'meta-llama/llama-3-70b-instruct': 'meta-llama/llama-3-8b-instruct',
+    # Add more mappings as needed
+}
+
+# Default fallback model when no specific mapping exists
+DEFAULT_FALLBACK_MODEL = 'openai/gpt-3.5-turbo'
 
 # Import global variables from app.py
 from app import (
@@ -225,7 +247,62 @@ def api_chat():
         return jsonify({"error": str(e)}), 500
 
 # Add more routes as needed
-# ...
+
+# Model availability and fallback check API
+@app.route('/api/chat/check_model', methods=['GET'])
+def check_model_availability():
+    """
+    Check if a model is available and provide a fallback option if it's not.
+    
+    This endpoint is used by the frontend to determine if a fallback confirmation
+    dialog should be shown before sending the message.
+    
+    Query parameters:
+        model_id: The model ID to check
+        
+    Returns:
+        JSON with model availability info and fallback options
+    """
+    try:
+        # Get the model ID from query parameters
+        model_id = request.args.get('model_id')
+        
+        if not model_id:
+            return jsonify({"error": "Model ID is required"}), 400
+        
+        # Check if the model exists in our system
+        available_models = get_available_models()
+        model_exists = any(m['id'] == model_id for m in available_models)
+        
+        if not model_exists:
+            # If model doesn't exist, suggest a fallback
+            fallback_model = FALLBACK_MODEL_MAP.get(model_id, DEFAULT_FALLBACK_MODEL)
+            
+            # Get the model names for better UX
+            original_model_name = model_id.split('/')[-1] if '/' in model_id else model_id
+            fallback_model_name = fallback_model.split('/')[-1] if '/' in fallback_model else fallback_model
+            
+            return jsonify({
+                "available": False,
+                "model_id": model_id,
+                "model_name": original_model_name,
+                "fallback_model": fallback_model,
+                "fallback_model_name": fallback_model_name
+            })
+        
+        # Model exists in our system
+        return jsonify({
+            "available": True,
+            "model_id": model_id
+        })
+        
+    except Exception as e:
+        logger.exception(f"Error checking model availability: {e}")
+        return jsonify({
+            "error": str(e),
+            "available": False,
+            "fallback_model": DEFAULT_FALLBACK_MODEL
+        }), 500
 
 # Add a catch-all route for 404 errors
 @app.errorhandler(404)

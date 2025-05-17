@@ -25,12 +25,407 @@ from PIL import Image
 from urllib.parse import urlparse
 from werkzeug.datastructures import FileStorage
 from flask_login import current_user, login_required, login_user, logout_user
+from sqlalchemy import create_engine, MetaData, Table, Column, Integer, String, Text, DateTime, Boolean, Float, ForeignKey, inspect
+from database import db
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
 # Note: Flask app instance is now imported from main
 # The app instance and database are initialized in main.py, not here
+
+# Version information
+VERSION = "1.7.4"
+
+# Environment variables
+OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+OPENROUTER_API_KEY = os.environ.get('OPENROUTER_API_KEY', '')
+TEMPERATURE = float(os.environ.get('TEMPERATURE', '0.7'))
+
+# Default values
+DEFAULT_MODEL = os.environ.get('DEFAULT_MODEL', 'anthropic/claude-3-haiku')
+DEFAULT_TEMPERATURE = float(os.environ.get('DEFAULT_TEMPERATURE', '0.7'))
+DEFAULT_MAX_TOKENS = int(os.environ.get('DEFAULT_MAX_TOKENS', '4000'))
+DEFAULT_TOP_P = float(os.environ.get('DEFAULT_TOP_P', '0.9'))
+MAX_HISTORY_LENGTH = int(os.environ.get('MAX_HISTORY_LENGTH', '20'))
+
+# System prompt used for all conversations
+SYSTEM_PROMPT = os.environ.get('SYSTEM_PROMPT', 'You are Claude, a helpful AI assistant created by Anthropic.')
+
+# Set for tracking multimodal models
+MULTIMODAL_MODELS = {
+    'anthropic/claude-3-opus', 
+    'anthropic/claude-3-sonnet', 
+    'anthropic/claude-3-haiku',
+    'google/gemini-pro-vision',
+    'openai/gpt-4-vision-preview',
+    'openai/gpt-4o'
+}
+
+# Set for tracking models with PDF/document support
+DOCUMENT_MODELS = {
+    'anthropic/claude-3-opus', 
+    'anthropic/claude-3-sonnet', 
+    'anthropic/claude-3-haiku',
+    'openai/gpt-4o'
+}
+
+# Model information dictionary with capabilities
+MODEL_INFO = {
+    'anthropic/claude-3-opus': {
+        'name': 'Claude 3 Opus',
+        'provider': 'Anthropic',
+        'is_multimodal': True,
+        'supports_documents': True,
+        'max_tokens': 200000
+    },
+    'anthropic/claude-3-sonnet': {
+        'name': 'Claude 3 Sonnet',
+        'provider': 'Anthropic',
+        'is_multimodal': True,
+        'supports_documents': True,
+        'max_tokens': 200000
+    },
+    'anthropic/claude-3-haiku': {
+        'name': 'Claude 3 Haiku',
+        'provider': 'Anthropic',
+        'is_multimodal': True,
+        'supports_documents': True,
+        'max_tokens': 200000
+    },
+    'google/gemini-pro-vision': {
+        'name': 'Gemini Pro Vision',
+        'provider': 'Google',
+        'is_multimodal': True,
+        'supports_documents': False,
+        'max_tokens': 8192
+    },
+    'openai/gpt-4-vision-preview': {
+        'name': 'GPT-4 Vision',
+        'provider': 'OpenAI',
+        'is_multimodal': True,
+        'supports_documents': False,
+        'max_tokens': 4096
+    },
+    'openai/gpt-4o': {
+        'name': 'GPT-4o',
+        'provider': 'OpenAI',
+        'is_multimodal': True,
+        'supports_documents': True,
+        'max_tokens': 8192
+    }
+}
+
+# Default token prices in USD (per million tokens)
+TOKEN_PRICES = {
+    'anthropic/claude-3-opus': {'input': 15.0, 'output': 75.0},
+    'anthropic/claude-3-sonnet': {'input': 3.0, 'output': 15.0},
+    'anthropic/claude-3-haiku': {'input': 0.25, 'output': 1.25},
+    'openai/gpt-4o': {'input': 5.0, 'output': 15.0},
+    'google/gemini-pro-vision': {'input': 0.0, 'output': 0.0},
+    'openai/gpt-4-vision-preview': {'input': 10.0, 'output': 30.0}
+}
+
+# Utility Functions
+def get_user_identifier():
+    """
+    Get or create a user identifier for the current session.
+    """
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())
+    return session['user_id']
+
+def truncate_conversation_history(messages, max_messages=20):
+    """
+    Truncate the conversation history to the specified maximum number of messages.
+    
+    Args:
+        messages: List of message objects from the database
+        max_messages: Maximum number of messages to retain
+        
+    Returns:
+        List of messages in format ready for the API
+    """
+    # Convert from SQLAlchemy objects to dictionaries for the API
+    history = []
+    for msg in messages[-max_messages:]:
+        history.append({
+            'role': msg.role,
+            'content': msg.content
+        })
+    return history
+
+def get_openrouter_chat_completion(messages, model=DEFAULT_MODEL, temperature=DEFAULT_TEMPERATURE, max_tokens=DEFAULT_MAX_TOKENS):
+    """
+    Get a chat completion from the OpenRouter API.
+    
+    Args:
+        messages: List of message objects (system, user, assistant)
+        model: Model ID to use for completion
+        temperature: Temperature parameter for randomness
+        max_tokens: Maximum tokens to generate
+        
+    Returns:
+        API response data
+    """
+    # Create API request
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {OPENROUTER_API_KEY}'
+    }
+    
+    # Support for multimodal messages (with images)
+    processed_messages = []
+    for msg in messages:
+        # If the message has image content, process it
+        if 'image_url' in msg:
+            content = []
+            # Add text content if present
+            if msg.get('content'):
+                content.append({
+                    'type': 'text',
+                    'text': msg['content']
+                })
+            # Add image content
+            content.append({
+                'type': 'image_url',
+                'image_url': {
+                    'url': msg['image_url']
+                }
+            })
+            processed_msg = {
+                'role': msg['role'],
+                'content': content
+            }
+        else:
+            # Regular text message
+            processed_msg = {
+                'role': msg['role'],
+                'content': msg['content']
+            }
+        processed_messages.append(processed_msg)
+    
+    # Create the payload
+    payload = {
+        'model': model,
+        'messages': processed_messages,
+        'temperature': temperature,
+        'max_tokens': max_tokens
+    }
+    
+    # Make the API call
+    try:
+        response = requests.post('https://openrouter.ai/api/v1/chat/completions', headers=headers, json=payload)
+        return response.json()
+    except Exception as e:
+        logger.exception(f"Error calling OpenRouter API: {e}")
+        return {"error": str(e)}
+
+def parse_openrouter_response(response_data):
+    """
+    Parse the OpenRouter API response to extract the assistant's message.
+    
+    Args:
+        response_data: JSON response data from the API
+        
+    Returns:
+        Extracted assistant message or error
+    """
+    try:
+        # Check for API errors
+        if 'error' in response_data:
+            return f"Error: {response_data['error']}"
+        
+        # Extract assistant message
+        choices = response_data.get('choices', [])
+        if not choices:
+            return "Error: No response from the API"
+            
+        message = choices[0].get('message', {})
+        content = message.get('content', '')
+        
+        return content
+    except Exception as e:
+        logger.exception(f"Error parsing OpenRouter response: {e}")
+        return f"Error parsing response: {str(e)}"
+
+def get_available_models():
+    """
+    Get a list of available models from the database or default list.
+    
+    Returns:
+        List of model objects with name, id, etc.
+    """
+    try:
+        # Query the database for models
+        from models import OpenRouterModel
+        
+        # Get models from the database
+        models = OpenRouterModel.query.filter_by(is_available=True).order_by(OpenRouterModel.provider_name, OpenRouterModel.model_name).all()
+        
+        # If we have models in the database, return them
+        if models and len(models) > 0:
+            return [
+                {
+                    'id': model.model_id,
+                    'name': f"{model.model_name}",
+                    'provider': model.provider_name,
+                    'context_length': model.context_length,
+                    'is_multimodal': model.is_multimodal,
+                    'is_recommended': model.is_recommended,
+                    'price_input': model.price_input,
+                    'price_output': model.price_output,
+                    'capabilities': model.capabilities
+                }
+                for model in models
+            ]
+        
+        # Fallback to hardcoded models if database is empty
+        default_models = []
+        for model_id, info in MODEL_INFO.items():
+            default_models.append({
+                'id': model_id,
+                'name': info['name'],
+                'provider': info['provider'],
+                'is_multimodal': info.get('is_multimodal', False),
+                'is_recommended': model_id == DEFAULT_MODEL,
+                'price_input': TOKEN_PRICES.get(model_id, {}).get('input', 0.0),
+                'price_output': TOKEN_PRICES.get(model_id, {}).get('output', 0.0)
+            })
+        
+        return default_models
+    except Exception as e:
+        logger.exception(f"Error getting available models: {e}")
+        return []
+
+def get_conversation_by_id(conversation_id):
+    """
+    Get a conversation by ID.
+    
+    Args:
+        conversation_id: ID of the conversation to retrieve
+        
+    Returns:
+        Conversation object or None
+    """
+    try:
+        from models import Conversation
+        return Conversation.query.get(conversation_id)
+    except Exception as e:
+        logger.exception(f"Error getting conversation by ID: {e}")
+        return None
+
+def get_user_conversations(user_id):
+    """
+    Get all conversations for a user.
+    
+    Args:
+        user_id: ID of the user
+        
+    Returns:
+        List of conversation objects
+    """
+    try:
+        from models import Conversation
+        return Conversation.query.filter_by(user_id=user_id).order_by(Conversation.updated_at.desc()).all()
+    except Exception as e:
+        logger.exception(f"Error getting user conversations: {e}")
+        return []
+
+def create_new_conversation(user_id=None, title="New Conversation"):
+    """
+    Create a new conversation.
+    
+    Args:
+        user_id: ID of the user or None for anonymous
+        title: Title of the conversation
+        
+    Returns:
+        New conversation object
+    """
+    try:
+        from models import Conversation
+        
+        # Create a new conversation with the provided user_id
+        conversation = Conversation(
+            user_id=user_id,
+            title=title,
+            created_at=datetime.datetime.utcnow(),
+            updated_at=datetime.datetime.utcnow()
+        )
+        
+        # Add to database and commit
+        db.session.add(conversation)
+        db.session.commit()
+        
+        return conversation
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Error creating new conversation: {e}")
+        return None
+
+def save_message(conversation_id, role, content, user_id=None):
+    """
+    Save a message to the database.
+    
+    Args:
+        conversation_id: ID of the conversation
+        role: Message role (user, assistant, system)
+        content: Message content
+        user_id: ID of the user or None for anonymous
+        
+    Returns:
+        New message object
+    """
+    try:
+        from models import Message, Conversation
+        
+        # Create a new message
+        message = Message(
+            conversation_id=conversation_id,
+            role=role,
+            content=content,
+            created_at=datetime.datetime.utcnow(),
+            metadata={}
+        )
+        
+        # Add to database and commit
+        db.session.add(message)
+        
+        # Update conversation timestamp
+        conversation = Conversation.query.get(conversation_id)
+        if conversation:
+            conversation.updated_at = datetime.datetime.utcnow()
+            
+            # Update title if this is the first user message
+            if role == 'user' and not conversation.title or conversation.title == "New Conversation":
+                # Use the first 30 characters of the message as the title
+                conversation.title = content[:30] + ("..." if len(content) > 30 else "")
+        
+        db.session.commit()
+        
+        return message
+    except Exception as e:
+        db.session.rollback()
+        logger.exception(f"Error saving message: {e}")
+        return None
+
+def get_conversation_messages(conversation_id):
+    """
+    Get all messages for a conversation.
+    
+    Args:
+        conversation_id: ID of the conversation
+        
+    Returns:
+        List of message objects
+    """
+    try:
+        from models import Message
+        return Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
+    except Exception as e:
+        logger.exception(f"Error getting conversation messages: {e}")
+        return []
 
 # Check if we should enable advanced memory features
 ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
@@ -56,6 +451,12 @@ else:
 # The system now processes PDFs directly through OpenRouter PDF capabilities
 
 
+# Import required Flask components
+import os
+import logging
+from flask import Flask, request, render_template, redirect, url_for, jsonify, session, abort, Response, stream_with_context
+from flask_wtf.csrf import CSRFProtect
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -68,9 +469,12 @@ if not app.secret_key:
      app.secret_key = "default-dev-secret-key-please-change"
 
 # Initialize SQLAlchemy with our app
-init_db(app)
+# Import the db instance instead of init_db to avoid duplicate registration
+from database import db
+db.init_app(app)
 
 # Initialize CSRF protection
+from flask_wtf.csrf import CSRFProtect
 csrf = CSRFProtect(app)
 
 # Add global template context variables
@@ -80,6 +484,9 @@ def inject_now():
 
 # Initialize Azure Blob Storage for image uploads
 try:
+    # Import Azure modules with proper error handling
+    from azure.storage.blob import BlobServiceClient, ContentSettings
+    
     # Get connection string and container name from environment variables
     azure_connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
     azure_container_name = os.environ.get("AZURE_STORAGE_CONTAINER_NAME")
@@ -154,6 +561,7 @@ with app.app_context():
         # Continue anyway as this is not critical for application startup
 
 # Initialize LoginManager
+from flask_login import LoginManager
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'

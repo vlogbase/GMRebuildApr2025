@@ -7,11 +7,12 @@ advanced chat parameters like temperature, top_p, etc.
 
 import logging
 import json
-from flask import Blueprint, jsonify, request, current_app, g
+from flask import Blueprint, jsonify, request, current_app, g, session
 from flask_login import current_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
 
-from app import db
+# Import database from the shared instance
+from database import db
 from models import UserChatSettings
 
 # Configure logging

@@ -7,8 +7,8 @@ import json
 import logging
 from flask import Blueprint, request, jsonify, session, current_app
 from flask_login import current_user
-from models import UserChatSettings
 from database import db
+from user_functions import get_user_chat_settings, save_user_settings
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, 
@@ -31,21 +31,18 @@ def check_fallback_preference():
         
         # Check if user is logged in with preferences
         if current_user and current_user.is_authenticated:
-            # Get user's chat settings
-            user_settings = UserChatSettings.query.filter_by(user_id=current_user.id).first()
+            # Get user's chat settings using the utility function
+            chat_settings = get_user_chat_settings(current_user.id)
             
-            if user_settings:
-                auto_fallback = user_settings.auto_fallback_enabled
+            if chat_settings:
+                auto_fallback = chat_settings.get('auto_fallback_enabled', False)
                 logger.info(f"User {current_user.id} fallback preference: {auto_fallback}")
             else:
-                # Create settings with default (auto_fallback=False)
-                user_settings = UserChatSettings(
-                    user_id=current_user.id,
-                    auto_fallback_enabled=False,
-                    session_memory_enabled=True  # Default for memory
-                )
-                db.session.add(user_settings)
-                db.session.commit()
+                # Create default settings
+                settings_dict = {
+                    'auto_fallback_enabled': False
+                }
+                save_user_settings(current_user.id, settings_dict)
                 logger.info(f"Created default fallback preferences for user {current_user.id}")
         
         # Return the preference
@@ -84,27 +81,26 @@ def update_fallback_preference():
         data = request.json
         auto_fallback_enabled = data.get('auto_fallback_enabled', False)
         
-        # Update user's chat settings
-        user_settings = UserChatSettings.query.filter_by(user_id=current_user.id).first()
-        
-        if user_settings:
-            user_settings.auto_fallback_enabled = auto_fallback_enabled
-        else:
-            # Create settings if they don't exist
-            user_settings = UserChatSettings(
-                user_id=current_user.id,
-                auto_fallback_enabled=auto_fallback_enabled,
-                session_memory_enabled=True  # Default for memory
-            )
-            db.session.add(user_settings)
-        
-        db.session.commit()
-        logger.info(f"Updated fallback preference for user {current_user.id}: {auto_fallback_enabled}")
-        
-        return jsonify({
-            'success': True,
+        # Create settings dictionary
+        settings_dict = {
             'auto_fallback_enabled': auto_fallback_enabled
-        })
+        }
+        
+        # Save settings using utility function
+        success = save_user_settings(current_user.id, settings_dict)
+        
+        if success:
+            logger.info(f"Updated fallback preference for user {current_user.id}: {auto_fallback_enabled}")
+            return jsonify({
+                'success': True,
+                'auto_fallback_enabled': auto_fallback_enabled
+            })
+        else:
+            logger.error(f"Failed to save fallback preference for user {current_user.id}")
+            return jsonify({
+                'error': 'Could not update fallback preference',
+                'success': False
+            }), 500
     
     except Exception as e:
         logger.error(f"Error updating fallback preference: {e}")

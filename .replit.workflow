@@ -1,13 +1,26 @@
-run = "python app_workflow.py"
-entrypoint = "app_workflow.py"
-hidden = false
-onBoot = false
+[Start application]
+priority = 50
+autoWatch = false
+showConsoleLogs = true
+shellCmdPre = ""
+shellCmdPost = ""
+autoRun = false
+isModule = false
 
-[env]
-PYTHONUNBUFFERED = "1"
-
-[nix]
-channel = "stable-22_11"
-
-[deployment]
-run = ["sh", "-c", "cd ${REPL_HOME} && python app_workflow.py"]
+[Start application.commands]
+restartable = true
+isVisible = true
+supportShell = false
+isBackspace = false
+isCtrlc = false
+isKeyStrokes = false
+cmd = [
+  "gunicorn", 
+  "main:app", 
+  "-k", "gevent", 
+  "-w", "4", 
+  "--timeout", "300", 
+  "--bind", "0.0.0.0:5000", 
+  "--reuse-port", 
+  "--reload"
+]
