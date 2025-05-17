@@ -387,11 +387,12 @@ def init_scheduler():
             jitter=120  # Add random jitter (in seconds) to avoid thundering herd
         )
         
-        # Run the price fetching job immediately at scheduler startup to ensure we have fresh data
+        # Delay the initial price fetching job to avoid slowing down application startup
+        # This gives the web page time to load before running expensive operations
         scheduler.add_job(
             func=fetch_and_store_openrouter_prices,
             trigger='date',  # Run once at a specific time
-            run_date=datetime.datetime.now() + datetime.timedelta(seconds=15),  # Run 15 seconds after startup
+            run_date=datetime.datetime.now() + datetime.timedelta(seconds=60),  # Run 60 seconds after startup
             id='initial_fetch_model_prices_job',
             replace_existing=True,
             max_instances=1
@@ -482,45 +483,46 @@ scheduler = init_scheduler()
 if not scheduler or not scheduler.running:
     logger.critical("Failed to initialize the scheduler! This may affect model data availability.")
 
-# Initial fetch of model data at startup - crucial for application functionality
-logger.info("Performing initial fetch of OpenRouter models at startup")
+# Defer initial fetch of model data until after the page loads
+# This approach dramatically improves initial page load time
+logger.info("Deferring initial model data fetch to improve page load time")
 try:
     # First ensure proper Python imports
     import traceback
+    import threading
     from price_updater import fetch_and_store_openrouter_prices
     from models import OpenRouterModel
     
     # Create an application context for database operations
     with app.app_context():
-        # Check if we have models in the database
+        # Just check if we have models in the database
         model_count = OpenRouterModel.query.count()
     
     if model_count > 0:
-        logger.info(f"Found {model_count} OpenRouter models in database at startup")
+        logger.info(f"Found {model_count} OpenRouter models in database, will check for updates in background")
+        
+        # If we have models, we can defer the update check to the scheduler job
+        # The 60-second delayed job we configured earlier will handle this
     else:
-        logger.info("No OpenRouter models found in database, fetching from API...")
+        logger.info("No OpenRouter models found in database, will fetch soon in background")
         
-        # Attempt to fetch model prices directly (which includes model info)
-        # This bypasses the scheduler to ensure we get data at startup
-        logger.info("Fetching initial model data directly...")
-        price_success = fetch_and_store_openrouter_prices()
-        
-        if price_success:
-            # Check if models were stored in the database
-            with app.app_context():
-                model_count = OpenRouterModel.query.count()
-            logger.info(f"Successfully fetched and stored {model_count} OpenRouter models in database")
-        else:
-            # If that fails, log a warning - we'll rely on the scheduler to retry soon
-            logger.warning("Initial model fetching failed. The scheduler will retry shortly.")
-    
-    # Final verification of database state - use with app_context to ensure DB operations work
-    with app.app_context():
-        model_count = OpenRouterModel.query.count()
-        if model_count > 0:
-            logger.info(f"OpenRouter model database initialized with {model_count} models")
-        else:
-            logger.warning("No models available in the database. Application may have limited functionality.")
+        # Instead of fetching immediately, we'll set up a background thread to fetch
+        # after a short delay to improve initial page load time
+        def delayed_fetch():
+            # Sleep to allow page to load first
+            time.sleep(20)  # Wait 20 seconds before starting the fetch
+            logger.info("Starting delayed initial model fetch...")
+            try:
+                fetch_and_store_openrouter_prices()
+                # We don't need to verify the result here as the scheduler will retry if needed
+            except Exception as e:
+                logger.error(f"Error in delayed initial model fetch: {e}")
+                
+        # Start the background thread for fetching
+        fetch_thread = threading.Thread(target=delayed_fetch)
+        fetch_thread.daemon = True  # Make thread a daemon so it doesn't block app shutdown
+        fetch_thread.start()
+        logger.info("Scheduled delayed initial model fetch in background thread")
         
 except Exception as e:
     logger.error(f"Critical error fetching model data at startup: {e}")
