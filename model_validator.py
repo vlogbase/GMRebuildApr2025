@@ -110,6 +110,13 @@ def is_model_available(model_id, available_models=None):
     Returns:
         bool: True if the model is available, False otherwise
     """
+    # For testing the fallback confirmation feature:
+    # We'll make a specific model unavailable to trigger the fallback confirmation
+    test_unavailable_model = os.environ.get('TEST_UNAVAILABLE_MODEL', '')
+    if test_unavailable_model and model_id == test_unavailable_model:
+        logger.warning(f"TEST MODE: Forcing model {model_id} to be unavailable for fallback testing")
+        return False
+    
     if available_models is None:
         available_models = get_available_models()
         
