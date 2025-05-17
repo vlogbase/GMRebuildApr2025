@@ -104,13 +104,18 @@ function performIdleCleanup() {
     }
 }
 
-// Enable debug mode by default to help troubleshoot mobile issues
-window.debugMode = true;
+// Debug mode disabled by default for better performance
+// Enable it only when troubleshooting is needed
+window.debugMode = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
-    console.log('User authentication status:', isAuthenticated ? 'Logged in' : 'Not logged in');
+    
+    // Only log if debug mode is on
+    if (window.debugMode) {
+        console.log('User authentication status:', isAuthenticated ? 'Logged in' : 'Not logged in');
+    }
     
     // Get user's credit balance if logged in
     let userCreditBalance = 0;
@@ -122,7 +127,9 @@ document.addEventListener('DOMContentLoaded', function() {
             const matches = balanceText.match(/Credits: \$([0-9.]+)/);
             if (matches && matches[1]) {
                 userCreditBalance = parseFloat(matches[1]);
-                console.log('User credit balance:', userCreditBalance);
+                if (window.debugMode) {
+                    console.log('User credit balance:', userCreditBalance);
+                }
             }
         }
     }
@@ -203,7 +210,12 @@ document.addEventListener('DOMContentLoaded', function() {
         const supportsImages = checkModelCapabilities('image');
         const supportsPDFs = checkModelCapabilities('pdf');
         
-        console.log(`Current model capabilities - Images: ${supportsImages}, PDFs: ${supportsPDFs}`);
+        // Get the file upload input element once
+        const fileUploadInput = document.getElementById('fileUpload');
+        
+        if (window.debugMode) {
+            console.log(`Current model capabilities - Images: ${supportsImages}, PDFs: ${supportsPDFs}`);
+        }
         
         // Update upload buttons visibility/state based on capabilities
         if (imageUploadButton) {

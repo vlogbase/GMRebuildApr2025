@@ -77,26 +77,36 @@
     {% endblock %}
     
     {% block scripts %}
-    <!-- Bootstrap JS Bundle with Popper (critical for UI functionality) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Critical Bootstrap JS Bundle with Popper - add defer to prevent blocking render -->
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Main JavaScript (deferred to not block rendering) -->
+    <!-- Main JavaScript - highest priority, still deferred -->
     <script defer src="{{ url_for('static', filename='js/script.js') }}"></script>
     
-    <!-- Cookie Consent JavaScript (non-critical, can be deferred) -->
-    <script defer src="{{ url_for('static', filename='js/cookie_consent.js') }}"></script>
+    <!-- Lower priority scripts with async to load in parallel without blocking -->
+    <!-- Cookie Consent JavaScript (non-critical) -->
+    <script async defer src="{{ url_for('static', filename='js/cookie_consent.js') }}"></script>
     
     <!-- Mobile responsiveness JavaScript -->
-    <script defer src="{{ url_for('static', filename='js/mobile.js') }}"></script>
+    <script async defer src="{{ url_for('static', filename='js/mobile.js') }}"></script>
     
     <!-- Mobile model selector JavaScript -->
-    <script defer src="{{ url_for('static', filename='js/mobile_model_selector.js') }}"></script>
+    <script async defer src="{{ url_for('static', filename='js/mobile_model_selector.js') }}"></script>
     
     <!-- Message collapsing functionality -->
-    <script defer src="{{ url_for('static', filename='js/message-collapse.js') }}"></script>
+    <script async defer src="{{ url_for('static', filename='js/message-collapse.js') }}"></script>
     
-    <!-- Skimlinks - Automatic Affiliate Link Generator (non-critical, can be deferred) -->
-    <script defer type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js"></script>
+    <!-- Skimlinks - lowest priority, lazy-loaded after page is interactive -->
+    <script>
+    // Delay loading non-essential third-party scripts
+    window.addEventListener('load', function() {
+        setTimeout(function() {
+            var skimScript = document.createElement('script');
+            skimScript.src = 'https://s.skimresources.com/js/44501X1766367.skimlinks.js';
+            document.body.appendChild(skimScript);
+        }, 2000); // Load 2 seconds after page load
+    });
+    </script>
     {% endblock %}
 </body>
 </html>
