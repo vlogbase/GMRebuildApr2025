@@ -9,13 +9,16 @@
                 {% if affiliate and affiliate.status == 'active' %}
                     <!-- For active affiliates who have agreed to terms -->
                     <div class="row mb-4">
-                        <div class="col-md-8">
+                        <div class="col-12"> <!-- Changed from col-md-8 to col-12 for full width -->
                             <div class="mb-4">
                                 <h5 class="mb-3">Your Referral Link</h5>
-                                <div class="input-group">
+                                <!-- Added full width styles to the link container -->
+                                <div class="input-group" style="width: 100%; display: flex;">
+                                    <!-- Added custom styling to ensure text is visible -->
                                     <input type="text" class="form-control" id="referralLink" 
-                                           value="{{ request.host_url }}?ref={{ affiliate.referral_code }}" readonly>
-                                    <button class="btn btn-outline-primary" type="button" id="copyReferralLink">
+                                           value="{{ request.host_url }}?ref={{ affiliate.referral_code }}" readonly
+                                           style="flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background-color: #2c2f33; color: #e4e6eb; border-color: #3f4246;">
+                                    <button class="btn btn-outline-primary" type="button" id="copyReferralLink" style="flex-shrink: 0;">
                                         <i class="fas fa-copy"></i> Copy
                                     </button>
                                 </div>
@@ -43,7 +46,8 @@
                                 </div>
                                 <div class="card-body text-center">
                                     <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ request.host_url|urlencode }}?ref={{ affiliate.referral_code }}" 
-                                         alt="Your Referral QR Code" class="img-fluid mb-2">
+                                         alt="Your Referral QR Code" class="img-fluid mb-2"
+                                         style="max-width: 100%; height: auto;">
                                     <p class="mb-0 small">Scan with a smartphone camera to quickly share your link</p>
                                 </div>
                             </div>
