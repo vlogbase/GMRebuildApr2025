@@ -79,39 +79,55 @@ csrf = CSRFProtect(app)
 def inject_now():
     return {'now': datetime.datetime.now()}
 
-# Initialize Azure Blob Storage for image uploads
-try:
-    # Get connection string and container name from environment variables
-    azure_connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
-    azure_container_name = os.environ.get("AZURE_STORAGE_CONTAINER_NAME")
+# Initialize Azure Blob Storage variables
+blob_service_client = None
+container_client = None
+USE_AZURE_STORAGE = False
+
+def initialize_azure_storage():
+    """
+    Deferred initialization of Azure Blob Storage.
+    This function initializes Azure storage in a background thread to avoid blocking app startup.
+    """
+    global blob_service_client, container_client, USE_AZURE_STORAGE
     
-    if not azure_connection_string or not azure_container_name:
-        raise ValueError("Missing Azure Storage credentials")
-        
-    # Create the BlobServiceClient
-    blob_service_client = BlobServiceClient.from_connection_string(azure_connection_string)
-    
-    # Get a client to interact with the container
-    container_client = blob_service_client.get_container_client(azure_container_name)
-    
-    # Check if container exists, if not create it
     try:
-        container_properties = container_client.get_container_properties()
-        logger.info(f"Container {azure_container_name} exists")
-    except Exception as container_error:
-        logger.info(f"Container {azure_container_name} does not exist, creating it...")
-        container_client = blob_service_client.create_container(azure_container_name)
-        logger.info(f"Container {azure_container_name} created successfully")
-    
-    # Validate by trying to list blobs
-    container_client.list_blobs(maxresults=1)
-    
-    logger.info(f"Azure Blob Storage initialized successfully for container: {azure_container_name}")
-    USE_AZURE_STORAGE = True
-except Exception as e:
-    logger.warning(f"Failed to initialize Azure Blob Storage: {e}")
-    logger.info("Falling back to local storage for image uploads")
-    USE_AZURE_STORAGE = False
+        # Get connection string and container name from environment variables
+        azure_connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+        azure_container_name = os.environ.get("AZURE_STORAGE_CONTAINER_NAME")
+        
+        if not azure_connection_string or not azure_container_name:
+            logger.warning("Missing Azure Storage credentials, will use local storage")
+            return
+            
+        # Create the BlobServiceClient
+        blob_service_client = BlobServiceClient.from_connection_string(azure_connection_string)
+        
+        # Get a client to interact with the container
+        container_client = blob_service_client.get_container_client(azure_container_name)
+        
+        # Check if container exists, if not create it
+        try:
+            container_properties = container_client.get_container_properties()
+            logger.info(f"Container {azure_container_name} exists")
+        except Exception as container_error:
+            logger.info(f"Container {azure_container_name} does not exist, creating it...")
+            container_client = blob_service_client.create_container(azure_container_name)
+            logger.info(f"Container {azure_container_name} created successfully")
+        
+        # Validate by trying to list blobs
+        list(container_client.list_blobs(maxresults=1))
+        
+        logger.info(f"Azure Blob Storage initialized successfully for container: {azure_container_name}")
+        USE_AZURE_STORAGE = True
+    except Exception as e:
+        logger.warning(f"Failed to initialize Azure Blob Storage: {e}")
+        logger.info("Falling back to local storage for image uploads")
+        USE_AZURE_STORAGE = False
+
+# Start Azure Storage initialization in a background thread to avoid blocking startup
+threading.Thread(target=initialize_azure_storage, daemon=True).start()
+logger.info("Azure Blob Storage initialization scheduled in background thread")
 
 
 # Configure database
@@ -122,42 +138,54 @@ if not app.config["SQLALCHEMY_DATABASE_URI"]:
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Create or update database tables for models
+# Create or update core database tables
 with app.app_context():
+    # Only create the essential tables needed for startup
     db.create_all()
+
+# Run database migrations in background to avoid blocking app startup
+def run_background_migrations():
+    """Run database migrations in background to avoid blocking app startup"""
+    logger.info("Starting background migrations...")
+    time.sleep(3)  # Wait for app to start serving requests
     
-    # Run OpenRouter model migrations if needed
-    try:
-        logger.info("Checking if OpenRouter model migrations are needed...")
-        # Check if the OpenRouterModel table exists
-        from sqlalchemy import inspect
-        inspector = inspect(db.engine)
-        if not inspector.has_table('open_router_model'):
-            logger.info("OpenRouterModel table not found, running migrations...")
-            # Import and run the migrations
-            from migrations_openrouter_model import run_migrations
-            success = run_migrations()
-            if success:
-                logger.info("OpenRouter model migrations completed successfully")
+    # Create application context for database operations
+    with app.app_context():
+        # Run OpenRouter model migrations if needed
+        try:
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            if not inspector.has_table('open_router_model'):
+                logger.info("OpenRouterModel table not found, running migrations...")
+                # Import and run the migrations
+                from migrations_openrouter_model import run_migrations
+                success = run_migrations()
+                if success:
+                    logger.info("OpenRouter model migrations completed successfully")
+                else:
+                    logger.warning("OpenRouter model migrations failed, model data may not be available")
             else:
-                logger.warning("OpenRouter model migrations failed, model data may not be available")
-        else:
-            logger.info("OpenRouterModel table already exists, skipping migrations")
-    except Exception as e:
-        logger.exception(f"Error checking or running OpenRouter migrations: {e}")
-        
-    # Run UserChatSettings migration
-    try:
-        logger.info("Running UserChatSettings migration...")
-        from migrations_user_chat_settings import run_migration
-        success = run_migration()
-        if success:
-            logger.info("UserChatSettings migration completed successfully")
-        else:
-            logger.warning("UserChatSettings migration failed")
-    except Exception as e:
-        logger.error(f"Error running UserChatSettings migration: {e}")
-        # Continue anyway as this is not critical for application startup
+                logger.info("OpenRouterModel table already exists, skipping migrations")
+        except Exception as e:
+            logger.exception(f"Error checking or running OpenRouter migrations: {e}")
+            
+        # Run UserChatSettings migration
+        try:
+            logger.info("Running UserChatSettings migration...")
+            from migrations_user_chat_settings import run_migration
+            success = run_migration()
+            if success:
+                logger.info("UserChatSettings migration completed successfully")
+            else:
+                logger.warning("UserChatSettings migration failed")
+        except Exception as e:
+            logger.error(f"Error running UserChatSettings migration: {e}")
+            # Continue anyway as this is not critical for application startup
+
+# Start migrations in background
+migration_thread = threading.Thread(target=run_background_migrations, daemon=True)
+migration_thread.start()
+logger.info("Database migrations scheduled in background thread")
 
 # Initialize LoginManager
 login_manager = LoginManager()
@@ -387,11 +415,12 @@ def init_scheduler():
             jitter=120  # Add random jitter (in seconds) to avoid thundering herd
         )
         
-        # Run the price fetching job immediately at scheduler startup to ensure we have fresh data
+        # Run the initial price check with a longer delay to avoid slowing down page load
+        # This will run only if prices haven't been updated in the last 3 hours
         scheduler.add_job(
             func=fetch_and_store_openrouter_prices,
             trigger='date',  # Run once at a specific time
-            run_date=datetime.datetime.now() + datetime.timedelta(seconds=15),  # Run 15 seconds after startup
+            run_date=datetime.datetime.now() + datetime.timedelta(minutes=2),  # Run 2 minutes after startup
             id='initial_fetch_model_prices_job',
             replace_existing=True,
             max_instances=1
@@ -482,8 +511,8 @@ scheduler = init_scheduler()
 if not scheduler or not scheduler.running:
     logger.critical("Failed to initialize the scheduler! This may affect model data availability.")
 
-# Initial fetch of model data at startup - crucial for application functionality
-logger.info("Performing initial fetch of OpenRouter models at startup")
+# Check if we have models in the database - without fetching new data which slows down startup
+logger.info("Checking for OpenRouter models in database at startup")
 try:
     # First ensure proper Python imports
     import traceback
@@ -497,22 +526,36 @@ try:
     
     if model_count > 0:
         logger.info(f"Found {model_count} OpenRouter models in database at startup")
+        
+        # The scheduler will check if prices need to be refreshed after startup
+        # This avoids blocking the application initialization
+        logger.info("Scheduler will check if model data needs refresh in background")
     else:
-        logger.info("No OpenRouter models found in database, fetching from API...")
+        # For first-time setup only, we need to defer this too
+        logger.info("No OpenRouter models found in database, will schedule background fetch")
         
-        # Attempt to fetch model prices directly (which includes model info)
-        # This bypasses the scheduler to ensure we get data at startup
-        logger.info("Fetching initial model data directly...")
-        price_success = fetch_and_store_openrouter_prices()
+        # Create a background thread to fetch initial data if database is empty
+        # This won't block application startup
+        def fetch_initial_model_data():
+            logger.info("Background thread: Fetching initial model data...")
+            time.sleep(5)  # Give the app some time to initialize
+            try:
+                # Fetch model prices
+                price_success = fetch_and_store_openrouter_prices(force_update=True)
+                
+                if price_success:
+                    # Check if models were stored in the database
+                    with app.app_context():
+                        model_count = OpenRouterModel.query.count()
+                    logger.info(f"Successfully fetched and stored {model_count} OpenRouter models in database")
+                else:
+                    # If that fails, log a warning - we'll rely on the scheduler to retry soon
+                    logger.warning("Initial model fetching failed. The scheduler will retry shortly.")
+            except Exception as e:
+                logger.error(f"Error in background fetch of model data: {e}")
         
-        if price_success:
-            # Check if models were stored in the database
-            with app.app_context():
-                model_count = OpenRouterModel.query.count()
-            logger.info(f"Successfully fetched and stored {model_count} OpenRouter models in database")
-        else:
-            # If that fails, log a warning - we'll rely on the scheduler to retry soon
-            logger.warning("Initial model fetching failed. The scheduler will retry shortly.")
+        # Start the background thread for initial model data fetch
+        threading.Thread(target=fetch_initial_model_data, daemon=True).start()
     
     # Final verification of database state - use with app_context to ensure DB operations work
     with app.app_context():

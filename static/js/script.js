@@ -514,72 +514,82 @@ document.addEventListener('DOMContentLoaded', function() {
         if (userIsLoggedIn) {
             console.log("User is logged in according to server, creating conversation");
             
-            // Schedule cleanup to run when browser is idle (won't impact page load)
-            performIdleCleanup();
+            // Delay cleanup to run after page load is complete
+            setTimeout(() => {
+                performIdleCleanup();
+            }, 3000);
             
             // Check if we have an initial conversation ID from a shared link redirect
             if (typeof initialConversationId !== 'undefined' && initialConversationId) {
                 console.log(`Loading initial conversation ID from redirect: ${initialConversationId}`);
                 currentConversationId = initialConversationId;
                 
-                // Load the specific conversation immediately without fetching all conversations
-                loadConversation(initialConversationId);
-                
-                // Only fetch other conversations after a longer delay (optimization)
+                // Delay loading the specific conversation to improve initial page load time
                 setTimeout(() => {
-                    console.log('Deferred loading of conversation history (after initial conversation loaded)');
-                    fetchConversations(true, true);  // bust cache, metadata only
-                }, 1500);  // Longer delay since we're already showing content
+                    // Load the conversation after a short delay
+                    loadConversation(initialConversationId);
+                    
+                    // Fetch other conversations after a longer delay (optimization)
+                    setTimeout(() => {
+                        console.log('Deferred loading of conversation history (after initial conversation loaded)');
+                        fetchConversations(true, true);  // bust cache, metadata on
+                    }, 2000);
+                }, 700); // Give page time to render first
                 
                 // Skip the other initialization paths since we've already loaded a conversation
                 return;
             }
             // Create a new conversation if we don't have one already
             else if (!currentConversationId) {
-                console.log("No current conversation, creating a new one on page load");
+                console.log("No current conversation, will create a new one after page loads");
                 
-                // Create a new conversation immediately (no blocking cleanup)
-                fetch('/api/create-conversation', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
-                    }
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success && data.conversation) {
-                        // Set the current conversation ID to the new one
-                        currentConversationId = data.conversation.id;
-                        console.log(`Created initial conversation with ID: ${currentConversationId}`);
-                        
-                        // Defer fetching conversations to improve initial load time
-                        setTimeout(() => {
-                            console.log('Deferred loading of conversation list after page render');
-                            fetchConversations(true);
-                        }, 500);
-                    } else {
-                        console.error('Failed to create initial conversation:', data.error || 'Unknown error');
+                // Delay creating a new conversation to improve initial page load
+                setTimeout(() => {
+                    console.log("Creating new conversation after page load");
+                    // Create a new conversation
+                    fetch('/api/create-conversation', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.conversation) {
+                            // Set the current conversation ID to the new one
+                            currentConversationId = data.conversation.id;
+                            console.log(`Created initial conversation with ID: ${currentConversationId}`);
+                            
+                            // Defer fetching conversations to improve initial load time
+                            setTimeout(() => {
+                                console.log('Deferred loading of conversation list after page render');
+                                fetchConversations(true);
+                            }, 500);
+                        } else {
+                            console.error('Failed to create initial conversation:', data.error || 'Unknown error');
+                            // Fetch conversations anyway in case there are existing ones, but defer
+                            setTimeout(() => {
+                                fetchConversations();
+                            }, 500);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error creating initial conversation:', error);
                         // Fetch conversations anyway in case there are existing ones, but defer
                         setTimeout(() => {
                             fetchConversations();
                         }, 500);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error creating initial conversation:', error);
-                    // Fetch conversations anyway in case there are existing ones, but defer
+                    });
+                }, 800); // Delay to improve initial page load
+                
+                } else {
+                    // We already have a conversation ID, just fetch conversations with longer delay
                     setTimeout(() => {
+                        console.log('Deferred loading of conversation history');
                         fetchConversations();
-                    }, 500);
-                });
-            } else {
-                // We already have a conversation ID, just fetch conversations with longer delay
-                setTimeout(() => {
-                    console.log('Deferred loading of conversation history');
-                    fetchConversations();
-                }, 800);
-            }
+                    }, 800);
+                }
         } else {
             console.log("User is not logged in according to server, showing login prompt");
             // For non-logged in users, show the login prompt in the sidebar

@@ -28,19 +28,65 @@ model_prices_cache = {
     'last_updated': None
 }
 
-def fetch_and_store_openrouter_prices() -> bool:
+def should_update_prices() -> bool:
+    """
+    Check if we should update prices based on the last update time.
+    Only fetch new prices if it's been at least 3 hours since the last update.
+    
+    Returns:
+        bool: True if we should update prices, False otherwise
+    """
+    try:
+        # Check the last update time from the database
+        from models import OpenRouterModel
+        
+        # Get the most recent update timestamp from any active model
+        last_model = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).order_by(
+            OpenRouterModel.last_fetched_at.desc()
+        ).first()
+        
+        if last_model and last_model.last_fetched_at:
+            last_update_time = last_model.last_fetched_at
+            now = datetime.utcnow()
+            hours_since_update = (now - last_update_time).total_seconds() / 3600
+            
+            if hours_since_update < 3:
+                logger.info(f"Skipping price update - last update was {hours_since_update:.1f} hours ago")
+                return False
+                
+            logger.info(f"Updating prices - it's been {hours_since_update:.1f} hours since the last update")
+            return True
+        else:
+            # No models in database yet or no timestamp, so we should update
+            logger.info("No existing models with timestamps found - will update prices")
+            return True
+            
+    except Exception as e:
+        logger.warning(f"Error checking last price update time: {e}. Will update prices to be safe.")
+        return True
+
+def fetch_and_store_openrouter_prices(force_update=False) -> bool:
     """
     Fetch current model prices from OpenRouter API and store them in the database.
     
     This function now:
-    1. Fetches models from the OpenRouter API
-    2. Stores them in the database using the OpenRouterModel model
-    3. Also updates the legacy cache for backward compatibility
-    4. Updates the global OPENROUTER_MODELS_INFO variable for consistency
+    1. Checks if an update is needed based on time elapsed since last update (unless force_update=True)
+    2. Fetches models from the OpenRouter API
+    3. Stores them in the database using the OpenRouterModel model
+    4. Also updates the legacy cache for backward compatibility
+    5. Updates the global OPENROUTER_MODELS_INFO variable for consistency
+    
+    Args:
+        force_update: If True, bypass the time check and always update
     
     Returns:
         bool: True if successful, False otherwise
     """
+    # Check if we should update based on time elapsed
+    if not force_update and not should_update_prices():
+        logger.info("Skipping price update - prices are recent enough")
+        return True
+        
     # Mark the start time for performance tracking
     start_time = time.time()
     logger.info("Scheduled job: fetch_and_store_openrouter_prices started")
