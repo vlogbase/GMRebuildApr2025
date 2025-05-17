@@ -1,77 +1,80 @@
-/* Model Fallback Confirmation Dialog Styles */
+/* 
+ * Model Fallback Confirmation Dialog Styles
+ * These styles create an attractive dialog box for model fallback confirmation
+ */
+
 .fallback-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    z-index: 9999;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
     display: flex;
-    justify-content: center;
     align-items: center;
+    justify-content: center;
+    z-index: 1000;
     opacity: 0;
     visibility: hidden;
     transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
-.fallback-overlay.active {
+.fallback-overlay.visible {
     opacity: 1;
     visibility: visible;
 }
 
 .fallback-dialog {
-    background-color: #2a2a2a;
-    border-radius: 10px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-    padding: 25px;
-    max-width: 500px;
+    background-color: var(--bg-color, #fff);
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
     width: 90%;
-    color: #ffffff;
-    transform: translateY(20px);
-    opacity: 0;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    max-width: 400px;
+    padding: 20px;
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
 }
 
-.fallback-overlay.active .fallback-dialog {
+.fallback-overlay.visible .fallback-dialog {
     transform: translateY(0);
-    opacity: 1;
 }
 
-.fallback-header {
+.fallback-dialog-header {
     display: flex;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 15px;
 }
 
-.fallback-header i {
-    font-size: 24px;
-    color: #FFC107;
+.fallback-dialog-header i {
+    color: var(--warning-color, #f59e0b);
+    font-size: 20px;
     margin-right: 10px;
 }
 
-.fallback-title {
-    font-size: 20px;
+.fallback-dialog-title {
+    font-size: 18px;
     font-weight: 600;
+    color: var(--text-color, #111827);
     margin: 0;
 }
 
-.fallback-message {
+.fallback-dialog-content {
+    color: var(--text-secondary, #6b7280);
     margin-bottom: 20px;
+    font-size: 14px;
     line-height: 1.5;
-    color: #e0e0e0;
 }
 
-.fallback-model-details {
-    background-color: #3a3a3a;
+.fallback-model-info {
+    background-color: var(--bg-secondary, #f9fafb);
     border-radius: 6px;
-    padding: 12px 15px;
-    margin: 15px 0;
+    padding: 12px;
+    margin-bottom: 20px;
 }
 
 .fallback-model-row {
     display: flex;
-    align-items: center;
+    justify-content: space-between;
     margin-bottom: 8px;
 }
 
@@ -80,85 +83,76 @@
 }
 
 .fallback-model-label {
-    width: 120px;
     font-weight: 500;
-    color: #aaaaaa;
+    color: var(--text-secondary, #6b7280);
+    font-size: 13px;
 }
 
 .fallback-model-value {
-    flex: 1;
     font-weight: 600;
+    color: var(--text-color, #111827);
+    font-size: 13px;
 }
 
-.fallback-model-value.original {
-    color: #4CAF50;
+.fallback-requested {
+    color: var(--warning-color, #f59e0b);
 }
 
-.fallback-model-value.fallback {
-    color: #FFC107;
+.fallback-alternative {
+    color: var(--success-color, #10b981);
 }
 
-.fallback-buttons {
+.fallback-dialog-actions {
     display: flex;
     justify-content: flex-end;
-    margin-top: 20px;
+    gap: 10px;
 }
 
-.fallback-button {
-    padding: 10px 20px;
+.fallback-btn {
+    padding: 8px 16px;
     border-radius: 6px;
+    font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    border: none;
     transition: background-color 0.2s ease;
-    font-size: 14px;
+    border: none;
 }
 
-.fallback-button.cancel {
-    background-color: transparent;
-    color: #e0e0e0;
-    margin-right: 12px;
-    border: 1px solid #555555;
+.fallback-btn-cancel {
+    background-color: var(--bg-secondary, #f3f4f6);
+    color: var(--text-color, #111827);
 }
 
-.fallback-button.cancel:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+.fallback-btn-cancel:hover {
+    background-color: var(--bg-tertiary, #e5e7eb);
 }
 
-.fallback-button.confirm {
-    background-color: #2196F3;
+.fallback-btn-confirm {
+    background-color: var(--accent-color, #3b82f6);
     color: white;
 }
 
-.fallback-button.confirm:hover {
-    background-color: #1976D2;
+.fallback-btn-confirm:hover {
+    background-color: var(--accent-color-dark, #2563eb);
 }
 
-/* Animations */
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes slideUp {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
-/* Mobile Responsiveness */
+/* For smaller screens */
 @media (max-width: 480px) {
     .fallback-dialog {
         width: 95%;
-        padding: 20px;
+        padding: 15px;
     }
     
-    .fallback-buttons {
-        flex-direction: column;
+    .fallback-dialog-title {
+        font-size: 16px;
     }
     
-    .fallback-button {
-        width: 100%;
-        text-align: center;
-        margin: 0 0 10px 0;
+    .fallback-dialog-content {
+        font-size: 13px;
+    }
+    
+    .fallback-btn {
+        padding: 7px 14px;
+        font-size: 13px;
     }
 }

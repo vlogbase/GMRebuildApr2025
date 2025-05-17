@@ -1,233 +1,271 @@
 /**
- * Model Fallback Dialog
- * 
- * This module provides a confirmation dialog when a selected AI model is unavailable
- * and a fallback model needs to be used instead.
+ * Model Fallback Confirmation Dialog
+ * Handles showing a confirmation dialog when a model is unavailable
+ * and provides options to accept or reject the fallback model.
  */
-(function() {
-    'use strict';
-    
-    // Create namespace for ModelFallback
-    window.ModelFallback = {};
-    
-    // DOM elements (will be initialized when needed)
-    let overlayElement = null;
-    let dialogElement = null;
-    let confirmButton = null;
-    let cancelButton = null;
-    
-    // Callback storage
-    let onAcceptCallback = null;
-    let onRejectCallback = null;
-    
-    // Current message and model
-    let currentMessage = '';
-    let fallbackModelId = '';
-    
-    /**
-     * Create the dialog DOM elements
-     */
-    function createDialogElements() {
-        // Create overlay
-        overlayElement = document.createElement('div');
-        overlayElement.className = 'fallback-overlay';
-        
-        // Create dialog
-        dialogElement = document.createElement('div');
-        dialogElement.className = 'fallback-dialog';
-        
-        // Add dialog content
-        dialogElement.innerHTML = `
-            <div class="fallback-header">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h2 class="fallback-title">Model Unavailable</h2>
-            </div>
-            
-            <div class="fallback-message">
-                The model you selected is currently unavailable. Would you like to use
-                an alternative model instead?
-            </div>
-            
-            <div class="fallback-model-details">
-                <div class="fallback-model-row">
-                    <span class="fallback-model-label">Requested:</span>
-                    <span class="fallback-model-value original" id="original-model">Claude 3 Haiku</span>
-                </div>
-                <div class="fallback-model-row">
-                    <span class="fallback-model-label">Alternative:</span>
-                    <span class="fallback-model-value fallback" id="fallback-model">Gemini Flash</span>
-                </div>
-            </div>
-            
-            <div class="fallback-buttons">
-                <button class="fallback-button cancel" id="fallback-cancel">No, Cancel</button>
-                <button class="fallback-button confirm" id="fallback-confirm">Yes, Use Alternative</button>
-            </div>
-        `;
-        
-        // Add dialog to overlay
-        overlayElement.appendChild(dialogElement);
-        
-        // Add overlay to document
-        document.body.appendChild(overlayElement);
-        
-        // Get buttons
-        confirmButton = document.getElementById('fallback-confirm');
-        cancelButton = document.getElementById('fallback-cancel');
-        
-        // Add event listeners
-        confirmButton.addEventListener('click', handleAccept);
-        cancelButton.addEventListener('click', handleReject);
-        
-        // Close on overlay click (only if clicked outside dialog)
-        overlayElement.addEventListener('click', function(e) {
-            if (e.target === overlayElement) {
-                handleReject();
-            }
-        });
-        
-        // Escape key to close
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && overlayElement.classList.contains('active')) {
-                handleReject();
-            }
-        });
-        
-        console.log('ModelFallback: Dialog elements created');
+
+// Keep track of the pending message and models during fallback
+let pendingFallbackMessage = null;
+let pendingOriginalModel = null;
+let pendingFallbackModel = null;
+
+/**
+ * Initialize the model fallback dialog in the DOM
+ * Creates the dialog HTML structure if it doesn't exist
+ */
+function initFallbackDialog() {
+    // Check if dialog already exists
+    if (document.getElementById('fallback-dialog')) {
+        return;
     }
     
-    /**
-     * Show the fallback confirmation dialog
-     * 
-     * @param {string} originalModel - The name of the originally requested model
-     * @param {string} fallbackModel - The name of the fallback model
-     * @param {string} message - The message to send
-     * @param {string} fallbackId - The ID of the fallback model
-     */
-    window.ModelFallback.showFallbackDialog = function(originalModel, fallbackModel, message, fallbackId) {
-        console.log(`ModelFallback: Showing dialog for ${originalModel} -> ${fallbackModel}`);
-        
-        // Create dialog if it doesn't exist
-        if (!overlayElement) {
-            createDialogElements();
-        }
-        
-        // Set model names
-        document.getElementById('original-model').textContent = originalModel;
-        document.getElementById('fallback-model').textContent = fallbackModel;
-        
-        // Store message and fallback model ID
-        currentMessage = message;
-        fallbackModelId = fallbackId || fallbackModel;
-        
-        // Show dialog
-        overlayElement.classList.add('active');
-        
-        // Setup callbacks
-        setupCallbacks();
-    };
+    // Create the dialog HTML structure
+    const overlay = document.createElement('div');
+    overlay.id = 'fallback-overlay';
+    overlay.className = 'fallback-overlay';
     
-    /**
-     * Setup callbacks for accept/reject actions
-     */
-    function setupCallbacks() {
-        // Accept callback: Send message with fallback model
-        onAcceptCallback = function() {
-            console.log(`ModelFallback: User accepted fallback model ${fallbackModelId}`);
-            if (typeof window.sendChatMessageWithFallback === 'function') {
-                window.sendChatMessageWithFallback(currentMessage, fallbackModelId);
-            } else {
-                console.error('ModelFallback: sendChatMessageWithFallback function not available');
-                alert('Error: Could not send message with fallback model. Please try again.');
-            }
-        };
-        
-        // Reject callback: Do nothing, user needs to select a different model
-        onRejectCallback = function() {
-            console.log('ModelFallback: User rejected fallback model');
-            
-            // Re-enable input and send button, make sure message is available for resending
-            const messageInput = document.getElementById('user-input');
-            const sendButton = document.getElementById('send-button');
-            
-            if (messageInput && currentMessage) {
-                messageInput.value = currentMessage;
-                messageInput.disabled = false;
-                messageInput.focus();
-            }
-            
-            if (sendButton) {
-                sendButton.disabled = false;
-            }
-        };
+    const dialog = document.createElement('div');
+    dialog.id = 'fallback-dialog';
+    dialog.className = 'fallback-dialog';
+    
+    // Dialog header
+    const header = document.createElement('div');
+    header.className = 'fallback-dialog-header';
+    header.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+    
+    const title = document.createElement('h2');
+    title.className = 'fallback-dialog-title';
+    title.textContent = 'Model Unavailable';
+    header.appendChild(title);
+    
+    // Dialog content
+    const content = document.createElement('div');
+    content.className = 'fallback-dialog-content';
+    content.innerHTML = 'The model you selected is currently unavailable. Would you like to use an alternative model instead?';
+    
+    // Model info container
+    const modelInfo = document.createElement('div');
+    modelInfo.className = 'fallback-model-info';
+    
+    // Requested model row
+    const requestedRow = document.createElement('div');
+    requestedRow.className = 'fallback-model-row';
+    
+    const requestedLabel = document.createElement('div');
+    requestedLabel.className = 'fallback-model-label';
+    requestedLabel.textContent = 'Requested:';
+    
+    const requestedValue = document.createElement('div');
+    requestedValue.className = 'fallback-model-value fallback-requested';
+    requestedValue.id = 'fallback-requested-model';
+    requestedValue.textContent = '...';
+    
+    requestedRow.appendChild(requestedLabel);
+    requestedRow.appendChild(requestedValue);
+    
+    // Alternative model row
+    const alternativeRow = document.createElement('div');
+    alternativeRow.className = 'fallback-model-row';
+    
+    const alternativeLabel = document.createElement('div');
+    alternativeLabel.className = 'fallback-model-label';
+    alternativeLabel.textContent = 'Alternative:';
+    
+    const alternativeValue = document.createElement('div');
+    alternativeValue.className = 'fallback-model-value fallback-alternative';
+    alternativeValue.id = 'fallback-alternative-model';
+    alternativeValue.textContent = '...';
+    
+    alternativeRow.appendChild(alternativeLabel);
+    alternativeRow.appendChild(alternativeValue);
+    
+    // Add rows to model info
+    modelInfo.appendChild(requestedRow);
+    modelInfo.appendChild(alternativeRow);
+    
+    // Dialog actions (buttons)
+    const actions = document.createElement('div');
+    actions.className = 'fallback-dialog-actions';
+    
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'fallback-btn fallback-btn-cancel';
+    cancelBtn.id = 'fallback-cancel-btn';
+    cancelBtn.textContent = 'No, Cancel';
+    cancelBtn.setAttribute('aria-label', 'Cancel model fallback');
+    
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'fallback-btn fallback-btn-confirm';
+    confirmBtn.id = 'fallback-confirm-btn';
+    confirmBtn.textContent = 'Yes, Use Alternative';
+    confirmBtn.setAttribute('aria-label', 'Accept model fallback');
+    
+    actions.appendChild(cancelBtn);
+    actions.appendChild(confirmBtn);
+    
+    // Assemble dialog
+    dialog.appendChild(header);
+    dialog.appendChild(content);
+    dialog.appendChild(modelInfo);
+    dialog.appendChild(actions);
+    
+    overlay.appendChild(dialog);
+    document.body.appendChild(overlay);
+    
+    // Add event listeners for the buttons
+    cancelBtn.addEventListener('click', onFallbackCancel);
+    confirmBtn.addEventListener('click', onFallbackConfirm);
+    
+    // Add ESC key handler to close dialog
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && document.getElementById('fallback-overlay').classList.contains('visible')) {
+            onFallbackCancel();
+        }
+    });
+    
+    // Click outside dialog to cancel (optional)
+    overlay.addEventListener('click', function(event) {
+        if (event.target === overlay) {
+            onFallbackCancel();
+        }
+    });
+    
+    console.log('Model fallback dialog initialized');
+}
+
+/**
+ * Show the fallback confirmation dialog
+ * @param {string} requestedModel - The name of the requested model
+ * @param {string} fallbackModel - The name of the suggested fallback model
+ * @param {string} originalModelId - The ID of the original model
+ * @param {string} fallbackModelId - The ID of the fallback model
+ * @param {string} messageText - The message text to send
+ */
+function showFallbackDialog(requestedModel, fallbackModel, originalModelId, fallbackModelId, messageText) {
+    // Store the pending message for later
+    pendingFallbackMessage = messageText;
+    pendingOriginalModel = originalModelId;
+    pendingFallbackModel = fallbackModelId;
+    
+    // Set the model names in the dialog
+    document.getElementById('fallback-requested-model').textContent = requestedModel;
+    document.getElementById('fallback-alternative-model').textContent = fallbackModel;
+    
+    // Show the dialog
+    document.getElementById('fallback-overlay').classList.add('visible');
+    
+    // Focus the confirm button for accessibility
+    setTimeout(() => {
+        document.getElementById('fallback-confirm-btn').focus();
+    }, 100);
+    
+    console.log(`Showing fallback dialog: ${requestedModel} -> ${fallbackModel}`);
+}
+
+/**
+ * Handle clicking the "Cancel" button in the fallback dialog
+ * This leaves the message in the input field for the user to try again
+ */
+function onFallbackCancel() {
+    console.log('Fallback canceled by user');
+    
+    // Hide the dialog
+    document.getElementById('fallback-overlay').classList.remove('visible');
+    
+    // Keep the message in the input field for the user to try again
+    if (pendingFallbackMessage && document.getElementById('chat-input')) {
+        document.getElementById('chat-input').value = pendingFallbackMessage;
+        document.getElementById('chat-input').focus();
     }
     
-    /**
-     * Handle accept button click
-     */
-    function handleAccept() {
-        // Hide dialog
-        overlayElement.classList.remove('active');
-        
-        // Call accept callback
-        if (typeof onAcceptCallback === 'function') {
-            onAcceptCallback();
-        }
-    }
+    // Reset pending state
+    pendingFallbackMessage = null;
+    pendingOriginalModel = null;
+    pendingFallbackModel = null;
+}
+
+/**
+ * Handle clicking the "Confirm" button in the fallback dialog
+ * This sends the message with the fallback model
+ */
+function onFallbackConfirm() {
+    console.log('Fallback confirmed by user');
     
-    /**
-     * Handle reject button click
-     */
-    function handleReject() {
-        // Hide dialog
-        overlayElement.classList.remove('active');
-        
-        // Call reject callback
-        if (typeof onRejectCallback === 'function') {
-            onRejectCallback();
-        }
-    }
+    // Hide the dialog
+    document.getElementById('fallback-overlay').classList.remove('visible');
     
-    /**
-     * Get the user's auto-fallback preference
-     * This checks for the setting in user preferences and returns a boolean
-     * 
-     * @returns {boolean} - Whether auto-fallback is enabled
-     */
-    window.ModelFallback.getUserAutoFallbackPreference = function() {
-        // Default to false (always show confirmation)
-        let autoFallbackEnabled = false;
+    // Send the message with the fallback model
+    if (pendingFallbackMessage && pendingFallbackModel) {
+        console.log(`Sending message with fallback model: ${pendingFallbackModel}`);
         
-        // Try to get from user data
-        try {
-            // Check if we have the preference element in the DOM
-            const autoFallbackElement = document.getElementById('auto-fallback-enabled');
-            if (autoFallbackElement) {
-                autoFallbackEnabled = autoFallbackElement.value === 'true';
-            } else {
-                // If not in DOM, try to get from API (for logged-in users)
-                // This is an async call, but we'll return the default for now
-                // and update it asynchronously
-                fetch('/api/user/chat_settings')
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data && 'auto_fallback_enabled' in data) {
-                            autoFallbackEnabled = data.auto_fallback_enabled;
-                            console.log(`ModelFallback: Got auto_fallback_enabled=${autoFallbackEnabled} from API`);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error fetching chat settings:', error);
-                    });
+        // Use the external sendChatMessageWithFallback function defined in script.js
+        // This assumes that function exists
+        if (typeof sendChatMessageWithFallback === 'function') {
+            sendChatMessageWithFallback(pendingFallbackMessage, pendingFallbackModel);
+        } else {
+            console.error('sendChatMessageWithFallback function not found');
+            // Fallback to regular send if the function doesn't exist
+            if (typeof sendChatMessage === 'function') {
+                sendChatMessage(pendingFallbackMessage, pendingFallbackModel);
             }
-        } catch (error) {
-            console.error('Error getting auto-fallback preference:', error);
         }
-        
-        console.log(`ModelFallback: auto_fallback_enabled=${autoFallbackEnabled}`);
-        return autoFallbackEnabled;
-    };
+    }
     
-    // Log initialization
-    console.log('ModelFallback: Module initialized');
-})();
+    // Reset pending state
+    pendingFallbackMessage = null;
+    pendingOriginalModel = null;
+    pendingFallbackModel = null;
+}
+
+/**
+ * Check if automatic fallback is enabled for the current user
+ * @returns {Promise<boolean>} Whether automatic fallback is enabled
+ */
+async function isAutoFallbackEnabled() {
+    try {
+        const response = await fetch('/api/fallback/check_preference');
+        const data = await response.json();
+        return data.auto_fallback_enabled === true;
+    } catch (error) {
+        console.error('Error checking fallback preference:', error);
+        return false; // Default to disabled if we can't check
+    }
+}
+
+/**
+ * Handle a model fallback situation
+ * @param {Object} fallbackData - Data about the fallback situation
+ * @param {string} messageText - The message text to send
+ * @returns {Promise<boolean>} Whether the fallback was handled automatically
+ */
+async function handleModelFallback(fallbackData, messageText) {
+    console.log('Handling model fallback', fallbackData);
+    
+    // Initialize the dialog if it doesn't exist
+    initFallbackDialog();
+    
+    // Check if auto-fallback is enabled for this user
+    const autoFallbackEnabled = await isAutoFallbackEnabled();
+    
+    if (autoFallbackEnabled) {
+        console.log('Auto-fallback is enabled, sending with fallback model automatically');
+        // Automatically use the fallback model
+        if (typeof sendChatMessageWithFallback === 'function') {
+            sendChatMessageWithFallback(messageText, fallbackData.fallback_model_id);
+            return true;
+        }
+    } else {
+        // Show the confirmation dialog
+        showFallbackDialog(
+            fallbackData.requested_model,
+            fallbackData.fallback_model,
+            fallbackData.original_model_id,
+            fallbackData.fallback_model_id,
+            messageText
+        );
+    }
+    
+    return false;
+}
+
+// Initialize the dialog when the script loads
+document.addEventListener('DOMContentLoaded', initFallbackDialog);

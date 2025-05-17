@@ -811,6 +811,13 @@ def get_object_storage_url(object_name, public=True, expires_in=3600, clean_url=
         return None
 
 # --- Routes ---
+@app.route('/test-fallback')
+def test_fallback():
+    """
+    Test page for the model fallback confirmation feature.
+    """
+    return render_template('test_fallback.html')
+
 @app.route('/')
 def index():
     # Allow non-authenticated users to use the app with limited functionality

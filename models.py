@@ -64,4 +64,26 @@ class Message(db.Model):
     model = db.Column(db.String(120), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     rating = db.Column(db.Integer, nullable=True)
-    metadata = db.Column(db.Text, nullable=True)  # JSON string with additional info
+    # Column removed: message_metadata - not present in actual database schema
+
+class OpenRouterModel(db.Model):
+    """Model to store OpenRouter model information centrally in the database"""
+    __tablename__ = 'open_router_model'
+    
+    model_id = db.Column(db.String(128), primary_key=True)
+    name = db.Column(db.String(128), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    context_length = db.Column(db.Float, nullable=True)
+    input_price_usd_million = db.Column(db.Float, nullable=True)
+    output_price_usd_million = db.Column(db.Float, nullable=True)
+    is_multimodal = db.Column(db.Boolean, default=False)
+    is_free = db.Column(db.Boolean, default=False)
+    supports_reasoning = db.Column(db.Boolean, default=False)
+    supports_pdf = db.Column(db.Boolean, default=False)
+    cost_band = db.Column(db.String(8), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_fetched_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    def __repr__(self):
+        return f"<OpenRouterModel {self.model_id}>"
