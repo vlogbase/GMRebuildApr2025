@@ -860,23 +860,15 @@ def index():
     # Check if there's a specific conversation to load (used for redirects from share links)
     conversation_id = request.args.get('conversation_id')
     
-    # Fetch conversations only if user is logged in
-    conversations = []
-    if is_logged_in:
-        try:
-            from models import Conversation
-            conversations = Conversation.query.filter_by(
-                is_active=True, 
-                user_id=current_user.id
-            ).order_by(Conversation.updated_at.desc()).all()
-        except Exception as e:
-            logger.error(f"Error fetching conversations: {e}")
+    # Don't fetch conversations during initial page load to improve performance
+    # The frontend will request this data via AJAX after the page loads
+    # This significantly improves initial page render time
     
     return render_template(
         'index.html', 
         user=current_user, 
         is_logged_in=is_logged_in,
-        conversations=conversations,
+        conversations=[], # Empty list - data will be loaded via AJAX
         initial_conversation_id=conversation_id
     )
 
@@ -1725,22 +1717,58 @@ def create_conversation():
 def get_conversations():
     """Get all conversations for the current user"""
     try:
+        start_time = time.time()
         from models import Conversation
         
         # Check if this is a request for metadata only (faster loading)
         metadata_only = request.args.get('metadata_only', 'false').lower() == 'true'
         
+        # Support delayed loading to prevent database contention during page load
+        # Frontend can request a delay to improve initial page rendering
+        if request.args.get('delayed', 'false').lower() == 'true':
+            delay_time = min(float(request.args.get('delay', '0.2')), 0.5)  # Cap at 500ms for safety
+            time.sleep(delay_time)
+            logger.info(f"Applied {delay_time}s delay to conversation fetch for staggered loading")
+            
         # Log if this is a cache-busting request
         if request.args.get('_'):
             logger.info(f"Received cache-busting request for conversations at timestamp: {request.args.get('_')}")
         
         # Get all conversations for the current user, ordered by most recently updated first
-        # Force a fresh query from the database (don't use cached results)
-        db.session.expire_all()
-        all_conversations = Conversation.query.filter_by(
-            is_active=True, 
-            user_id=current_user.id
-        ).order_by(Conversation.updated_at.desc()).all()
+        # Optimize query based on what data is actually needed
+        if metadata_only:
+            # Optimized query with only essential fields for faster response
+            conversations_data = db.session.query(
+                Conversation.id, 
+                Conversation.title,
+                Conversation.created_at,
+                Conversation.updated_at,
+                Conversation.share_id
+            ).filter(
+                Conversation.is_active == True,
+                Conversation.user_id == current_user.id
+            ).order_by(Conversation.updated_at.desc()).all()
+            
+            # Convert to list of objects with only needed attributes
+            all_conversations = []
+            for conv in conversations_data:
+                # Create a lightweight object with just the needed fields
+                conversation = type('obj', (object,), {
+                    'id': conv.id,
+                    'title': conv.title,
+                    'created_at': conv.created_at,
+                    'updated_at': conv.updated_at,
+                    'share_id': conv.share_id
+                })
+                all_conversations.append(conversation)
+                
+            logger.debug(f"Optimized conversation query returned {len(all_conversations)} results in {time.time() - start_time:.3f}s")
+        else:
+            # Standard full query when all data is needed
+            all_conversations = Conversation.query.filter_by(
+                is_active=True, 
+                user_id=current_user.id
+            ).order_by(Conversation.updated_at.desc()).all()
         
         if not all_conversations:
             # Create a new conversation for this user if none exist

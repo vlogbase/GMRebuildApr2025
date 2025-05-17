@@ -3832,10 +3832,17 @@ window.resetToDefault = function(presetId) {
         return addMessage('', 'assistant', true);
     }
     
-    // Function to fetch conversations from the backend
-    function fetchConversations(bustCache = false, metadataOnly = true) {
+    // Track if initial conversations have been loaded
+    window.initialConversationsLoaded = false;
+    
+    // Function to fetch conversations from the backend with performance optimizations
+    function fetchConversations(bustCache = false, metadataOnly = true, delayed = false) {
+        // Performance tracking
+        const startTime = performance.now();
+        
         // Make this function globally available for other scripts
         window.fetchConversations = fetchConversations;
+        
         // Check if user is logged in - if not, show login prompt instead of loading
         // userIsLoggedIn is passed from the template
         if (typeof userIsLoggedIn !== 'undefined' && !userIsLoggedIn) {
@@ -3850,15 +3857,23 @@ window.resetToDefault = function(presetId) {
                     </div>
                 `;
             }
-            return; // Exit early if user is not logged in
+            return Promise.resolve([]); // Exit early if user is not logged in
         }
         
-        // Build URL with parameters
-        // 1. Always use cache busting to ensure we get the latest titles
+        // Build URL with optimized parameters
+        // 1. Use cache busting to ensure we get the latest data
         // 2. Use metadata_only to optimize initial loading (titles only, without content)
-        const url = `/conversations?_=${Date.now()}&metadata_only=${metadataOnly}`;
+        // 3. Add delayed parameter to help with staggered loading and prevent database contention
+        let url = `/conversations?_=${Date.now()}&metadata_only=${metadataOnly}`;
         
-        console.log(`Fetching conversations list with cache busting (metadata_only=${metadataOnly})`);
+        // Add delayed loading parameter for non-critical requests
+        // This prevents database contention during page load
+        if (delayed && !window.initialConversationsLoaded) {
+            url += '&delayed=true&delay=0.2';
+            console.log('Using delayed loading for better page performance');
+        }
+        
+        console.log(`Fetching conversations (metadata_only=${metadataOnly})`);
         
         // Show loading indicator if conversations list element exists
         if (conversationsList) {
@@ -3877,7 +3892,7 @@ window.resetToDefault = function(presetId) {
             }
         }
         
-        fetch(url)
+        return fetch(url)
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -3885,16 +3900,21 @@ window.resetToDefault = function(presetId) {
                 return response.json();
             })
             .then(data => {
-                console.log("Got conversations data:", data);
+                // Mark initial conversations as loaded to prevent redundant loading
+                window.initialConversationsLoaded = true;
+                
+                // Performance tracking
+                const fetchTime = performance.now() - startTime;
+                console.log(`Got conversations data in ${fetchTime.toFixed(2)}ms`);
+                
                 if (data.conversations && data.conversations.length > 0) {
-                    // Clear existing conversations
+                    // Clear existing conversations - use efficient DOM operations
                     if (conversationsList) {
-                        console.log("Clearing and rebuilding conversation list...");
-                        conversationsList.innerHTML = '';
+                        // Prepare fragment to avoid multiple DOM repaint operations
+                        const fragment = document.createDocumentFragment();
                         
-                        // Add each conversation to the sidebar
+                        // Add each conversation to the fragment (not directly to DOM)
                         data.conversations.forEach(conversation => {
-                            console.log(`Adding conversation to UI: ID=${conversation.id}, Title='${conversation.title}'`);
                             const conversationItem = document.createElement('div');
                             conversationItem.className = 'conversation-item';
                             conversationItem.dataset.id = conversation.id;
@@ -3902,7 +3922,6 @@ window.resetToDefault = function(presetId) {
                             // Add 'active' class if this is the current conversation
                             if (conversation.id.toString() === currentConversationId?.toString()) {
                                 conversationItem.classList.add('active');
-                                console.log(`Marked conversation ${conversation.id} as active`);
                             }
                             
                             // Create title and date elements to match the HTML structure
