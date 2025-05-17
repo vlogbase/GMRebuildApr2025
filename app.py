@@ -1,16 +1,15 @@
-# --- Complete app.py (Synchronous Version - Reverted & Fixed) ---
-# IMPORTANT: Monkey patching must happen at the very top, before any other imports
-from gevent import monkey
-monkey.patch_all()
+# --- Complete app.py (Module Version - Refactored for main.py) ---
+"""
+Core functionality module for GloriaMundo Chatbot
 
+This file contains the utility functions and global variables for the application.
+It is imported by main.py and routes.py, which handle initialization and routing.
+"""
 import os
 import io
 import logging
-# Configure pymongo logging to reduce noise
-logging.getLogger('pymongo').setLevel(logging.WARNING)
 import json
-import requests # Use requests for synchronous calls
-# import httpx # No longer needed
+import requests
 import uuid
 import time
 import base64
@@ -22,17 +21,16 @@ import atexit
 import traceback
 import sys
 from pathlib import Path
-from PIL import Image  # For image processing
-from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory # Added send_from_directory
-from urllib.parse import urlparse # For URL analysis in image handling
-from werkzeug.datastructures import FileStorage # For file handling in upload routes
-from database import db, init_db
-from flask_login import LoginManager, current_user, login_required, login_user, logout_user
-from flask_wtf.csrf import CSRFProtect
-from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure Blob Storage
-from apscheduler.schedulers.background import BackgroundScheduler
-from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
-from fallback_api import init_fallback_api
+from PIL import Image
+from urllib.parse import urlparse
+from werkzeug.datastructures import FileStorage
+from flask_login import current_user, login_required, login_user, logout_user
+
+# Configure logging
+logger = logging.getLogger(__name__)
+
+# Note: Flask app instance is now imported from main
+# The app instance and database are initialized in main.py, not here
 
 # Check if we should enable advanced memory features
 ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
