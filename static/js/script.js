@@ -1641,32 +1641,75 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Event Listeners
     if (messageInput) {
-        // Function to auto-resize the textarea
-        function autoResizeTextarea() {
+        // Function to auto-resize the textarea - making it globally accessible for mobile.js
+        window.autoResizeTextarea = function() {
             // Reset height to auto first to get the correct scrollHeight
             messageInput.style.height = 'auto';
             
-            // Calculate available space (viewport height minus space for header, padding, and button area)
-            const viewportHeight = window.innerHeight;
+            // Calculate available space based on device type and viewport
+            const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
             const appHeader = document.querySelector('.app-header');
             const headerHeight = appHeader ? appHeader.offsetHeight : 60;
-            const buttonAreaHeight = 50; // Approximate height for buttons and margins
-            const padding = 40; // Extra padding for visual comfort
             
-            // Maximum height available is viewport minus header, button area and padding
-            const maxAvailableHeight = viewportHeight - headerHeight - buttonAreaHeight - padding;
+            // Get other elements that affect the available space
+            const chatInputContainer = messageInput.closest('.chat-input-container');
+            const modelButtonsContainerDesktop = document.querySelector('.model-buttons.desktop-only');
+            const modelButtonsContainerMobile = document.querySelector('.mobile-model-buttons');
+            const messageActionsContainer = document.querySelector('.message-actions-container');
+            const chatMessages = document.getElementById('chat-messages');
             
-            // Get CSS max-height and convert to number
-            const computedStyle = window.getComputedStyle(messageInput);
-            const cssMaxHeight = parseInt(computedStyle.maxHeight, 10);
+            // Calculate height of other UI elements in the input area
+            let otherInputBarElementsHeight = 0;
+            const inputGroup = messageInput.closest('.input-group');
             
-            // Use the smaller of the calculated height or CSS max-height
-            const effectiveMaxHeight = Math.min(maxAvailableHeight, cssMaxHeight || 1000);
+            // Add height of model buttons and other UI elements
+            if (modelButtonsContainerDesktop && modelButtonsContainerDesktop.offsetParent !== null) {
+                otherInputBarElementsHeight += modelButtonsContainerDesktop.offsetHeight;
+                otherInputBarElementsHeight += parseInt(window.getComputedStyle(modelButtonsContainerDesktop).marginBottom || 0);
+            } else if (modelButtonsContainerMobile && modelButtonsContainerMobile.offsetParent !== null) {
+                otherInputBarElementsHeight += modelButtonsContainerMobile.offsetHeight;
+                otherInputBarElementsHeight += parseInt(window.getComputedStyle(modelButtonsContainerMobile).marginBottom || 0);
+            }
+            
+            // Add padding from input group and height of message actions
+            if (inputGroup) {
+                const inputGroupStyle = window.getComputedStyle(inputGroup);
+                otherInputBarElementsHeight += parseInt(inputGroupStyle.paddingTop) + parseInt(inputGroupStyle.paddingBottom);
+                if (messageActionsContainer && messageActionsContainer.offsetParent !== null) {
+                    otherInputBarElementsHeight += messageActionsContainer.offsetHeight;
+                }
+            }
+            
+            // Safety margin for overall layout
+            const safetyMargin = 20;
+            
+            // Calculate total available height for chat and input
+            const availableHeightForChatAndInput = viewportHeight - headerHeight - safetyMargin;
+            
+            // Determine max percentage based on device type
+            const isMobile = window.innerWidth <= 576;
+            const maxPercentageOfViewableArea = isMobile ? 0.75 : 0.50; // 75% for mobile, 50% for desktop
+            
+            // Calculate max height based on percentage of available space
+            const calculatedMaxTextareaHeight = (availableHeightForChatAndInput - otherInputBarElementsHeight) * maxPercentageOfViewableArea;
+            
+            // Ensure the max height is not too small
+            const absoluteMinAllowableMaxHeight = 100;
+            const effectiveMaxHeight = Math.max(absoluteMinAllowableMaxHeight, calculatedMaxTextareaHeight);
+            
+            // Set the CSS max height for the textarea
+            messageInput.style.maxHeight = effectiveMaxHeight + 'px';
             
             // Set the height based on scrollHeight (with minimum and maximum constraints)
             const minHeight = 80; // Minimum height to start with
             const newHeight = Math.max(minHeight, Math.min(messageInput.scrollHeight, effectiveMaxHeight));
             messageInput.style.height = newHeight + 'px';
+            
+            // Dynamically adjust padding-bottom of chatMessages to prevent the last message from being hidden
+            if (chatMessages && chatInputContainer) {
+                const currentInputBarTotalHeight = chatInputContainer.offsetHeight;
+                chatMessages.style.paddingBottom = (currentInputBarTotalHeight + 20) + 'px'; // 20px for extra space
+            }
             
             // Log effective heights in debug mode
             if (window.debugMode) {
@@ -1678,6 +1721,17 @@ document.addEventListener('DOMContentLoaded', function() {
         messageInput.addEventListener('input', function() {
             autoResizeTextarea();
             updateSendButtonState(); // Update send button state when input changes
+        });
+        
+        // Add resize listener for window to adjust textarea size when window changes
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function() {
+                if (typeof window.autoResizeTextarea === 'function') {
+                    window.autoResizeTextarea();
+                }
+            }, 100);
         });
         
         // Handle keydown for Enter key and special cases
@@ -1699,7 +1753,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-            // For Backspace and Delete keys, resize after a brief delay
+            // For Backspace and Delete keys, resize after a brief delay to allow the content to update
             if (event.key === 'Backspace' || event.key === 'Delete') {
                 setTimeout(autoResizeTextarea, 10);
             }

@@ -310,6 +310,10 @@ window.addEventListener('load', function() {
                     // Ensure DOM has settled after resize
                     setTimeout(() => {
                         scrollToShowEntireInput();
+                        // Call the global autoResizeTextarea function if available
+                        if (typeof window.autoResizeTextarea === 'function') {
+                            window.autoResizeTextarea();
+                        }
                     }, 50);
                 } else if (window.visualViewport.height >= initialViewportHeight - 100) {
                     // Keyboard likely closed
@@ -351,6 +355,11 @@ window.addEventListener('load', function() {
                         const footer = document.getElementById('mainFooter');
                         if (footer) {
                             footer.style.display = 'none';
+                        }
+                        
+                        // Call the global autoResizeTextarea function if available
+                        if (typeof window.autoResizeTextarea === 'function') {
+                            setTimeout(() => window.autoResizeTextarea(), 150);
                         }
                         
                         setTimeout(() => {

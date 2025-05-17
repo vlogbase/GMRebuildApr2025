@@ -2442,7 +2442,7 @@ body.account-page .tab-pane {
     color: var(--text-color);
     resize: none;
     min-height: 80px; /* Starting height */
-    max-height: calc(100vh - 200px); /* Maximum height based on viewport minus space for header and buttons */
+    /* The max height is now dynamically set by JavaScript based on viewport percentage */
     outline: none;
     font-size: 15px;
     line-height: 1.5;
