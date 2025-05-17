@@ -33,33 +33,64 @@ def should_update_prices() -> bool:
     Check if we should update prices based on the last update time.
     Only fetch new prices if it's been at least 3 hours since the last update.
     
+    This function now utilizes the startup cache for faster performance during initialization.
+    
     Returns:
         bool: True if we should update prices, False otherwise
     """
     try:
-        # Check the last update time from the database
-        from models import OpenRouterModel
-        
-        # Get the most recent update timestamp from any active model
-        last_model = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).order_by(
-            OpenRouterModel.last_fetched_at.desc()
-        ).first()
-        
-        if last_model and last_model.last_fetched_at:
-            last_update_time = last_model.last_fetched_at
-            now = datetime.utcnow()
-            hours_since_update = (now - last_update_time).total_seconds() / 3600
+        # First check the startup cache for faster startup
+        try:
+            from startup_cache import startup_cache
             
-            if hours_since_update < 3:
-                logger.info(f"Skipping price update - last update was {hours_since_update:.1f} hours ago")
+            # Check if model prices are in cache and still fresh (less than 3 hours old)
+            if not startup_cache.service_needs_update('model_prices', max_age_hours=3.0):
+                logger.info("Using cached model price information (less than 3 hours old)")
                 return False
                 
-            logger.info(f"Updating prices - it's been {hours_since_update:.1f} hours since the last update")
-            return True
-        else:
-            # No models in database yet or no timestamp, so we should update
-            logger.info("No existing models with timestamps found - will update prices")
-            return True
+            logger.info("Model prices cache needs refresh (older than 3 hours)")
+        except ImportError:
+            # Cache module not available, continue with database check
+            logger.debug("Startup cache not available, falling back to database check")
+            pass
+                
+        # Get app context safely without relying on current_app
+        from app import app, db
+        from models import OpenRouterModel
+        
+        # Use app context for database operations
+        with app.app_context():
+            # Get the most recent update timestamp from any active model
+            last_model = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).order_by(
+                OpenRouterModel.last_fetched_at.desc()
+            ).first()
+            
+            if last_model and last_model.last_fetched_at:
+                last_update_time = last_model.last_fetched_at
+                now = datetime.utcnow()
+                hours_since_update = (now - last_update_time).total_seconds() / 3600
+                
+                # Update the startup cache with this information
+                try:
+                    from startup_cache import startup_cache
+                    startup_cache.update_service_data('model_prices', {
+                        'last_db_update': last_update_time.isoformat(),
+                        'hours_since_update': hours_since_update,
+                        'model_count': OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).count()
+                    })
+                except ImportError:
+                    pass
+                
+                if hours_since_update < 3:
+                    logger.info(f"Skipping price update - last update was {hours_since_update:.1f} hours ago")
+                    return False
+                    
+                logger.info(f"Updating prices - it's been {hours_since_update:.1f} hours since the last update")
+                return True
+            else:
+                # No models in database yet or no timestamp, so we should update
+                logger.info("No existing models with timestamps found - will update prices")
+                return True
             
     except Exception as e:
         logger.warning(f"Error checking last price update time: {e}. Will update prices to be safe.")
@@ -82,6 +113,14 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
     Returns:
         bool: True if successful, False otherwise
     """
+    # Import required modules inside function to avoid circular imports
+    # and ensure we have access to the app object
+    try:
+        from app import app, db
+    except ImportError as e:
+        logger.error(f"Failed to import app modules: {e}")
+        return False
+        
     # Check if we should update based on time elapsed
     if not force_update and not should_update_prices():
         logger.info("Skipping price update - prices are recent enough")
@@ -261,10 +300,10 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
         # Store models in the database (This is the new primary storage method)
         try:
             # Import here to avoid circular imports
-            from app import db, app
+            from app import app, db
             from models import OpenRouterModel
             
-            # Create an application context
+            # Use a single application context for all database operations
             with app.app_context():
                 updated_count = 0
                 new_count = 0
@@ -281,7 +320,7 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                 for model_id, model_data in prices.items():
                     try:
                         # Try to get existing model from the database
-                        db_model = db.session.get(OpenRouterModel, model_id)
+                        db_model = OpenRouterModel.query.get(model_id)
                         
                         if db_model:
                             # Update existing model
@@ -388,28 +427,27 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
             
         except ImportError as e:
             logger.error(f"Failed to import database modules: {e}")
+            return False
         except SQLAlchemyError as e:
             logger.error(f"Database error storing models: {e}")
+            # We're already in an app context from the try block above
+            # so we can safely perform the rollback here
             try:
-                # Get app from flask app reference, which is more reliable
-                from app import app
-                with app.app_context():
-                    db.session.rollback()
+                db.session.rollback()
+                logger.info("Successfully rolled back session after SQLAlchemy error")
             except Exception as rollback_error:
                 logger.error(f"Error during session rollback: {rollback_error}")
+            return False
         except Exception as e:
             logger.error(f"Unexpected error storing models in database: {e}")
+            # Similar to above, maintain the current app context
             try:
-                # Using current_app approach (more robust)
-                try:
-                    from app import app
-                    with app.app_context():
-                        db.session.rollback()
-                except Exception:
-                    logger.error("Error during app context rollback")
+                db.session.rollback()
+                logger.info("Successfully rolled back session after unexpected error")
             except Exception as rollback_error:
                 logger.error(f"Error during session rollback: {rollback_error}")
-                
+            return False
+        
         # Database is now the single source of truth, no need to update global caches
         
         # Log successful completion
@@ -439,53 +477,41 @@ def get_model_cost(model_id: str) -> dict:
         dict: Dictionary containing prompt_cost_per_million, completion_cost_per_million, and cost_band
     """
     try:
-        # Try to get model info from the database first (most reliable)
-        # Use current_app from Flask to avoid circular imports
-        from flask import current_app
+        # Import directly to avoid application context issues
+        from app import app, db
+        from models import OpenRouterModel
         
-        try:
-            # Try to use existing app context
+        # Use a proper app context for all database operations
+        with app.app_context():
+            # Get model from database
             db_model = OpenRouterModel.query.filter_by(model_id=model_id).first()
-        except RuntimeError:
-            # Create app context for database operations if needed
-            with current_app.app_context():
-                db_model = OpenRouterModel.query.filter_by(model_id=model_id).first()
                 
-        if db_model:
-            return {
-                'prompt_cost_per_million': db_model.input_price_usd_million,
-                'completion_cost_per_million': db_model.output_price_usd_million,
-                'cost_band': db_model.cost_band or '',
-                'source': 'database'  # For debugging
-            }
+            if db_model:
+                return {
+                    'prompt_cost_per_million': db_model.input_price_usd_million,
+                    'completion_cost_per_million': db_model.output_price_usd_million,
+                    'cost_band': db_model.cost_band or '',
+                    'source': 'database'  # For debugging
+                }
+            
+            # If model not found, try to update prices from API
+            logger.info(f"Model {model_id} not found in database, attempting to refresh prices")
+            
+            # Attempt to update the database with fresh data from the API
+            # We're already in an app context, so this should work properly
+            if fetch_and_store_openrouter_prices(force_update=True):
+                # Try database lookup again after the fresh fetch
+                db_model = OpenRouterModel.query.filter_by(model_id=model_id).first()
+                    
+                if db_model:
+                    return {
+                        'prompt_cost_per_million': db_model.input_price_usd_million,
+                        'completion_cost_per_million': db_model.output_price_usd_million,
+                        'cost_band': db_model.cost_band or '',
+                        'source': 'database_refresh'  # For debugging
+                    }
     except Exception as db_error:
         logger.warning(f"Failed to get model cost from database: {db_error}")
-    
-    # If database lookup failed, try to fetch fresh data from API
-    try:
-        # Attempt to update the database with fresh data from the API
-        fetch_and_store_openrouter_prices()
-        
-        # Try database lookup again after the fresh fetch
-        from flask import current_app
-        
-        try:
-            # Try to use existing app context
-            db_model = OpenRouterModel.query.filter_by(model_id=model_id).first()
-        except RuntimeError:
-            # Create app context for database operations if needed
-            with current_app.app_context():
-                db_model = OpenRouterModel.query.filter_by(model_id=model_id).first()
-                
-        if db_model:
-            return {
-                'prompt_cost_per_million': db_model.input_price_usd_million,
-                'completion_cost_per_million': db_model.output_price_usd_million,
-                'cost_band': db_model.cost_band or '',
-                'source': 'database_refresh'  # For debugging
-            }
-    except Exception as refresh_error:
-        logger.warning(f"Failed to refresh model data from API: {refresh_error}")
     
     # If we still don't have data, use fallback logic
     # Approximate fallback costs based on model name

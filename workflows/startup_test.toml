@@ -1,0 +1,5 @@
+# Startup Performance Test Workflow Configuration
+run = ["python", "startup_test_workflow.py"]
+language = "python3"
+onBoot = false
+persistent = false

@@ -119,49 +119,119 @@ def initialize_azure_storage():
     """
     Deferred initialization of Azure Blob Storage.
     This function initializes Azure storage in a background thread to avoid blocking app startup.
+    
+    The implementation has been optimized to prevent recursion errors and improve performance
+    by using the startup cache to avoid redundant initializations.
     """
     global blob_service_client, container_client, USE_AZURE_STORAGE
+    start_time = time.time()
     
     try:
-        # Get connection string and container name from environment variables
-        azure_connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
-        azure_container_name = os.environ.get("AZURE_STORAGE_CONTAINER_NAME")
-        
-        if not azure_connection_string or not azure_container_name:
-            logger.warning("Missing Azure Storage credentials, will use local storage")
+        # First check if we have already initialized
+        if blob_service_client is not None and container_client is not None:
+            logger.info("Azure Blob Storage already initialized in this session, skipping")
             return
             
-        # Create the BlobServiceClient
-        blob_service_client = BlobServiceClient.from_connection_string(azure_connection_string)
+        # Check startup cache to see if Azure Storage was recently initialized
+        try:
+            from startup_cache import startup_cache
+            
+            # Only check cache if we don't already have initialized clients
+            if not startup_cache.service_needs_update('azure_storage', max_age_hours=24.0):
+                cache_data = startup_cache.get_service_data('azure_storage')
+                logger.info(f"Using cached Azure Storage initialization (age: {cache_data.get('age_hours', 'unknown')} hours)")
+                
+                # We should still initialize the clients, but can skip container validation
+                azure_connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+                azure_container_name = os.environ.get("AZURE_STORAGE_CONTAINER_NAME", "gloriamundoblobs")
+                
+                if not azure_connection_string:
+                    logger.warning("Missing Azure Storage connection string, will use local storage")
+                    return
+                    
+                # Fast initialization path - skip container validation using cache data
+                blob_service_client = BlobServiceClient.from_connection_string(
+                    azure_connection_string,
+                    connection_timeout=10,
+                    retry_total=3
+                )
+                container_client = blob_service_client.get_container_client(azure_container_name)
+                USE_AZURE_STORAGE = True
+                
+                # Exit early since we're using cached validation
+                elapsed = time.time() - start_time
+                logger.info(f"Azure Storage initialized from cache in {elapsed:.2f}s")
+                return
+                
+        except ImportError:
+            # Cache module not available, continue with full initialization
+            logger.debug("Startup cache not available for Azure Storage, performing full initialization")
+            pass
+            
+        # Get connection string and container name from environment variables
+        azure_connection_string = os.environ.get("AZURE_STORAGE_CONNECTION_STRING")
+        azure_container_name = os.environ.get("AZURE_STORAGE_CONTAINER_NAME", "gloriamundoblobs")
+        
+        if not azure_connection_string:
+            logger.warning("Missing Azure Storage connection string, will use local storage")
+            return
+            
+        # Create the BlobServiceClient with explicit timeout settings
+        blob_service_client = BlobServiceClient.from_connection_string(
+            azure_connection_string,
+            connection_timeout=10,  # Shorter connection timeout to prevent blocking
+            retry_total=3           # Limit retries to prevent recursion
+        )
         
         # Get a client to interact with the container
         container_client = blob_service_client.get_container_client(azure_container_name)
         
-        # Check if container exists, if not create it
+        # Check if container exists, if not create it - handle with proper error catching
+        container_exists = False
         try:
-            container_properties = container_client.get_container_properties()
-            logger.info(f"Container {azure_container_name} exists")
+            # Only check properties, don't perform additional operations that might cause recursion
+            container_exists = container_client.exists()
+            if container_exists:
+                logger.info(f"Container {azure_container_name} exists")
+            else:
+                logger.info(f"Container {azure_container_name} does not exist, creating it...")
+                container_client = blob_service_client.create_container(azure_container_name)
+                container_exists = True
+                logger.info(f"Container {azure_container_name} created successfully")
         except Exception as container_error:
-            logger.info(f"Container {azure_container_name} does not exist, creating it...")
-            container_client = blob_service_client.create_container(azure_container_name)
-            logger.info(f"Container {azure_container_name} created successfully")
+            logger.warning(f"Error checking container: {container_error}")
+            # Try to create the container anyway as a fallback
+            try:
+                container_client = blob_service_client.create_container(azure_container_name)
+                container_exists = True
+                logger.info(f"Created container {azure_container_name} in fallback mode")
+            except Exception as create_error:
+                logger.error(f"Could not create container: {create_error}")
+                raise
         
-        # Validate by trying to list blobs
-        list(container_client.list_blobs(maxresults=1))
-        
-        logger.info(f"Azure Blob Storage initialized successfully for container: {azure_container_name}")
+        # Update the global flag
         USE_AZURE_STORAGE = True
+        elapsed = time.time() - start_time
+        logger.info(f"Azure Blob Storage initialized successfully in {elapsed:.2f}s for container: {azure_container_name}")
+        
+        # Update the startup cache
+        try:
+            from startup_cache import startup_cache
+            startup_cache.update_service_data('azure_storage', {
+                'container_name': azure_container_name,
+                'container_exists': container_exists,
+                'initialization_time': elapsed,
+                'age_hours': 0.0
+            })
+        except ImportError:
+            pass
+            
     except Exception as e:
         logger.warning(f"Failed to initialize Azure Blob Storage: {e}")
         logger.info("Falling back to local storage for image uploads")
         USE_AZURE_STORAGE = False
 
-# Start Azure Storage initialization in a background thread to avoid blocking startup
-threading.Thread(target=initialize_azure_storage, daemon=True).start()
-logger.info("Azure Blob Storage initialization scheduled in background thread")
-
-
-# Configure database
+# Configure database first since it's critical
 init_app(app)  # Initialize database with the app (from database.py)
 if not app.config["SQLALCHEMY_DATABASE_URI"]:
     logger.error("DATABASE_URL environment variable not set.")
@@ -169,54 +239,37 @@ if not app.config["SQLALCHEMY_DATABASE_URI"]:
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-# Create or update core database tables
+# Create essential tables needed for startup - these can't be deferred
 with app.app_context():
-    # Only create the essential tables needed for startup
     db.create_all()
+    logger.info("Essential database tables created")
 
-# Run database migrations in background to avoid blocking app startup
-def run_background_migrations():
-    """Run database migrations in background to avoid blocking app startup"""
-    logger.info("Starting background migrations...")
-    time.sleep(3)  # Wait for app to start serving requests
+# Initialize the background initialization system for non-blocking startup
+# This replaces individual threads with a coordinated initialization system
+try:
+    # Import the background initialization module
+    from app_initialization import setup_background_initialization
     
-    # Create application context for database operations
-    with app.app_context():
-        # Run OpenRouter model migrations if needed
-        try:
-            from sqlalchemy import inspect
-            inspector = inspect(db.engine)
-            if not inspector.has_table('open_router_model'):
-                logger.info("OpenRouterModel table not found, running migrations...")
-                # Import and run the migrations
-                from migrations_openrouter_model import run_migrations
-                success = run_migrations()
-                if success:
-                    logger.info("OpenRouter model migrations completed successfully")
-                else:
-                    logger.warning("OpenRouter model migrations failed, model data may not be available")
-            else:
-                logger.info("OpenRouterModel table already exists, skipping migrations")
-        except Exception as e:
-            logger.exception(f"Error checking or running OpenRouter migrations: {e}")
-            
-        # Run UserChatSettings migration
-        try:
-            logger.info("Running UserChatSettings migration...")
-            from migrations_user_chat_settings import run_migration
-            success = run_migration()
-            if success:
-                logger.info("UserChatSettings migration completed successfully")
-            else:
-                logger.warning("UserChatSettings migration failed")
-        except Exception as e:
-            logger.error(f"Error running UserChatSettings migration: {e}")
-            # Continue anyway as this is not critical for application startup
-
-# Start migrations in background
-migration_thread = threading.Thread(target=run_background_migrations, daemon=True)
-migration_thread.start()
-logger.info("Database migrations scheduled in background thread")
+    # Start the background initialization process
+    background_initializer = setup_background_initialization()
+    logger.info("Background initialization system started")
+    
+    # Store the initializer in app config for access elsewhere if needed
+    app.config['BACKGROUND_INITIALIZER'] = background_initializer
+    
+except Exception as e:
+    logger.error(f"Error setting up background initialization: {e}")
+    logger.warning("Continuing with basic startup - some features may be unavailable")
+    
+    # Fall back to minimal initialization to ensure app can start
+    # Start Azure Storage initialization in a simple background thread as fallback
+    azure_init_thread = threading.Thread(
+        target=initialize_azure_storage, 
+        daemon=True,
+        name="azure-storage-init-fallback"
+    )
+    azure_init_thread.start()
+    logger.info("Fallback Azure Blob Storage initialization scheduled")
 
 # Initialize LoginManager
 login_manager = LoginManager()
