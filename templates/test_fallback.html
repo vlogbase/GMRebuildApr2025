@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Model Fallback Test{% endblock %}
+
+{% block styles %}
+    {{ super() }}
+    <style>
+        .test-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background-color: var(--bg-color-secondary);
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+        }
+        
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background-color: var(--bg-color);
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: var(--text-color);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+        
+        .test-button {
+            margin: 5px;
+        }
+        
+        .test-result {
+            margin-top: 15px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            background-color: var(--bg-color-secondary);
+            min-height: 100px;
+        }
+        
+        .test-settings {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+        
+        .setting-group {
+            flex: 1;
+            min-width: 200px;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="test-container">
+    <h1>Model Fallback Confirmation Test</h1>
+    <p class="text-muted">This page allows you to test the model fallback confirmation functionality.</p>
+    
+    <div class="test-section">
+        <h3>Test Settings</h3>
+        <div class="test-settings">
+            <div class="setting-group">
+                <label for="requestedModel" class="form-label">Requested Model:</label>
+                <select id="requestedModel" class="form-select">
+                    <option value="anthropic/claude-3-haiku-20240307">Claude 3 Haiku</option>
+                    <option value="openai/gpt-4o-2024-05-13">GPT-4o</option>
+                    <option value="anthropic/claude-3-opus-20240229">Claude 3 Opus</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label for="fallbackModel" class="form-label">Fallback Model:</label>
+                <select id="fallbackModel" class="form-select">
+                    <option value="openai/gpt-4o-2024-05-13">GPT-4o</option>
+                    <option value="anthropic/claude-3-sonnet-20240229">Claude 3 Sonnet</option>
+                    <option value="meta-llama/llama-3-8b">Llama 3 8B</option>
+                </select>
+            </div>
+            
+            <div class="setting-group">
+                <label for="testMessage" class="form-label">Test Message:</label>
+                <input type="text" id="testMessage" class="form-control" value="This is a test message to trigger model fallback">
+            </div>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>Test Cases</h3>
+        <button id="testFallbackDialog" class="btn btn-primary test-button">Test Fallback Dialog</button>
+        <button id="testAcceptFallback" class="btn btn-success test-button">Test Accept Fallback</button>
+        <button id="testRejectFallback" class="btn btn-danger test-button">Test Reject Fallback</button>
+        <button id="testAutoFallback" class="btn btn-info test-button">Test Auto-Fallback Setting</button>
+        
+        <div class="test-result" id="testResult">
+            <p class="text-muted">Test results will appear here...</p>
+        </div>
+    </div>
+    
+    <div class="test-section">
+        <h3>User Preferences</h3>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="autoFallbackEnabled">
+            <label class="form-check-label" for="autoFallbackEnabled">
+                Automatically fall back when models are unavailable
+            </label>
+            <small class="form-text text-muted d-block mt-1">
+                When enabled, if your selected model is unavailable, the system will automatically use the best available alternative.
+                When disabled, you'll be asked to confirm before using a different model.
+            </small>
+        </div>
+        
+        <button id="savePreference" class="btn btn-primary mt-3">Save Preference</button>
+        <button id="getPreference" class="btn btn-secondary mt-3">Get Current Preference</button>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get DOM elements
+            const requestedModelSelect = document.getElementById('requestedModel');
+            const fallbackModelSelect = document.getElementById('fallbackModel');
+            const testMessageInput = document.getElementById('testMessage');
+            const testResult = document.getElementById('testResult');
+            const autoFallbackCheckbox = document.getElementById('autoFallbackEnabled');
+            
+            // Test buttons
+            document.getElementById('testFallbackDialog').addEventListener('click', testFallbackDialog);
+            document.getElementById('testAcceptFallback').addEventListener('click', testAcceptFallback);
+            document.getElementById('testRejectFallback').addEventListener('click', testRejectFallback);
+            document.getElementById('testAutoFallback').addEventListener('click', testAutoFallback);
+            
+            // Preference buttons
+            document.getElementById('savePreference').addEventListener('click', savePreference);
+            document.getElementById('getPreference').addEventListener('click', getPreference);
+            
+            // Load current preference on page load
+            getPreference();
+            
+            // Function to test the fallback dialog
+            function testFallbackDialog() {
+                showTestResult('Testing fallback dialog...');
+                
+                const requestedModel = requestedModelSelect.value;
+                const requestedModelName = requestedModelSelect.options[requestedModelSelect.selectedIndex].text;
+                const fallbackModel = fallbackModelSelect.value;
+                const fallbackModelName = fallbackModelSelect.options[fallbackModelSelect.selectedIndex].text;
+                const message = testMessageInput.value;
+                
+                if (typeof window.showFallbackModal === 'function') {
+                    window.showFallbackModal(
+                        {
+                            requested_model: requestedModelName,
+                            fallback_model: fallbackModelName,
+                            original_model_id: requestedModel,
+                            fallback_model_id: fallbackModel
+                        },
+                        {
+                            message: message,
+                            model: requestedModel
+                        }
+                    );
+                    
+                    showTestResult(`Fallback dialog shown successfully:
+                        <ul>
+                            <li>Requested model: ${requestedModelName} (${requestedModel})</li>
+                            <li>Fallback model: ${fallbackModelName} (${fallbackModel})</li>
+                            <li>Test message: "${message}"</li>
+                        </ul>`);
+                } else {
+                    showTestResult('ERROR: window.showFallbackModal function not found! Make sure model_fallback.js is loaded.', true);
+                }
+            }
+            
+            // Function to test accepting fallback
+            function testAcceptFallback() {
+                testFallbackDialog();
+                
+                setTimeout(() => {
+                    const useButton = document.getElementById('use-fallback');
+                    if (useButton) {
+                        useButton.click();
+                        showTestResult('Clicked "Use Fallback" button. Check console for the result.', false);
+                    } else {
+                        showTestResult('ERROR: Could not find the "Use Fallback" button.', true);
+                    }
+                }, 500);
+            }
+            
+            // Function to test rejecting fallback
+            function testRejectFallback() {
+                testFallbackDialog();
+                
+                setTimeout(() => {
+                    const cancelButton = document.getElementById('cancel-fallback');
+                    if (cancelButton) {
+                        cancelButton.click();
+                        showTestResult('Clicked "Cancel" button. The dialog should close and the message should return to the input box.', false);
+                    } else {
+                        showTestResult('ERROR: Could not find the "Cancel" button.', true);
+                    }
+                }, 500);
+            }
+            
+            // Function to test auto-fallback setting
+            function testAutoFallback() {
+                // Toggle the auto-fallback checkbox
+                autoFallbackCheckbox.checked = !autoFallbackCheckbox.checked;
+                
+                // Save the preference
+                savePreference();
+                
+                // Test the fallback dialog
+                setTimeout(() => {
+                    testFallbackDialog();
+                }, 500);
+                
+                showTestResult(`Auto-fallback set to: ${autoFallbackCheckbox.checked ? 'Enabled' : 'Disabled'}. 
+                    Testing fallback dialog with this setting.`, false);
+            }
+            
+            // Function to save user preference
+            function savePreference() {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+                const autoFallbackEnabled = autoFallbackCheckbox.checked;
+                
+                fetch('/api/user/chat_settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        auto_fallback_enabled: autoFallbackEnabled
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showTestResult(`Preference saved successfully. Auto-fallback is now ${autoFallbackEnabled ? 'enabled' : 'disabled'}.`, false);
+                    } else {
+                        showTestResult(`ERROR: Failed to save preference: ${data.error || 'Unknown error'}`, true);
+                    }
+                })
+                .catch(error => {
+                    showTestResult(`ERROR: Failed to save preference: ${error.message}`, true);
+                });
+            }
+            
+            // Function to get current user preference
+            function getPreference() {
+                fetch('/api/user/chat_settings')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success && data.settings) {
+                        const autoFallbackEnabled = data.settings.auto_fallback_enabled || false;
+                        autoFallbackCheckbox.checked = autoFallbackEnabled;
+                        showTestResult(`Current preference loaded: Auto-fallback is ${autoFallbackEnabled ? 'enabled' : 'disabled'}.`, false);
+                    } else {
+                        showTestResult(`ERROR: Failed to get preference: ${data.error || 'Unknown error'}`, true);
+                    }
+                })
+                .catch(error => {
+                    showTestResult(`ERROR: Failed to get preference: ${error.message}`, true);
+                });
+            }
+            
+            // Helper function to show test results
+            function showTestResult(message, isError = false) {
+                testResult.innerHTML = `<div class="${isError ? 'text-danger' : 'text-info'}">${message}</div>`;
+            }
+        });
+    </script>
+{% endblock %}
