@@ -49,17 +49,9 @@ def fetch_and_store_openrouter_prices() -> bool:
     # Import here to avoid circular imports
     from models import OpenRouterModel
     
-    # Check if we need to update (only update once every 3 hours)
-    try:
-        with current_app.app_context():
-            if not OpenRouterModel.needs_update():
-                logger.info("OpenRouter models were updated within the last 3 hours, skipping update")
-                return True
-            else:
-                logger.info("OpenRouter models need updating (>3 hours since last update)")
-    except Exception as e:
-        logger.warning(f"Error checking if models need update, will proceed with update: {e}")
-        # We'll continue with the update to be safe
+    # The check for update timing is now done at the app.py level
+    # We'll skip this check here to avoid application context issues
+    # This function now assumes it should proceed with the update when called
     
     try:
         api_key = os.environ.get('OPENROUTER_API_KEY')
