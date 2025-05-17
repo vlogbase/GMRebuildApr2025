@@ -29,6 +29,8 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <!-- Cookie Consent CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/cookie_consent.css') }}">
+    <!-- Model Fallback Modal CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/model_fallback.css') }}">
     {% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -94,6 +96,9 @@
     
     <!-- Message collapsing functionality -->
     <script defer src="{{ url_for('static', filename='js/message-collapse.js') }}"></script>
+    
+    <!-- Model fallback confirmation dialog -->
+    <script defer src="{{ url_for('static', filename='js/model_fallback.js') }}"></script>
     
     <!-- Skimlinks - Automatic Affiliate Link Generator (non-critical, can be deferred) -->
     <script defer type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js"></script>

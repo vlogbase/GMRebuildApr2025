@@ -2011,6 +2011,39 @@ def chat(): # Synchronous function
                     available_models
                 )
                 
+                # Check if we should automatically fallback or ask for confirmation
+                should_auto_fallback = False
+                if current_user.is_authenticated:
+                    # Check user's preference for auto-fallback
+                    from models import UserChatSettings
+                    user_settings = UserChatSettings.query.filter_by(user_id=current_user.id).first()
+                    if user_settings and user_settings.auto_fallback_enabled:
+                        should_auto_fallback = True
+                
+                if not should_auto_fallback and fallback_model:
+                    # Use the streaming response format to indicate fallback is needed but requires confirmation
+                    logger.info(f"Model {openrouter_model} unavailable - suggesting fallback to {fallback_model}")
+                    
+                    # Find the human-readable names for both models
+                    original_model_name = openrouter_model.split('/')[-1] if '/' in openrouter_model else openrouter_model
+                    fallback_model_name = fallback_model.split('/')[-1] if '/' in fallback_model else fallback_model
+                    
+                    # Return a streaming response with a model_fallback event
+                    def generate_fallback_notification():
+                        fallback_json = json.dumps({
+                            'type': 'model_fallback',
+                            'requested_model': original_model_name,
+                            'fallback_model': fallback_model_name,
+                            'original_model_id': openrouter_model,
+                            'fallback_model_id': fallback_model
+                        })
+                        yield f'data: {fallback_json}\n\n'
+                    
+                    return app.response_class(
+                        generate_fallback_notification(),
+                        mimetype='text/event-stream'
+                    )
+                
                 if fallback_model:
                     logger.info(f"Using fallback model: {fallback_model} instead of {openrouter_model}")
                     openrouter_model = fallback_model

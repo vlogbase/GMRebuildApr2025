@@ -4303,7 +4303,35 @@ window.resetToDefault = function(presetId) {
                                 console.log("==> Received SSE Data:", parsedData); // ADD THIS LOG
                                 
                                 // --- Handle different data types ---
-                                if (parsedData.type === 'error' || parsedData.error) {
+                                if (parsedData.type === 'model_fallback') {
+                                    console.log("==> Processing type: model_fallback");
+                                    
+                                    // Remove the empty assistant message
+                                    if (assistantMessageElement && assistantMessageElement.parentNode) {
+                                        assistantMessageElement.parentNode.removeChild(assistantMessageElement);
+                                    }
+                                    
+                                    // Show fallback confirmation dialog
+                                    if (typeof window.showFallbackModal === 'function') {
+                                        window.showFallbackModal({
+                                            requested_model: parsedData.requested_model,
+                                            fallback_model: parsedData.fallback_model
+                                        }, {
+                                            message: message,
+                                            model: modelId
+                                        });
+                                    } else {
+                                        console.error("Fallback modal function not available");
+                                    }
+                                    
+                                    // Re-enable input and send button
+                                    const messageInput = document.getElementById('user-input');
+                                    const sendButton = document.getElementById('send-button');
+                                    if (messageInput) messageInput.disabled = false;
+                                    if (sendButton) sendButton.disabled = false;
+                                    
+                                    return; // Stop processing on fallback
+                                } else if (parsedData.type === 'error' || parsedData.error) {
                                     console.log("==> Processing type: error"); // ADD THIS LOG
                                     const errorMsg = parsedData.error || 'Unknown error occurred';
                                     messageContent.innerHTML = `<span class="error">Error: ${errorMsg}</span>`;

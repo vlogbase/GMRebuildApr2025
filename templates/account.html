@@ -561,6 +561,15 @@
                         </small>
                     </div>
                     
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="autoFallbackEnabled" {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}checked{% endif %}>
+                        <label class="form-check-label" for="autoFallbackEnabled">Automatically fall back when models are unavailable</label>
+                        <small class="form-text text-muted d-block mt-1">
+                            When enabled, if your selected model is unavailable, the system will automatically use the best available alternative.
+                            When disabled, you'll be asked to confirm before using a different model.
+                        </small>
+                    </div>
+                    
                     <!-- Advanced Chat Preferences Section -->
                     <div class="mt-4">
                         <h5 class="d-flex align-items-center">
@@ -1928,6 +1937,60 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error updating memory preference:', error);
                 showToast('error', 'An error occurred while saving your preference');
                 enableMemoryToggle.checked = !enableMemory;
+            });
+        });
+    }
+    
+    // Auto-fallback preference toggle handler
+    const autoFallbackToggle = document.getElementById('autoFallbackEnabled');
+    if (autoFallbackToggle) {
+        // Load initial state from user settings
+        fetch('/api/user/chat_settings')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.settings && data.settings.auto_fallback_enabled !== undefined) {
+                    autoFallbackToggle.checked = data.settings.auto_fallback_enabled;
+                }
+            })
+            .catch(error => {
+                console.error('Error loading auto-fallback setting:', error);
+            });
+        
+        // Handle toggle changes
+        autoFallbackToggle.addEventListener('change', function() {
+            const autoFallbackEnabled = this.checked;
+            
+            // Show toggle indicator
+            const toggleStatus = autoFallbackEnabled ? 'enabled' : 'disabled';
+            const toastMessage = `Automatic model fallback ${toggleStatus}`;
+            
+            // Show loading state
+            showToast('info', 'Saving preference...');
+            
+            // Call API to update preference
+            fetch('/api/user/chat_settings', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ auto_fallback_enabled: autoFallbackEnabled })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Show success notification
+                    showToast('success', toastMessage);
+                } else {
+                    // Show error and revert toggle
+                    showToast('error', 'Failed to update preference: ' + (data.error || 'Unknown error'));
+                    autoFallbackToggle.checked = !autoFallbackEnabled;
+                }
+            })
+            .catch(error => {
+                console.error('Error updating auto-fallback preference:', error);
+                showToast('error', 'An error occurred while saving your preference');
+                autoFallbackToggle.checked = !autoFallbackEnabled;
             });
         });
     }

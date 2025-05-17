@@ -157,6 +157,9 @@ class UserChatSettings(db.Model):
     stop_sequences = db.Column(db.Text, nullable=True, default=None)  # JSON-encoded list of stop sequences
     response_format = db.Column(db.String(20), nullable=True, default=None)  # text, json
     
+    # Chat UI preferences
+    auto_fallback_enabled = db.Column(db.Boolean, nullable=False, default=False)  # Whether to auto-fallback to another model when selected model is unavailable
+    
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -197,6 +200,15 @@ class UserChatSettings(db.Model):
             settings_dict['response_format'] = {"type": self.response_format}
             
         return settings_dict
+        
+    def to_ui_dict(self):
+        """Convert settings to dictionary for UI settings, includes all UI preferences"""
+        ui_dict = self.to_dict()
+        
+        # Add UI preferences
+        ui_dict['auto_fallback_enabled'] = self.auto_fallback_enabled
+        
+        return ui_dict
         
     def __repr__(self):
         return f'<UserChatSettings for User {self.user_id}>'
