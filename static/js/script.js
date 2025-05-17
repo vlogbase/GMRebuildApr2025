@@ -104,6 +104,9 @@ function performIdleCleanup() {
     }
 }
 
+// Enable debug mode by default to help troubleshoot mobile issues
+window.debugMode = true;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
@@ -1694,11 +1697,41 @@ document.addEventListener('DOMContentLoaded', function() {
             const calculatedMaxTextareaHeight = (availableHeightForChatAndInput - otherInputBarElementsHeight) * maxPercentageOfViewableArea;
             
             // Ensure the max height is not too small
-            const absoluteMinAllowableMaxHeight = 100;
+            const absoluteMinAllowableMaxHeight = 500; // Increased from 100px to 500px
             const effectiveMaxHeight = Math.max(absoluteMinAllowableMaxHeight, calculatedMaxTextareaHeight);
             
-            // Set the CSS max height for the textarea
-            messageInput.style.maxHeight = effectiveMaxHeight + 'px';
+            // Debug logging for mobile
+            if (isMobile && window.debugMode) {
+                console.log("MOBILE autoResizeTextarea:", {
+                    viewportHeight,
+                    headerHeight,
+                    otherInputBarElementsHeight,
+                    availableHeightForChatAndInput,
+                    calculatedMaxTextareaHeight,
+                    effectiveMaxHeight,
+                    currentScrollHeight: messageInput.scrollHeight,
+                    minHeight: 80 // minimum height value
+                });
+            }
+            
+            // Special handling for mobile
+            if (isMobile) {
+                // For mobile, use a more aggressive approach to ensure textarea expands properly
+                const isKeyboardVisible = window.visualViewport && 
+                    window.visualViewport.height < window.innerHeight - 100;
+                
+                if (isKeyboardVisible) {
+                    console.log("Mobile keyboard is visible, setting fixed max height");
+                    // When keyboard is visible, use our minimum guaranteed height
+                    messageInput.style.maxHeight = absoluteMinAllowableMaxHeight + 'px';
+                } else {
+                    // When keyboard is not visible, use the calculated height
+                    messageInput.style.maxHeight = effectiveMaxHeight + 'px';
+                }
+            } else {
+                // For desktop, use the calculated max height
+                messageInput.style.maxHeight = effectiveMaxHeight + 'px';
+            }
             
             // Set the height based on scrollHeight (with minimum and maximum constraints)
             const minHeight = 80; // Minimum height to start with

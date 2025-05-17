@@ -288,9 +288,17 @@ window.addEventListener('load', function() {
             
             // Store initial viewport height
             initialViewportHeight = window.visualViewport.height;
+            console.log('Mobile: Initial viewport height:', initialViewportHeight);
             
             // Listen for viewport resize events (which happen when keyboard appears/disappears)
             window.visualViewport.addEventListener('resize', () => {
+                // Log the viewport height change for debugging
+                console.log('Mobile: Viewport height changed:', {
+                    previous: initialViewportHeight,
+                    current: window.visualViewport.height,
+                    difference: initialViewportHeight - window.visualViewport.height
+                });
+                
                 // Check if focused element is our input and viewport height decreased significantly
                 if (document.activeElement === messageInput && 
                     window.visualViewport.height < initialViewportHeight - 100) { // 100px threshold for keyboard
@@ -359,7 +367,11 @@ window.addEventListener('load', function() {
                         
                         // Call the global autoResizeTextarea function if available
                         if (typeof window.autoResizeTextarea === 'function') {
+                            // Make multiple attempts to resize with increasing delays
+                            // This ensures proper sizing after keyboard is fully visible and layout settled
                             setTimeout(() => window.autoResizeTextarea(), 150);
+                            setTimeout(() => window.autoResizeTextarea(), 300);
+                            setTimeout(() => window.autoResizeTextarea(), 600);
                         }
                         
                         setTimeout(() => {
