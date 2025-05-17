@@ -34,6 +34,77 @@ function forceRepaint(element) {
     console.debug(`forceRepaint applied to element: ${element.className || 'unnamed'}`);
 }
 
+// Function to send a chat message with a fallback model
+// Used when the originally selected model is unavailable
+function sendChatMessageWithFallback(messageText, fallbackModelId) {
+    console.log(`Sending message with fallback model: ${fallbackModelId}`);
+    
+    // Get the conversation ID from the current conversation
+    const conversationId = getCurrentConversationId();
+    
+    // Update the model selector to show the fallback model
+    const modelSelector = document.getElementById('model-selector');
+    if (modelSelector) {
+        modelSelector.value = fallbackModelId;
+    }
+    
+    // Create the payload
+    const payload = {
+        message: messageText,
+        conversation_id: conversationId,
+        model: fallbackModelId
+    };
+    
+    // Add image attachment data if available
+    if (window.pendingImageBase64) {
+        payload.image = window.pendingImageBase64;
+        // Clear the pending image after adding it to the payload
+        window.pendingImageBase64 = null;
+        
+        // Remove any image preview
+        const imagePreview = document.getElementById('image-preview-container');
+        if (imagePreview) {
+            imagePreview.style.display = 'none';
+        }
+    }
+    
+    // Add session context flag if enabled
+    const sessionContext = document.getElementById('session-context-toggle');
+    if (sessionContext && sessionContext.checked) {
+        payload.use_session_context = true;
+    }
+    
+    // Send the message
+    console.log('Sending message with fallback model, payload:', payload);
+    
+    // Post to the chat endpoint
+    fetch('/chat', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': getCSRFToken()
+        },
+        body: JSON.stringify(payload)
+    }).then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        
+        // Handle the streaming response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        // Create a new assistant message element
+        addAssistantMessageToUI('', fallbackModelId);
+        
+        // Process the stream
+        processStreamResponse(reader, decoder);
+    }).catch(error => {
+        console.error('Error sending message with fallback model:', error);
+        alert('Failed to send message with fallback model. Please try again or select a different model.');
+    });
+}
+
 // Utility function to perform empty conversation cleanup when browser is idle
 // This prevents the cleanup from affecting initial page load performance
 function performIdleCleanup() {
@@ -4311,8 +4382,28 @@ window.resetToDefault = function(presetId) {
                                         assistantMessageElement.parentNode.removeChild(assistantMessageElement);
                                     }
                                     
-                                    // Show fallback confirmation dialog
-                                    if (typeof window.handleModelFallback === 'function') {
+                                    // Check for our new ModelFallback handler first
+                                    if (window.ModelFallback && typeof window.ModelFallback.showFallbackDialog === 'function') {
+                                        console.log("Using new ModelFallback dialog for confirmation");
+                                        
+                                        // Check if auto-fallback is enabled in user preferences
+                                        const autoFallbackEnabled = window.ModelFallback.getUserAutoFallbackPreference();
+                                        
+                                        if (autoFallbackEnabled) {
+                                            console.log("Auto-fallback is enabled, proceeding without confirmation");
+                                            // Automatically proceed with fallback model
+                                            sendChatMessageWithFallback(payload.message, parsedData.fallback_model_id);
+                                        } else {
+                                            // Show confirmation dialog
+                                            window.ModelFallback.showFallbackDialog(
+                                                parsedData.requested_model,
+                                                parsedData.fallback_model,
+                                                payload.message
+                                            );
+                                        }
+                                    } 
+                                    // Fallback to existing handlers if our new one isn't available
+                                    else if (typeof window.handleModelFallback === 'function') {
                                         // Use the enhanced handler that also checks user preferences
                                         window.handleModelFallback(parsedData, {
                                             message: payload.message,  // Use the original message

@@ -30,6 +30,7 @@ from reportlab.lib.units import inch, cm
 from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
 from models import CustomerReferral, Affiliate, Commission, CommissionStatus, AffiliateStatus
+from models import UserChatSettings
 from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature, retrieve_session
 
 # Configure logging
@@ -189,6 +190,9 @@ def account_management():
                 logger.info(f"Referrals count: {len(referrals)}")
                 logger.info(f"Sub-referrals count: {len(sub_referrals)}")
         
+        # Get user chat settings
+        user_chat_settings = UserChatSettings.query.filter_by(user_id=current_user.id).first()
+        
         logger.info("Rendering account.html template")
         return render_template(
             'account.html',
@@ -198,6 +202,7 @@ def account_management():
             recent_usage=recent_usage,
             affiliate=affiliate,
             commission_stats=commission_stats,
+            user_chat_settings=user_chat_settings,
             commissions=commissions,
             referrals=referrals,
             sub_referrals=sub_referrals,

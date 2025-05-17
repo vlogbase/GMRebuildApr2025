@@ -33,7 +33,6 @@ from flask_wtf.csrf import CSRFProtect
 from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure Blob Storage
 from apscheduler.schedulers.background import BackgroundScheduler
 from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
-from fallback_api import init_fallback_api
 
 # Check if we should enable advanced memory features
 ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
@@ -189,14 +188,6 @@ try:
     logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
-
-# Register fallback API blueprint
-try:
-    from fallback_api import fallback_api
-    app.register_blueprint(fallback_api)
-    logger.info("Fallback API blueprint registered successfully")
-except Exception as e:
-    logger.error(f"Error registering Fallback API blueprint: {e}")
 
 @login_manager.user_loader
 def load_user(user_id):
