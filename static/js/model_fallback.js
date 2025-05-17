@@ -1,250 +1,239 @@
 /**
- * Model Fallback Confirmation Handler
+ * Model Fallback Dialog Handler
  * 
- * This script handles showing a confirmation dialog when a model is unavailable
- * and allows the user to choose whether to use the fallback model.
+ * This script handles the model fallback confirmation dialog when
+ * a requested AI model is unavailable and needs fallback to another model.
  */
-document.addEventListener('DOMContentLoaded', function() {
-    // Create the fallback modal if it doesn't exist
-    if (!document.getElementById('fallback-modal')) {
-        const modalHtml = `
-            <div id="fallback-modal" class="fallback-modal">
-                <div class="fallback-modal-content">
-                    <div class="fallback-modal-header">
-                        <h3>Model Unavailable</h3>
-                        <span class="fallback-close">&times;</span>
-                    </div>
-                    <div class="fallback-modal-body">
-                        <p id="fallback-message">The selected model is currently unavailable.</p>
-                        <p>Would you like to use the suggested fallback model instead?</p>
-                    </div>
-                    <div class="fallback-modal-footer">
-                        <label class="fallback-checkbox">
-                            <input type="checkbox" id="auto-fallback-checkbox">
-                            Always use fallback models automatically
-                        </label>
-                        <div class="fallback-buttons">
-                            <button id="cancel-fallback" class="btn btn-secondary">No, Cancel</button>
-                            <button id="use-fallback" class="btn btn-primary">Yes, Use Fallback</button>
-                        </div>
-                    </div>
+
+let currentFallbackData = null;
+let pendingChatRequest = null;
+
+/**
+ * Show the model fallback confirmation dialog
+ * @param {Object} fallbackData - Data about the fallback model
+ * @param {Object} chatRequest - The original chat request
+ */
+function showFallbackModal(fallbackData, chatRequest) {
+    console.log('Showing fallback modal', fallbackData);
+    
+    // Store the data for later use
+    currentFallbackData = fallbackData;
+    pendingChatRequest = chatRequest;
+    
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('model-fallback-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'model-fallback-modal';
+        modal.className = 'fallback-modal';
+        modal.innerHTML = `
+            <div class="fallback-modal-content">
+                <div class="fallback-modal-header">
+                    <h3>Model Unavailable</h3>
+                </div>
+                <div class="fallback-modal-body">
+                    <p id="fallback-message">The requested model is currently unavailable.</p>
+                </div>
+                <div class="fallback-modal-footer">
+                    <button id="cancel-fallback" class="fallback-btn fallback-btn-secondary">Cancel</button>
+                    <button id="use-fallback" class="fallback-btn fallback-btn-primary">Use Alternative</button>
                 </div>
             </div>
         `;
+        document.body.appendChild(modal);
         
-        // Append the modal to the body
-        const modalContainer = document.createElement('div');
-        modalContainer.innerHTML = modalHtml;
-        document.body.appendChild(modalContainer.firstElementChild);
-        
-        // Add event listeners to the modal
-        document.querySelector('.fallback-close').addEventListener('click', closeModal);
-        document.getElementById('cancel-fallback').addEventListener('click', handleCancelFallback);
-        document.getElementById('use-fallback').addEventListener('click', handleUseFallback);
+        // Set up event listeners
+        document.getElementById('cancel-fallback').addEventListener('click', cancelFallback);
+        document.getElementById('use-fallback').addEventListener('click', useFallback);
     }
     
-    // Add the CSS if it doesn't exist
-    if (!document.getElementById('fallback-modal-styles')) {
-        const styles = document.createElement('style');
-        styles.id = 'fallback-modal-styles';
-        styles.textContent = `
-            .fallback-modal {
-                display: none;
-                position: fixed;
-                z-index: 1000;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
-                background-color: rgba(0, 0, 0, 0.5);
-            }
-            
-            .fallback-modal-content {
-                background-color: var(--bg-color, #fff);
-                margin: 15% auto;
-                padding: 20px;
-                border: 1px solid var(--border-color, #ddd);
-                border-radius: 8px;
-                width: 80%;
-                max-width: 500px;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            }
-            
-            .fallback-modal-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 15px;
-            }
-            
-            .fallback-modal-header h3 {
-                margin: 0;
-                color: var(--text-color, #333);
-            }
-            
-            .fallback-close {
-                color: var(--text-secondary, #aaa);
-                font-size: 28px;
-                font-weight: bold;
-                cursor: pointer;
-            }
-            
-            .fallback-close:hover {
-                color: var(--text-color, #333);
-            }
-            
-            .fallback-modal-body {
-                margin-bottom: 20px;
-                color: var(--text-color, #333);
-            }
-            
-            .fallback-modal-footer {
-                display: flex;
-                flex-direction: column;
-                gap: 15px;
-            }
-            
-            .fallback-checkbox {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                color: var(--text-color, #333);
-                font-size: 14px;
-            }
-            
-            .fallback-buttons {
-                display: flex;
-                justify-content: flex-end;
-                gap: 10px;
-            }
-            
-            @media (max-width: 600px) {
-                .fallback-modal-content {
-                    width: 90%;
-                    margin: 25% auto;
-                }
-            }
-        `;
-        document.head.appendChild(styles);
+    // Update the message
+    const messageElement = document.getElementById('fallback-message');
+    messageElement.innerHTML = `
+        <strong>${fallbackData.requested_model}</strong> is not currently available. 
+        <br><br>
+        Would you like to use <strong>${fallbackData.fallback_model}</strong> instead?
+    `;
+    
+    // Show the modal
+    modal.style.display = 'block';
+}
+
+/**
+ * Cancel the fallback and return the message to the input box
+ */
+function cancelFallback() {
+    if (!pendingChatRequest) return;
+    
+    // Close the modal
+    const modal = document.getElementById('model-fallback-modal');
+    if (modal) {
+        modal.style.display = 'none';
     }
     
-    // Initialize the stored message data for fallback handling
-    window.fallbackData = null;
-    
-    /**
-     * Show the fallback confirmation modal with the relevant model information
-     */
-    window.showFallbackModal = function(fallbackData, messageData) {
-        const modal = document.getElementById('fallback-modal');
-        if (!modal) return;
-        
-        // Store the data for when the user confirms
-        window.fallbackData = fallbackData;
-        window.messageData = messageData;
-        
-        // Update the modal message with model names
-        const fallbackMessage = document.getElementById('fallback-message');
-        fallbackMessage.textContent = `${fallbackData.requested_model} is not currently available. Use ${fallbackData.fallback_model} instead?`;
-        
-        // Show the modal
-        modal.style.display = 'block';
+    // Put the message back in the input box
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput && pendingChatRequest.message) {
+        chatInput.value = pendingChatRequest.message;
+        chatInput.focus();
     }
     
-    /**
-     * Close the fallback modal
-     */
-    function closeModal() {
-        const modal = document.getElementById('fallback-modal');
-        if (modal) {
-            modal.style.display = 'none';
+    // Clear the stored data
+    currentFallbackData = null;
+    pendingChatRequest = null;
+    
+    // Update the model selector to show the text "Model Unavailable"
+    const modelSelector = document.querySelector('.model-selector select, #model-select');
+    if (modelSelector) {
+        const option = Array.from(modelSelector.options).find(
+            opt => opt.value === currentFallbackData?.original_model_id
+        );
+        
+        if (option) {
+            option.text = option.text + ' (Unavailable)';
         }
     }
+}
+
+/**
+ * Use the fallback model
+ */
+function useFallback() {
+    if (!pendingChatRequest || !currentFallbackData) return;
     
-    /**
-     * Handle the user canceling the fallback
-     */
-    function handleCancelFallback() {
-        closeModal();
-        
-        // Return the message text to the input box
-        if (window.messageData && window.messageData.message) {
-            const userInput = document.getElementById('user-input');
-            if (userInput) {
-                userInput.value = window.messageData.message;
-                userInput.focus();
-            }
-        }
-        
-        // Reset any in-progress indicators
-        const typingIndicator = document.querySelector('.typing-indicator');
-        if (typingIndicator) {
-            typingIndicator.remove();
-        }
-        
-        // Re-enable input
-        const messageInput = document.getElementById('user-input');
-        const sendButton = document.getElementById('send-button');
-        if (messageInput) messageInput.disabled = false;
-        if (sendButton) sendButton.disabled = false;
-        
-        // Reset the stored data
-        window.fallbackData = null;
-        window.messageData = null;
+    console.log('Using fallback model', currentFallbackData.fallback_model_id);
+    
+    // Close the modal
+    const modal = document.getElementById('model-fallback-modal');
+    if (modal) {
+        modal.style.display = 'none';
     }
     
-    /**
-     * Handle the user confirming to use the fallback model
-     */
-    function handleUseFallback() {
-        // Check if the user wants to save this preference
-        const autoFallbackCheckbox = document.getElementById('auto-fallback-checkbox');
-        if (autoFallbackCheckbox && autoFallbackCheckbox.checked) {
-            saveAutoFallbackPreference(true);
-        }
-        
-        closeModal();
-        
-        // If we have fallback data, send the message with the fallback model
-        if (window.fallbackData && window.messageData) {
-            // Create a copy of the message data with the fallback model
-            const fallbackMessageData = { ...window.messageData };
-            fallbackMessageData.model = window.fallbackData.fallback_model;
-            
-            // Call the original send message function with the fallback model
-            if (typeof sendMessageToBackend === 'function') {
-                sendMessageToBackend(
-                    fallbackMessageData.message,
-                    window.fallbackData.fallback_model,
-                    document.querySelector('.typing-indicator')
-                );
-            }
-        }
-        
-        // Reset the stored data
-        window.fallbackData = null;
-        window.messageData = null;
-    }
+    // Modify the request to use the fallback model
+    const updatedRequest = {...pendingChatRequest};
+    updatedRequest.model = currentFallbackData.fallback_model_id;
     
-    /**
-     * Save the auto-fallback preference to the user settings
-     */
-    function saveAutoFallbackPreference(autoFallbackEnabled) {
-        fetch('/api/user/chat_settings', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: JSON.stringify({
-                auto_fallback_enabled: autoFallbackEnabled
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            console.log('Auto-fallback preference saved:', data);
-        })
-        .catch(error => {
-            console.error('Error saving auto-fallback preference:', error);
-        });
+    // Send the request
+    sendMessageToBackend(updatedRequest);
+    
+    // Clear the stored data
+    currentFallbackData = null;
+    pendingChatRequest = null;
+}
+
+/**
+ * Check user preferences for auto-fallback
+ * @returns {Promise<boolean>} Whether auto-fallback is enabled
+ */
+async function isAutoFallbackEnabled() {
+    try {
+        const response = await fetch('/api/user/chat_settings');
+        const data = await response.json();
+        
+        if (data.success && data.settings) {
+            return !!data.settings.auto_fallback_enabled;
+        }
+        return false;
+    } catch (error) {
+        console.error('Error checking auto-fallback setting:', error);
+        return false;
     }
-});
+}
+
+/**
+ * Process a fallback event from the server
+ * @param {Object} eventData - The event data
+ * @param {Object} originalRequest - The original chat request
+ */
+async function handleModelFallback(eventData, originalRequest) {
+    console.log('Handling model fallback event', eventData);
+    
+    // Check if auto-fallback is enabled
+    const autoFallbackEnabled = await isAutoFallbackEnabled();
+    
+    if (autoFallbackEnabled) {
+        console.log('Auto-fallback enabled, using fallback model automatically');
+        // Modify the request to use the fallback model
+        const updatedRequest = {...originalRequest};
+        updatedRequest.model = eventData.fallback_model_id;
+        
+        // Send the request
+        sendMessageToBackend(updatedRequest);
+    } else {
+        // Show the confirmation dialog
+        showFallbackModal(eventData, originalRequest);
+    }
+}
+
+// Add some minimal CSS for the modal
+const style = document.createElement('style');
+style.textContent = `
+.fallback-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.fallback-modal-content {
+    background-color: var(--bg-color, #fff);
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid var(--border-color, #888);
+    width: 80%;
+    max-width: 500px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.fallback-modal-header {
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color, #eee);
+}
+
+.fallback-modal-header h3 {
+    margin: 0;
+    color: var(--text-color, #333);
+}
+
+.fallback-modal-body {
+    padding: 15px 0;
+    color: var(--text-color, #333);
+}
+
+.fallback-modal-footer {
+    padding-top: 10px;
+    border-top: 1px solid var(--border-color, #eee);
+    display: flex;
+    justify-content: flex-end;
+}
+
+.fallback-btn {
+    padding: 8px 16px;
+    margin-left: 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.fallback-btn-primary {
+    background-color: var(--primary-color, #007bff);
+    color: white;
+}
+
+.fallback-btn-secondary {
+    background-color: var(--secondary-color, #6c757d);
+    color: white;
+}
+`;
+
+document.head.appendChild(style);
+
+// Export functions for use in other scripts
+window.showFallbackModal = showFallbackModal;
+window.handleModelFallback = handleModelFallback;
+window.isAutoFallbackEnabled = isAutoFallbackEnabled;

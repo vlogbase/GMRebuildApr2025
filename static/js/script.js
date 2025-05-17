@@ -4312,16 +4312,26 @@ window.resetToDefault = function(presetId) {
                                     }
                                     
                                     // Show fallback confirmation dialog
-                                    if (typeof window.showFallbackModal === 'function') {
+                                    if (typeof window.handleModelFallback === 'function') {
+                                        // Use the enhanced handler that also checks user preferences
+                                        window.handleModelFallback(parsedData, {
+                                            message: payload.message,  // Use the original message
+                                            model: modelId
+                                        });
+                                    } else if (typeof window.showFallbackModal === 'function') {
+                                        // Fallback to direct modal display if the handler isn't available
                                         window.showFallbackModal({
                                             requested_model: parsedData.requested_model,
-                                            fallback_model: parsedData.fallback_model
+                                            fallback_model: parsedData.fallback_model,
+                                            original_model_id: parsedData.original_model_id,
+                                            fallback_model_id: parsedData.fallback_model_id
                                         }, {
-                                            message: message,
+                                            message: payload.message,
                                             model: modelId
                                         });
                                     } else {
                                         console.error("Fallback modal function not available");
+                                        alert(`Model ${parsedData.requested_model} is unavailable. Please select a different model.`);
                                     }
                                     
                                     // Re-enable input and send button

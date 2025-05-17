@@ -698,16 +698,7 @@ def generate_summary(conversation_id, retry_attempt=0, max_retries=2):
         
         print(f"[SUMMARIZE {conversation_id}] API call finished. Status: {response.status_code}") 
         
-                        except Exception as api_error:
-                    logger.error(f"Error making API call to OpenRouter: {api_error}")
-                    logger.error(traceback.format_exc())
-                    # Generate error response for client
-                    yield f'data: {{"type": "error", "error": "Connection error while reaching OpenRouter API."}}
-
-'
-                    return
-                    
-                if response.status_code != 200:
+        if response.status_code != 200:
             print(f"[SUMMARIZE {conversation_id}] API error: {response.status_code} - {response.text[:300]}") 
             logger.error(f"OpenRouter API error while generating title: {response.status_code} - {response.text}")
             
@@ -1813,12 +1804,7 @@ def get_conversations():
 
 # --- SYNCHRONOUS CHAT ENDPOINT (Using Requests) ---
 @app.route('/chat', methods=['POST'])
-def chat():
-    try: # Synchronous function
-    """
-    Endpoint to handle chat messages and stream responses from OpenRouter (SYNC Version)
-    """
-    try:
+def chat(): # Synchronous function
     """
     Endpoint to handle chat messages and stream responses from OpenRouter (SYNC Version)
     """
@@ -1975,10 +1961,6 @@ def chat():
             logger.error(f"Error importing model validator: {model_validator_error}")
             logger.error(traceback.format_exc())
             abort(500, description="Error during model validation setup")
-        except Exception as model_validator_error:
-            logger.error(f"Error importing model validator: {model_validator_error}")
-            logger.error(traceback.format_exc())
-            abort(500, description="Error during model validation setup")
             # Check if the message contains images (for multimodal selection)
             has_image = image_url or (image_urls and len(image_urls) > 0)
             
@@ -2031,7 +2013,7 @@ def chat():
                 available_models = []
             
             # Check if the requested model is available
-                                    logger.info(f"Checking if model {openrouter_model} is available")
+                        logger.info(f"Checking if model {openrouter_model} is available")
             model_available = model_validator.is_model_available(openrouter_model, available_models)
             logger.info(f"Model {openrouter_model} available: {model_available}")
             
@@ -2066,31 +2048,14 @@ def chat():
                     
                     # Return a streaming response with a model_fallback event
                     def generate_fallback_notification():
-                        try:
-                            fallback_json = json.dumps({
+                        fallback_json = json.dumps({
                             'type': 'model_fallback',
                             'requested_model': original_model_name,
                             'fallback_model': fallback_model_name,
                             'original_model_id': openrouter_model,
                             'fallback_model_id': fallback_model
                         })
-                        yield f'data: {fallback_json}
-
-'
-                        except Exception as notification_error:
-                            logger.error(f"Error generating fallback notification: {notification_error}")
-                            logger.error(traceback.format_exc())
-                            # Return a simplified error fallback notification
-                            error_json = json.dumps({
-                                'type': 'model_fallback',
-                                'requested_model': 'Unavailable Model',
-                                'fallback_model': 'Basic Fallback',
-                                'original_model_id': openrouter_model,
-                                'fallback_model_id': 'openai/gpt-3.5-turbo'
-                            })
-                            yield f'data: {error_json}
-
-'
+                        yield f'data: {fallback_json}\n\n'
                     
                             except Exception as api_prep_error:
             logger.error(f"Error in API call preparation: {api_prep_error}")
@@ -2114,13 +2079,7 @@ def chat():
                         has_rag_content=has_rag_content
                     )
                     logger.info(f"Using adaptive model selection: {adaptive_model} (image content: {has_image}, RAG content: {has_rag_content})")
-                        openrouter_model = adaptive_model
-            except Exception as fallback_error:
-                logger.error(f"Error during model fallback selection: {fallback_error}")
-                logger.error(traceback.format_exc())
-                # If fallback fails, use a guaranteed safe model
-                openrouter_model = "openai/gpt-3.5-turbo"
-                logger.info(f"Using guaranteed fallback model: {openrouter_model} after error")
+                    openrouter_model = adaptive_model
         except Exception as validation_error:
             logger.error(f"Error during model validation: {validation_error}")
             logger.error(traceback.format_exc())
@@ -2945,16 +2904,7 @@ def chat():
                     )
                 
                     # Check status *after* making the request
-                                    except Exception as api_error:
-                    logger.error(f"Error making API call to OpenRouter: {api_error}")
-                    logger.error(traceback.format_exc())
-                    # Generate error response for client
-                    yield f'data: {{"type": "error", "error": "Connection error while reaching OpenRouter API."}}
-
-'
-                    return
-                    
-                if response.status_code != 200:
+                    if response.status_code != 200:
                         error_text = response.text 
                         # Attempt to parse the error response for more details
                         try:

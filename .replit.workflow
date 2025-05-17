@@ -1,5 +1,9 @@
-run = "python app_workflow.py"
-language = "python3"
-hidden = false
-persistent = true
-onboot = false
+{
+  "workflows": [
+    {
+      "name": "app",
+      "run": "python app.py",
+      "ports": [5000]
+    }
+  ]
+}

@@ -1,96 +1,146 @@
-/* Model Fallback Modal Styles */
-#model-fallback-modal {
+/**
+ * Model Fallback Confirmation Dialog Styling
+ *
+ * This CSS styles the model fallback confirmation dialog that appears when
+ * a requested AI model is unavailable and needs fallback to another model.
+ */
+
+/* Modal Container */
+.fallback-modal {
+    display: none;
     position: fixed;
-    top: 0;
+    z-index: 1000;
     left: 0;
+    top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 2000;
+    background-color: rgba(0, 0, 0, 0.6);
+    overflow: auto;
+    backdrop-filter: blur(4px);
+    transition: opacity 0.3s ease;
 }
 
-#model-fallback-modal .modal-content {
-    background-color: var(--card-bg);
-    border-radius: 8px;
+/* Modal Content */
+.fallback-modal-content {
+    position: relative;
+    background-color: var(--bg-color, #fff);
+    margin: 15% auto;
+    padding: 20px;
+    border: 1px solid var(--border-color, #ddd);
     width: 90%;
     max-width: 500px;
-    overflow: hidden;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s ease;
+    transform: scale(0.95);
+    animation: modal-appear 0.3s forwards;
 }
 
-#model-fallback-modal .modal-header {
-    padding: 16px;
-    border-bottom: 1px solid var(--border-color);
+@keyframes modal-appear {
+    to {
+        transform: scale(1);
+    }
+}
+
+/* Modal Header */
+.fallback-modal-header {
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--border-color, #eee);
+    margin-bottom: 15px;
+}
+
+.fallback-modal-header h3 {
+    margin: 0;
+    font-size: 1.2rem;
+    color: var(--text-color, #333);
     display: flex;
-    justify-content: space-between;
     align-items: center;
 }
 
-#model-fallback-modal .modal-header h3 {
-    margin: 0;
-    color: var(--text-color);
+.fallback-modal-header h3::before {
+    content: '⚠️';
+    margin-right: 8px;
+    font-size: 1.4rem;
 }
 
-#model-fallback-modal .close-button {
-    background: none;
+/* Modal Body */
+.fallback-modal-body {
+    padding: 10px 0;
+    color: var(--text-color, #333);
+    line-height: 1.5;
+}
+
+/* Modal Footer */
+.fallback-modal-footer {
+    padding-top: 15px;
+    border-top: 1px solid var(--border-color, #eee);
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 15px;
+}
+
+/* Buttons */
+.fallback-btn {
+    padding: 10px 20px;
+    margin-left: 10px;
     border: none;
-    font-size: 20px;
+    border-radius: 6px;
     cursor: pointer;
-    color: var(--text-color);
+    font-weight: 500;
+    transition: all 0.2s ease;
 }
 
-#model-fallback-modal .modal-body {
-    padding: 16px;
-    overflow-y: auto;
+.fallback-btn:hover {
+    filter: brightness(1.1);
 }
 
-.model-details {
-    margin: 1.5rem 0;
-    background-color: rgba(0, 0, 0, 0.2);
-    border-radius: 8px;
-    padding: 1rem;
+.fallback-btn:active {
+    transform: translateY(1px);
 }
 
-.model-detail {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 0.5rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--border-color);
+.fallback-btn-primary {
+    background-color: var(--primary-color, #4a6cf7);
+    color: white;
 }
 
-.model-detail:last-child {
-    margin-bottom: 0;
-    padding-bottom: 0;
-    border-bottom: none;
+.fallback-btn-secondary {
+    background-color: var(--secondary-color, #6c757d);
+    color: white;
 }
 
-.model-label {
-    font-weight: bold;
-    color: var(--secondary-text);
+/* Highlighted model names */
+.fallback-modal-body strong {
+    color: var(--accent-color, #4a6cf7);
+    font-weight: 600;
 }
 
-.model-value {
-    font-family: monospace;
-    color: var(--text-color);
+/* Dark Mode Adjustments */
+@media (prefers-color-scheme: dark) {
+    .fallback-modal-content {
+        background-color: var(--bg-color-secondary, #1e1e1e);
+        border-color: var(--border-color, #333);
+    }
+    
+    .fallback-modal-header,
+    .fallback-modal-footer {
+        border-color: var(--border-color, #333);
+    }
+    
+    .fallback-btn-secondary {
+        background-color: var(--bg-color, #2d2d2d);
+        color: var(--text-color, #e0e0e0);
+    }
 }
 
-.fallback-actions {
-    display: flex;
-    justify-content: space-between;
-    margin: 1.5rem 0;
-}
-
-.fallback-actions button {
-    padding: 8px 16px;
-    min-width: 45%;
-}
-
-.auto-fallback-option {
-    margin-top: 1.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border-color);
+/* Mobile Adjustments */
+@media (max-width: 768px) {
+    .fallback-modal-content {
+        width: 95%;
+        margin: 30% auto;
+        padding: 15px;
+    }
+    
+    .fallback-btn {
+        padding: 8px 16px;
+    }
 }
