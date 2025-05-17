@@ -1292,8 +1292,21 @@ document.addEventListener('DOMContentLoaded', function() {
             // Tab-specific logic
             if (tabName === 'pricing') {
                 loadPricingData();
-            } else if (tabName === 'tellFriend' && typeof window.initializeTellFriendTabContent === 'function') {
-                window.initializeTellFriendTabContent();
+            } else if (tabName === 'tellFriend') {
+                console.log('Tell a Friend tab shown - initializing content');
+                // Ensure we initialize the tell friend tab even if the window function isn't available yet
+                if (typeof window.initializeTellFriendTabContent === 'function') {
+                    window.initializeTellFriendTabContent();
+                } else {
+                    // If the function isn't available yet, try to initialize directly
+                    setTimeout(function() {
+                        console.log('Delayed initialization of Tell a Friend tab');
+                        const initFn = document.querySelector('#tellFriend script');
+                        if (initFn && typeof window.initializeTellFriendTab === 'function') {
+                            window.initializeTellFriendTab();
+                        }
+                    }, 500);
+                }
             }
         });
     });
@@ -1320,9 +1333,47 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Loading Tell a Friend tab content');
             // No need to set inline style - the .active class will handle this
             const tellFriendTab = document.getElementById('tellFriend');
+            
             if (tellFriendTab && typeof window.initializeTellFriendTabContent === 'function') {
-                // Just call the initialization function
+                // Call the initialization function
                 window.initializeTellFriendTabContent();
+            } else {
+                // If the function isn't available yet, try to initialize directly
+                setTimeout(function() {
+                    console.log('Delayed initialization of Tell a Friend tab');
+                    if (typeof window.initializeTellFriendTab === 'function') {
+                        window.initializeTellFriendTab();
+                    } else {
+                        // Last resort - use initializeTellFriendTab directly from the script element
+                        try {
+                            const scriptContent = document.querySelector('#tellFriend script');
+                            if (scriptContent) {
+                                console.log('Found script content, attempting to initialize directly');
+                                // Manually initialize
+                                const copyBtn = document.getElementById('copyReferralLink');
+                                const referralLinkInput = document.getElementById('referralLink');
+                                
+                                if (copyBtn && referralLinkInput) {
+                                    console.log('Manually setting up copy button');
+                                    // Connect event directly
+                                    copyBtn.addEventListener('click', function() {
+                                        if (navigator.clipboard && window.isSecureContext) {
+                                            navigator.clipboard.writeText(referralLinkInput.value)
+                                                .then(() => {
+                                                    copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                                                    setTimeout(() => { 
+                                                        copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                                                    }, 2000);
+                                                });
+                                        }
+                                    });
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Error in manual initialization:', e);
+                        }
+                    }
+                }, 500);
             }
         }
     }

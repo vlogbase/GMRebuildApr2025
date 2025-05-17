@@ -401,17 +401,49 @@
         if (copyBtn && referralLinkInput) {
             console.log(`Found copy button: ${item.btnId}`);
             copyBtn.addEventListener('click', function() {
+                // Select the text field
                 referralLinkInput.select();
-                document.execCommand('copy');
                 
-                // Show feedback
-                const originalText = copyBtn.innerHTML;
-                copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-                
-                setTimeout(function() {
-                    copyBtn.innerHTML = originalText;
-                }, 2000);
+                // Use modern Clipboard API with fallback to execCommand
+                if (navigator.clipboard && window.isSecureContext) {
+                    // Modern approach - Clipboard API
+                    navigator.clipboard.writeText(referralLinkInput.value)
+                        .then(() => {
+                            console.log('Text copied to clipboard successfully');
+                            // Show feedback
+                            const originalText = copyBtn.innerHTML;
+                            copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                            
+                            setTimeout(function() {
+                                copyBtn.innerHTML = originalText;
+                            }, 2000);
+                        })
+                        .catch((err) => {
+                            console.error('Error copying text: ', err);
+                        });
+                } else {
+                    // Fallback for older browsers
+                    try {
+                        const successful = document.execCommand('copy');
+                        if (successful) {
+                            console.log('Fallback: Text copied to clipboard');
+                            // Show feedback
+                            const originalText = copyBtn.innerHTML;
+                            copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                            
+                            setTimeout(function() {
+                                copyBtn.innerHTML = originalText;
+                            }, 2000);
+                        } else {
+                            console.error('Fallback: Unable to copy');
+                        }
+                    } catch (err) {
+                        console.error('Fallback: Error copying text: ', err);
+                    }
+                }
             });
+        } else {
+            console.warn(`Copy button or input not found for: ${item.btnId}`);
         }
     });
     
