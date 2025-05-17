@@ -1,159 +1,172 @@
 {% extends "base.html" %}
 
-{% block title %}Model Fallback Test{% endblock %}
-
-{% block body_class %}test-page{% endblock %}
+{% block title %}Model Fallback Test Page{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h1 class="h4 mb-0">Model Fallback Confirmation Test</h1>
+<div class="container mx-auto p-6 max-w-4xl">
+    <div class="bg-gray-800 rounded-lg p-6 mb-6">
+        <h1 class="text-2xl font-bold mb-4">Model Fallback Confirmation Test</h1>
+        <p class="mb-4">This page allows you to test the model fallback confirmation dialog.</p>
+        
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold mb-2">Test Settings</h2>
+            <div class="flex items-center mb-4">
+                <label class="inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="auto-fallback-enabled" class="sr-only peer">
+                    <div class="relative w-11 h-6 bg-gray-600 rounded-full peer peer-checked:bg-blue-500 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                    <span class="ml-3">Auto-fallback enabled</span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="mb-6">
+            <h2 class="text-xl font-semibold mb-2">Test Controls</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">Requested Model</label>
+                    <select id="requested-model" class="w-full p-2 bg-gray-700 border border-gray-600 rounded">
+                        <option value="Claude 3 Haiku">Claude 3 Haiku</option>
+                        <option value="Claude 3 Sonnet">Claude 3 Sonnet</option>
+                        <option value="Claude 3 Opus">Claude 3 Opus</option>
+                        <option value="GPT-4">GPT-4</option>
+                        <option value="Gemini Pro">Gemini Pro</option>
+                    </select>
                 </div>
-                <div class="card-body">
-                    <div class="alert alert-info">
-                        <p><strong>Purpose:</strong> This page tests the model fallback confirmation dialog that appears when a requested model is unavailable.</p>
-                        <p><strong>Current Setting:</strong> Auto-fallback is {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}enabled{% else %}disabled{% endif %}.</p>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <h5>Test the Fallback Dialog</h5>
-                        <p>Click the button below to simulate requesting an unavailable model:</p>
-                        <button id="testFallbackBtn" class="btn btn-primary">Test Fallback Dialog</button>
-                    </div>
-                    
-                    {% if user and user.is_authenticated %}
-                    <div class="mb-4">
-                        <h5>Toggle Auto-Fallback Setting</h5>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="autoFallbackToggle" 
-                                {% if user_chat_settings and user_chat_settings.auto_fallback_enabled %}checked{% endif %}>
-                            <label class="form-check-label" for="autoFallbackToggle">
-                                Automatically fall back when models are unavailable
-                            </label>
-                        </div>
-                    </div>
-                    {% else %}
-                    <div class="alert alert-warning">
-                        <p><i class="fas fa-exclamation-triangle"></i> You must be logged in to change the auto-fallback setting.</p>
-                    </div>
-                    {% endif %}
-                    
-                    <div class="mt-4">
-                        <h5>Test Results</h5>
-                        <div id="testResults" class="border p-3 bg-light" style="min-height: 150px;">
-                            <p class="text-muted">Results will appear here...</p>
-                        </div>
-                    </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">Fallback Model</label>
+                    <select id="fallback-model" class="w-full p-2 bg-gray-700 border border-gray-600 rounded">
+                        <option value="Gemini Flash">Gemini Flash</option>
+                        <option value="Claude 3 Haiku">Claude 3 Haiku</option>
+                        <option value="Mistral Large">Mistral Large</option>
+                        <option value="Llama 3">Llama 3</option>
+                    </select>
                 </div>
             </div>
+            
+            <div class="mt-4">
+                <label class="block text-sm font-medium mb-1">Test Message</label>
+                <textarea id="test-message" class="w-full p-2 bg-gray-700 border border-gray-600 rounded min-h-[100px]" placeholder="Enter a test message here...">Tell me about the latest advancements in quantum computing.</textarea>
+            </div>
+            
+            <div class="mt-4">
+                <button id="test-button" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">Test Fallback Dialog</button>
+            </div>
+        </div>
+        
+        <div class="mt-6">
+            <h2 class="text-xl font-semibold mb-2">Test Results</h2>
+            <div id="test-results" class="bg-gray-900 p-4 rounded min-h-[150px] text-gray-300 font-mono text-sm overflow-auto">Results will appear here...</div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
-{{ super() }}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const testButton = document.getElementById('testFallbackBtn');
-        const resultsDiv = document.getElementById('testResults');
-        const autoFallbackToggle = document.getElementById('autoFallbackToggle');
+document.addEventListener('DOMContentLoaded', function() {
+    // Get DOM elements
+    const testButton = document.getElementById('test-button');
+    const requestedModelSelect = document.getElementById('requested-model');
+    const fallbackModelSelect = document.getElementById('fallback-model');
+    const testMessageTextarea = document.getElementById('test-message');
+    const autoFallbackCheckbox = document.getElementById('auto-fallback-enabled');
+    const resultsDisplay = document.getElementById('test-results');
+    
+    // Utility function to append log message
+    function appendLog(message, type = 'info') {
+        const timestamp = new Date().toLocaleTimeString();
+        const logClass = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-300');
         
-        // Function to add a result message
-        function addResult(message, isError = false) {
-            const p = document.createElement('p');
-            p.textContent = message;
-            if (isError) {
-                p.classList.add('text-danger');
-            }
-            resultsDiv.innerHTML = '';
-            resultsDiv.appendChild(p);
+        resultsDisplay.innerHTML += `<div class="${logClass}">[${timestamp}] ${message}</div>`;
+        resultsDisplay.scrollTop = resultsDisplay.scrollHeight;
+    }
+    
+    // Listen for fallback dialog actions (dispatched by the ModelFallback module)
+    document.addEventListener('fallbackDialogAction', function(event) {
+        const action = event.detail.action;
+        const modelId = event.detail.modelId;
+        
+        if (action === 'auto-accept') {
+            appendLog(`Auto-fallback activated: Using model ${modelId} without confirmation`, 'success');
+        } else if (action === 'show-dialog') {
+            appendLog(`Showing confirmation dialog for model ${modelId}`);
         }
-        
-        // Test button click handler
-        testButton.addEventListener('click', function() {
-            addResult('Testing fallback dialog...');
-            
-            fetch('/api/test-fallback', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify({
-                    model: 'anthropic/claude-3-sonnet'
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.type === 'model_fallback') {
-                    addResult(`Fallback scenario triggered: ${data.requested_model} → ${data.fallback_model}`);
-                    
-                    // Create a simulated chat message to trigger the fallback dialog
-                    const fallbackEvent = new CustomEvent('modelFallbackEvent', {
-                        detail: {
-                            requestedModel: data.requested_model,
-                            fallbackModel: data.fallback_model,
-                            originalModelId: data.original_model_id,
-                            fallbackModelId: data.fallback_model_id,
-                            message: "This is a test message",
-                            reason: data.reason
-                        }
-                    });
-                    
-                    document.dispatchEvent(fallbackEvent);
-                } else {
-                    addResult('Error: Unexpected response from server', true);
-                }
-            })
-            .catch(error => {
-                addResult(`Error: ${error.message}`, true);
-            });
-        });
-        
-        // Auto-fallback toggle handler (if user is logged in)
-        if (autoFallbackToggle) {
-            autoFallbackToggle.addEventListener('change', function() {
-                const enabled = this.checked;
-                
-                fetch('/user/settings/update', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    },
-                    body: JSON.stringify({
-                        setting: 'auto_fallback_enabled',
-                        value: enabled
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        addResult(`Auto-fallback setting updated: ${enabled ? 'Enabled' : 'Disabled'}`);
-                        setTimeout(() => {
-                            window.location.reload(); // Reload to update the page status
-                        }, 1500);
-                    } else {
-                        addResult(`Error updating setting: ${data.message}`, true);
-                    }
-                })
-                .catch(error => {
-                    addResult(`Error: ${error.message}`, true);
-                });
-            });
-        }
-        
-        // Listen for fallback dialog events for integration testing
-        document.addEventListener('fallbackDialogAction', function(e) {
-            const action = e.detail.action;
-            const modelId = e.detail.modelId;
-            
-            addResult(`Fallback Dialog Action: ${action} (Model: ${modelId})`);
-        });
     });
+    
+    // Test button click handler
+    testButton.addEventListener('click', function() {
+        // Clear previous results
+        resultsDisplay.innerHTML = '';
+        
+        // Get test values
+        const requestedModel = requestedModelSelect.value;
+        const fallbackModel = fallbackModelSelect.value;
+        const message = testMessageTextarea.value.trim();
+        const autoFallbackEnabled = autoFallbackCheckbox.checked;
+        
+        // Validate inputs
+        if (!message) {
+            appendLog('Please enter a test message', 'error');
+            return;
+        }
+        
+        appendLog(`Starting fallback test with settings:`, 'info');
+        appendLog(`- Requested model: ${requestedModel}`, 'info');
+        appendLog(`- Fallback model: ${fallbackModel}`, 'info');
+        appendLog(`- Auto-fallback: ${autoFallbackEnabled ? 'Enabled' : 'Disabled'}`, 'info');
+        
+        // Update the auto-fallback setting in a hidden element
+        // This is used by the ModelFallback module to check user preference
+        let autoFallbackElem = document.getElementById('auto-fallback-enabled-value');
+        if (!autoFallbackElem) {
+            autoFallbackElem = document.createElement('input');
+            autoFallbackElem.type = 'hidden';
+            autoFallbackElem.id = 'auto-fallback-enabled-value';
+            document.body.appendChild(autoFallbackElem);
+        }
+        autoFallbackElem.value = autoFallbackEnabled;
+        
+        // Simulate a model fallback event
+        appendLog('Dispatching modelFallbackEvent...', 'info');
+        
+        try {
+            // Create the fallback event
+            const fallbackEvent = new CustomEvent('modelFallbackEvent', {
+                detail: {
+                    requestedModel: requestedModel,
+                    fallbackModel: fallbackModel,
+                    message: message,
+                    fallbackModelId: fallbackModel.toLowerCase().replace(/\s+/g, '-')
+                }
+            });
+            
+            // Dispatch the event
+            document.dispatchEvent(fallbackEvent);
+            appendLog('Event dispatched successfully', 'success');
+        } catch (error) {
+            appendLog(`Error dispatching event: ${error.message}`, 'error');
+        }
+    });
+    
+    // Override ModelFallback.getUserAutoFallbackPreference for testing
+    if (window.ModelFallback) {
+        const originalGetPreference = window.ModelFallback.getUserAutoFallbackPreference;
+        
+        window.ModelFallback.getUserAutoFallbackPreference = function() {
+            // For testing, read from our checkbox instead of the API
+            return document.getElementById('auto-fallback-enabled').checked;
+        };
+        
+        appendLog('ModelFallback module detected and preference function overridden for testing', 'success');
+    } else {
+        appendLog('Warning: ModelFallback module not found. Test may not work correctly.', 'error');
+    }
+    
+    // Mock the sendChatMessageWithFallback function for testing
+    window.sendChatMessageWithFallback = function(message, fallbackModelId) {
+        appendLog(`Message would be sent with fallback model: ${fallbackModelId}`, 'success');
+        appendLog(`Message content: "${message.substring(0, 50)}${message.length > 50 ? '...' : ''}"`, 'info');
+    };
+    
+    appendLog('Test page initialized successfully', 'success');
+});
 </script>
 {% endblock %}

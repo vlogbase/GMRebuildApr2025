@@ -1,0 +1,4 @@
+run = "python test_model_fallback_simple.py"
+language = "python3"
+onBoot = "echo Starting model fallback test server..."
+hidden = false

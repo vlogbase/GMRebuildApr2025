@@ -26,8 +26,7 @@ from PIL import Image  # For image processing
 from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory # Added send_from_directory
 from urllib.parse import urlparse # For URL analysis in image handling
 from werkzeug.datastructures import FileStorage # For file handling in upload routes
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase
+from database import db, init_db
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
 from flask_wtf.csrf import CSRFProtect
 from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure Blob Storage
@@ -63,18 +62,15 @@ else:
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# SQLAlchemy setup
-class Base(DeclarativeBase):
-    pass
-
-db = SQLAlchemy(model_class=Base)
-
 # Create Flask app
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "developmentsecretkey")
 if not app.secret_key:
      logger.warning("SESSION_SECRET environment variable not set. Using default for development.")
      app.secret_key = "default-dev-secret-key-please-change"
+
+# Initialize SQLAlchemy with our app
+init_db(app)
 
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
@@ -3237,6 +3233,11 @@ def get_models():
             "message": "Please try refreshing the page or contact support if the problem persists."
         }), 200  # Using 200 so frontend can handle gracefully
 
+
+@app.route('/test-fallback')
+def test_fallback():
+    """Test page for model fallback confirmation feature"""
+    return render_template('test_fallback.html')
 
 @app.route('/save_preference', methods=['POST'])
 def save_preference():
