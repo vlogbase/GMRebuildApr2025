@@ -257,24 +257,61 @@
                     <h5 class="mb-0">PayPal Email for Payouts</h5>
                 </div>
                 <div class="card-body">
-                    <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <div class="mb-3">
-                            <label for="paypalEmail" class="form-label">Email Address</label>
-                            <div class="input-group">
-                                <span class="input-group-text">
-                                    <i class="fab fa-paypal text-primary"></i>
-                                </span>
-                                <input type="email" class="form-control editable-field" id="paypalEmail" name="paypal_email" 
-                                       placeholder="your-email@example.com" value="{{ affiliate.paypal_email or '' }}" 
+                    <div class="mb-4">
+                        <label class="form-label">Email Address</label>
+                        
+                        <div class="d-flex align-items-center mb-3" style="gap: 10px;">
+                            <!-- Current email display -->
+                            <div class="border rounded p-3 bg-dark flex-grow-1" style="word-break: break-all;">
+                                <i class="fab fa-paypal text-primary me-2"></i>
+                                <span id="currentPaypalEmail">{{ affiliate.paypal_email or 'Not set' }}</span>
+                            </div>
+                            
+                            <!-- Edit button -->
+                            <button type="button" class="btn btn-primary" onclick="showPayPalEmailEditor()">
+                                <i class="fas fa-edit"></i> Edit
+                            </button>
+                        </div>
+                        
+                        <div class="form-text">
+                            We'll send your commission payments to this PayPal email address.
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden email editor form that appears when Edit is clicked -->
+                    <div id="paypalEmailEditor" style="display: none;">
+                        <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post" class="border rounded p-3 mb-4 bg-dark">
+                            <h5 class="mb-3">Update PayPal Email</h5>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            
+                            <div class="mb-3">
+                                <label for="newPaypalEmail" class="form-label">New PayPal Email</label>
+                                <input type="email" id="newPaypalEmail" name="paypal_email" 
+                                       class="form-control"
+                                       value="{{ affiliate.paypal_email or '' }}" 
                                        required>
                             </div>
-                            <div class="form-text">We'll send your commission payments to this PayPal email address.</div>
-                        </div>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-2"></i>{% if affiliate.paypal_email %}Update{% else %}Save{% endif %} PayPal Email
-                        </button>
-                    </form>
+                            
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save me-1"></i> Save
+                                </button>
+                                <button type="button" class="btn btn-secondary" onclick="hidePayPalEmailEditor()">
+                                    <i class="fas fa-times me-1"></i> Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <script>
+                        function showPayPalEmailEditor() {
+                            document.getElementById('paypalEmailEditor').style.display = 'block';
+                        }
+                        
+                        function hidePayPalEmailEditor() {
+                            document.getElementById('paypalEmailEditor').style.display = 'none';
+                        }
+                    </script>
                 </div>
             </div>
         </div>

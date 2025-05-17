@@ -15,6 +15,7 @@ from urllib.parse import urljoin
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, session, jsonify, abort, g
 from flask_login import current_user, login_required
 from sqlalchemy import desc, func, and_, not_
+from flask_wtf.csrf import validate_csrf
 from werkzeug.security import generate_password_hash
 
 from app import db
@@ -229,41 +230,43 @@ def update_paypal_email():
     """
     Update PayPal email for affiliate.
     """
-    # Create the form
-    form = UpdatePayPalEmailForm()
+    # Get the data directly from the form submission
+    paypal_email = request.form.get('paypal_email')
+    csrf_token = request.form.get('csrf_token')
     
-    # Validate the form - this will check the CSRF token
-    if form.validate_on_submit():
-        try:
-            paypal_email = form.paypal_email.data
+    # Basic validation
+    if not csrf_token or not validate_csrf(csrf_token):
+        flash("Invalid form submission.", "error")
+        return redirect(url_for('billing.account_management', tab='tellFriend'))
+    
+    if not paypal_email:
+        flash("Please enter a valid PayPal email address.", "warning")
+        return redirect(url_for('billing.account_management', tab='tellFriend'))
+    
+    # Log the received info for debugging
+    logger.info(f"Received paypal_email update request. Length: {len(paypal_email)}")
+    
+    try:
+        # Get the affiliate associated with the current user
+        affiliate = Affiliate.query.filter_by(email=current_user.email).first()
+        
+        if not affiliate:
+            flash("You are not registered as an affiliate. Please activate your account first.", "info")
+            return redirect(url_for('billing.account_management', tab='tellFriend'))
             
-            # Get the affiliate associated with the current user
-            affiliate = Affiliate.query.filter_by(email=current_user.email).first()
-            
-            if not affiliate:
-                flash("You are not registered as an affiliate. Please activate your account first.", "info")
-                return redirect(url_for('billing.account_management'))
-                
-            # Update PayPal email
-            affiliate.paypal_email = paypal_email
-            affiliate.paypal_email_verified_at = None  # Reset verification status
-            db.session.commit()
-            
-            flash("PayPal email updated successfully", "success")
-            return redirect(url_for('billing.account_management'))
-            
-        except Exception as e:
-            logger.error(f"Error updating PayPal email: {e}")
-            db.session.rollback()
-            flash(f"An error occurred: {str(e)}", "error")
-            return redirect(url_for('billing.account_management'))
-    else:
-        # Form validation failed
-        logger.warning(f"Form validation failed: {form.errors}")
-        for field, errors in form.errors.items():
-            for error in errors:
-                flash(f"{field}: {error}", "error")
-        return redirect(url_for('billing.account_management'))
+        # Update PayPal email
+        affiliate.paypal_email = paypal_email
+        affiliate.paypal_email_verified_at = None  # Reset verification status
+        db.session.commit()
+        
+        flash("PayPal email updated successfully", "success")
+        return redirect(url_for('billing.account_management', tab='tellFriend'))
+        
+    except Exception as e:
+        logger.error(f"Error updating PayPal email: {e}")
+        db.session.rollback()
+        flash(f"An error occurred while updating your PayPal email. Please try again.", "error")
+        return redirect(url_for('billing.account_management', tab='tellFriend'))
 
 @affiliate_bp.route('/register', methods=['GET', 'POST'])
 def register():
