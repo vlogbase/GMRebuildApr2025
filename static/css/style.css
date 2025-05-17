@@ -2523,9 +2523,10 @@ body.account-page .tab-pane {
         margin-right: 2px; /* Reduced spacing between these two */
     }
     
-    /* Ensure text area gets more space on mobile */
+    /* Allow text area to dynamically resize on mobile */
     #message-input {
-        height: 100px; /* Ensure height is maintained on mobile */
+        /* Removed fixed height to allow JavaScript's dynamic sizing to work */
+        min-height: 80px; /* Starting height, consistent with desktop */
     }
 }
 
@@ -4258,11 +4259,14 @@ code {
         margin-bottom: 0;
     }
     
-    /* Ensure message input doesn't push buttons off screen when keyboard is visible */
+    /* Ensure message input doesn't push buttons off screen when keyboard is visible,
+       while still allowing it to grow to a reasonable size */
     .chat-input-container.keyboard-visible #message-input {
         min-height: 40px;
-        max-height: calc(100vh - 240px); /* Adjusted max height when keyboard is visible */
+        /* Removed fixed max-height to allow JavaScript to determine appropriate height */
         height: auto; /* Allow height to adjust based on content */
+        /* Add CSS variable for JavaScript to use when calculating height */
+        --viewport-keyboard-max-height: calc(100vh - 240px);
     }
     
     /* Make the border between text area and button container more subtle */
