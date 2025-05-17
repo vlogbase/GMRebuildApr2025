@@ -526,6 +526,15 @@ select {
     color: var(--text-color) !important;
 }
 
+/* Fix for input fields that need to be editable */
+.editable-field {
+    background-color: var(--input-bg) !important;
+    color: var(--text-color) !important;
+    border: 1px solid var(--border-color) !important;
+    pointer-events: auto !important;
+    cursor: text !important;
+}
+
 /* Custom select buttons */
 .select-button {
     background-color: var(--input-bg);
