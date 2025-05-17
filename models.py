@@ -91,12 +91,12 @@ class Conversation(db.Model):
     """Conversation model to store chat sessions"""
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(128), nullable=False, default="New Conversation")
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
     share_id = db.Column(db.String(64), unique=True, index=True)  # Shareable identifier for public access
-    conversation_uuid = db.Column(db.String(36), unique=True, nullable=True)  # UUID for conversation identification
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    is_active = db.Column(db.Boolean, default=True)
+    conversation_uuid = db.Column(db.String(36), unique=True, nullable=True, index=True)  # UUID for conversation identification
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
+    is_active = db.Column(db.Boolean, default=True, index=True)
     
     # Relationships
     messages = db.relationship('Message', backref='conversation', lazy='dynamic', cascade='all, delete-orphan')
@@ -108,10 +108,10 @@ class Conversation(db.Model):
 class Message(db.Model):
     """Message model to store individual messages in a conversation"""
     id = db.Column(db.Integer, primary_key=True)
-    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False)
-    role = db.Column(db.String(20), nullable=False)  # 'user', 'assistant', 'system'
+    conversation_id = db.Column(db.Integer, db.ForeignKey('conversation.id'), nullable=False, index=True)
+    role = db.Column(db.String(20), nullable=False, index=True)  # 'user', 'assistant', 'system'
     content = db.Column(db.Text, nullable=False)
-    model = db.Column(db.String(64), nullable=True)  # Which AI model was used
+    model = db.Column(db.String(64), nullable=True, index=True)  # Which AI model was used
     rating = db.Column(db.Integer, nullable=True, default=None)  # User feedback: +1 for upvote, -1 for downvote
     model_id_used = db.Column(db.String(64), nullable=True)  # Exact model ID returned by the API
     prompt_tokens = db.Column(db.Integer, nullable=True)  # Number of prompt tokens used
@@ -119,7 +119,7 @@ class Message(db.Model):
     image_url = db.Column(db.String(512), nullable=True)  # URL to an image for multimodal messages
     pdf_url = db.Column(db.Text, nullable=True)  # URL or data URL for PDF document (can be large)
     pdf_filename = db.Column(db.String(255), nullable=True)  # Name of the PDF file
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     
     def __repr__(self):
         return f'<Message {self.id}: {self.role}>'

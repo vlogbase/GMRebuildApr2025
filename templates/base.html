@@ -10,6 +10,13 @@
     <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://s.skimresources.com" crossorigin>
+    <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
+    <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="https://s.skimresources.com">
+    
+    <!-- Preload critical CSS -->
+    <link rel="preload" href="{{ url_for('static', filename='css/style.css') }}" as="style">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" as="style">
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/favicon-96x96.png') }}" sizes="96x96" />
@@ -81,22 +88,22 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
     <!-- Main JavaScript (deferred to not block rendering) -->
-    <script defer src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/script.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
     <!-- Cookie Consent JavaScript (non-critical, can be deferred) -->
-    <script defer src="{{ url_for('static', filename='js/cookie_consent.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/cookie_consent.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
-    <!-- Mobile responsiveness JavaScript -->
-    <script defer src="{{ url_for('static', filename='js/mobile.js') }}"></script>
+    <!-- Mobile responsiveness JavaScript (lower priority) -->
+    <script defer src="{{ url_for('static', filename='js/mobile.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}" fetchpriority="low"></script>
     
-    <!-- Mobile model selector JavaScript -->
-    <script defer src="{{ url_for('static', filename='js/mobile_model_selector.js') }}"></script>
+    <!-- Mobile model selector JavaScript (lower priority) -->
+    <script defer src="{{ url_for('static', filename='js/mobile_model_selector.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}" fetchpriority="low"></script>
     
     <!-- Message collapsing functionality -->
-    <script defer src="{{ url_for('static', filename='js/message-collapse.js') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/message-collapse.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
-    <!-- Skimlinks - Automatic Affiliate Link Generator (non-critical, can be deferred) -->
-    <script defer type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js"></script>
+    <!-- Skimlinks - Automatic Affiliate Link Generator (lowest priority) -->
+    <script defer type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js" fetchpriority="low"></script>
     {% endblock %}
 </body>
 </html>

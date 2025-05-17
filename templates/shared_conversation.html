@@ -25,7 +25,7 @@
                 <div class="message-content">
                     {% if message.image_url %}
                     <div class="message-image">
-                        <img src="{{ message.image_url }}" alt="Shared image" />
+                        <img src="{{ message.image_url }}" alt="Shared image" loading="lazy" />
                     </div>
                     {% endif %}
                     

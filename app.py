@@ -74,6 +74,37 @@ if not app.secret_key:
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
+# Add asset versioning for cache busting
+app.config['ASSETS_VERSION'] = os.environ.get('ASSETS_VERSION', datetime.datetime.now().strftime('%Y%m%d%H'))
+
+# Set up cache control for static assets
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 60 * 60 * 24 * 7  # 1 week cache for static files
+app.config['JSON_SORT_KEYS'] = False  # Prevent JSON sorting for faster responses
+
+# Add after_request hook for additional performance headers
+@app.after_request
+def add_performance_headers(response):
+    """Add performance optimization headers to static assets."""
+    if 'Cache-Control' not in response.headers:
+        # Default cache policy
+        response.headers['Cache-Control'] = 'no-store'
+        
+    # Set performance headers for static assets
+    if request.path.startswith('/static/'):
+        if request.path.endswith(('.css', '.js')):
+            # Long cache for versioned assets (1 week)
+            if 'v=' in request.query_string.decode('utf-8'):
+                response.headers['Cache-Control'] = 'public, max-age=604800, immutable'
+        elif request.path.endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg')):
+            # Cache images for 1 day
+            response.headers['Cache-Control'] = 'public, max-age=86400'
+    
+    # Add security and performance headers
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    
+    return response
+
 # Add global template context variables
 @app.context_processor
 def inject_now():
