@@ -3999,6 +3999,16 @@ window.resetToDefault = function(presetId) {
                                 console.log(`Marked conversation ${conversation.id} as active`);
                             }
                             
+                            // Add 'pinned' class if this conversation is pinned
+                            if (conversation.is_pinned) {
+                                conversationItem.classList.add('pinned');
+                                console.log(`Marked conversation ${conversation.id} as pinned`);
+                            }
+                            
+                            // Create content wrapper for conversation info
+                            const contentWrapper = document.createElement('div');
+                            contentWrapper.className = 'conversation-content';
+                            
                             // Create title and date elements to match the HTML structure
                             const titleDiv = document.createElement('div');
                             titleDiv.className = 'conversation-title';
@@ -4022,23 +4032,86 @@ window.resetToDefault = function(presetId) {
                                 dateDiv.textContent = createdDate.toLocaleDateString();
                             }
                             
-                            // Append title and date to conversation item
-                            conversationItem.appendChild(titleDiv);
-                            conversationItem.appendChild(dateDiv);
+                            // Add pin icon if conversation is pinned
+                            if (conversation.is_pinned) {
+                                const pinIndicator = document.createElement('span');
+                                pinIndicator.className = 'pin-indicator';
+                                pinIndicator.innerHTML = '<i class="fas fa-thumbtack"></i>';
+                                titleDiv.insertBefore(pinIndicator, titleDiv.firstChild);
+                            }
                             
-                            // Add click event to load conversation
-                            conversationItem.addEventListener('click', function() {
-                                console.log(`Loading conversation: ${conversation.id}`);
-                                
-                                // Remove active class from all conversation items
-                                const allItems = conversationsList.querySelectorAll('.conversation-item');
-                                allItems.forEach(item => item.classList.remove('active'));
-                                
-                                // Add active class to this item
-                                conversationItem.classList.add('active');
-                                
-                                // Load the conversation
-                                loadConversation(conversation.id);
+                            // Append title and date to content wrapper
+                            contentWrapper.appendChild(titleDiv);
+                            contentWrapper.appendChild(dateDiv);
+                            
+                            // Create actions wrapper for three-dot menu
+                            const actionsWrapper = document.createElement('div');
+                            actionsWrapper.className = 'conversation-actions';
+                            
+                            // Create three-dot menu button
+                            const menuButton = document.createElement('button');
+                            menuButton.className = 'context-menu-button';
+                            menuButton.innerHTML = '<i class="fas fa-ellipsis-vertical"></i>';
+                            menuButton.setAttribute('aria-label', 'Conversation options');
+                            menuButton.addEventListener('click', function(e) {
+                                e.stopPropagation(); // Prevent triggering conversation click
+                                toggleContextMenu(conversation.id);
+                            });
+                            
+                            // Create context menu
+                            const contextMenu = document.createElement('div');
+                            contextMenu.className = 'context-menu';
+                            contextMenu.dataset.id = conversation.id;
+                            
+                            // Create context menu items
+                            const renameOption = document.createElement('div');
+                            renameOption.className = 'context-menu-item';
+                            renameOption.innerHTML = '<i class="fas fa-pen"></i> Rename';
+                            renameOption.addEventListener('click', function(e) {
+                                e.stopPropagation(); // Prevent triggering conversation click
+                                renameConversation(conversation.id, conversation.title);
+                            });
+                            
+                            const pinOption = document.createElement('div');
+                            pinOption.className = 'context-menu-item';
+                            if (conversation.is_pinned) {
+                                pinOption.innerHTML = '<i class="fas fa-thumbtack fa-rotate-90"></i> Unpin';
+                            } else {
+                                pinOption.innerHTML = '<i class="fas fa-thumbtack"></i> Pin';
+                            }
+                            pinOption.addEventListener('click', function(e) {
+                                e.stopPropagation(); // Prevent triggering conversation click
+                                togglePinConversation(conversation.id, conversation.is_pinned);
+                            });
+                            
+                            // Add options to context menu
+                            contextMenu.appendChild(renameOption);
+                            contextMenu.appendChild(pinOption);
+                            
+                            // Add context menu to actions wrapper
+                            actionsWrapper.appendChild(menuButton);
+                            actionsWrapper.appendChild(contextMenu);
+                            
+                            // Append content and actions to conversation item
+                            conversationItem.appendChild(contentWrapper);
+                            conversationItem.appendChild(actionsWrapper);
+                            
+                            // Add click event to load conversation (on the entire item)
+                            conversationItem.addEventListener('click', function(e) {
+                                // Only proceed if click was not on or within the context menu
+                                if (!e.target.closest('.conversation-actions')) {
+                                    console.log(`Loading conversation: ${conversation.id}`);
+                                    
+                                    // Remove active class from all conversation items
+                                    const allItems = conversationsList.querySelectorAll('.conversation-item');
+                                    allItems.forEach(item => item.classList.remove('active'));
+                                    
+                                    // Add active class to this item
+                                    conversationItem.classList.add('active');
+                                    
+                                    // Load the conversation
+                                    loadConversation(conversation.id);
+                                }
                             });
                             
                             conversationsList.appendChild(conversationItem);
@@ -4057,6 +4130,186 @@ window.resetToDefault = function(presetId) {
             .catch(error => {
                 console.error('Error fetching conversations:', error);
             });
+    }
+    
+    // Toggle visibility of a conversation's context menu
+    function toggleContextMenu(conversationId) {
+        // Close all other open menus first
+        document.querySelectorAll('.context-menu').forEach(menu => {
+            if (menu.dataset.id !== conversationId.toString()) {
+                menu.classList.remove('visible');
+            }
+        });
+        
+        // Toggle the selected menu
+        const menu = document.querySelector(`.context-menu[data-id="${conversationId}"]`);
+        if (menu) {
+            menu.classList.toggle('visible');
+            
+            // Add click outside listener to close menu
+            if (menu.classList.contains('visible')) {
+                setTimeout(() => {
+                    document.addEventListener('click', closeContextMenus);
+                }, 10);
+            }
+        }
+    }
+    
+    // Close all open context menus
+    function closeContextMenus() {
+        document.querySelectorAll('.context-menu').forEach(menu => {
+            menu.classList.remove('visible');
+        });
+        document.removeEventListener('click', closeContextMenus);
+    }
+    
+    // Toggle pin status for a conversation
+    function togglePinConversation(conversationId, currentPinStatus) {
+        const csrfToken = getCSRFToken();
+        if (!csrfToken) {
+            console.error('CSRF token not found');
+            return;
+        }
+        
+        const newPinStatus = !currentPinStatus;
+        
+        fetch(`/api/pin_chat/${conversationId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ is_pinned: newPinStatus })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Refresh conversations list to show updated pinned status
+                fetchConversations(true);
+                closeContextMenus();
+            } else {
+                console.error('Failed to update pin status:', data.error || 'Unknown error');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating pin status:', error);
+        });
+    }
+    
+    // Rename a conversation
+    function renameConversation(conversationId, currentTitle) {
+        closeContextMenus();
+        
+        // Create modal for renaming conversation
+        const modal = document.createElement('div');
+        modal.className = 'rename-modal';
+        modal.innerHTML = `
+            <div class="rename-modal-content">
+                <h3>Rename Conversation</h3>
+                <input type="text" id="new-conversation-title" value="${currentTitle}" maxlength="128">
+                <div class="rename-modal-buttons">
+                    <button class="cancel-rename-btn">Cancel</button>
+                    <button class="save-rename-btn">Save</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        
+        // Add event listeners
+        const input = modal.querySelector('#new-conversation-title');
+        const cancelBtn = modal.querySelector('.cancel-rename-btn');
+        const saveBtn = modal.querySelector('.save-rename-btn');
+        
+        // Focus on input and select all text
+        input.focus();
+        input.select();
+        
+        // Cancel button event
+        cancelBtn.addEventListener('click', () => {
+            document.body.removeChild(modal);
+        });
+        
+        // Save button event
+        saveBtn.addEventListener('click', () => {
+            const newTitle = input.value.trim();
+            if (newTitle && newTitle !== currentTitle) {
+                saveConversationRename(conversationId, newTitle, modal);
+            } else if (newTitle === currentTitle) {
+                document.body.removeChild(modal);
+            } else {
+                input.classList.add('error');
+                setTimeout(() => input.classList.remove('error'), 1000);
+            }
+        });
+        
+        // Enter key to save
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                const newTitle = input.value.trim();
+                if (newTitle && newTitle !== currentTitle) {
+                    saveConversationRename(conversationId, newTitle, modal);
+                } else if (newTitle === currentTitle) {
+                    document.body.removeChild(modal);
+                } else {
+                    input.classList.add('error');
+                    setTimeout(() => input.classList.remove('error'), 1000);
+                }
+            } else if (e.key === 'Escape') {
+                document.body.removeChild(modal);
+            }
+        });
+    }
+    
+    // Save the new conversation title
+    function saveConversationRename(conversationId, newTitle, modal) {
+        const csrfToken = getCSRFToken();
+        if (!csrfToken) {
+            console.error('CSRF token not found');
+            return;
+        }
+        
+        fetch(`/api/rename_chat/${conversationId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({ new_title: newTitle })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                // Remove modal
+                document.body.removeChild(modal);
+                
+                // Refresh conversations list to show new title
+                fetchConversations(true);
+                
+                // Update current conversation title if this is the active conversation
+                if (currentConversationId === conversationId.toString()) {
+                    const conversationTitle = document.querySelector('#conversation-title');
+                    if (conversationTitle) {
+                        conversationTitle.textContent = newTitle;
+                    }
+                }
+            } else {
+                console.error('Failed to rename conversation:', data.error || 'Unknown error');
+            }
+        })
+        .catch(error => {
+            console.error('Error renaming conversation:', error);
+        });
     }
     
     // Function to load a specific conversation
