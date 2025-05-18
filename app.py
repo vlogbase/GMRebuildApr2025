@@ -1061,7 +1061,13 @@ def cookie_policy():
 def info():
     """Marketing information page"""
     from datetime import datetime
-    return render_template('info.html', now=datetime.now())
+    import logging
+    try:
+        return render_template('info.html', now=datetime.now())
+    except Exception as e:
+        logging.error(f"Error rendering info.html: {str(e)}")
+        # Return detailed error for debugging
+        return f"<h1>Error rendering marketing page</h1><p>Error: {str(e)}</p>", 500
     
 @app.route('/billing/account')
 def redirect_billing():
