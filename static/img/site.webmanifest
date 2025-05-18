@@ -3,6 +3,12 @@
   "short_name": "GloriaMundo",
   "icons": [
     {
+      "src": "/static/img/splash_screens/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
       "src": "/static/img/web-app-manifest-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
