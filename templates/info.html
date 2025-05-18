@@ -412,6 +412,152 @@
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
+        /* Pricing Table Section */
+        .pricing-table-section {
+            padding: 5rem 2rem;
+            background-color: #f9f9f9;
+        }
+        
+        .pricing-table-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .pricing-table-section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            text-align: center;
+        }
+        
+        .pricing-table-caption {
+            text-align: center;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: #666;
+        }
+        
+        .pricing-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .pricing-last-updated {
+            font-size: 0.9rem;
+            color: #777;
+        }
+        
+        .pricing-search {
+            display: flex;
+            align-items: center;
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 0.5rem 1rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        
+        .pricing-search i {
+            color: #777;
+            margin-right: 0.5rem;
+        }
+        
+        .pricing-search-input {
+            border: none;
+            outline: none;
+            font-size: 1rem;
+            width: 200px;
+        }
+        
+        .pricing-note {
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .pricing-table-wrapper {
+            overflow-x: auto;
+            margin-bottom: 1.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            background-color: white;
+        }
+        
+        .pricing-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .pricing-table-header {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        
+        .pricing-sort-header {
+            padding: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            position: sticky;
+            top: 0;
+            background-color: var(--primary-color);
+            text-align: left;
+        }
+        
+        .pricing-header-content {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+        }
+        
+        .pricing-header-content.pricing-right {
+            justify-content: flex-end;
+        }
+        
+        .pricing-header-content.pricing-center {
+            justify-content: center;
+        }
+        
+        .pricing-header-content i {
+            margin-left: 0.5rem;
+        }
+        
+        .pricing-loading-cell {
+            padding: 3rem 0;
+            text-align: center;
+        }
+        
+        .pricing-loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .pricing-spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent-color);
+            animation: spin 1s linear infinite;
+            margin-bottom: 1rem;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .pricing-info {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 1.5rem;
+        }
+        
+        .pricing-info i {
+            margin-right: 0.5rem;
+        }
+        
         /* Feature Stats Banner */
         .stats-banner {
             background-color: var(--accent-color);
@@ -531,7 +677,7 @@
     <header class="marketing-header">
         <div class="header-container">
             <div class="logo-container">
-                <img src="{{ url_for('static', filename='img/light-logo.svg') }}" alt="GloriaMundo Logo" class="logo">
+                <img src="{{ url_for('static', filename='img/light-logo.png') }}" alt="GloriaMundo Logo" class="logo">
                 <div class="logo-text">GloriaMundo</div>
             </div>
             <a href="{{ url_for('index') }}" class="cta-button">Try it, free</a>
@@ -688,6 +834,86 @@
         </div>
     </section>
     
+    <!-- Pricing Table Section -->
+    <section class="pricing-table-section">
+        <div class="pricing-table-container">
+            <h2>Model Pricing</h2>
+            <p class="pricing-table-caption">Pricing information for all available AI models. Click on any column header to sort by that attribute.</p>
+            
+            <div class="pricing-controls">
+                <div>
+                    <span id="lastUpdated" class="pricing-last-updated"></span>
+                </div>
+                <div class="pricing-search">
+                    <i class="fa-solid fa-search"></i>
+                    <input type="text" class="pricing-search-input" id="modelSearch" placeholder="Search models...">
+                </div>
+            </div>
+            
+            <div class="pricing-note">
+                <span>• Prices are per million tokens • All prices include our platform fee</span>
+            </div>
+            
+            <div class="pricing-table-wrapper">
+                <table class="pricing-table" id="pricingTable">
+                    <thead class="pricing-table-header">
+                        <tr>
+                            <th onclick="sortPricingTable(0)" class="pricing-sort-header">
+                                <div class="pricing-header-content">
+                                    Model <i id="sort-icon-0" class="fas fa-sort-up"></i>
+                                </div>
+                            </th>
+                            <th onclick="sortPricingTable(1)" class="pricing-sort-header text-end">
+                                <div class="pricing-header-content pricing-right">
+                                    Input Cost <i id="sort-icon-1" class="fas fa-sort"></i>
+                                </div>
+                            </th>
+                            <th onclick="sortPricingTable(2)" class="pricing-sort-header text-end">
+                                <div class="pricing-header-content pricing-right">
+                                    Output Cost <i id="sort-icon-2" class="fas fa-sort"></i>
+                                </div>
+                            </th>
+                            <th onclick="sortPricingTable(3)" class="pricing-sort-header text-end">
+                                <div class="pricing-header-content pricing-right">
+                                    Context <i id="sort-icon-3" class="fas fa-sort"></i>
+                                </div>
+                            </th>
+                            <th onclick="sortPricingTable(4)" class="pricing-sort-header text-center">
+                                <div class="pricing-header-content pricing-center">
+                                    Multimodal <i id="sort-icon-4" class="fas fa-sort"></i>
+                                </div>
+                            </th>
+                            <th onclick="sortPricingTable(5)" class="pricing-sort-header text-center">
+                                <div class="pricing-header-content pricing-center">
+                                    PDFs <i id="sort-icon-5" class="fas fa-sort"></i>
+                                </div>
+                            </th>
+                            <th onclick="sortPricingTable(6)" class="pricing-sort-header text-center">
+                                <div class="pricing-header-content pricing-center">
+                                    Cost Band <i id="sort-icon-6" class="fas fa-sort"></i>
+                                </div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="pricingTableBody">
+                        <tr>
+                            <td colspan="7" class="pricing-loading-cell">
+                                <div class="pricing-loading">
+                                    <div class="pricing-spinner"></div>
+                                    <p>Loading pricing data from OpenRouter...</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="pricing-info">
+                <p><i class="fa-solid fa-info-circle"></i> The pricing information is fetched directly from OpenRouter and our internal pricing configuration. Prices may vary based on model updates and availability.</p>
+            </div>
+        </div>
+    </section>
+    
     <!-- CTA Section -->
     <section class="cta-section">
         <div class="cta-container">
@@ -705,7 +931,7 @@
         <div class="marketing-footer-container">
             <div class="footer-top">
                 <div class="footer-logo">
-                    <img src="{{ url_for('static', filename='img/light-logo.svg') }}" alt="GloriaMundo Logo" class="footer-logo-img">
+                    <img src="{{ url_for('static', filename='img/light-logo.png') }}" alt="GloriaMundo Logo" class="footer-logo-img">
                     <div class="footer-tagline">Every AI. One app. No subscription.</div>
                 </div>
             </div>
@@ -725,4 +951,255 @@
 
 {% block scripts %}
     {{ super() }}
+    <script>
+        // Variables for pricing functionality
+        let pricingData = [];
+        let currentSortColumn = 0;
+        let sortDirection = 'asc';
+        
+        // When the document is loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load pricing data
+            fetchPricingData();
+            
+            // Set up model search functionality
+            const modelSearch = document.getElementById('modelSearch');
+            if (modelSearch) {
+                modelSearch.addEventListener('input', function() {
+                    filterPricingTable(this.value);
+                });
+            }
+        });
+        
+        // Function to load pricing data from API
+        function fetchPricingData() {
+            const pricingTableBody = document.getElementById('pricingTableBody');
+            if (!pricingTableBody) return;
+            
+            pricingTableBody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="pricing-loading-cell">
+                        <div class="pricing-loading">
+                            <div class="pricing-spinner"></div>
+                            <p>Loading pricing data...</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            
+            fetch('/billing/api/pricing')
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => {
+                            throw new Error(`Failed to fetch pricing data. Status: ${response.status}. Message: ${text}`);
+                        });
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    pricingData = data;
+                    renderPricingTable();
+                    updateLastUpdated();
+                })
+                .catch(error => {
+                    console.error("Error fetching pricing data:", error);
+                    pricingTableBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <div class="alert alert-danger mb-0">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    Error loading pricing data. Please try again later.
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                });
+        }
+        
+        // Function to render the pricing table with the current data
+        function renderPricingTable() {
+            const pricingTableBody = document.getElementById('pricingTableBody');
+            if (!pricingTableBody || !pricingData.length) return;
+            
+            // Sort the data
+            sortPricingData();
+            
+            let tableHTML = '';
+            
+            pricingData.forEach(model => {
+                if (model.hidden) return; // Skip hidden models
+                
+                // Determine cost band class
+                const costBandClass = getCostBandClass(model);
+                
+                tableHTML += `
+                    <tr>
+                        <td class="py-3">
+                            <div class="d-flex align-items-center">
+                                <div class="ms-2">
+                                    <div class="fw-bold">${model.name}</div>
+                                    <div class="small text-muted model-provider">${model.provider}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-end py-3">$${model.input_price.toFixed(2)}</td>
+                        <td class="text-end py-3">$${model.output_price.toFixed(2)}</td>
+                        <td class="text-end py-3">${formatTokens(model.context_tokens)}</td>
+                        <td class="text-center py-3">${model.multimodal ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-times-circle text-danger"></i>'}</td>
+                        <td class="text-center py-3">${model.pdf_support ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-times-circle text-danger"></i>'}</td>
+                        <td class="text-center py-3">
+                            <span class="badge ${costBandClass}">${model.cost_band || 'N/A'}</span>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            if (tableHTML === '') {
+                tableHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-4">
+                            <div class="alert alert-info mb-0">
+                                No models match your search criteria
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            pricingTableBody.innerHTML = tableHTML;
+        }
+        
+        // Function to sort pricing data based on selected column
+        function sortPricingData() {
+            pricingData.sort((a, b) => {
+                let valueA, valueB;
+                
+                switch(currentSortColumn) {
+                    case 0: // Model name
+                        valueA = a.name.toLowerCase();
+                        valueB = b.name.toLowerCase();
+                        break;
+                    case 1: // Input price
+                        valueA = a.input_price;
+                        valueB = b.input_price;
+                        break;
+                    case 2: // Output price
+                        valueA = a.output_price;
+                        valueB = b.output_price;
+                        break;
+                    case 3: // Context tokens
+                        valueA = a.context_tokens;
+                        valueB = b.context_tokens;
+                        break;
+                    case 4: // Multimodal
+                        valueA = a.multimodal ? 1 : 0;
+                        valueB = b.multimodal ? 1 : 0;
+                        break;
+                    case 5: // PDF Support
+                        valueA = a.pdf_support ? 1 : 0;
+                        valueB = b.pdf_support ? 1 : 0;
+                        break;
+                    case 6: // Cost band
+                        valueA = a.cost_band_value || 0;
+                        valueB = b.cost_band_value || 0;
+                        break;
+                    default:
+                        valueA = a.name.toLowerCase();
+                        valueB = b.name.toLowerCase();
+                }
+                
+                // Apply sort direction
+                if (sortDirection === 'asc') {
+                    return valueA > valueB ? 1 : -1;
+                } else {
+                    return valueA < valueB ? 1 : -1;
+                }
+            });
+        }
+        
+        // Function to filter pricing table based on search term
+        function filterPricingTable(searchTerm) {
+            if (!pricingData.length) return;
+            
+            searchTerm = searchTerm.toLowerCase();
+            
+            pricingData.forEach(model => {
+                // Check if model name or provider contains search term
+                if (model.name.toLowerCase().includes(searchTerm) || 
+                    (model.provider && model.provider.toLowerCase().includes(searchTerm))) {
+                    model.hidden = false;
+                } else {
+                    model.hidden = true;
+                }
+            });
+            
+            renderPricingTable();
+        }
+        
+        // Function to sort the pricing table by clicking column headers
+        function sortPricingTable(columnIndex) {
+            // Update sort icons
+            document.querySelectorAll('[id^="sort-icon-"]').forEach(icon => {
+                icon.className = 'fas fa-sort';
+            });
+            
+            // If we're clicking the same column, toggle direction
+            if (currentSortColumn === columnIndex) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSortColumn = columnIndex;
+                sortDirection = 'asc';
+            }
+            
+            // Update icon for current sort column
+            const sortIcon = document.getElementById(`sort-icon-${columnIndex}`);
+            if (sortIcon) {
+                sortIcon.className = `fas fa-sort-${sortDirection === 'asc' ? 'up' : 'down'}`;
+            }
+            
+            renderPricingTable();
+        }
+        
+        // Function to format token counts
+        function formatTokens(tokens) {
+            if (tokens === undefined || tokens === null) return 'N/A';
+            
+            if (tokens >= 1000000) {
+                return `${(tokens / 1000000).toFixed(1)}M`;
+            } else if (tokens >= 1000) {
+                return `${(tokens / 1000).toFixed(1)}K`;
+            } else {
+                return tokens.toString();
+            }
+        }
+        
+        // Function to get the appropriate CSS class for cost band
+        function getCostBandClass(model) {
+            const band = model.cost_band ? model.cost_band.toLowerCase() : '';
+            
+            if (band.includes('free')) {
+                return 'bg-success';
+            } else if (band.includes('low')) {
+                return 'bg-info';
+            } else if (band.includes('medium')) {
+                return 'bg-primary';
+            } else if (band.includes('high')) {
+                return 'bg-warning';
+            } else if (band.includes('premium')) {
+                return 'bg-danger';
+            } else {
+                return 'bg-secondary';
+            }
+        }
+        
+        // Function to update the last updated time
+        function updateLastUpdated() {
+            const lastUpdated = document.getElementById('lastUpdated');
+            if (lastUpdated) {
+                const now = new Date();
+                const formattedTime = now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
+                lastUpdated.textContent = `Last updated: ${formattedTime}`;
+            }
+        }
+    </script>
 {% endblock %}
