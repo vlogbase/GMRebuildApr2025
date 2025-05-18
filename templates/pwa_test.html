@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+
+{% block title %}GloriaMundo PWA Test{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12 text-center">
+            <h1>GloriaMundo PWA Test</h1>
+            <p class="lead">This page tests the PWA installation capabilities of GloriaMundo</p>
+            
+            <div class="mt-4">
+                <p>If the PWA is correctly configured, you should see an install option in your browser:</p>
+                <ul class="list-group">
+                    <li class="list-group-item">On Chrome desktop: Look for the install icon in the address bar</li>
+                    <li class="list-group-item">On mobile devices: Look for "Add to Home Screen" in the browser menu</li>
+                </ul>
+            </div>
+            
+            <div class="mt-4">
+                <h3>PWA Status</h3>
+                <div id="pwa-status">Checking PWA status...</div>
+            </div>
+            
+            <div class="mt-5">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const statusEl = document.getElementById('pwa-status');
+    
+    // Check if service worker is supported
+    if ('serviceWorker' in navigator) {
+        statusEl.innerHTML = '<div class="alert alert-success">✓ Service Worker is supported in this browser</div>';
+        
+        // Check for installation status
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            statusEl.innerHTML += '<div class="alert alert-success">✓ App is running in standalone mode (installed as PWA)</div>';
+        } else {
+            statusEl.innerHTML += '<div class="alert alert-info">ℹ️ App is running in browser mode (not installed as PWA yet)</div>';
+        }
+        
+        // Check manifest
+        fetch('/manifest.json')
+            .then(response => {
+                if (response.ok) {
+                    statusEl.innerHTML += '<div class="alert alert-success">✓ Web App Manifest is accessible</div>';
+                    return response.json();
+                } else {
+                    statusEl.innerHTML += '<div class="alert alert-danger">✗ Web App Manifest is not accessible</div>';
+                    throw new Error('Manifest not accessible');
+                }
+            })
+            .then(manifest => {
+                // Check required manifest properties
+                let requiredProps = ['name', 'short_name', 'start_url', 'icons', 'display'];
+                let missingProps = requiredProps.filter(prop => !manifest[prop]);
+                
+                if (missingProps.length === 0) {
+                    statusEl.innerHTML += '<div class="alert alert-success">✓ Web App Manifest contains all required properties</div>';
+                } else {
+                    statusEl.innerHTML += `<div class="alert alert-warning">⚠️ Web App Manifest is missing properties: ${missingProps.join(', ')}</div>`;
+                }
+                
+                // Check icons
+                if (manifest.icons && Array.isArray(manifest.icons)) {
+                    const has192 = manifest.icons.some(icon => icon.sizes && icon.sizes.includes('192x192'));
+                    const has512 = manifest.icons.some(icon => icon.sizes && icon.sizes.includes('512x512'));
+                    
+                    if (has192 && has512) {
+                        statusEl.innerHTML += '<div class="alert alert-success">✓ Web App Manifest contains required icon sizes (192x192, 512x512)</div>';
+                    } else {
+                        statusEl.innerHTML += '<div class="alert alert-warning">⚠️ Web App Manifest is missing required icon sizes (192x192, 512x512)</div>';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error checking manifest:', error);
+            });
+        
+        // Check service worker
+        navigator.serviceWorker.getRegistration()
+            .then(registration => {
+                if (registration) {
+                    statusEl.innerHTML += '<div class="alert alert-success">✓ Service Worker is registered</div>';
+                } else {
+                    statusEl.innerHTML += '<div class="alert alert-warning">⚠️ Service Worker is not registered yet</div>';
+                }
+            })
+            .catch(error => {
+                statusEl.innerHTML += '<div class="alert alert-danger">✗ Error checking Service Worker registration</div>';
+                console.error('Error checking service worker:', error);
+            });
+    } else {
+        statusEl.innerHTML = '<div class="alert alert-danger">✗ Service Worker is not supported in this browser</div>';
+    }
+});
+</script>
+{% endblock %}

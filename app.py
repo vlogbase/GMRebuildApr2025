@@ -23,7 +23,7 @@ import traceback
 import sys
 from pathlib import Path
 from PIL import Image  # For image processing
-from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory # Added send_from_directory
+from flask import Flask, render_template, request, Response, session, jsonify, abort, url_for, redirect, flash, stream_with_context, send_from_directory
 from urllib.parse import urlparse # For URL analysis in image handling
 from werkzeug.datastructures import FileStorage # For file handling in upload routes
 from flask_login import LoginManager, current_user, login_required, login_user, logout_user
@@ -4465,6 +4465,22 @@ def upload_documents():
         }), 500
 
 # --- Main Execution ---
+# PWA Service Worker routes
+@app.route('/service-worker.js')
+def service_worker():
+    """Serve the service worker JavaScript file from the static folder"""
+    return send_from_directory('static/js', 'service-worker.js')
+
+@app.route('/manifest.json')
+def manifest():
+    """Serve the manifest.json file for PWA"""
+    return send_from_directory('static/manifest', 'manifest.json')
+
+@app.route('/pwa-test')
+def pwa_test():
+    """Test page for PWA functionality"""
+    return render_template('pwa_test.html')
+
 if __name__ == '__main__':
     logger.info("Starting Flask development server")
     
