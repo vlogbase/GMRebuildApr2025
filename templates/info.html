@@ -468,6 +468,15 @@
             outline: none;
             font-size: 1rem;
             width: 200px;
+            background-color: white !important; /* Explicitly set background to white */
+            color: #333 !important;           /* Explicitly set text color to dark */
+            padding: 0; /* Remove any padding if it causes issues with the parent's padding */
+        }
+        
+        /* Ensure placeholder text is also legible */
+        .pricing-search-input::placeholder {
+            color: #777 !important; /* A medium grey for placeholder */
+            opacity: 1; /* Ensure it's fully opaque */
         }
         
         .pricing-note {
@@ -528,13 +537,52 @@
             color: #dc3545;
         }
         
-        /* Make sure text in table is visible */
-        .pricing-table {
+        /* Pricing Table Specific Overrides to fix white-on-white text */
+        #pricingTable {
+            color: #333 !important; /* Ensures the table container itself tries to set dark text */
+        }
+
+        #pricingTable th,
+        #pricingTable td {
+            color: #333 !important; /* Dark text for all table headers and cells */
+            background-color: transparent; /* Ensure no conflicting background from style.css is inherited */
+        }
+
+        /* Override specific link colors within the pricing table */
+        #pricingTable a {
+            color: var(--primary-color) !important;
+        }
+        #pricingTable a:hover {
+            color: var(--accent-color) !important;
+        }
+
+        /* Override any other elements within the table that might be made white */
+        #pricingTable .model-provider,
+        #pricingTable .fw-bold,
+        #pricingTable div span:not(.cost-band-indicator) {
             color: #333 !important;
         }
-        
-        .pricing-table tbody tr td {
-            color: #333 !important;
+
+        /* Ensure cost band indicators are still styled as intended */
+        #pricingTable .cost-band-1 {
+            color: #17a2b8 !important;
+        }
+        #pricingTable .cost-band-2 {
+            color: #007bff !important;
+        }
+        #pricingTable .cost-band-3-warn {
+            color: #ffc107 !important;
+        }
+        #pricingTable .cost-band-4-danger {
+            color: #dc3545 !important;
+        }
+
+        /* Ensure header text is white (since it has dark background) */
+        .pricing-table-header th {
+            color: white !important;
+        }
+        .pricing-table-header .pricing-header-content i {
+            color: white !important;
         }
         
         /* Make table row borders visible */
