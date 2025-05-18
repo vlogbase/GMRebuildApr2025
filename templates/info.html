@@ -504,6 +504,41 @@
             background-color: #f9f9f9;
         }
         
+        /* Cost band colors - matching account page styling */
+        .pricing-table .cost-free {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        .pricing-table .cost-low {
+            background-color: #17a2b8;
+            color: white;
+        }
+        
+        .pricing-table .cost-medium {
+            background-color: #007bff;
+            color: white;
+        }
+        
+        .pricing-table .cost-high {
+            background-color: #ffc107;
+            color: #212529;
+        }
+        
+        .pricing-table .cost-very-high {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        /* Feature availability */
+        .pricing-table .feature-available {
+            color: #28a745;
+        }
+        
+        .pricing-table .feature-unavailable {
+            color: #dc3545;
+        }
+        
         .pricing-sort-header {
             padding: 1rem;
             font-weight: bold;
@@ -1230,13 +1265,13 @@
                         <td class="text-end py-3">${model.context_length}</td>
                         <td class="text-center py-3">
                             ${model.multimodal === 'Yes' ? 
-                                '<i class="fas fa-check-circle text-success"></i>' : 
-                                '<i class="fas fa-times-circle text-danger"></i>'}
+                                '<i class="fas fa-check-circle feature-available"></i>' : 
+                                '<i class="fas fa-times-circle feature-unavailable"></i>'}
                         </td>
                         <td class="text-center py-3">
                             ${model.pdfs === 'Yes' ? 
-                                '<i class="fas fa-check-circle text-success"></i>' : 
-                                '<i class="fas fa-times-circle text-danger"></i>'}
+                                '<i class="fas fa-check-circle feature-available"></i>' : 
+                                '<i class="fas fa-times-circle feature-unavailable"></i>'}
                         </td>
                         <td class="text-center py-3">
                             <span class="badge ${costBandClass}">${costBandDisplay}</span>
@@ -1376,16 +1411,16 @@
         
         // Helper function to get appropriate CSS class for cost band
         function getCostBandClass(band) {
-            if (!band) return 'bg-secondary';
+            if (!band) return 'cost-medium';
             
             const lowerBand = band.toLowerCase();
-            if (lowerBand.includes('free')) return 'bg-success';
-            if (lowerBand.includes('low')) return 'bg-info';
-            if (lowerBand.includes('medium')) return 'bg-primary';
-            if (lowerBand.includes('high')) return 'bg-warning';
-            if (lowerBand.includes('premium')) return 'bg-danger';
+            if (lowerBand.includes('free')) return 'cost-free';
+            if (lowerBand.includes('low')) return 'cost-low';
+            if (lowerBand.includes('medium')) return 'cost-medium';
+            if (lowerBand.includes('high')) return 'cost-high';
+            if (lowerBand.includes('premium') || lowerBand.includes('very-high')) return 'cost-very-high';
             
-            return 'bg-secondary';
+            return 'cost-medium';
         }
         
         // Helper function to format context length in a human-readable way
