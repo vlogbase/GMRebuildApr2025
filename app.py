@@ -1822,6 +1822,43 @@ def clear_conversations():
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/rename-conversation/<int:conversation_id>', methods=['PUT'])
+@login_required
+def rename_conversation(conversation_id):
+    """Rename a conversation for the current user"""
+    try:
+        # Get the new title from the request
+        data = request.get_json()
+        new_title = data.get('title', '').strip()
+        
+        if not new_title:
+            return jsonify({"success": False, "error": "Title cannot be empty"}), 400
+        
+        from models import Conversation
+        
+        # Find the conversation by ID and make sure it belongs to the current user
+        conversation = Conversation.query.filter_by(id=conversation_id, user_id=current_user.id).first()
+        
+        if not conversation:
+            return jsonify({"success": False, "error": "Conversation not found"}), 404
+        
+        # Update the title
+        conversation.title = new_title
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "conversation": {
+                "id": conversation.id,
+                "title": conversation.title
+            }
+        })
+    
+    except Exception as e:
+        logger.exception(f"Error renaming conversation {conversation_id} for user {current_user.id}: {e}")
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/create-conversation', methods=['POST'])
 @login_required
 def create_conversation():
