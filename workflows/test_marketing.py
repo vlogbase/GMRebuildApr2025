@@ -1,33 +1,54 @@
 """
-Test workflow for the marketing page
+Simple Flask server workflow for testing the marketing page at /info
 """
-import os
 import sys
+import os
+import subprocess
+import time
 import logging
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[logging.StreamHandler(sys.stdout)]
-)
-
+logging.basicConfig(level=logging.INFO,
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def run():
-    """Run the Flask application for testing the marketing page"""
-    logger.info("Starting Flask server for marketing page test")
-    
-    # Set Flask environment variables
-    os.environ["FLASK_APP"] = "app.py"
-    os.environ["FLASK_ENV"] = "development"
-    os.environ["FLASK_DEBUG"] = "1"
-    
-    # Import the Flask app
-    import app
-    
-    # Run the application
-    app.app.run(host="0.0.0.0", port=5000, debug=True)
+    """
+    Run the Flask application with the marketing page
+    """
+    try:
+        logger.info("Starting Flask server for marketing page testing")
+        
+        # Get the Flask app path
+        app_path = os.path.join(os.getcwd(), 'app.py')
+        
+        # Run the Flask application
+        logger.info(f"Running Flask application from {app_path}")
+        process = subprocess.Popen(
+            [sys.executable, app_path],
+            env=os.environ.copy(),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        
+        logger.info("Flask server started for testing the marketing page")
+        logger.info("Visit http://localhost:5000/info to see the marketing page")
+        
+        # Keep the server running
+        while True:
+            time.sleep(1)
+            
+    except KeyboardInterrupt:
+        logger.info("Server stopped by user")
+        if process and process.poll() is None:
+            process.terminate()
+            process.wait()
+    except Exception as e:
+        logger.error(f"Error occurred: {e}")
+        if process and process.poll() is None:
+            process.terminate()
+            process.wait()
 
 if __name__ == "__main__":
     run()

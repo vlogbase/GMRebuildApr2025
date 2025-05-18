@@ -1060,7 +1060,8 @@ def cookie_policy():
 @app.route('/info')
 def info():
     """Marketing information page"""
-    return render_template('info.html')
+    from datetime import datetime
+    return render_template('info.html', now=datetime.now())
     
 @app.route('/billing/account')
 def redirect_billing():
