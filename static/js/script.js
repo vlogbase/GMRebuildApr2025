@@ -70,10 +70,35 @@ function setupLazyLoading() {
     }
 }
 
+// Define necessary elements early to avoid reference errors
+let messageInput;
+let sendButton;
+
+// Define essential functions if not already defined
+// This ensures they exist before they're called
+if (typeof fetchConversations !== 'function') {
+    // Placeholder implementation - will be properly defined later
+    window.fetchConversations = function(bustCache = false, metadataOnly = true) {
+        console.log('Placeholder fetchConversations called');
+        return Promise.resolve([]);
+    };
+}
+
+if (typeof initializeModelSelector !== 'function') {
+    // Placeholder implementation - will be properly defined later
+    window.initializeModelSelector = function() {
+        console.log('Placeholder initializeModelSelector called');
+    };
+}
+
 // Set up prioritized loading for better performance
 function initializePrioritized() {
     // High priority - critical for immediate UI interaction
     setupLazyLoading();
+    
+    // Initialize basic UI elements
+    messageInput = document.getElementById('user-input') || document.getElementById('message-input');
+    sendButton = document.getElementById('send-button');
     
     // Medium priority - important but can be slightly delayed
     setTimeout(() => {

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    <meta name="description" content="GloriaMundo - AI-powered document intelligence platform that transforms document processing through intelligent, adaptive technologies.">
     <title>{% block title %}GloriaMundo Chat{% endblock %}</title>
     
     <!-- Resource hints for faster loading -->
@@ -117,7 +118,7 @@
         <a href="{{ url_for('terms_of_service') }}">Terms of Service</a>
         <a href="{{ url_for('privacy_policy') }}">Privacy Policy</a>
         <a href="{{ url_for('cookie_policy') }}">Cookie Policy</a>
-        <a href="javascript:void(0)" id="open-cookie-settings">Cookie Settings</a>
+        <a href="#cookie-settings" id="open-cookie-settings">Cookie Settings</a>
         <span class="copyright">© {{ now.year }} Sentigral Limited</span>
     </div>
     {% endblock %}

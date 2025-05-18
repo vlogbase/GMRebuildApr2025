@@ -264,7 +264,7 @@
                     <a href="{{ url_for('terms_of_service') }}">Terms of Service</a>
                     <a href="{{ url_for('privacy_policy') }}">Privacy Policy</a>
                     <a href="{{ url_for('cookie_policy') }}">Cookie Policy</a>
-                    <a href="javascript:void(0)" id="open-cookie-settings">Cookie Settings</a>
+                    <a href="#cookie-settings" id="open-cookie-settings">Cookie Settings</a>
                     <a href="{{ url_for('info') }}">About</a>
                     <span class="disclaimer-text">For important decisions, always confirm information with trusted sources.</span>
                     <span class="copyright">© {{ now.year }} Sentigral Limited</span>
@@ -299,7 +299,7 @@
                         <a href="{{ url_for('google_auth.login') }}" class="auth-btn google-auth-btn">
                             <i class="fa-brands fa-google"></i> Sign in with Google
                         </a>
-                        <a href="javascript:void(0)" id="no-thanks-btn" class="no-thanks-link">
+                        <a href="#" id="no-thanks-btn" class="no-thanks-link">
                             No thanks, continue for now
                         </a>
                     </div>
