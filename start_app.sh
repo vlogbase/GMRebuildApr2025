@@ -1,2 +1,2 @@
 #!/bin/bash
-python app_workflow.py
+python3 run.py

@@ -1056,6 +1056,11 @@ def terms_of_service():
 def cookie_policy():
     """Cookie Policy page"""
     return render_template('cookie_policy.html')
+
+@app.route('/info')
+def info():
+    """Marketing information page"""
+    return render_template('info.html')
     
 @app.route('/billing/account')
 def redirect_billing():

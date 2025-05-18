@@ -1,0 +1,728 @@
+{% extends "base.html" %}
+
+{% block title %}GloriaMundo - Every AI. One app. No subscription.{% endblock %}
+
+{% block styles %}
+    {{ super() }}
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #f39c12;
+            --light-bg: #f9f9f9;
+            --dark-bg: #1a1a1a;
+            --text-light: #f9f9f9;
+            --text-dark: #333;
+            --card-bg: #fff;
+            --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --border-radius: 8px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            background-color: var(--light-bg);
+            margin: 0;
+            padding: 0;
+        }
+
+        .info-page {
+            max-width: 100%;
+            overflow-x: hidden;
+        }
+
+        /* Header Styles */
+        .marketing-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #1a1a2e 100%);
+            color: white;
+            padding: 1rem 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo-container img {
+            height: 50px;
+            margin-right: 1rem;
+        }
+
+        .logo-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .cta-button {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--border-radius);
+            font-weight: bold;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .cta-button:hover {
+            background-color: #e67e22;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        /* Hero Section */
+        .hero {
+            background: linear-gradient(135deg, #2c3e50 0%, #1a1a2e 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -50px;
+            left: 0;
+            right: 0;
+            height: 100px;
+            background: linear-gradient(to bottom, #1a1a2e, transparent);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        .hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            line-height: 1.2;
+        }
+
+        .hero p {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+
+        .hero .cta-button {
+            font-size: 1.25rem;
+            padding: 1rem 2rem;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 2rem 4rem;
+            background-color: var(--light-bg);
+            position: relative;
+            z-index: 2;
+        }
+
+        .features-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .features h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: var(--primary-color);
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background-color: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--card-shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--accent-color);
+            margin-bottom: 1rem;
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .feature-card p {
+            color: #666;
+            margin-bottom: 0;
+        }
+
+        /* Pricing Section */
+        .pricing {
+            padding: 5rem 2rem;
+            background-color: #fff;
+            text-align: center;
+        }
+
+        .pricing-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .pricing h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+
+        .pricing-tagline {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            color: #666;
+        }
+        
+        .pricing-highlights {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 2rem;
+            gap: 1rem;
+        }
+        
+        .pricing-point {
+            display: flex;
+            align-items: center;
+            font-size: 1.2rem;
+            color: #444;
+        }
+        
+        .pricing-point i {
+            color: var(--accent-color);
+            margin-right: 0.75rem;
+            font-size: 1.3rem;
+        }
+
+        /* Affiliate Section */
+        .affiliate {
+            padding: 5rem 2rem;
+            background-color: var(--light-bg);
+            text-align: center;
+        }
+
+        .affiliate-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .affiliate h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        
+        .affiliate-tagline {
+            font-size: 1.25rem;
+            margin-bottom: 2.5rem;
+            color: #666;
+        }
+        
+        .affiliate-tiers {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        
+        .affiliate-tier {
+            background-color: white;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            box-shadow: var(--card-shadow);
+            width: 200px;
+            transition: transform 0.3s ease;
+        }
+        
+        .affiliate-tier:hover {
+            transform: translateY(-5px);
+        }
+        
+        .tier-icon {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 1rem;
+        }
+        
+        .tier-percent {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--accent-color);
+            margin-bottom: 0.5rem;
+        }
+        
+        .tier-desc {
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .affiliate-plus {
+            font-size: 2rem;
+            margin: 0 1.5rem;
+            color: var(--accent-color);
+        }
+
+        .affiliate p {
+            font-size: 1.25rem;
+            margin: 2rem 0;
+            color: #666;
+        }
+
+        /* CTA Section */
+        .cta-section {
+            background: linear-gradient(135deg, #2c3e50 0%, #4a6990 100%);
+            color: white;
+            padding: 5rem 2rem;
+            text-align: center;
+        }
+        
+        .cta-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .cta-section h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .cta-section p {
+            font-size: 1.25rem;
+            margin-bottom: 2.5rem;
+            opacity: 0.9;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .cta-primary {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .cta-secondary {
+            background-color: transparent;
+            color: white;
+            border: 2px solid white;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        
+        .cta-secondary:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* Footer */
+        .marketing-footer {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 4rem 2rem 2rem;
+            text-align: center;
+        }
+
+        .marketing-footer-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .footer-top {
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .footer-logo {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .footer-logo-img {
+            height: 60px;
+            margin-bottom: 1rem;
+        }
+        
+        .footer-tagline {
+            font-size: 1.2rem;
+            font-weight: 300;
+            margin-bottom: 1.5rem;
+        }
+
+        .marketing-footer-links {
+            margin-bottom: 2rem;
+        }
+
+        .marketing-footer-links a {
+            color: white;
+            margin: 0 1rem;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .marketing-footer-links a:hover {
+            color: var(--accent-color);
+        }
+
+        .marketing-footer-copyright {
+            opacity: 0.7;
+            font-size: 0.9rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Feature Stats Banner */
+        .stats-banner {
+            background-color: var(--accent-color);
+            color: white;
+            padding: 1.5rem;
+            text-align: center;
+            font-weight: bold;
+        }
+        
+        .stats-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+        
+        .stats-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .stats-item .stats-icon {
+            margin-right: 0.5rem;
+            font-size: 1.2rem;
+        }
+        
+        /* Security Badges */
+        .security-badges {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+            flex-wrap: wrap;
+        }
+        
+        .security-badge {
+            display: flex;
+            align-items: center;
+            color: #555;
+            font-size: 0.9rem;
+        }
+        
+        .security-badge i {
+            font-size: 1.5rem;
+            margin-right: 0.5rem;
+            color: var(--primary-color);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .hero p {
+                font-size: 1.25rem;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header-container {
+                flex-direction: column;
+                text-align: center;
+                padding: 1rem;
+            }
+            
+            .logo-container {
+                margin-bottom: 1rem;
+            }
+            
+            .affiliate-tiers {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .affiliate-plus {
+                transform: rotate(90deg);
+                margin: 0.5rem 0;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .cta-section h2 {
+                font-size: 2rem;
+            }
+            
+            .cta-section p {
+                font-size: 1.1rem;
+            }
+            
+            .stats-content {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .footer-logo-img {
+                height: 50px;
+            }
+            
+            .marketing-footer-links a {
+                margin: 0 0.5rem;
+            }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="info-page">
+    <!-- Header -->
+    <header class="marketing-header">
+        <div class="header-container">
+            <div class="logo-container">
+                <img src="{{ url_for('static', filename='img/light-logo.svg') }}" alt="GloriaMundo Logo" class="logo">
+                <div class="logo-text">GloriaMundo</div>
+            </div>
+            <a href="{{ url_for('index') }}" class="cta-button">Try it, free</a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1>Every AI. One app. No subscription.</h1>
+            <p>The smartest way to access cutting-edge AI models with a simple pay-as-you-go approach.</p>
+            <a href="{{ url_for('index') }}" class="cta-button">Get Started</a>
+            
+            <div class="security-badges">
+                <div class="security-badge">
+                    <i class="fa-solid fa-shield-alt"></i>
+                    <span>Secure & Private</span>
+                </div>
+                <div class="security-badge">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>Encrypted Data</span>
+                </div>
+                <div class="security-badge">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Reliable Service</span>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <!-- Stats Banner -->
+    <div class="stats-banner">
+        <div class="stats-content">
+            <div class="stats-item">
+                <div class="stats-icon"><i class="fa-solid fa-robot"></i></div>
+                <div>Access to dozens of AI models</div>
+            </div>
+            <div class="stats-item">
+                <div class="stats-icon"><i class="fa-solid fa-check"></i></div>
+                <div>Many models available for free</div>
+            </div>
+            <div class="stats-item">
+                <div class="stats-icon"><i class="fa-solid fa-coins"></i></div>
+                <div>Pay only for what you use</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="features-container">
+            <h2>Powerful Features</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa-solid fa-robot"></i>
+                    </div>
+                    <h3>Multiple AI Models</h3>
+                    <p>Access dozens of models, many of them free. Pay only for what you use with no subscriptions.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa-solid fa-exchange-alt"></i>
+                    </div>
+                    <h3>Switch Models Mid-Conversation</h3>
+                    <p>Seamlessly switch between different AI models without losing context in your conversation.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa-solid fa-memory"></i>
+                    </div>
+                    <h3>Advanced Memory System</h3>
+                    <p>Control your conversation's memory - turn long-term memory on or off as needed.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa-solid fa-file-pdf"></i>
+                    </div>
+                    <h3>Multi-Format Support</h3>
+                    <p>Handle camera images, PDFs, and other document formats with ease.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa-solid fa-life-ring"></i>
+                    </div>
+                    <h3>Smart Fallback Modes</h3>
+                    <p>When a model isn't available, choose to use another or try again - you're in control.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fa-solid fa-sliders"></i>
+                    </div>
+                    <h3>Advanced Controls</h3>
+                    <p>Fine-tune your AI interactions with temperature, top-p, and other advanced settings.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Pricing Section -->
+    <section class="pricing">
+        <div class="pricing-container">
+            <h2>Simple, Transparent Pricing</h2>
+            <p class="pricing-tagline">Access dozens of models. Many of them free. Pay only for what you use.</p>
+            <div class="pricing-highlights">
+                <div class="pricing-point">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>No subscriptions or monthly fees</span>
+                </div>
+                <div class="pricing-point">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Switch between models mid-conversation</span>
+                </div>
+                <div class="pricing-point">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Advanced memory system with user controls</span>
+                </div>
+            </div>
+            <a href="{{ url_for('index') }}" class="cta-button">Start Using Now</a>
+        </div>
+    </section>
+
+    <!-- Affiliate Section -->
+    <section class="affiliate">
+        <div class="affiliate-container">
+            <h2>Share and Earn</h2>
+            <div class="affiliate-tagline">Two-tier commission structure for maximum earnings</div>
+            <div class="affiliate-tiers">
+                <div class="affiliate-tier">
+                    <div class="tier-icon">
+                        <i class="fa-solid fa-user-plus"></i>
+                    </div>
+                    <div class="tier-percent">10%</div>
+                    <div class="tier-desc">Commission on direct referrals</div>
+                </div>
+                <div class="affiliate-plus">
+                    <i class="fa-solid fa-plus"></i>
+                </div>
+                <div class="affiliate-tier">
+                    <div class="tier-icon">
+                        <i class="fa-solid fa-users"></i>
+                    </div>
+                    <div class="tier-percent">5%</div>
+                    <div class="tier-desc">When your referrals refer others</div>
+                </div>
+            </div>
+            <p>Tell friends about GloriaMundo and earn commissions every time they use the service.</p>
+            <a href="{{ url_for('affiliate.register') }}" class="cta-button">Become an Affiliate</a>
+        </div>
+    </section>
+    
+    <!-- CTA Section -->
+    <section class="cta-section">
+        <div class="cta-container">
+            <h2>Ready to experience AI without limits?</h2>
+            <p>Join thousands of users who are already using GloriaMundo for their AI needs.</p>
+            <div class="cta-buttons">
+                <a href="{{ url_for('index') }}" class="cta-button cta-primary">Try it for free</a>
+                <a href="{{ url_for('affiliate.register') }}" class="cta-button cta-secondary">Become an affiliate</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="marketing-footer">
+        <div class="marketing-footer-container">
+            <div class="footer-top">
+                <div class="footer-logo">
+                    <img src="{{ url_for('static', filename='img/light-logo.svg') }}" alt="GloriaMundo Logo" class="footer-logo-img">
+                    <div class="footer-tagline">Every AI. One app. No subscription.</div>
+                </div>
+            </div>
+            <div class="marketing-footer-links">
+                <a href="{{ url_for('terms_of_service') }}">Terms of Service</a>
+                <a href="{{ url_for('privacy_policy') }}">Privacy Policy</a>
+                <a href="{{ url_for('cookie_policy') }}">Cookie Policy</a>
+                <a href="{{ url_for('index') }}">Try GloriaMundo</a>
+            </div>
+            <div class="marketing-footer-copyright">
+                © {{ now.year }} Sentigral Limited. All rights reserved.
+            </div>
+        </div>
+    </footer>
+</div>
+{% endblock %}
+
+{% block scripts %}
+    {{ super() }}
+{% endblock %}
