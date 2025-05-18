@@ -578,10 +578,15 @@
         }
 
         /* Ensure header text is white (since it has dark background) */
-        .pricing-table-header th {
+        #pricingTable thead th,
+        .pricing-table-header th,
+        #pricingTable .pricing-sort-header,
+        #pricingTable .pricing-header-content {
             color: white !important;
         }
-        .pricing-table-header .pricing-header-content i {
+        #pricingTable thead i,
+        .pricing-table-header .pricing-header-content i,
+        #pricingTable .pricing-sort-header i {
             color: white !important;
         }
         
