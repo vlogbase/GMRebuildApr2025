@@ -4004,18 +4004,6 @@ window.resetToDefault = function(presetId) {
                             titleDiv.className = 'conversation-title';
                             titleDiv.textContent = conversation.title;
                             
-                            // Add edit button for renaming conversations
-                            const editButton = document.createElement('button');
-                            editButton.className = 'edit-conversation-btn';
-                            editButton.title = 'Rename conversation';
-                            editButton.innerHTML = '<i class="fa-solid fa-edit"></i>';
-                            
-                            // Add click event to edit button
-                            editButton.addEventListener('click', function(e) {
-                                e.stopPropagation(); // Prevent triggering the conversation item click
-                                openRenameModal(conversation.id, conversation.title);
-                            });
-                            
                             const dateDiv = document.createElement('div');
                             dateDiv.className = 'conversation-date';
                             
@@ -4034,9 +4022,8 @@ window.resetToDefault = function(presetId) {
                                 dateDiv.textContent = createdDate.toLocaleDateString();
                             }
                             
-                            // Append title, edit button, and date to conversation item
+                            // Append title and date to conversation item
                             conversationItem.appendChild(titleDiv);
-                            conversationItem.appendChild(editButton);
                             conversationItem.appendChild(dateDiv);
                             
                             // Add click event to load conversation
