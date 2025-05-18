@@ -504,39 +504,42 @@
             background-color: #f9f9f9;
         }
         
-        /* Cost band colors - matching account page styling */
-        .pricing-table .cost-free {
-            background-color: #28a745;
-            color: white;
+        /* Cost band indicators - matching account page styling */
+        .cost-band-indicator {
+            display: inline-block;
+            font-weight: bold;
+            font-size: 1rem;
+            color: #555;
         }
         
-        .pricing-table .cost-low {
-            background-color: #17a2b8;
-            color: white;
+        .cost-band-1 {
+            color: #17a2b8;
         }
         
-        .pricing-table .cost-medium {
-            background-color: #007bff;
-            color: white;
+        .cost-band-2 {
+            color: #007bff;
         }
         
-        .pricing-table .cost-high {
-            background-color: #ffc107;
-            color: #212529;
+        .cost-band-3-warn {
+            color: #ffc107;
         }
         
-        .pricing-table .cost-very-high {
-            background-color: #dc3545;
-            color: white;
-        }
-        
-        /* Feature availability */
-        .pricing-table .feature-available {
-            color: #28a745;
-        }
-        
-        .pricing-table .feature-unavailable {
+        .cost-band-4-danger {
             color: #dc3545;
+        }
+        
+        /* Make sure text in table is visible */
+        .pricing-table {
+            color: #333 !important;
+        }
+        
+        .pricing-table tbody tr td {
+            color: #333 !important;
+        }
+        
+        /* Make table row borders visible */
+        .pricing-table tbody tr {
+            border-bottom: 1px solid #dee2e6;
         }
         
         .pricing-sort-header {
@@ -1265,16 +1268,16 @@
                         <td class="text-end py-3">${model.context_length}</td>
                         <td class="text-center py-3">
                             ${model.multimodal === 'Yes' ? 
-                                '<i class="fas fa-check-circle feature-available"></i>' : 
-                                '<i class="fas fa-times-circle feature-unavailable"></i>'}
+                                '<span class="badge bg-success">Yes</span>' : 
+                                '<span class="badge bg-secondary">No</span>'}
                         </td>
                         <td class="text-center py-3">
                             ${model.pdfs === 'Yes' ? 
-                                '<i class="fas fa-check-circle feature-available"></i>' : 
-                                '<i class="fas fa-times-circle feature-unavailable"></i>'}
+                                '<span class="badge bg-success">Yes</span>' : 
+                                '<span class="badge bg-secondary">No</span>'}
                         </td>
                         <td class="text-center py-3">
-                            <span class="badge ${costBandClass}">${costBandDisplay}</span>
+                            ${getCostBandDisplayHTML(model.cost_band)}
                         </td>
                     </tr>
                 `;
@@ -1411,16 +1414,30 @@
         
         // Helper function to get appropriate CSS class for cost band
         function getCostBandClass(band) {
-            if (!band) return 'cost-medium';
+            if (!band) return 'cost-band-2';
             
             const lowerBand = band.toLowerCase();
-            if (lowerBand.includes('free')) return 'cost-free';
-            if (lowerBand.includes('low')) return 'cost-low';
-            if (lowerBand.includes('medium')) return 'cost-medium';
-            if (lowerBand.includes('high')) return 'cost-high';
-            if (lowerBand.includes('premium') || lowerBand.includes('very-high')) return 'cost-very-high';
+            if (lowerBand.includes('free')) return '';
+            if (lowerBand.includes('low')) return 'cost-band-1';
+            if (lowerBand.includes('medium')) return 'cost-band-2';
+            if (lowerBand.includes('high')) return 'cost-band-3-warn';
+            if (lowerBand.includes('premium') || lowerBand.includes('very-high')) return 'cost-band-4-danger';
             
-            return 'cost-medium';
+            return 'cost-band-2';
+        }
+        
+        // Helper function to get HTML for cost band display
+        function getCostBandDisplayHTML(band) {
+            if (!band) return '';
+            
+            const lowerBand = band.toLowerCase();
+            if (lowerBand.includes('free')) return '';
+            if (lowerBand.includes('low')) return '<span class="cost-band-indicator cost-band-1">$</span>';
+            if (lowerBand.includes('medium')) return '<span class="cost-band-indicator cost-band-2">$$</span>';
+            if (lowerBand.includes('high')) return '<span class="cost-band-indicator cost-band-3-warn">$$$</span>';
+            if (lowerBand.includes('premium') || lowerBand.includes('very-high')) return '<span class="cost-band-indicator cost-band-4-danger">$$$$</span>';
+            
+            return '<span class="cost-band-indicator cost-band-2">$$</span>';
         }
         
         // Helper function to format context length in a human-readable way
