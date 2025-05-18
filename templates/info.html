@@ -954,13 +954,14 @@
     <script>
         // Variables for pricing functionality
         let pricingData = [];
-        let currentSortColumn = 0;
-        let sortDirection = 'asc';
+        let sortColumn = 0;
+        let sortDirection = 1; // 1 for ascending, -1 for descending
+        let previousSorts = []; // Track previous sort criteria for multi-level sorting
         
         // When the document is loaded
         document.addEventListener('DOMContentLoaded', function() {
             // Load pricing data
-            fetchPricingData();
+            loadPricingData();
             
             // Set up model search functionality
             const modelSearch = document.getElementById('modelSearch');
@@ -972,10 +973,11 @@
         });
         
         // Function to load pricing data from API
-        function fetchPricingData() {
+        function loadPricingData() {
             const pricingTableBody = document.getElementById('pricingTableBody');
-            if (!pricingTableBody) return;
+            const lastUpdatedElem = document.getElementById('lastUpdated');
             
+            // Show loading state
             pricingTableBody.innerHTML = `
                 <tr>
                     <td colspan="7" class="pricing-loading-cell">
@@ -986,10 +988,15 @@
                     </td>
                 </tr>
             `;
+            if (lastUpdatedElem) {
+                lastUpdatedElem.textContent = 'Loading...';
+            }
             
-            fetch('/billing/api/pricing')
+            // Fetch data from API (Using the endpoint from app.py)
+            fetch('/api/model-pricing')
                 .then(response => {
                     if (!response.ok) {
+                        // Try to get error message from response body
                         return response.text().then(text => {
                             throw new Error(`Failed to fetch pricing data. Status: ${response.status}. Message: ${text}`);
                         });
@@ -997,23 +1004,137 @@
                     return response.json();
                 })
                 .then(data => {
-                    pricingData = data;
+                    console.log("Received pricing data from API:", data); // Log the received data structure
+                    
+                    // Check if we have data
+                    if (!data || !Array.isArray(data)) {
+                        console.error('Invalid pricing data format received:', data);
+                        throw new Error('Invalid pricing data format from server.');
+                    }
+                    
+                    // Store the prices array in pricingData
+                    pricingData = data; // Direct array of models from /api/model-pricing
+                    
+                    // The data from /api/model-pricing is already in the correct format
+                    // Just add cost band based on pricing
+                    pricingData = pricingData.map(model => {
+                        // Extract numeric price values for cost band calculation
+                        let inputPrice = model.input_price;
+                        let outputPrice = model.output_price;
+                        
+                        // Remove $ and convert to number if it's a string
+                        if (typeof inputPrice === 'string') {
+                            inputPrice = parseFloat(inputPrice.replace('$', '')) || 0;
+                        }
+                        if (typeof outputPrice === 'string') {
+                            outputPrice = parseFloat(outputPrice.replace('$', '')) || 0;
+                        }
+                        
+                        // Calculate cost band
+                        let costBand = '';
+                        const maxPrice = Math.max(inputPrice, outputPrice);
+                        
+                        if (maxPrice === 0) {
+                            costBand = 'Free';
+                        } else if (maxPrice < 1.0) {
+                            costBand = 'Low';
+                        } else if (maxPrice < 10.0) {
+                            costBand = 'Medium';
+                        } else if (maxPrice < 50.0) {
+                            costBand = 'High';
+                        } else {
+                            costBand = 'Premium';
+                        }
+                        
+                        return {
+                            model_id: model.model_id,
+                            model_name: model.model_name,
+                            input_price: model.input_price,
+                            output_price: model.output_price,
+                            context_length: model.context_length,
+                            multimodal: model.multimodal,
+                            pdfs: model.pdfs,
+                            cost_band: costBand
+                        };
+                    });
+                    
+                    // Store in localStorage for caching
+                    try {
+                        localStorage.setItem('modelPricingData', JSON.stringify(pricingData));
+                        localStorage.setItem('modelPricingTimestamp', new Date().getTime().toString());
+                    } catch (e) {
+                        console.warn('Could not store pricing data in localStorage:', e);
+                    }
+                    
+                    // Render the table
                     renderPricingTable();
-                    updateLastUpdated();
+                    
+                    // Update last updated timestamp
+                    if (lastUpdatedElem) {
+                        if (data.last_updated) {
+                            const lastUpdatedDate = new Date(data.last_updated);
+                            lastUpdatedElem.textContent = `Last updated: ${lastUpdatedDate.toLocaleTimeString()} ${lastUpdatedDate.toLocaleDateString()}`;
+                        } else {
+                            const currentTime = new Date();
+                            lastUpdatedElem.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
+                        }
+                    }
                 })
                 .catch(error => {
-                    console.error("Error fetching pricing data:", error);
-                    pricingTableBody.innerHTML = `
-                        <tr>
-                            <td colspan="7" class="text-center py-5">
-                                <div class="alert alert-danger mb-0">
-                                    <i class="fas fa-exclamation-triangle me-2"></i>
-                                    Error loading pricing data. Please try again later.
-                                </div>
-                            </td>
-                        </tr>
-                    `;
+                    console.error('Error loading pricing data:', error);
+                    
+                    // Try to use cached data if available
+                    const cachedData = localStorage.getItem('modelPricingData');
+                    const cachedTimestamp = localStorage.getItem('modelPricingTimestamp');
+                    
+                    if (cachedData) {
+                        try {
+                            pricingData = JSON.parse(cachedData);
+                            renderPricingTable();
+                            
+                            // Update the last updated timestamp to show it's cached data
+                            if (lastUpdatedElem && cachedTimestamp) {
+                                lastUpdatedElem.textContent = `Last updated: ${new Date(parseInt(cachedTimestamp)).toLocaleString()} (cached)`;
+                            }
+                            
+                            // Show a warning about using cached data in the table
+                            const pricingTableContainer = document.querySelector('.pricing-table-container');
+                            if (pricingTableContainer && !document.getElementById('cached-data-warning')) {
+                                const warningDiv = document.createElement('div');
+                                warningDiv.id = 'cached-data-warning';
+                                warningDiv.className = 'alert alert-warning mt-3';
+                                warningDiv.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Using cached pricing data. Some prices may not be current.';
+                                pricingTableContainer.insertBefore(warningDiv, pricingTableContainer.querySelector('.pricing-info'));
+                            }
+                        } catch (e) {
+                            console.error('Error parsing cached data:', e);
+                            showErrorState(pricingTableBody);
+                        }
+                    } else {
+                        // No cached data available, show error state
+                        showErrorState(pricingTableBody);
+                    }
+                    
+                    if (lastUpdatedElem && !lastUpdatedElem.textContent) {
+                        lastUpdatedElem.textContent = 'Could not update pricing data';
+                    }
                 });
+        }
+        
+        // Function to show error state in the pricing table
+        function showErrorState(pricingTableBody) {
+            if (pricingTableBody) {
+                pricingTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="alert alert-danger mb-0">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Error loading pricing data. Please try again later.
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
         }
         
         // Function to render the pricing table with the current data
@@ -1021,34 +1142,44 @@
             const pricingTableBody = document.getElementById('pricingTableBody');
             if (!pricingTableBody || !pricingData.length) return;
             
-            // Sort the data
-            sortPricingData();
+            // Sort the data (will apply currentSortColumn and sortDirection)
+            sortPricingTable();
             
             let tableHTML = '';
             
+            // Add table rows for each model
             pricingData.forEach(model => {
                 if (model.hidden) return; // Skip hidden models
                 
-                // Determine cost band class
-                const costBandClass = getCostBandClass(model);
+                // Choose the appropriate cost band badge class
+                const costBandClass = getCostBandClass(model.cost_band);
+                const costBandDisplay = model.cost_band || 'N/A';
                 
                 tableHTML += `
                     <tr>
                         <td class="py-3">
                             <div class="d-flex align-items-center">
                                 <div class="ms-2">
-                                    <div class="fw-bold">${model.name}</div>
-                                    <div class="small text-muted model-provider">${model.provider}</div>
+                                    <div class="fw-bold">${model.model_name}</div>
+                                    <div class="small text-muted model-provider">${model.model_id.split('/')[0]}</div>
                                 </div>
                             </div>
                         </td>
-                        <td class="text-end py-3">$${model.input_price.toFixed(2)}</td>
-                        <td class="text-end py-3">$${model.output_price.toFixed(2)}</td>
-                        <td class="text-end py-3">${formatTokens(model.context_tokens)}</td>
-                        <td class="text-center py-3">${model.multimodal ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-times-circle text-danger"></i>'}</td>
-                        <td class="text-center py-3">${model.pdf_support ? '<i class="fas fa-check-circle text-success"></i>' : '<i class="fas fa-times-circle text-danger"></i>'}</td>
+                        <td class="text-end py-3">${model.input_price}</td>
+                        <td class="text-end py-3">${model.output_price}</td>
+                        <td class="text-end py-3">${model.context_length}</td>
                         <td class="text-center py-3">
-                            <span class="badge ${costBandClass}">${model.cost_band || 'N/A'}</span>
+                            ${model.multimodal === 'Yes' ? 
+                                '<i class="fas fa-check-circle text-success"></i>' : 
+                                '<i class="fas fa-times-circle text-danger"></i>'}
+                        </td>
+                        <td class="text-center py-3">
+                            ${model.pdfs === 'Yes' ? 
+                                '<i class="fas fa-check-circle text-success"></i>' : 
+                                '<i class="fas fa-times-circle text-danger"></i>'}
+                        </td>
+                        <td class="text-center py-3">
+                            <span class="badge ${costBandClass}">${costBandDisplay}</span>
                         </td>
                     </tr>
                 `;
@@ -1070,135 +1201,149 @@
         }
         
         // Function to sort pricing data based on selected column
-        function sortPricingData() {
+        function sortPricingTable(columnIndex) {
+            // If a column is clicked, update sorting
+            if (columnIndex !== undefined) {
+                // Update sort icons
+                document.querySelectorAll('[id^="sort-icon-"]').forEach(icon => {
+                    icon.className = 'fas fa-sort';
+                });
+                
+                // If clicking the same column, toggle direction
+                if (sortColumn === columnIndex) {
+                    sortDirection = -sortDirection;
+                } else {
+                    // New column, reset to ascending
+                    sortColumn = columnIndex;
+                    sortDirection = 1;
+                }
+                
+                // Update the sort icon for current column
+                const sortIcon = document.getElementById(`sort-icon-${columnIndex}`);
+                if (sortIcon) {
+                    sortIcon.className = `fas fa-sort-${sortDirection === 1 ? 'up' : 'down'}`;
+                }
+            }
+            
+            // Sort the data
             pricingData.sort((a, b) => {
                 let valueA, valueB;
                 
-                switch(currentSortColumn) {
+                switch(sortColumn) {
                     case 0: // Model name
-                        valueA = a.name.toLowerCase();
-                        valueB = b.name.toLowerCase();
+                        valueA = a.model_name.toLowerCase();
+                        valueB = b.model_name.toLowerCase();
                         break;
                     case 1: // Input price
-                        valueA = a.input_price;
-                        valueB = b.input_price;
+                        valueA = parseFloat(a.input_price.replace('$', ''));
+                        valueB = parseFloat(b.input_price.replace('$', ''));
                         break;
                     case 2: // Output price
-                        valueA = a.output_price;
-                        valueB = b.output_price;
+                        valueA = parseFloat(a.output_price.replace('$', ''));
+                        valueB = parseFloat(b.output_price.replace('$', ''));
                         break;
-                    case 3: // Context tokens
-                        valueA = a.context_tokens;
-                        valueB = b.context_tokens;
+                    case 3: // Context length
+                        valueA = parseInt(a.context_length.toString().replace(/[^\d]/g, '') || '0');
+                        valueB = parseInt(b.context_length.toString().replace(/[^\d]/g, '') || '0');
                         break;
                     case 4: // Multimodal
-                        valueA = a.multimodal ? 1 : 0;
-                        valueB = b.multimodal ? 1 : 0;
+                        valueA = a.multimodal === 'Yes' ? 1 : 0;
+                        valueB = b.multimodal === 'Yes' ? 1 : 0;
                         break;
                     case 5: // PDF Support
-                        valueA = a.pdf_support ? 1 : 0;
-                        valueB = b.pdf_support ? 1 : 0;
+                        valueA = a.pdfs === 'Yes' ? 1 : 0;
+                        valueB = b.pdfs === 'Yes' ? 1 : 0;
                         break;
                     case 6: // Cost band
-                        valueA = a.cost_band_value || 0;
-                        valueB = b.cost_band_value || 0;
+                        valueA = getCostBandValue(a.cost_band);
+                        valueB = getCostBandValue(b.cost_band);
                         break;
                     default:
-                        valueA = a.name.toLowerCase();
-                        valueB = b.name.toLowerCase();
+                        valueA = a.model_name.toLowerCase();
+                        valueB = b.model_name.toLowerCase();
                 }
                 
-                // Apply sort direction
-                if (sortDirection === 'asc') {
-                    return valueA > valueB ? 1 : -1;
-                } else {
-                    return valueA < valueB ? 1 : -1;
-                }
+                // Handle NaN values (ensure they sort consistently)
+                if (isNaN(valueA)) valueA = 0;
+                if (isNaN(valueB)) valueB = 0;
+                
+                // Compare the values, applying sort direction
+                if (valueA < valueB) return -1 * sortDirection;
+                if (valueA > valueB) return 1 * sortDirection;
+                return 0;
             });
+            
+            // Re-render if not called from renderPricingTable already
+            if (columnIndex !== undefined) {
+                renderPricingTable();
+            }
         }
         
-        // Function to filter pricing table based on search term
+        // Function to filter the pricing table based on search input
         function filterPricingTable(searchTerm) {
-            if (!pricingData.length) return;
-            
             searchTerm = searchTerm.toLowerCase();
             
+            // Toggle visibility flag for each model based on search term
             pricingData.forEach(model => {
-                // Check if model name or provider contains search term
-                if (model.name.toLowerCase().includes(searchTerm) || 
-                    (model.provider && model.provider.toLowerCase().includes(searchTerm))) {
+                const modelName = model.model_name.toLowerCase();
+                const modelProvider = model.model_id.split('/')[0].toLowerCase();
+                
+                // Check if search term appears in model name or provider
+                if (modelName.includes(searchTerm) || modelProvider.includes(searchTerm)) {
                     model.hidden = false;
                 } else {
                     model.hidden = true;
                 }
             });
             
+            // Re-render the table with filtered data
             renderPricingTable();
         }
         
-        // Function to sort the pricing table by clicking column headers
-        function sortPricingTable(columnIndex) {
-            // Update sort icons
-            document.querySelectorAll('[id^="sort-icon-"]').forEach(icon => {
-                icon.className = 'fas fa-sort';
-            });
+        // Helper function to get cost band value for sorting
+        function getCostBandValue(band) {
+            if (!band) return 0;
             
-            // If we're clicking the same column, toggle direction
-            if (currentSortColumn === columnIndex) {
-                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-            } else {
-                currentSortColumn = columnIndex;
-                sortDirection = 'asc';
-            }
+            const lowerBand = band.toLowerCase();
+            if (lowerBand.includes('free')) return 1;
+            if (lowerBand.includes('low')) return 2;
+            if (lowerBand.includes('medium')) return 3;
+            if (lowerBand.includes('high')) return 4;
+            if (lowerBand.includes('premium')) return 5;
             
-            // Update icon for current sort column
-            const sortIcon = document.getElementById(`sort-icon-${columnIndex}`);
-            if (sortIcon) {
-                sortIcon.className = `fas fa-sort-${sortDirection === 'asc' ? 'up' : 'down'}`;
-            }
-            
-            renderPricingTable();
+            return 0;
         }
         
-        // Function to format token counts
-        function formatTokens(tokens) {
-            if (tokens === undefined || tokens === null) return 'N/A';
+        // Helper function to get appropriate CSS class for cost band
+        function getCostBandClass(band) {
+            if (!band) return 'bg-secondary';
             
-            if (tokens >= 1000000) {
-                return `${(tokens / 1000000).toFixed(1)}M`;
-            } else if (tokens >= 1000) {
-                return `${(tokens / 1000).toFixed(1)}K`;
-            } else {
-                return tokens.toString();
-            }
+            const lowerBand = band.toLowerCase();
+            if (lowerBand.includes('free')) return 'bg-success';
+            if (lowerBand.includes('low')) return 'bg-info';
+            if (lowerBand.includes('medium')) return 'bg-primary';
+            if (lowerBand.includes('high')) return 'bg-warning';
+            if (lowerBand.includes('premium')) return 'bg-danger';
+            
+            return 'bg-secondary';
         }
         
-        // Function to get the appropriate CSS class for cost band
-        function getCostBandClass(model) {
-            const band = model.cost_band ? model.cost_band.toLowerCase() : '';
+        // Helper function to format context length in a human-readable way
+        function formatContextLength(tokens) {
+            if (!tokens || tokens === 'N/A') return 'N/A';
             
-            if (band.includes('free')) {
-                return 'bg-success';
-            } else if (band.includes('low')) {
-                return 'bg-info';
-            } else if (band.includes('medium')) {
-                return 'bg-primary';
-            } else if (band.includes('high')) {
-                return 'bg-warning';
-            } else if (band.includes('premium')) {
-                return 'bg-danger';
+            // Convert to number if it's a string
+            const numTokens = typeof tokens === 'string' ? parseInt(tokens.replace(/,/g, '')) : tokens;
+            
+            // Format the number
+            if (isNaN(numTokens)) return 'N/A';
+            
+            if (numTokens >= 1000000) {
+                return `${(numTokens / 1000000).toFixed(1)}M`;
+            } else if (numTokens >= 1000) {
+                return `${(numTokens / 1000).toFixed(1)}K`;
             } else {
-                return 'bg-secondary';
-            }
-        }
-        
-        // Function to update the last updated time
-        function updateLastUpdated() {
-            const lastUpdated = document.getElementById('lastUpdated');
-            if (lastUpdated) {
-                const now = new Date();
-                const formattedTime = now.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-                lastUpdated.textContent = `Last updated: ${formattedTime}`;
+                return numTokens.toString();
             }
         }
     </script>
