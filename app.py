@@ -1000,7 +1000,11 @@ def test_url_formatting():
 
 @app.route('/')
 def index():
-    # Allow non-authenticated users to use the app with limited functionality
+    # Redirect non-authenticated users to the info page
+    if not current_user.is_authenticated:
+        return redirect(url_for('info'))
+    
+    # For authenticated users, show the normal interface
     is_logged_in = current_user.is_authenticated
     
     # Check if there's a specific conversation to load (used for redirects from share links)
