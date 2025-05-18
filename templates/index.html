@@ -305,12 +305,30 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Rename Conversation Modal -->
+        <div id="rename-conversation-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Rename Conversation</h2>
+                </div>
+                <div class="modal-body">
+                    <input type="text" id="conversation-title-input" class="modal-input" placeholder="Enter a new title for this conversation">
+                    <input type="hidden" id="conversation-id-to-rename">
+                </div>
+                <div class="modal-footer">
+                    <button id="cancel-rename-btn" class="modal-btn cancel">Cancel</button>
+                    <button id="confirm-rename-btn" class="modal-btn submit">Rename</button>
+                </div>
+            </div>
+        </div>
     </div>
     
 {% endblock %}
 
 {% block scripts %}
     {{ super() }}
+    <script src="{{ url_for('static', filename='js/conversationRename.js', v=assets_version) }}"></script>
     <script>
         // Pass the login status and initial conversation ID to JavaScript
         const userIsLoggedIn = {{ is_logged_in|tojson }};

@@ -1822,6 +1822,43 @@ def clear_conversations():
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
+@app.route('/api/rename-conversation/<int:conversation_id>', methods=['PUT'])
+@login_required
+def rename_conversation(conversation_id):
+    """Rename a conversation for the current user"""
+    try:
+        # Get the new title from the request
+        data = request.get_json()
+        new_title = data.get('title', '').strip()
+        
+        if not new_title:
+            return jsonify({"success": False, "error": "Title cannot be empty"}), 400
+        
+        from models import Conversation
+        
+        # Find the conversation by ID and make sure it belongs to the current user
+        conversation = Conversation.query.filter_by(id=conversation_id, user_id=current_user.id).first()
+        
+        if not conversation:
+            return jsonify({"success": False, "error": "Conversation not found"}), 404
+        
+        # Update the title
+        conversation.title = new_title
+        db.session.commit()
+        
+        return jsonify({
+            "success": True, 
+            "conversation": {
+                "id": conversation.id,
+                "title": conversation.title
+            }
+        })
+    
+    except Exception as e:
+        logger.exception(f"Error renaming conversation {conversation_id} for user {current_user.id}: {e}")
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/create-conversation', methods=['POST'])
 @login_required
 def create_conversation():
@@ -1880,14 +1917,13 @@ def get_conversations():
         if request.args.get('_'):
             logger.info(f"Received cache-busting request for conversations at timestamp: {request.args.get('_')}")
         
-        # Get all conversations for the current user
-        # Order by pinned conversations first, then by most recently updated
+        # Get all conversations for the current user, ordered by most recently updated first
         # Force a fresh query from the database (don't use cached results)
         db.session.expire_all()
         all_conversations = Conversation.query.filter_by(
             is_active=True, 
             user_id=current_user.id
-        ).order_by(Conversation.is_pinned.desc(), Conversation.updated_at.desc()).all()
+        ).order_by(Conversation.updated_at.desc()).all()
         
         if not all_conversations:
             # Create a new conversation for this user if none exist
@@ -1913,8 +1949,7 @@ def get_conversations():
         else:
             # Convert all conversations to the format expected by the frontend
             # Include created_at date for proper date formatting in the UI
-            # Include is_pinned status for displaying pin status in UI
-            conversations = [{"id": conv.id, "title": conv.title, "created_at": conv.created_at.isoformat(), "is_pinned": conv.is_pinned} for conv in all_conversations]
+            conversations = [{"id": conv.id, "title": conv.title, "created_at": conv.created_at.isoformat()} for conv in all_conversations]
             
             # Log information based on request type
             if metadata_only:
@@ -4412,81 +4447,6 @@ def upload_documents():
             "success": False,
             "error": str(e)
         }), 500
-
-# --- Chat Management API Endpoints ---
-@app.route('/api/pin_chat/<int:conversation_id>', methods=['PUT'])
-@login_required
-def pin_chat(conversation_id):
-    """Toggle the pinned status of a conversation"""
-    try:
-        from models import Conversation
-        
-        # Find the conversation and verify ownership
-        conversation = Conversation.query.filter_by(id=conversation_id, user_id=current_user.id).first()
-        if not conversation:
-            return jsonify({"success": False, "error": "Conversation not found or access denied."}), 404
-            
-        # Toggle the pinned status
-        conversation.is_pinned = not conversation.is_pinned
-        conversation.updated_at = datetime.datetime.utcnow()  # Update the timestamp
-        
-        # Save changes to database
-        try:
-            db.session.commit()
-            return jsonify({
-                "success": True, 
-                "message": "Chat pin status updated.", 
-                "is_pinned": conversation.is_pinned
-            })
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error updating pin status: {e}")
-            return jsonify({"success": False, "error": "Failed to update pin status."}), 500
-            
-    except Exception as e:
-        logger.error(f"Error in pin_chat endpoint: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
-
-@app.route('/api/rename_chat/<int:conversation_id>', methods=['PUT'])
-@login_required
-def rename_chat(conversation_id):
-    """Rename a conversation"""
-    try:
-        from models import Conversation
-        
-        # Get the new title from the request JSON data
-        data = request.get_json()
-        new_title = data.get('new_title')
-        
-        # Validate the new title
-        if not new_title or len(new_title.strip()) == 0:
-            return jsonify({"success": False, "error": "New title cannot be empty."}), 400
-            
-        # Find the conversation and verify ownership
-        conversation = Conversation.query.filter_by(id=conversation_id, user_id=current_user.id).first()
-        if not conversation:
-            return jsonify({"success": False, "error": "Conversation not found or access denied."}), 404
-            
-        # Update the title
-        conversation.title = new_title.strip()
-        conversation.updated_at = datetime.datetime.utcnow()  # Update the timestamp
-        
-        # Save changes to database
-        try:
-            db.session.commit()
-            return jsonify({
-                "success": True, 
-                "message": "Chat renamed successfully.", 
-                "new_title": conversation.title
-            })
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error renaming chat: {e}")
-            return jsonify({"success": False, "error": "Failed to rename chat."}), 500
-            
-    except Exception as e:
-        logger.error(f"Error in rename_chat endpoint: {e}")
-        return jsonify({"success": False, "error": str(e)}), 500
 
 # --- Main Execution ---
 if __name__ == '__main__':

@@ -97,27 +97,12 @@ class Conversation(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, index=True)
     is_active = db.Column(db.Boolean, default=True, index=True)
-    is_pinned = db.Column(db.Boolean, default=False, index=True)  # Whether this conversation is pinned by the user
     
     # Relationships
     messages = db.relationship('Message', backref='conversation', lazy='dynamic', cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Conversation {self.id}: {self.title}>'
-        
-    def serialize(self):
-        """Serialize conversation to dictionary for JSON response"""
-        return {
-            'id': self.id,
-            'title': self.title,
-            'user_id': self.user_id,
-            'share_id': self.share_id,
-            'conversation_uuid': self.conversation_uuid,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'updated_at': self.updated_at.isoformat() if self.updated_at else None,
-            'is_active': self.is_active,
-            'is_pinned': self.is_pinned
-        }
 
 
 class Message(db.Model):
