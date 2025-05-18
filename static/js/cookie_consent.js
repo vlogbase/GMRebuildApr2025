@@ -108,6 +108,7 @@ function createCookieConsentElements() {
                 <div class="cookie-consent-title">Cookie Preferences</div>
                 <p class="cookie-consent-text">
                     We use cookies to provide essential functionality, improve your experience, and analyze site usage.
+                    Some third-party content (like fonts and icons) may set cookies from services like Cloudflare CDN.
                     Click "Accept All" to allow all cookies or "Customize" to manage your preferences.
                 </p>
             </div>

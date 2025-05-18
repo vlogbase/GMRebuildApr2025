@@ -91,6 +91,13 @@ if (typeof initializeModelSelector !== 'function') {
     };
 }
 
+if (typeof handleMessageInputKeydown !== 'function') {
+    // Placeholder implementation - will be properly defined later
+    window.handleMessageInputKeydown = function(event) {
+        console.log('Placeholder handleMessageInputKeydown called');
+    };
+}
+
 // Set up prioritized loading for better performance
 function initializePrioritized() {
     // High priority - critical for immediate UI interaction
