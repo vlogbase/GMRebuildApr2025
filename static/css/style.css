@@ -4333,13 +4333,16 @@ code {
         flex-direction: column;
     }
     
-    /* Sticky header */
+    /* Fixed header for mobile */
     .app-header {
-        position: sticky;
+        position: fixed;
         top: 0;
+        left: 0;
         padding: 8px 10px;
         z-index: 1000;
         background-color: var(--sidebar-bg);
+        width: 100%;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     
     /* Chat messages */
