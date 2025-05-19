@@ -20,9 +20,36 @@ self.addEventListener('install', event => {
     caches.open(CACHE_NAME)
       .then(cache => {
         console.log('Service worker caching critical assets');
-        return cache.addAll(ASSETS_TO_CACHE);
+        
+        // Use individual fetch and put operations with error tracking
+        const cachePromises = ASSETS_TO_CACHE.map(url => {
+          return fetch(url)
+            .then(response => {
+              if (!response.ok) {
+                console.error(`Failed to cache: ${url} - Status: ${response.status}`);
+                return Promise.reject(`Failed to cache: ${url}`);
+              }
+              console.log(`Successfully cached: ${url}`);
+              return cache.put(url, response);
+            })
+            .catch(error => {
+              console.error(`Error caching ${url}: ${error}`);
+              // Don't let one failure stop the others - return resolved promise
+              return Promise.resolve();
+            });
+        });
+        
+        return Promise.all(cachePromises);
       })
-      .then(() => self.skipWaiting())
+      .then(() => {
+        console.log('Service worker installation complete');
+        return self.skipWaiting();
+      })
+      .catch(error => {
+        console.error('Service worker installation failed:', error);
+        // Allow service worker to activate despite cache failures
+        return self.skipWaiting();
+      })
   );
 });
 
