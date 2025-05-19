@@ -257,6 +257,37 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
+    // Update the mobile preset button label with the selected model
+    function updateMobilePresetButtonLabel(presetId, modelId, modelName) {
+        console.log(`Mobile: Updating mobile preset button label for preset ${presetId} with model ${modelId}`);
+        
+        // Find the mobile preset button
+        const mobilePresetBtn = document.querySelector(`.mobile-preset-btn[data-preset-id="${presetId}"]`);
+        if (!mobilePresetBtn) {
+            console.warn(`Mobile: Could not find mobile preset button for preset ${presetId}`);
+            return;
+        }
+        
+        // Set the model ID as data attribute for future reference
+        mobilePresetBtn.setAttribute('data-model-id', modelId);
+        
+        // Update the aria-label to include the model name
+        // This way the button's accessible name reflects the current model
+        mobilePresetBtn.setAttribute('aria-label', `Preset ${presetId}: ${modelName}`);
+        
+        // Also update the corresponding panel button display
+        // This is the more detailed button in the slide-up panel
+        const panelButton = document.querySelector(`.mobile-panel-preset-btn[data-preset-id="${presetId}"]`);
+        if (panelButton) {
+            const selectedModelElement = document.getElementById(`mobile-selected-model-${presetId}`);
+            if (selectedModelElement) {
+                selectedModelElement.textContent = modelName;
+            }
+        }
+        
+        console.log(`Mobile: Updated preset button ${presetId} with model ${modelName}`);
+    }
+    
     // Select a model for a specific preset
     function selectModelForPreset(presetId, modelId) {
         console.log(`Mobile: Selected model ${modelId} for preset ${presetId}`);
@@ -284,6 +315,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update the active button in the numbered row
             updateMobileActiveButton(presetId);
             
+            // Update the mobile preset button label directly
+            updateMobilePresetButtonLabel(presetId, modelId, modelName);
+            
             // Show a confirmation notification
             showModelNotification(presetId, `Selected ${modelName}`);
         } else {
@@ -296,6 +330,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Update the UI
                 updateSelectedModelNames();
                 updateMobileActiveButton(presetId);
+                
+                // Update the mobile preset button label directly
+                updateMobilePresetButtonLabel(presetId, modelId, modelName);
                 
                 // Show notification
                 showModelNotification(presetId, `Selected ${modelName}`);
