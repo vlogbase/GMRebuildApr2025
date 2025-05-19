@@ -394,21 +394,26 @@ def init_app(app):
                 
                 if not paypal_email:
                     flash('PayPal email is required', 'error')
-                    return redirect(url_for('affiliate.dashboard'))
+                    return redirect(url_for('billing.account_management'))
                 
                 # Update the affiliate's PayPal email
                 affiliate.paypal_email = paypal_email
-                affiliate.updated_at = datetime.now()
+                
+                # Check if updated_at field exists before trying to set it
+                if hasattr(affiliate, 'updated_at'):
+                    affiliate.updated_at = datetime.now()
+                
+                # Save changes to database
                 db.session.commit()
                 
                 flash('PayPal email updated successfully', 'success')
-                return redirect(url_for('affiliate.dashboard'))
+                return redirect(url_for('billing.account_management'))
                 
             except Exception as e:
                 logger.error(f"Error updating PayPal email: {e}", exc_info=True)
                 db.session.rollback()
                 flash(f'An error occurred: {str(e)}', 'error')
-                return redirect(url_for('affiliate.dashboard'))
+                return redirect(url_for('billing.account_management'))
             
         logger.info("Affiliate blueprint initialized successfully")
     except Exception as e:

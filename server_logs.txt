@@ -1,0 +1,4 @@
+WARNING:app:Could not initialize Redis sessions: cannot import name 'get_redis_connection_params' from 'redis_config' (/home/runner/workspace/redis_config.py). Using default Flask sessions.
+WARNING:app:Could not initialize rate limiting: cannot import name 'get_redis_connection_params' from 'redis_config' (/home/runner/workspace/redis_config.py)
+INFO:app:Essential database tables created
+INFO:background_initializer:Starting background task: database_migrations
