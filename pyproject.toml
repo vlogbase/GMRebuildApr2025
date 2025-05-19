@@ -45,4 +45,5 @@ dependencies = [
     "redis>=6.1.0",
     "rq>=2.3.3",
     "rq-dashboard>=0.8.2.2",
+    "flask-session>=0.8.0",
 ]
