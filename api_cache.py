@@ -263,6 +263,25 @@ def get_api_cache() -> ApiCache:
         _api_cache = ApiCache()
     return _api_cache
 
+def cache_model_pricing(ttl: int = 3600):
+    """
+    Decorator for caching model pricing API responses
+    
+    Args:
+        ttl: TTL for cached pricing data in seconds (default: 1 hour)
+    
+    Returns:
+        Decorator function for caching model pricing data
+    """
+    cache = get_api_cache()
+    
+    # Use the existing cache_api_response decorator with settings optimized for pricing data
+    return cache.cache_api_response(
+        ttl=ttl,
+        key_extractor=lambda *args, **kwargs: "model_pricing",  # Use a fixed cache key for all pricing data
+        skip_cache_condition=lambda *args, **kwargs: kwargs.get('force_refresh', False)  # Allow forced refresh
+    )
+
 # Create a LocalProxy for the API cache for easy access in Flask
 api_cache = LocalProxy(get_api_cache)
 

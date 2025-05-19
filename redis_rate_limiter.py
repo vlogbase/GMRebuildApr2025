@@ -52,9 +52,22 @@ class RedisRateLimiter:
         """
         self.namespace = namespace
         self.expire_time = expire_time
-        self.redis = RedisCache(namespace=namespace, expire_time=expire_time)
         self.client_ip = None
         self.rate_limits = DEFAULT_RATE_LIMITS
+        
+        # Safely initialize Redis connection with error handling
+        try:
+            self.redis = RedisCache(namespace=namespace, expire_time=expire_time)
+            
+            # Verify Redis connection by attempting a simple operation
+            # This will help detect connection issues early
+            if not hasattr(self.redis, 'exists') or not callable(getattr(self.redis, 'exists')):
+                logger.error("Redis client doesn't have required methods")
+                self.redis = None
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize Redis cache for rate limiter: {str(e)}")
+            self.redis = None  # Set to None instead of an error code
         
     def get_client_ip(self) -> str:
         """
@@ -146,34 +159,83 @@ class RedisRateLimiter:
         Returns:
             Dict: Rate limit information
         """
+        # If Redis is not available, disable rate limiting
+        if self.redis is None:
+            logger.debug("Redis not available, rate limiting is disabled")
+            return {
+                'limited': False,
+                'count': 0,
+                'limit': limit,
+                'remaining': limit,
+                'reset': 0
+            }
+            
         try:
             # Get current count - handle different Redis implementations
             try:
+                # Try to increment the counter
                 count = self.redis.incr(key)
-            except AttributeError:
-                # Fallback implementation if incr is not available
-                current = self.redis.get(key)
-                if current is None:
-                    count = 1
-                    self.redis.set(key, count, self.expire_time)
-                else:
-                    try:
-                        count = int(current) + 1
-                        self.redis.set(key, count, self.expire_time)
-                    except (ValueError, TypeError):
+            except (AttributeError, Exception) as e:
+                logger.debug(f"Redis incr failed: {str(e)}, using fallback")
+                
+                # Fallback implementation if incr is not available or fails
+                try:
+                    current = self.redis.get(key)
+                    if current is None:
                         count = 1
-                        self.redis.set(key, count, self.expire_time)
+                        try:
+                            self.redis.set(key, count, self.expire_time)
+                        except Exception:
+                            # If set fails, just continue without rate limiting
+                            pass
+                    else:
+                        try:
+                            count = int(current) + 1
+                            self.redis.set(key, count, self.expire_time)
+                        except (ValueError, TypeError, Exception):
+                            count = 1
+                            try:
+                                self.redis.set(key, count, self.expire_time)
+                            except Exception:
+                                # If set fails, just continue without rate limiting
+                                pass
+                except Exception as e:
+                    # If all Redis operations fail, disable rate limiting for this request
+                    logger.error(f"Redis rate limiting failed: {str(e)}")
+                    return {
+                        'limited': False,
+                        'count': 0,
+                        'limit': limit,
+                        'remaining': limit,
+                        'reset': 0
+                    }
             
             # Create timer key if it doesn't exist
             timer_key = f"{key}:reset"
-            timestamp = self.redis.get(timer_key)
+            timestamp = None
             
-            if not timestamp:
-                # Set expiration time to current time + window
+            try:
+                if self.redis:
+                    timestamp = self.redis.get(timer_key)
+                
+                if not timestamp:
+                    # Set expiration time to current time + window
+                    timestamp = time.time() + self.expire_time
+                    if self.redis:
+                        try:
+                            self.redis.set(timer_key, str(timestamp), expire=self.expire_time)
+                        except Exception as e:
+                            logger.debug(f"Failed to set timer key: {e}")
+                else:
+                    try:
+                        timestamp = float(timestamp)
+                    except (ValueError, TypeError):
+                        # Invalid timestamp format, create a new one
+                        timestamp = time.time() + self.expire_time
+            except Exception as e:
+                # If any Redis operation fails, create a default timestamp
+                logger.debug(f"Error handling rate limit timer: {e}")
                 timestamp = time.time() + self.expire_time
-                self.redis.set(timer_key, str(timestamp), expire=self.expire_time)
-            else:
-                timestamp = float(timestamp)
             
             # Time remaining in the window
             reset_time = max(int(timestamp - time.time()), 0)
