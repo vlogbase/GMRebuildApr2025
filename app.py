@@ -3840,7 +3840,7 @@ def get_model_pricing():
                 return jsonify({
                     "error": "Unable to retrieve model information",
                     "message": "Please try again later or contact support if the problem persists.",
-                    "data": []
+                    "data": []  # Always return an empty array instead of null
                 }), 200  # Return 200 so the error can be handled gracefully in the UI
         
         # Process models to create pricing data
