@@ -69,17 +69,22 @@ class RedisCache:
             logger.info(f"Connecting to Redis at {redis_host}:{redis_port}")
             
             try:
-                # Create a connection with SSL using specific parameters for Azure Redis
-                self.redis_client = redis.Redis(
-                    host=redis_host,
-                    port=redis_port,
-                    password=redis_password,
+                # Azure Redis Cache requires SSL and specific parameters
+                import urllib.parse
+                
+                # URL-encode password for special characters
+                encoded_password = urllib.parse.quote_plus(redis_password)
+                
+                # Build connection URL with SSL (rediss://)
+                connection_string = f"rediss://:{encoded_password}@{redis_host}:{redis_port}"
+                logger.info(f"Connecting to Redis using URL: {connection_string.replace(encoded_password, '***')}")
+                
+                # Create Redis client using URL approach
+                self.redis_client = redis.from_url(
+                    url=connection_string,
                     socket_timeout=10,
                     socket_connect_timeout=5,
-                    retry_on_timeout=True,
-                    ssl=True,
-                    ssl_cert_reqs=ssl.CERT_NONE,  # Don't verify certificate
-                    decode_responses=False
+                    ssl_cert_reqs=ssl.CERT_NONE  # Don't verify certificate
                 )
             except Exception as e:
                 logger.error(f"Error creating Redis client: {e}")
