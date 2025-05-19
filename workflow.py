@@ -22,7 +22,7 @@ def run():
         from app import app
         
         # Start the server
-        port = int(os.environ.get("PORT", 5000))
+        port = int(os.environ.get("PORT", 3000))
         logger.info(f"Starting Flask application on port {port}")
         app.run(host="0.0.0.0", port=port, debug=True)
         
