@@ -50,6 +50,7 @@ def get_redis_config(namespace: str = '') -> Dict[str, Any]:
     config = DEFAULT_CONFIG.copy()
     
     # Check for namespace-specific environment variables
+    namespace_prefix = ''
     if namespace:
         namespace_prefix = f'REDIS_{namespace.upper()}_'
         
@@ -63,6 +64,28 @@ def get_redis_config(namespace: str = '') -> Dict[str, Any]:
     # If host is empty, Redis is disabled/unavailable
     if not config['host']:
         logger.warning(f"No Redis host available, {namespace}: Redis features will be disabled")
+        return config
+    
+    # Check if port indicates SSL (6380 is common for Azure Redis)
+    port = int(config['port']) if str(config['port']).isdigit() else 6379
+    
+    # Get SSL settings from environment or defaults based on port
+    # Azure Redis Cache uses port 6380 for SSL
+    if port == 6380:
+        # Default to True for SSL if port is 6380
+        ssl_enabled = os.environ.get(f'{namespace_prefix}SSL', 'True').lower() == 'true'
+        # SSL cert verification (can be 'required', 'optional', 'none')
+        ssl_cert_reqs = os.environ.get(f'{namespace_prefix}SSL_CERT_REQS', 'required')
+    else:
+        # For other ports, check environment or default to False
+        ssl_enabled = os.environ.get(f'{namespace_prefix}SSL', 'False').lower() == 'true'
+        ssl_cert_reqs = os.environ.get(f'{namespace_prefix}SSL_CERT_REQS', 'none')
+    
+    # Add SSL settings to config if enabled
+    if ssl_enabled:
+        config['ssl'] = True
+        config['ssl_cert_reqs'] = ssl_cert_reqs
+        logger.info(f"SSL enabled for Redis {namespace or 'default'} connection with cert_reqs={ssl_cert_reqs}")
     
     return config
 
@@ -108,24 +131,29 @@ def get_redis_connection_params(namespace: str = '') -> Dict[str, Any]:
         'decode_responses': config['decode_responses']
     }
 
-def initialize_redis_client(namespace: str = '', decode_responses: bool = True) -> Optional[Any]:
+def initialize_redis_client(namespace: str = '', decode_responses: bool = True, 
+                           max_retries: int = 3, retry_delay: float = 0.5) -> Optional[Any]:
     """
     Initialize a Redis client with the given namespace configuration
     
     This function creates and returns a Redis client instance configured
     for the specified namespace. It handles connection errors gracefully
-    and returns None if the connection cannot be established.
+    and includes retry logic for better reliability, especially during cold starts.
     
     Args:
         namespace: Optional namespace for specific Redis usage (e.g., 'cache', 'session')
         decode_responses: Whether to decode Redis responses from bytes to strings
+        max_retries: Maximum number of connection attempts
+        retry_delay: Delay in seconds between retry attempts
         
     Returns:
-        Redis client instance or None if connection failed
+        Redis client instance or None if connection failed after retries
     """
     try:
         # Import Redis only when needed
         import redis
+        import time
+        from redis.exceptions import RedisError
         
         # Get connection parameters for the namespace
         params = get_redis_connection_params(namespace)
@@ -139,23 +167,44 @@ def initialize_redis_client(namespace: str = '', decode_responses: bool = True) 
             logger.warning(f"Redis host not configured for {namespace or 'default'} namespace")
             return None
         
-        # Create Redis client with connection parameters
-        client = redis.Redis(**params)
+        # Add retry logic for better connection reliability
+        attempt = 0
+        last_error = None
         
-        # Test the connection with a ping
-        if client.ping():
-            logger.info(f"Successfully connected to Redis for {namespace or 'default'} namespace")
-            return client
-        else:
-            logger.error(f"Redis ping failed for {namespace or 'default'} namespace")
-            return None
+        while attempt < max_retries:
+            attempt += 1
+            
+            try:
+                # Create Redis client with connection parameters
+                client = redis.Redis(**params)
+                
+                # Test the connection with a ping
+                if client.ping():
+                    if attempt > 1:
+                        logger.info(f"Successfully connected to Redis for {namespace} namespace on attempt {attempt}")
+                    else:
+                        logger.info(f"Successfully connected to Redis for {namespace or 'default'} namespace")
+                    return client
+                else:
+                    logger.warning(f"Redis ping failed for {namespace or 'default'} namespace (attempt {attempt}/{max_retries})")
+            except RedisError as e:
+                last_error = e
+                logger.warning(f"Redis connection error on attempt {attempt}/{max_retries}: {e}")
+                
+            # If this wasn't the last attempt, wait before retrying
+            if attempt < max_retries:
+                time.sleep(retry_delay)
+        
+        # If we get here, all attempts failed
+        logger.error(f"Failed to initialize Redis client after {max_retries} attempts: {last_error}")
+        return None
             
     except ImportError as e:
         logger.error(f"Redis library not available: {e}")
         return None
         
     except Exception as e:
-        logger.error(f"Failed to initialize Redis client for {namespace or 'default'} namespace: {e}")
+        logger.error(f"Unexpected error initializing Redis client: {e}")
         return None
 
 def create_redis_client(namespace: str = '', decode_responses: bool = True) -> Optional[Any]:
