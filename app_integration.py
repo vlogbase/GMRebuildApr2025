@@ -154,15 +154,11 @@ def setup_job_system(app):
         None
     """
     try:
-        from jobs_blueprint import init_app as init_jobs_bp
-        
-        # Initialize job system blueprint
-        init_jobs_bp(app)
+        # Only register example jobs if the jobs blueprint is already registered
+        # The actual blueprint registration happens in app.py
+        register_example_jobs()
         
         logger.info("Redis job system configured")
-        
-        # Register example job functions (for testing purposes)
-        register_example_jobs()
         
     except ImportError:
         logger.warning("Redis job system module not available")

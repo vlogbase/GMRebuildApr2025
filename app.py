@@ -324,10 +324,7 @@ try:
     init_user_settings(app)
     logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
     
-    # Register jobs blueprint
-    from jobs_blueprint import init_jobs_bp
-    init_jobs_bp(app)
-    logger.info("Jobs blueprint registered successfully with prefix /jobs")
+    # Jobs blueprint is registered separately later in the file
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
 
@@ -378,8 +375,8 @@ except Exception as e:
 # Register jobs blueprint for background job processing
 try:
     # Now import and initialize the jobs blueprint
-    from jobs_blueprint import init_app as init_jobs
-    init_jobs(app)
+    from jobs_blueprint import init_app
+    init_app(app)
     
     # Log success
     logger.info("Jobs blueprint registered successfully with prefix /jobs")
