@@ -1,103 +1,215 @@
-{% extends "base.html" %}
-
-{% block title %}GloriaMundo PWA Test{% endblock %}
-
-{% block content %}
-<div class="container mt-5">
-    <div class="row">
-        <div class="col-12 text-center">
-            <h1>GloriaMundo PWA Test</h1>
-            <p class="lead">This page tests the PWA installation capabilities of GloriaMundo</p>
-            
-            <div class="mt-4">
-                <p>If the PWA is correctly configured, you should see an install option in your browser:</p>
-                <ul class="list-group">
-                    <li class="list-group-item">On Chrome desktop: Look for the install icon in the address bar</li>
-                    <li class="list-group-item">On mobile devices: Look for "Add to Home Screen" in the browser menu</li>
-                </ul>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PWA Test Page</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .alert {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .alert-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        .alert-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        .alert-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        .alert-info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+        }
+        h1 {
+            color: #333;
+        }
+        #status {
+            margin-top: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        .icon-test {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .icon-container {
+            text-align: center;
+        }
+        .icon-container img {
+            max-width: 100px;
+            border: 1px dashed #ccc;
+        }
+    </style>
+</head>
+<body>
+    <h1>PWA and Service Worker Test</h1>
+    <p>This page tests the Progressive Web App functionality and service worker caching.</p>
+    
+    <div class="test-section">
+        <h2>PWA Status</h2>
+        <div id="status">Checking PWA status...</div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Icon Tests</h2>
+        <p>The following icons should be visible:</p>
+        <div class="icon-test">
+            <div class="icon-container">
+                <img src="/static/img/web-app-manifest-192x192.png" alt="192x192 Icon">
+                <p>192x192 Icon</p>
             </div>
-            
-            <div class="mt-4">
-                <h3>PWA Status</h3>
-                <div id="pwa-status">Checking PWA status...</div>
+            <div class="icon-container">
+                <img src="/static/img/web-app-manifest-512x512.png" alt="512x512 Icon">
+                <p>512x512 Icon</p>
             </div>
-            
-            <div class="mt-5">
-                <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Home</a>
+            <div class="icon-container">
+                <img src="/static/img/splash_screens/icon.png" alt="Splash Icon">
+                <p>Splash Icon</p>
             </div>
         </div>
     </div>
-</div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const statusEl = document.getElementById('pwa-status');
     
-    // Check if service worker is supported
-    if ('serviceWorker' in navigator) {
-        statusEl.innerHTML = '<div class="alert alert-success">✓ Service Worker is supported in this browser</div>';
+    <div class="test-section">
+        <h2>Service Worker Cache Status</h2>
+        <div id="cache-status">Checking cache status...</div>
+        <button id="clear-cache" class="btn">Clear Cache</button>
+    </div>
+    
+    <script>
+        // Get DOM elements
+        const statusEl = document.getElementById('status');
+        const cacheStatusEl = document.getElementById('cache-status');
+        const clearCacheBtn = document.getElementById('clear-cache');
         
-        // Check for installation status
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            statusEl.innerHTML += '<div class="alert alert-success">✓ App is running in standalone mode (installed as PWA)</div>';
+        // Initialize status
+        statusEl.innerHTML = '<div class="alert alert-info">Checking PWA features...</div>';
+        
+        // Check if service worker is supported
+        if ('serviceWorker' in navigator) {
+            statusEl.innerHTML = '<div class="alert alert-success">✓ Service Worker is supported in this browser</div>';
+            
+            // Check for installation status
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                statusEl.innerHTML += '<div class="alert alert-success">✓ App is running in standalone mode (installed as PWA)</div>';
+            } else {
+                statusEl.innerHTML += '<div class="alert alert-info">ℹ️ App is running in browser mode (not installed as PWA yet)</div>';
+            }
+            
+            // Check manifest
+            fetch('/manifest.json')
+                .then(response => {
+                    if (response.ok) {
+                        statusEl.innerHTML += '<div class="alert alert-success">✓ Web App Manifest is accessible</div>';
+                        return response.json();
+                    } else {
+                        statusEl.innerHTML += '<div class="alert alert-danger">✗ Web App Manifest is not accessible</div>';
+                        throw new Error('Manifest not accessible');
+                    }
+                })
+                .then(manifest => {
+                    // Check required manifest properties
+                    let requiredProps = ['name', 'short_name', 'start_url', 'icons', 'display'];
+                    let missingProps = requiredProps.filter(prop => !manifest[prop]);
+                    
+                    if (missingProps.length === 0) {
+                        statusEl.innerHTML += '<div class="alert alert-success">✓ Web App Manifest contains all required properties</div>';
+                    } else {
+                        statusEl.innerHTML += `<div class="alert alert-warning">⚠️ Web App Manifest is missing properties: ${missingProps.join(', ')}</div>`;
+                    }
+                    
+                    // Check icons
+                    if (manifest.icons && Array.isArray(manifest.icons)) {
+                        const has192 = manifest.icons.some(icon => icon.sizes && icon.sizes.includes('192x192'));
+                        const has512 = manifest.icons.some(icon => icon.sizes && icon.sizes.includes('512x512'));
+                        
+                        if (has192 && has512) {
+                            statusEl.innerHTML += '<div class="alert alert-success">✓ Web App Manifest contains required icon sizes (192x192, 512x512)</div>';
+                        } else {
+                            statusEl.innerHTML += '<div class="alert alert-warning">⚠️ Web App Manifest is missing required icon sizes (192x192, 512x512)</div>';
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error checking manifest:', error);
+                });
+            
+            // Check service worker
+            navigator.serviceWorker.getRegistration()
+                .then(registration => {
+                    if (registration) {
+                        statusEl.innerHTML += '<div class="alert alert-success">✓ Service Worker is registered</div>';
+                    } else {
+                        statusEl.innerHTML += '<div class="alert alert-warning">⚠️ Service Worker is not registered yet</div>';
+                    }
+                })
+                .catch(error => {
+                    statusEl.innerHTML += '<div class="alert alert-danger">✗ Error checking Service Worker registration</div>';
+                    console.error('Error checking service worker:', error);
+                });
+                
+            // Register service worker
+            navigator.serviceWorker.register('/static/js/service-worker.js')
+                .then(registration => {
+                    console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    
+                    // Show cache status
+                    cacheStatusEl.innerHTML = '<div class="alert alert-info">Service Worker registered, checking cache status...</div>';
+                    
+                    // Check cache contents
+                    caches.open('glorimundo-pwa-v2').then(cache => {
+                        cache.keys().then(cachedRequests => {
+                            const cachedURLs = cachedRequests.map(request => request.url);
+                            
+                            const cacheStatusHTML = `
+                                <div class="alert alert-success">✓ Cache contains ${cachedURLs.length} items</div>
+                                <details>
+                                    <summary>View cached items</summary>
+                                    <ul>${cachedURLs.map(url => `<li>${url}</li>`).join('')}</ul>
+                                </details>
+                            `;
+                            
+                            cacheStatusEl.innerHTML = cacheStatusHTML;
+                        });
+                    });
+                })
+                .catch(err => {
+                    console.error('ServiceWorker registration failed: ', err);
+                    cacheStatusEl.innerHTML = `<div class="alert alert-danger">✗ Error registering Service Worker: ${err.message}</div>`;
+                });
         } else {
-            statusEl.innerHTML += '<div class="alert alert-info">ℹ️ App is running in browser mode (not installed as PWA yet)</div>';
+            statusEl.innerHTML = '<div class="alert alert-danger">✗ Service Worker is not supported in this browser</div>';
+            cacheStatusEl.innerHTML = '<div class="alert alert-danger">✗ Cannot check cache without Service Worker support</div>';
         }
         
-        // Check manifest
-        fetch('/manifest.json')
-            .then(response => {
-                if (response.ok) {
-                    statusEl.innerHTML += '<div class="alert alert-success">✓ Web App Manifest is accessible</div>';
-                    return response.json();
+        // Clear cache button
+        clearCacheBtn.addEventListener('click', () => {
+            caches.delete('glorimundo-pwa-v2').then(success => {
+                if (success) {
+                    cacheStatusEl.innerHTML = '<div class="alert alert-success">Cache cleared successfully, refresh to rebuild</div>';
                 } else {
-                    statusEl.innerHTML += '<div class="alert alert-danger">✗ Web App Manifest is not accessible</div>';
-                    throw new Error('Manifest not accessible');
+                    cacheStatusEl.innerHTML = '<div class="alert alert-warning">Failed to clear cache or cache doesn\'t exist</div>';
                 }
-            })
-            .then(manifest => {
-                // Check required manifest properties
-                let requiredProps = ['name', 'short_name', 'start_url', 'icons', 'display'];
-                let missingProps = requiredProps.filter(prop => !manifest[prop]);
-                
-                if (missingProps.length === 0) {
-                    statusEl.innerHTML += '<div class="alert alert-success">✓ Web App Manifest contains all required properties</div>';
-                } else {
-                    statusEl.innerHTML += `<div class="alert alert-warning">⚠️ Web App Manifest is missing properties: ${missingProps.join(', ')}</div>`;
-                }
-                
-                // Check icons
-                if (manifest.icons && Array.isArray(manifest.icons)) {
-                    const has192 = manifest.icons.some(icon => icon.sizes && icon.sizes.includes('192x192'));
-                    const has512 = manifest.icons.some(icon => icon.sizes && icon.sizes.includes('512x512'));
-                    
-                    if (has192 && has512) {
-                        statusEl.innerHTML += '<div class="alert alert-success">✓ Web App Manifest contains required icon sizes (192x192, 512x512)</div>';
-                    } else {
-                        statusEl.innerHTML += '<div class="alert alert-warning">⚠️ Web App Manifest is missing required icon sizes (192x192, 512x512)</div>';
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error checking manifest:', error);
             });
-        
-        // Check service worker
-        navigator.serviceWorker.getRegistration()
-            .then(registration => {
-                if (registration) {
-                    statusEl.innerHTML += '<div class="alert alert-success">✓ Service Worker is registered</div>';
-                } else {
-                    statusEl.innerHTML += '<div class="alert alert-warning">⚠️ Service Worker is not registered yet</div>';
-                }
-            })
-            .catch(error => {
-                statusEl.innerHTML += '<div class="alert alert-danger">✗ Error checking Service Worker registration</div>';
-                console.error('Error checking service worker:', error);
-            });
-    } else {
-        statusEl.innerHTML = '<div class="alert alert-danger">✗ Service Worker is not supported in this browser</div>';
-    }
-});
-</script>
-{% endblock %}
+        });
+    </script>
+</body>
+</html>

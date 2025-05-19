@@ -4,17 +4,16 @@ const ASSETS_TO_CACHE = [
   '/',
   '/static/css/style.css',
   '/static/js/script.js',
-  '/static/img/logo.svg',  // Re-added now that the file exists
+  '/static/img/logo.svg',
   '/static/img/favicon.ico',
   '/static/img/favicon.svg',
   '/static/img/favicon-96x96.png',
   '/static/img/apple-touch-icon.png',
-  '/static/img/web-app-manifest-192x192.png',
-  '/static/img/web-app-manifest-512x512.png',
+  '/static/img/web-app-manifest-192x192.png',  // PWA icon 192x192
+  '/static/img/web-app-manifest-512x512.png',  // PWA icon 512x512
   '/static/img/splash_screens/icon.png',
-  '/static/manifest/manifest.json',  // Added manifest.json
-  '/static/img/icon-192.png',        // Added additional icon sizes
-  '/static/img/icon-512.png'
+  '/static/manifest/manifest.json'
+  // Removed non-existent icon files
 ];
 
 // Install event - cache critical assets with detailed error diagnostics
