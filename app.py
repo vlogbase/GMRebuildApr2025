@@ -74,6 +74,26 @@ if not app.secret_key:
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
+# Configure Redis session support - this will use Redis if available or fall back to Flask's default
+try:
+    from redis_session import setup_redis_session
+    setup_redis_session(app)
+    logger.info("Redis session interface configured successfully")
+except ImportError as e:
+    logger.warning(f"Could not initialize Redis sessions: {e}. Using default Flask sessions.")
+except Exception as e:
+    logger.warning(f"Error setting up Redis sessions: {e}. Using default Flask sessions.")
+    
+# Configure rate limiting middleware
+try:
+    from middleware import setup_rate_limiting
+    setup_rate_limiting(app)
+    logger.info("Rate limiting middleware configured successfully")
+except ImportError as e:
+    logger.warning(f"Could not initialize rate limiting: {e}")
+except Exception as e:
+    logger.warning(f"Error setting up rate limiting: {e}")
+
 # Add asset versioning for cache busting
 app.config['ASSETS_VERSION'] = os.environ.get('ASSETS_VERSION', datetime.datetime.now().strftime('%Y%m%d%H'))
 
@@ -1987,7 +2007,13 @@ def get_conversations():
 def chat(): # Synchronous function
     """
     Endpoint to handle chat messages and stream responses from OpenRouter (SYNC Version)
+    
+    This endpoint is rate limited to prevent abuse and ensure fair usage.
+    Rate limits are:
+    - Authenticated users: 20 requests per minute
+    - Guest users: 5 requests per minute
     """
+    # Rate limiting implementation will be applied once the app is configured with Redis
     # Declare global variables at the beginning of the function
     global document_processor
     
@@ -3354,46 +3380,114 @@ def chat(): # Synchronous function
 
 # --- Other Synchronous Routes (Keep As Is) ---
 # Helper function to fetch models from OpenRouter and/or database
-def _fetch_openrouter_models():
+def _fetch_openrouter_models(force_refresh=False):
     """
     Fetch models from the database (primary) or OpenRouter API (fallback)
+    with Redis caching for improved performance.
+    
+    Args:
+        force_refresh: If True, bypass the cache and fetch fresh data
+        
+    Returns:
+        list: Processed models data
     """
+    # Try to use Redis cache for better performance
     try:
-        # Import the model class
-        from models import OpenRouterModel
+        from api_cache import cache_api_response
         
-        # Get models from the database first (primary source of truth)
-        db_models = OpenRouterModel.query.all()
-        
-        # If we have models in the database, use them
-        if db_models and len(db_models) > 0:
-            logger.info(f"Using {len(db_models)} models from database")
+        @cache_api_response(prefix="openrouter_models", ttl=3600)
+        def fetch_models_with_cache(force_refresh=False):
+            """
+            Inner function that's cached with Redis
+            """
+            # Force refresh flag for bypassing cache
+            if force_refresh:
+                logger.info("Forcing refresh of OpenRouter models from database")
             
-            # Transform database models to API-compatible format
-            processed_models = []
-            for model in db_models:
-                processed_model = {
-                    'id': model.model_id,
-                    'name': model.name,
-                    'description': model.description,
-                    'context_length': model.context_length,
-                    'pricing': {
-                        'prompt': model.input_price_usd_million / 1000000,  # Convert from per-million to per-token
-                        'completion': model.output_price_usd_million / 1000000  # Convert from per-million to per-token
-                    },
-                    'is_free': model.is_free,
-                    'is_multimodal': model.is_multimodal,
-                    'supports_pdf': model.supports_pdf or model.model_id in DOCUMENT_MODELS,
-                    'is_perplexity': 'perplexity/' in model.model_id.lower(),
-                    'is_reasoning': model.supports_reasoning,
-                    'created_at': model.created_at.isoformat() if model.created_at else None,
-                    'updated_at': model.updated_at.isoformat() if model.updated_at else None
-                }
-                processed_models.append(processed_model)
+            # Import the model class
+            from models import OpenRouterModel
             
-            # Return API-compatible format
-            return {"data": processed_models}
+            # Get models from the database first (primary source of truth)
+            db_models = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).all()
+            
+            # If we have models in the database, use them
+            if db_models and len(db_models) > 0:
+                logger.info(f"Using {len(db_models)} models from database")
+                
+                # Transform database models to API-compatible format
+                processed_models = []
+                for model in db_models:
+                    processed_model = {
+                        'id': model.model_id,
+                        'name': model.name,
+                        'description': model.description,
+                        'context_length': model.context_length,
+                        'pricing': {
+                            'prompt': model.input_price_usd_million / 1000000,  # Convert from per-million to per-token
+                            'completion': model.output_price_usd_million / 1000000  # Convert from per-million to per-token
+                        },
+                        'is_free': model.is_free,
+                        'is_multimodal': model.is_multimodal,
+                        'supports_pdf': model.supports_pdf or model.model_id in DOCUMENT_MODELS,
+                        'is_perplexity': 'perplexity/' in model.model_id.lower(),
+                        'is_reasoning': model.supports_reasoning,
+                        'created_at': model.created_at.isoformat() if model.created_at else None,
+                        'updated_at': model.updated_at.isoformat() if model.updated_at else None
+                    }
+                    processed_models.append(processed_model)
+                
+                # Return API-compatible format
+                return {"data": processed_models}
+            
+            # If database is empty or no active models found, try to update from OpenRouter API
+            logger.info("No models in database or forced refresh - trying price updater")
+            try:
+                from price_updater import fetch_and_store_openrouter_prices
+                success = fetch_and_store_openrouter_prices(force_update=True)
+                
+                if success:
+                    # Try to get models from database again after updating
+                    db_models = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).all()
+                    
+                    if db_models and len(db_models) > 0:
+                        # Convert to API format
+                        processed_models = []
+                        for model in db_models:
+                            processed_model = {
+                                'id': model.model_id,
+                                'name': model.name,
+                                'description': model.description,
+                                'context_length': model.context_length,
+                                'pricing': {
+                                    'prompt': model.input_price_usd_million / 1000000,
+                                    'completion': model.output_price_usd_million / 1000000
+                                },
+                                'is_free': model.is_free,
+                                'is_multimodal': model.is_multimodal,
+                                'supports_pdf': model.supports_pdf or model.model_id in DOCUMENT_MODELS,
+                                'is_perplexity': 'perplexity/' in model.model_id.lower(),
+                                'is_reasoning': model.supports_reasoning,
+                                'created_at': model.created_at.isoformat() if model.created_at else None,
+                                'updated_at': model.updated_at.isoformat() if model.updated_at else None
+                            }
+                            processed_models.append(processed_model)
+                            
+                        logger.info(f"Successfully retrieved {len(processed_models)} models from database after update")
+                        return {"data": processed_models}
+                        
+                # If we still don't have models, use the legacy cache as last resort
+                logger.warning("Could not get models from database - using legacy cache")
+            except Exception as e:
+                logger.error(f"Error updating models from OpenRouter: {e}")
         
+        # Call the cached function with force_refresh parameter
+        return fetch_models_with_cache(force_refresh=force_refresh)
+                
+    except Exception as e:
+        logger.error(f"Error in Redis caching for OpenRouter models: {e}")
+        
+    # Default fallback implementation (original code path)
+    try:
         # Fallback to API if database is empty
         # Try to update the database using price_updater
         logger.warning("No models found in database, attempting to fetch from OpenRouter API")
@@ -3646,12 +3740,66 @@ def get_model_pricing():
     """ 
     Fetch model pricing information from the database
     This is an updated implementation that uses the database as the primary source
+    and Redis for caching to improve performance
     """
+    # Try to use Redis cache if available
+    try:
+        from api_cache import cache_model_pricing
+        
+        @cache_model_pricing(ttl=10800)  # Cache for 3 hours
+        def get_pricing_with_cache(force_refresh=False):
+            """Inner function that's cached with Redis"""
+            from models import OpenRouterModel
+            
+            # If force refresh, log it
+            if force_refresh:
+                logger.info("Forcing refresh of model pricing data")
+            
+            # First try to get active model data from database
+            db_models = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).all()
+            
+            # If database is empty, attempt to populate it
+            if not db_models:
+                logger.warning("No models found in database, attempting to fetch from API...")
+                from price_updater import fetch_and_store_openrouter_prices
+                success = fetch_and_store_openrouter_prices(force_update=True)
+                
+                if success:
+                    # Try to get models from database again
+                    db_models = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).all()
+                
+                # If still no models in database after fetch attempt
+                if not db_models:
+                    logger.error("Failed to fetch models from API and database is empty")
+                    return {
+                        "error": "Unable to retrieve model information",
+                        "message": "Please try again later or contact support if the problem persists.",
+                        "data": []
+                    }
+        
+        # Get pricing data from cache or compute it
+        pricing_data = get_pricing_with_cache()
+        
+        # If there's an error message, convert to JSON response
+        if pricing_data and isinstance(pricing_data, dict) and pricing_data.get("error"):
+            return jsonify(pricing_data), 200
+            
+        # Otherwise continue with the regular processing
+        return jsonify({"data": pricing_data}), 200
+        
+    except ImportError as e:
+        logger.warning(f"Redis caching not available for model pricing: {e}")
+        # Continue with non-cached version
+    except Exception as e:
+        logger.error(f"Error using Redis cache for model pricing: {e}")
+        # Continue with non-cached version
+    
+    # Default implementation without caching
     try:
         from models import OpenRouterModel
         
         # First try to get model data from database
-        db_models = OpenRouterModel.query.all()
+        db_models = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).all()
         
         # If database is empty, attempt to populate it
         if not db_models:
@@ -3661,7 +3809,7 @@ def get_model_pricing():
             
             if success:
                 # Try to get models from database again
-                db_models = OpenRouterModel.query.all()
+                db_models = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).all()
             
             # If still no models in database after fetch attempt
             if not db_models:
