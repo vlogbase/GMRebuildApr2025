@@ -7,4 +7,5 @@ from app import app
 # This ensures that the app is available for Gunicorn
 # as specified in the .replit configuration file
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    # Use port 3000 for both local development and deployment
+    app.run(host='0.0.0.0', port=3000, debug=True)

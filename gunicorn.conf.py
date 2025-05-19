@@ -19,7 +19,7 @@ errorlog = '-'  # Log errors to stdout
 loglevel = 'info'
 
 # Bind to appropriate host and port
-bind = '0.0.0.0:5000'  # Ensure this matches the expected deployment port
+bind = '0.0.0.0:3000'  # Ensure this matches the expected deployment port
 
 # Deployment specific settings
 preload_app = True  # Preload app to share application memory
