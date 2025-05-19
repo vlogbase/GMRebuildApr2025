@@ -215,9 +215,16 @@ document.addEventListener('DOMContentLoaded', function() {
             // Update the active button in the UI
             updateMobileActiveButton(presetId);
             
-            // Get the model name for the notification
+            // Get the model name for the notification - first try the data attribute we stored
+            const activeBtn = document.querySelector(`.mobile-preset-btn[data-preset-id="${presetId}"]`);
             let modelName = "Unknown Model";
-            if (window.userPreferences && window.userPreferences[presetId]) {
+            
+            if (activeBtn && activeBtn.getAttribute('data-current-model-name')) {
+                // Use the cached model name from the button's data attribute (most up-to-date)
+                modelName = activeBtn.getAttribute('data-current-model-name');
+                console.log(`Mobile: Using cached model name from button: ${modelName}`);
+            } else if (window.userPreferences && window.userPreferences[presetId]) {
+                // Fallback to getting it from userPreferences (might be outdated if changed recently)
                 const modelId = window.userPreferences[presetId];
                 if (window.availableModels) {
                     const model = window.availableModels.find(m => m.id === modelId);
@@ -270,6 +277,10 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Set the model ID as data attribute for future reference
         mobilePresetBtn.setAttribute('data-model-id', modelId);
+        
+        // Store the current model name on the button as a data attribute
+        // This will be used by activatePreset to show the correct model name in notifications
+        mobilePresetBtn.setAttribute('data-current-model-name', modelName);
         
         // Update the aria-label to include the model name
         // This way the button's accessible name reflects the current model
