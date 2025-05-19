@@ -72,8 +72,8 @@
             <!-- App Header -->
             <div class="app-header">
                 <div class="header-left">
-                    <button id="sidebar-toggle" class="sidebar-toggle-btn">
-                        <i class="fa-solid fa-bars"></i>
+                    <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle sidebar menu" title="Toggle sidebar">
+                        <i class="fa-solid fa-bars" aria-hidden="true"></i>
                     </button>
                     <div class="app-title">
                         <h1>GloriaMundo</h1>
@@ -81,8 +81,8 @@
                 </div>
                 {% if current_user.is_authenticated %}
                 <div class="app-account-access">
-                    <a href="{{ url_for('billing.account_management') }}" class="header-account-link">
-                        <i class="fa-solid fa-user-circle"></i>
+                    <a href="{{ url_for('billing.account_management') }}" class="header-account-link" aria-label="My Account">
+                        <i class="fa-solid fa-user-circle" aria-hidden="true"></i>
                         <span class="account-link-text">My Account</span>
                     </a>
                 </div>
@@ -196,12 +196,12 @@
                             <button id="file-upload-button" class="btn btn-secondary" title="Upload image or PDF">
                                 <i class="fa-solid fa-paperclip"></i>
                             </button>
-                            <button id="camera-button" class="btn btn-secondary">
-                                <i class="fa-solid fa-camera"></i>
+                            <button id="camera-button" class="btn btn-secondary" aria-label="Take photo with camera" title="Take a photo">
+                                <i class="fa-solid fa-camera" aria-hidden="true"></i>
                             </button>
                             <!-- Unified file upload button handles both images and PDFs based on model capabilities -->
-                            <button id="send-btn" class="send-btn">
-                                <i class="fa-solid fa-paper-plane"></i>
+                            <button id="send-btn" class="send-btn" aria-label="Send message" title="Send">
+                                <i class="fa-solid fa-paper-plane" aria-hidden="true"></i>
                             </button>
                         </div>
                     </div>
