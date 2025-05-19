@@ -1120,17 +1120,8 @@ def info():
         # Return detailed error for debugging
         return f"<h1>Error rendering marketing page</h1><p>Error: {str(e)}</p>", 500
     
-@app.route('/billing/account')
-def redirect_billing():
-    """
-    Fallback handler for /billing/account redirections.
-    Now that we have a real billing blueprint, redirect to the actual account management page.
-    """
-    # Log the redirection for monitoring
-    logger.info(f"Redirecting from /billing/account to billing.account_management")
-    
-    # Redirect to the billing.account_management blueprint route
-    return redirect(url_for('billing.account_management'))
+# Note: Removed redundant route handler for '/billing/account'
+# This is now properly handled by the billing blueprint with the '/account' route
 
 @app.route('/test-upload')
 @login_required
