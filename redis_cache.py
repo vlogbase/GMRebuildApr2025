@@ -80,9 +80,9 @@ def get_redis_connection(redis_url=None, use_ssl=None):
     try:
         # Get Redis URL from environment if not provided
         if not redis_url:
-            redis_url = os.environ.get('REDIS_URL')
+            redis_url = os.environ.get('REDIS_HOST')
             if not redis_url:
-                logger.warning("REDIS_URL environment variable not set, defaulting to localhost")
+                logger.warning("REDIS_HOST environment variable not set, defaulting to localhost")
                 redis_url = 'redis://localhost:6379/0'
         
         # Detect SSL from URL if not provided

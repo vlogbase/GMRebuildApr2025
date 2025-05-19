@@ -255,10 +255,7 @@ def init_app(app):
     Returns:
         None
     """
-    # Register blueprint
-    app.register_blueprint(jobs_bp)
-    
-    # Add context processor for job status classes
+    # Define our job status classes context processor before registering the blueprint
     @jobs_bp.app_context_processor
     def job_status_classes():
         return {
@@ -273,3 +270,6 @@ def init_app(app):
                 'unknown': 'bg-gray-100 text-gray-800'
             }
         }
+    
+    # Register blueprint after setting up all decorators
+    app.register_blueprint(jobs_bp)
