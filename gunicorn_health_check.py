@@ -1,47 +1,29 @@
 """
-Health check module for Gunicorn-based deployments
+Health check module for gunicorn deployments
 
-This module adds a simple health check capability to ensure the application
-can properly respond to health check requests from Replit's deployment system.
+This module provides simple health check routes required for Replit Deployments
 """
 
-import logging
-from flask import Blueprint, Response
-
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-# Create a blueprint for health check routes
-health_bp = Blueprint('health', __name__)
-
-@health_bp.route('/health')
-def health_check():
-    """
-    Simple health check endpoint that returns a 200 OK response
-    
-    This allows deployment platforms like Replit to verify the application
-    is running properly.
-    """
-    logger.debug("Health check request received")
-    return Response("OK", status=200, mimetype='text/plain')
+from flask import jsonify
 
 def init_app(app):
-    """
-    Register the health check blueprint with the application
+    """Initialize health check routes for the Flask application"""
     
-    Args:
-        app: Flask application instance
-    """
-    logger.info("Registering health check routes")
-    app.register_blueprint(health_bp)
-    
-    # Also add a route handler directly to the app for the root path
-    # as some deployment systems check this path specifically
-    @app.route('/healthz')
+    @app.route('/')
     def root_health_check():
-        """Root health check for Kubernetes-style health checks"""
-        logger.debug("Root health check request received")
-        return Response("OK", status=200, mimetype='text/plain')
+        """Root health check endpoint for Replit Deployments"""
+        return jsonify({
+            "status": "ok",
+            "message": "GloriaMundo API is running"
+        })
+    
+    @app.route('/health')
+    def health_check():
+        """Explicit health check endpoint"""
+        return jsonify({
+            "status": "ok",
+            "service": "GloriaMundo",
+            "version": "1.0"
+        })
         
-    logger.info("Health check routes registered successfully")
+    return app
