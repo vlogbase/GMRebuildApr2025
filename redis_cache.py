@@ -28,6 +28,28 @@ except ImportError:
 
 # Type variables
 T = TypeVar('T')
+
+def handle_redis_error(func):
+    """
+    Decorator to handle Redis errors gracefully
+    
+    Args:
+        func: Function to decorate
+        
+    Returns:
+        Wrapped function that catches Redis errors
+    """
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except RedisError as e:
+            logger.error(f"Redis error in {func.__name__}: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Error in {func.__name__}: {str(e)}")
+            return None
+    return wrapper
 ResponseT = TypeVar('ResponseT')
 
 # Global Redis connection

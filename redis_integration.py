@@ -37,7 +37,7 @@ def init_redis_services(app, session_prefix="session",
     try:
         # Import necessary modules
         from middleware import setup_redis_middleware
-        from jobs_blueprint import init_app as init_jobs_bp
+        # We don't import the jobs blueprint init function here to avoid duplicate registrations
         from redis_cache import get_redis_connection
 
         # Apply Redis session and rate limiting
@@ -53,11 +53,16 @@ def init_redis_services(app, session_prefix="session",
         # Set up job processing
         if job_queues is not None:
             logger.info("Setting up job processing")
-            init_jobs_bp(app)
+            # Don't try to register the blueprint here - it's already registered in app.py
             
             # Make job manager available in app context
-            from jobs import job_manager
-            app.job_manager = job_manager
+            try:
+                from jobs import job_manager
+                app.job_manager = job_manager
+            except ImportError:
+                logger.warning("Could not import job_manager")
+            except Exception as e:
+                logger.error(f"Error setting up job manager: {e}")
         
         # Set up API caching
         if cache_config is not None:
