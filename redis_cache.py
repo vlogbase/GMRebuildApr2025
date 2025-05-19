@@ -81,24 +81,17 @@ class RedisCache:
         if REDIS_AVAILABLE:
             try:
                 # Use the centralized Redis configuration
-                try:
-                    logger.info(f"Attempting to initialize Redis client with namespace '{namespace}'")
-                    # Simple direct connection approach to avoid any parameter conflicts
-                    import redis
-                    from redis_config import get_redis_connection_params
-                    
-                    # Get connection parameters
-                    params = get_redis_connection_params(namespace)
-                    params['decode_responses'] = True
-                    
-                    # Create Redis client directly
-                    self.redis_client = redis.Redis(**params)
-                    
-                    # Test connection
-                    self.redis_client.ping()
-                except Exception as e:
-                    logger.error(f"Direct Redis connection failed: {e}")
-                    self.redis_client = None
+                from redis_config import initialize_redis_client
+                
+                # Pass the namespace as a parameter to initialize_redis_client
+                # This is the key fix to avoid the namespace parameter conflict
+                logger.info(f"Initializing Redis client for namespace '{namespace}'")
+                self.redis_client = initialize_redis_client(
+                    namespace=namespace,
+                    decode_responses=True,
+                    max_retries=3,
+                    retry_delay=0.5
+                )
                 
                 if self.redis_client:
                     logger.info(f"Redis cache initialized with namespace '{namespace}'")
@@ -152,17 +145,34 @@ class RedisCache:
         """
         if value is None:
             return None
-            
-        try:
-            # Try to decode and parse as JSON
-            decoded = value.decode('utf-8')
-            return json.loads(decoded)
-        except json.JSONDecodeError:
-            # Not JSON, return as string
-            return decoded
-        except UnicodeDecodeError:
-            # Binary data, return as is
-            return value
+        
+        # Handle bytes data (most common from Redis)
+        if isinstance(value, bytes):
+            try:
+                # Try to decode bytes to UTF-8 string
+                str_value = value.decode('utf-8')
+                
+                # Now try to parse as JSON
+                try:
+                    return json.loads(str_value)
+                except json.JSONDecodeError:
+                    # Not valid JSON, return as string
+                    return str_value
+            except UnicodeDecodeError:
+                # Binary data that can't be decoded as UTF-8
+                return value
+        
+        # Handle string data (already decoded)
+        elif isinstance(value, str):
+            try:
+                # Try to parse as JSON 
+                return json.loads(value)
+            except json.JSONDecodeError:
+                # Not valid JSON, return as is
+                return value
+        
+        # Any other type, return as is
+        return value
     
     @handle_redis_error(False)
     def set(self, key: str, value: Any, expire: Optional[int] = None) -> bool:

@@ -14,8 +14,17 @@ Features:
 import os
 import logging
 import time
+import ssl
 from typing import Optional, Dict, Any, Union
 from urllib.parse import urlparse
+
+# Import Redis when available
+try:
+    import redis
+    from redis.exceptions import RedisError
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -150,18 +159,23 @@ def initialize_redis_client(namespace: str = '', decode_responses: bool = True,
         Redis client instance or None if connection failed after retries
     """
     try:
-        # Import Redis only when needed
-        import redis
-        import time
-        import ssl
-        from redis.exceptions import RedisError
+        # Only use redis import from the global import
+        # Avoid reimporting modules that were already imported at the top
+        if not REDIS_AVAILABLE:
+            logger.warning("Redis library not available")
+            return None
         
         # Get connection parameters for the namespace
         params = get_redis_connection_params(namespace)
         
         # Override decode_responses if specified
-        if decode_responses is not None:
-            params['decode_responses'] = decode_responses
+        params['decode_responses'] = decode_responses
+        
+        # Log the Redis connection parameters (without password)
+        safe_params = params.copy()
+        if 'password' in safe_params:
+            safe_params['password'] = '****' if safe_params['password'] else None
+        logger.debug(f"Redis connection parameters for {namespace}: {safe_params}")
         
         # If Redis host is not configured, return None
         if not params['host']:
@@ -190,13 +204,15 @@ def initialize_redis_client(namespace: str = '', decode_responses: bool = True,
                 # Set minimum TLS version to 1.2 for Azure Redis
                 ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
                 
-                # Replace individual SSL parameters with the context
-                params['ssl_context'] = ssl_context
+                # For Azure Redis, we need to use ssl=True instead of ssl_context
+                # The redis-py library behaves differently based on version
+                params['ssl'] = True
                 
-                # Remove individual ssl params as ssl_context takes precedence
-                for param in ['ssl', 'ssl_cert_reqs', 'ssl_ca_certs', 'ssl_keyfile', 'ssl_certfile']:
-                    if param in params:
-                        params.pop(param)
+                # Some redis-py versions use these parameters instead of ssl_context
+                if ssl_cert_reqs == 'required':
+                    params['ssl_cert_reqs'] = 'required'
+                else:
+                    params['ssl_cert_reqs'] = 'none'
                 
                 logger.info(f"Configured SSLContext for {namespace or 'default'} with TLS 1.2 minimum")
             except Exception as e_ssl:
@@ -211,11 +227,11 @@ def initialize_redis_client(namespace: str = '', decode_responses: bool = True,
             attempt += 1
             
             try:
-                # Create Redis client with connection parameters
-                client = redis.Redis(**params)
+                # Create Redis client with connection parameters - use the imported redis package
+                client = redis.Redis(**params) if REDIS_AVAILABLE else None
                 
                 # Test the connection with a ping
-                if client.ping():
+                if client and client.ping():
                     if attempt > 1:
                         logger.info(f"Successfully connected to Redis for {namespace} namespace on attempt {attempt}")
                     else:
@@ -223,7 +239,7 @@ def initialize_redis_client(namespace: str = '', decode_responses: bool = True,
                     return client
                 else:
                     logger.warning(f"Redis ping failed for {namespace or 'default'} namespace (attempt {attempt}/{max_retries})")
-            except RedisError as e:
+            except Exception as e:
                 last_error = e
                 logger.warning(f"Redis connection error on attempt {attempt}/{max_retries}: {e}")
                 
@@ -299,11 +315,8 @@ def create_redis_client(namespace: str = '', decode_responses: bool = True) -> O
     except ImportError:
         logger.warning("Redis package not installed, falling back to file storage")
         return None
-    except RedisError as e:
-        logger.warning(f"Redis connection error: {str(e)}")
-        return None
     except Exception as e:
-        logger.warning(f"Unexpected error creating Redis client: {str(e)}", exc_info=True)
+        logger.warning(f"Redis connection error: {str(e)}")
         return None
 
 def get_redis_url(namespace: str = '') -> str:
@@ -401,13 +414,6 @@ def check_redis_health(namespace: str = '') -> Dict[str, Any]:
         result['latency_ms'] = round((time.time() - start_time) * 1000, 2)
         
         return result
-    except (ImportError, RedisError) as e:
-        return {
-            'status': 'unavailable',
-            'error': str(e),
-            'latency_ms': 0,
-            'info': None
-        }
     except Exception as e:
         return {
             'status': 'error',
