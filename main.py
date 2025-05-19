@@ -59,7 +59,21 @@ app.config['SESSION_COOKIE_NAME'] = 'gloria_mundo_session'
 Session(app)
 logger.info(f"Flask session initialized with {app.config['SESSION_TYPE']} backend")
 
+# Register health check routes for deployment health checks
+try:
+    from gunicorn_health_check import init_app as init_health_check
+    init_health_check(app)
+    logger.info("Health check routes registered successfully")
+except ImportError as e:
+    logger.warning(f"Failed to import health check module: {e}")
+except Exception as e:
+    logger.error(f"Error registering health check routes: {e}")
+
 # This ensures that the app is available for Gunicorn
 # as specified in the .replit configuration file
 if __name__ == "__main__":
+    logger.info("Starting Flask application in development mode")
     app.run(host='0.0.0.0', port=5000, debug=True)
+else:
+    # When running under Gunicorn, log the startup
+    logger.info("Flask application loaded by Gunicorn")
