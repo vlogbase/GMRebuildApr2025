@@ -4349,6 +4349,8 @@ code {
     .chat-messages {
         flex: 1;
         padding: 20px;
+        /* Add padding at the top to account for fixed header */
+        padding-top: 60px;
         /* Ensure enough bottom padding to account for fixed input */
         padding-bottom: 140px; /* Increased to ensure all content is accessible by scrolling */
     }
