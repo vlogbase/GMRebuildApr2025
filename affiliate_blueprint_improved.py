@@ -413,7 +413,8 @@ def commission_metrics():
 def update_paypal_email():
     """Update affiliate's PayPal email address"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, db
+    from app import db
+    from models import User, Affiliate
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -432,20 +433,23 @@ def update_paypal_email():
     
     if not paypal_email:
         flash('PayPal email is required', 'error')
-        return redirect(url_for('affiliate.dashboard'))
+        return redirect(url_for('billing.account_management'))
     
     # Update the affiliate's PayPal email
     try:
         affiliate.paypal_email = paypal_email
+        # Only update the timestamp field if it exists
+        if hasattr(affiliate, 'updated_at'):
+            affiliate.updated_at = datetime.now()
         db.session.commit()
         flash('PayPal email updated successfully', 'success')
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error updating PayPal email: {str(e)}")
-        flash('An error occurred while updating your PayPal email', 'error')
+        logger.error(f"Error updating PayPal email: {str(e)}", exc_info=True)
+        flash(f'An error occurred: {str(e)}', 'error')
     
-    # Redirect back to dashboard
-    return redirect(url_for('affiliate.dashboard'))
+    # Redirect back to account management page
+    return redirect(url_for('billing.account_management'))
 
 # Helper function for templates
 def affiliate_helpers():

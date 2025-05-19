@@ -383,6 +383,8 @@ def init_app(app):
             """Update affiliate's PayPal email address"""
             try:
                 # Get the affiliate record for the current user
+                # The models are already imported at the top of the function
+                # via: from database import db, User, Affiliate, Commission, Transaction, CustomerReferral
                 affiliate = Affiliate.query.filter_by(user_id=current_user.id).first()
                 
                 if not affiliate:
