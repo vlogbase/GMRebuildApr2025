@@ -73,16 +73,18 @@ class RedisSessionInterface(SessionInterface):
         Args:
             prefix: Key prefix for session data in Redis
             expire: Session expiration time in seconds (default: 1 day)
-            redis_url: Redis URL (optional, will use environment variable if None)
+            redis_url: Redis URL (optional, will use environment variable if None) - kept for backward compatibility
         """
         self.prefix = prefix
         self.expire = expire
         
-        # Get Redis connection with proper error handling
-        self.redis_conn = get_redis_connection(redis_url)
-        
-        # Create Redis cache with the connection
-        self.redis = RedisCache(namespace=prefix, expire_time=expire, redis_client=self.redis_conn)
+        # If redis_url is provided, set it in the environment for this session
+        if redis_url:
+            os.environ['REDIS_HOST'] = redis_url
+            
+        # Create Redis cache directly - it will handle connections internally
+        self.redis = RedisCache(namespace=prefix, expire_time=expire)
+        self.redis_conn = None  # We don't need to manage the connection separately anymore
     
     def _get_redis_session_key(self, sid):
         """Get the Redis key for a session ID"""

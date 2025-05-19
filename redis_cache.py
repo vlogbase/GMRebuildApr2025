@@ -344,3 +344,65 @@ def create_cache(namespace: str = '', expire_time: int = 3600) -> RedisCache:
         RedisCache: Initialized Redis cache
     """
     return RedisCache(namespace=namespace, expire_time=expire_time)
+
+def get_redis_connection(use_pool=True):
+    """
+    Establishes and returns a Redis connection.
+    Uses a connection pool by default for efficiency.
+    
+    This function is maintained for backward compatibility with existing code.
+    For new code, consider using RedisCache class directly.
+    
+    Args:
+        use_pool: Whether to use a connection pool (recommended)
+        
+    Returns:
+        Redis connection object or None if connection fails
+    """
+    # Import Redis configuration
+    from redis_config import get_redis_connection_params
+    
+    try:
+        # Only import redis if available
+        import redis
+        
+        # Get connection parameters
+        params = get_redis_connection_params()
+        
+        # If no Redis host, return None
+        if not params['host']:
+            logger.warning("No Redis host available, returning None for Redis connection")
+            return None
+        
+        # Create connection pool if requested
+        if use_pool:
+            # Create a connection pool
+            pool = redis.ConnectionPool(
+                host=params['host'],
+                port=params['port'],
+                db=params['db'],
+                password=params['password'],
+                socket_timeout=params['socket_timeout'],
+                socket_connect_timeout=params['socket_connect_timeout'],
+                retry_on_timeout=params['retry_on_timeout'],
+                decode_responses=params['decode_responses']
+            )
+            return redis.Redis(connection_pool=pool)
+        else:
+            # Create direct connection
+            return redis.Redis(
+                host=params['host'],
+                port=params['port'],
+                db=params['db'],
+                password=params['password'],
+                socket_timeout=params['socket_timeout'],
+                socket_connect_timeout=params['socket_connect_timeout'],
+                retry_on_timeout=params['retry_on_timeout'],
+                decode_responses=params['decode_responses']
+            )
+    except ImportError:
+        logger.warning("Redis package not installed, cannot create Redis connection")
+        return None
+    except Exception as e:
+        logger.error(f"Failed to create Redis connection: {str(e)}")
+        return None

@@ -42,7 +42,8 @@ except ImportError:
     NoSuchJobError = Exception
     JOB_STATUSES = []
 
-# Import Redis cache
+# Import Redis helper and config modules
+from redis_helper import check_redis_connection, configure_redis
 from redis_cache import get_redis_connection
 
 # Type variables
