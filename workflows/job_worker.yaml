@@ -1,0 +1,6 @@
+name: job_worker
+entrypoint: python start_job_worker.py high default low email indexing
+onStart: echo "Starting Redis Queue job worker..."
+restartPolicy: always
+maxRestarts: 10
+restartTimeout: 5s

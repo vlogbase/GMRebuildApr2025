@@ -1,213 +1,286 @@
 """
 Application Integration Module
 
-This module integrates the Redis-based services with the main Flask application.
-It includes functions to register job processing, session management, rate limiting,
-and API caching with a Flask application.
+This module integrates Redis-based functionality into the main Flask application.
+It includes functions to set up various Redis features like caching, sessions,
+rate limiting, and background job processing.
 """
 
 import os
 import logging
-from typing import Dict, Optional, Any, List, Union
+from typing import Optional, Dict, Any, List, Callable
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def integrate_redis_services(app):
+def setup_redis_integration(app):
     """
-    Integrate Redis-based services with the Flask application
+    Set up Redis integration for the Flask application
     
     Args:
-        app (Flask): The Flask application
+        app: Flask application
         
     Returns:
-        bool: True if successful, False otherwise
+        Flask application with Redis integration
     """
-    success = True
-    
-    # Register Redis session interface if not already registered
-    if not hasattr(app, '_redis_session_registered'):
-        try:
-            from redis_session import setup_redis_session
-            setup_redis_session(app)
-            app._redis_session_registered = True
-            logger.info("Redis session interface registered")
-        except ImportError as e:
-            logger.warning(f"Could not import Redis session module: {e}")
-            success = False
-        except Exception as e:
-            logger.warning(f"Error registering Redis session interface: {e}")
-            success = False
-    
-    # Register rate limiting middleware if not already registered
-    if not hasattr(app, '_rate_limiting_registered'):
-        try:
-            from middleware import setup_redis_middleware
-            
-            # Default rate limits
-            default_limits = {
-                'default': {'limit': 60, 'window': 60},   # 60 requests per minute
-                'api': {'limit': 30, 'window': 60},       # 30 requests per minute
-                'chat': {'limit': 5, 'window': 60},       # 5 requests per minute
-                'upload': {'limit': 3, 'window': 60},     # 3 requests per minute
-                'model': {'limit': 10, 'window': 60}      # 10 requests per minute
-            }
-            
-            # Higher limits for authenticated users
-            authenticated_limits = {
-                'default': {'limit': 120, 'window': 60},  # 120 requests per minute
-                'api': {'limit': 60, 'window': 60},       # 60 requests per minute
-                'chat': {'limit': 20, 'window': 60},      # 20 requests per minute
-                'upload': {'limit': 10, 'window': 60},    # 10 requests per minute
-                'model': {'limit': 30, 'window': 60}      # 30 requests per minute
-            }
-            
-            setup_redis_middleware(
-                app, 
-                key_prefix=f"session:{app.name}",
-                default_limits=default_limits,
-                authenticated_limits=authenticated_limits
-            )
-            app._rate_limiting_registered = True
-            logger.info("Rate limiting middleware registered")
-        except ImportError as e:
-            logger.warning(f"Could not import Redis middleware module: {e}")
-            success = False
-        except Exception as e:
-            logger.warning(f"Error registering rate limiting middleware: {e}")
-            success = False
-    
-    # Register jobs blueprint if not already registered
-    if not hasattr(app, '_jobs_blueprint_registered'):
-        try:
-            from jobs_blueprint import init_app as init_jobs_bp
-            init_jobs_bp(app)
-            app._jobs_blueprint_registered = True
-            logger.info("Jobs blueprint registered")
-        except ImportError as e:
-            logger.warning(f"Could not import jobs blueprint module: {e}")
-            success = False
-        except Exception as e:
-            logger.warning(f"Error registering jobs blueprint: {e}")
-            success = False
-    
-    # Register API cache if not already registered
-    if not hasattr(app, '_api_cache_registered'):
-        try:
-            from api_cache import ApiCache
-            app.api_cache = ApiCache(
-                namespace=f"api_cache:{app.name}",
-                default_ttl=3600  # 1 hour default TTL
-            )
-            
-            # Register cache decorator on app
-            app.cache_api = app.api_cache.cache
-            app.timed_cache_api = app.api_cache.timed_cache
-            
-            app._api_cache_registered = True
-            logger.info("API cache registered")
-        except ImportError as e:
-            logger.warning(f"Could not import API cache module: {e}")
-            success = False
-        except Exception as e:
-            logger.warning(f"Error registering API cache: {e}")
-            success = False
-    
-    # Register job manager if not already registered
-    if not hasattr(app, '_job_manager_registered'):
-        try:
-            from jobs import job_manager
-            
-            # Add job manager to app context
-            app.job_manager = job_manager
-            
-            # Add background job decorator to app
-            app.background_job = job_manager.background_job
-            
-            # Common queue shortcuts
-            app.queue_high = lambda func: job_manager.background_job(queue_name='high')(func)
-            app.queue_default = lambda func: job_manager.background_job(queue_name='default')(func)
-            app.queue_low = lambda func: job_manager.background_job(queue_name='low')(func)
-            app.queue_email = lambda func: job_manager.background_job(queue_name='email')(func)
-            app.queue_indexing = lambda func: job_manager.background_job(queue_name='indexing')(func)
-            
-            app._job_manager_registered = True
-            logger.info("Job manager registered")
-        except ImportError as e:
-            logger.warning(f"Could not import job manager module: {e}")
-            success = False
-        except Exception as e:
-            logger.warning(f"Error registering job manager: {e}")
-            success = False
-    
-    # Add Redis connection test function to app
-    if not hasattr(app, 'test_redis_connection'):
-        try:
-            from redis_cache import get_redis_connection
-            
-            def test_redis_connection():
-                """Test the Redis connection"""
-                redis_conn = get_redis_connection()
-                if redis_conn:
-                    redis_info = redis_conn.info()
-                    return {
-                        'connected': True,
-                        'redis_version': redis_info.get('redis_version', 'Unknown'),
-                        'uptime_seconds': redis_info.get('uptime_in_seconds', 0),
-                        'connected_clients': redis_info.get('connected_clients', 0)
-                    }
-                return {'connected': False}
-            
-            app.test_redis_connection = test_redis_connection
-            logger.info("Redis connection test function registered")
-        except ImportError as e:
-            logger.warning(f"Could not import Redis connection module: {e}")
-            success = False
-        except Exception as e:
-            logger.warning(f"Error registering Redis connection test: {e}")
-            success = False
-    
-    return success
-
-def register_example_job_functions(app):
-    """
-    Register example job functions with the Flask application
-    
-    Args:
-        app (Flask): The Flask application
+    # Ensure Redis URL is available
+    redis_url = os.environ.get('REDIS_URL')
+    if not redis_url:
+        logger.warning("REDIS_URL not set in environment variables")
+        redis_url = f"redis://{os.environ.get('REDIS_HOST', 'localhost')}:{os.environ.get('REDIS_PORT', '6379')}/0"
         
-    Returns:
-        dict: Dictionary of registered job functions
-    """
-    if not hasattr(app, 'job_manager'):
-        logger.warning("Cannot register example job functions: job_manager not found on app")
-        return {}
+        # Check if Redis password is available
+        redis_password = os.environ.get('REDIS_PASSWORD')
+        if redis_password:
+            # Format URL with password
+            if '@' not in redis_url:
+                protocol = 'rediss://' if redis_url.startswith('rediss://') else 'redis://'
+                host_part = redis_url.split('://', 1)[1] if '://' in redis_url else redis_url
+                redis_url = f"{protocol}:{redis_password}@{host_part}"
+        
+        logger.info(f"Using Redis URL: {redis_url.replace(redis_password or '', '***') if redis_password else redis_url}")
+        os.environ['REDIS_URL'] = redis_url
     
+    # Initialize Redis components
     try:
-        from jobs import (
-            example_email_job, example_report_job, 
-            example_processing_job, example_cache_update_job,
-            example_long_task
-        )
+        # Import Redis modules
+        from redis_cache import get_redis_connection
         
-        # Register example job functions on app for easy access
-        app.example_jobs = {
-            'email_job': example_email_job,
-            'report_job': example_report_job,
-            'processing_job': example_processing_job,
-            'cache_update_job': example_cache_update_job,
-            'long_task': example_long_task
-        }
+        # Check Redis connection
+        redis_conn = get_redis_connection()
+        if not redis_conn:
+            logger.error("Could not connect to Redis")
+            return app
         
-        logger.info(f"Registered {len(app.example_jobs)} example job functions")
-        return app.example_jobs
+        # Set up Redis session
+        setup_redis_session(app)
+        
+        # Set up Redis rate limiting
+        setup_redis_rate_limiting(app)
+        
+        # Set up API caching
+        setup_api_caching(app)
+        
+        # Set up job system
+        setup_job_system(app)
+        
+        logger.info("Redis integration setup complete")
+        return app
+        
     except ImportError as e:
-        logger.warning(f"Could not import example job functions: {e}")
-        return {}
+        logger.error(f"Redis modules not available: {e}")
+        return app
+    
     except Exception as e:
-        logger.warning(f"Error registering example job functions: {e}")
-        return {}
+        logger.error(f"Error setting up Redis integration: {e}")
+        return app
+
+def setup_redis_session(app):
+    """
+    Set up Redis session store for the Flask application
+    
+    Args:
+        app: Flask application
+        
+    Returns:
+        None
+    """
+    try:
+        from redis_session import RedisSessionInterface
+        
+        # Initialize session interface
+        session_interface = RedisSessionInterface()
+        app.session_interface = session_interface
+        
+        logger.info("Redis session store configured")
+    except ImportError:
+        logger.warning("Redis session module not available")
+    except Exception as e:
+        logger.error(f"Error setting up Redis session: {e}")
+
+def setup_redis_rate_limiting(app):
+    """
+    Set up Redis-based rate limiting for the Flask application
+    
+    Args:
+        app: Flask application
+        
+    Returns:
+        None
+    """
+    try:
+        from middleware import apply_rate_limiting
+        
+        # Apply rate limiting middleware
+        apply_rate_limiting(app)
+        
+        logger.info("Redis rate limiting configured")
+    except ImportError:
+        logger.warning("Redis rate limiting module not available")
+    except Exception as e:
+        logger.error(f"Error setting up Redis rate limiting: {e}")
+
+def setup_api_caching(app):
+    """
+    Set up Redis-based API caching for the Flask application
+    
+    Args:
+        app: Flask application
+        
+    Returns:
+        None
+    """
+    try:
+        from api_cache import init_api_cache
+        
+        # Initialize API cache
+        init_api_cache(app)
+        
+        logger.info("Redis API caching configured")
+    except ImportError:
+        logger.warning("Redis API caching module not available")
+    except Exception as e:
+        logger.error(f"Error setting up Redis API caching: {e}")
+
+def setup_job_system(app):
+    """
+    Set up Redis-based background job system for the Flask application
+    
+    Args:
+        app: Flask application
+        
+    Returns:
+        None
+    """
+    try:
+        from jobs_blueprint import init_app as init_jobs_bp
+        
+        # Initialize job system blueprint
+        init_jobs_bp(app)
+        
+        logger.info("Redis job system configured")
+        
+        # Register example job functions (for testing purposes)
+        register_example_jobs()
+        
+    except ImportError:
+        logger.warning("Redis job system module not available")
+    except Exception as e:
+        logger.error(f"Error setting up Redis job system: {e}")
+
+def register_example_jobs():
+    """
+    Register example job functions for testing
+    
+    Returns:
+        None
+    """
+    try:
+        from jobs import background_job
+        import time
+        import random
+        
+        @background_job(queue_name='email')
+        def example_email_job(recipient, subject, body):
+            """Example email sending job"""
+            # Simulate work
+            time.sleep(2)
+            return {'sent': True, 'to': recipient, 'subject': subject}
+        
+        @background_job(queue_name='default')
+        def example_report_job(report_id, parameters):
+            """Example report generation job"""
+            from jobs import current_job_progress
+            
+            # Simulate work with progress updates
+            total_steps = 5
+            for i in range(total_steps):
+                # Update progress
+                current_job_progress(
+                    message=f"Processing step {i+1}/{total_steps}",
+                    progress=((i+1)/total_steps) * 100,
+                    step=i+1,
+                    total_steps=total_steps
+                )
+                
+                # Simulate work
+                time.sleep(1)
+            
+            return {'report_id': report_id, 'status': 'completed', 'parameters': parameters}
+        
+        @background_job(queue_name='low')
+        def example_processing_job(items, process_type="standard"):
+            """Example data processing job"""
+            from jobs import current_job_progress
+            
+            # Simulate work with progress updates
+            total = len(items)
+            processed = []
+            
+            for i, item in enumerate(items):
+                # Update progress
+                current_job_progress(
+                    message=f"Processing item {i+1}/{total}",
+                    progress=((i+1)/total) * 100,
+                    current=i+1,
+                    total=total
+                )
+                
+                # Simulate processing
+                time.sleep(0.5)
+                processed.append(f"{item}-processed-{process_type}")
+            
+            return {'processed': processed, 'total': total}
+        
+        @background_job(queue_name='high')
+        def example_cache_update_job():
+            """Example cache update job"""
+            # Simulate work
+            time.sleep(1)
+            return {'cache_updated': True, 'timestamp': time.time()}
+        
+        @background_job(queue_name='default', timeout=600)
+        def example_long_task(duration=30):
+            """Example long-running task"""
+            from jobs import current_job_progress
+            import time
+            
+            # Cap duration for safety
+            duration = min(duration, 300)
+            
+            # Simulate long-running task with progress updates
+            start_time = time.time()
+            end_time = start_time + duration
+            
+            while time.time() < end_time:
+                elapsed = time.time() - start_time
+                progress = min(99, (elapsed / duration) * 100)
+                
+                # Update progress
+                current_job_progress(
+                    message=f"Running long task ({int(elapsed)}s / {duration}s)",
+                    progress=progress,
+                    elapsed=elapsed,
+                    duration=duration
+                )
+                
+                # Sleep briefly
+                time.sleep(1)
+            
+            # Final update
+            current_job_progress(
+                message=f"Completed long task ({duration}s)",
+                progress=100,
+                elapsed=duration,
+                duration=duration
+            )
+            
+            return {'duration': duration, 'completed': True}
+        
+        logger.info("Example jobs registered")
+        
+    except ImportError:
+        logger.warning("Could not register example jobs - job module not available")
+    except Exception as e:
+        logger.error(f"Error registering example jobs: {e}")

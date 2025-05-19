@@ -1,440 +1,645 @@
 """
 Redis Cache Module
 
-This module provides a Redis connection manager for use with caching, session storage,
-and background job processing. It handles SSL connections to Azure Redis Cache.
+This module provides a flexible Redis caching system for Flask applications.
+It's designed to be used for general-purpose caching, rate limiting, and session storage.
 """
 
 import os
 import json
+import pickle
 import logging
-import redis
-from typing import Any, Dict, List, Optional, Union
+import functools
+from typing import Dict, List, Optional, Any, Callable, TypeVar, Union, cast
+from datetime import datetime, timedelta
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def get_redis_connection(decode_responses=False):
+# Import Redis
+try:
+    import redis
+    from redis.exceptions import RedisError
+except ImportError:
+    logger.error("Redis not installed. Please install with: pip install redis")
+    redis = None
+    RedisError = Exception
+
+# Type variables
+T = TypeVar('T')
+ResponseT = TypeVar('ResponseT')
+
+# Global Redis connection
+_redis_connection = None
+
+def get_redis_connection(redis_url=None, use_ssl=None):
     """
-    Get a connection to Redis using SSL for Azure Redis Cache
+    Get or create a Redis connection
     
     Args:
-        decode_responses (bool): Whether to decode responses from Redis as strings
+        redis_url: Redis URL (optional, defaults to REDIS_URL env var)
+        use_ssl: Whether to use SSL (optional, detected from URL if not provided)
         
     Returns:
-        Redis: A Redis connection object
+        Redis client instance
     """
-    # Get Redis configuration from environment variables
-    redis_host = os.environ.get("REDIS_HOST", "my-bullmq-cache.redis.cache.windows.net")
-    redis_port = int(os.environ.get("REDIS_PORT", 6380))
-    redis_password = os.environ.get("REDIS_PASSWORD", "")
+    global _redis_connection
     
-    # Check required configuration
-    if not redis_password:
-        raise ValueError("Redis password is required but not provided in environment variables")
+    # Return existing connection if available
+    if _redis_connection is not None:
+        return _redis_connection
     
-    # Log connection attempt (without sensitive info)
-    logger.info(f"Connecting to Redis at {redis_host}:{redis_port} with SSL")
+    # Check if Redis is available
+    if redis is None:
+        logger.error("Redis module not available")
+        return None
     
     try:
-        # Create Redis client with SSL
-        redis_client = redis.Redis(
-            host=redis_host,
-            port=redis_port,
-            password=redis_password,
-            ssl=True,
-            ssl_cert_reqs="none",  # Disable certificate validation for simplicity
-            decode_responses=decode_responses,
-            socket_timeout=10,
-            socket_connect_timeout=10,
-            retry_on_timeout=True,
-            health_check_interval=30,
-        )
+        # Get Redis URL from environment if not provided
+        if not redis_url:
+            redis_url = os.environ.get('REDIS_URL')
+            if not redis_url:
+                logger.warning("REDIS_URL environment variable not set, defaulting to localhost")
+                redis_url = 'redis://localhost:6379/0'
+        
+        # Detect SSL from URL if not provided
+        if use_ssl is None:
+            use_ssl = redis_url.startswith('rediss://')
+        
+        logger.info(f"Connecting to Redis at {redis_url} (SSL: {use_ssl})")
+        
+        # Parse Redis URL and create connection
+        if redis_url.startswith('redis://') or redis_url.startswith('rediss://'):
+            # Use URL to create connection
+            connection_kwargs = {
+                'url': redis_url,
+                'socket_timeout': 5,
+                'socket_connect_timeout': 5,
+                'socket_keepalive': True,
+                'health_check_interval': 30,
+                'retry_on_timeout': True,
+            }
+            
+            if use_ssl:
+                connection_kwargs['ssl_cert_reqs'] = None
+            
+            _redis_connection = redis.Redis(**connection_kwargs)
+        else:
+            # Assume host:port format
+            host, port = redis_url.split(':')
+            _redis_connection = redis.Redis(
+                host=host,
+                port=int(port),
+                socket_timeout=5,
+                socket_connect_timeout=5,
+                socket_keepalive=True,
+                health_check_interval=30,
+                retry_on_timeout=True,
+                ssl=use_ssl,
+                ssl_cert_reqs=None if use_ssl else 'none'
+            )
         
         # Test connection
-        redis_client.ping()
-        logger.info("Successfully connected to Redis")
+        _redis_connection.ping()
+        logger.info("Redis connection established")
         
-        return redis_client
-    except redis.RedisError as e:
-        logger.error(f"Failed to connect to Redis: {str(e)}")
-        raise
+        return _redis_connection
+    
+    except (RedisError, ValueError, ConnectionError) as e:
+        logger.error(f"Error connecting to Redis: {e}")
+        _redis_connection = None
+        
+        # Return dummy Redis for fallback
+        return DummyRedis()
+
+class DummyRedis:
+    """
+    Dummy Redis implementation for when Redis is not available
+    All operations are no-ops
+    """
+    def __getattr__(self, name):
+        def dummy_method(*args, **kwargs):
+            logger.debug(f"Dummy Redis: {name}() called")
+            if name in ['get', 'hget', 'hgetall', 'hmget', 'smembers', 'zrange']:
+                return None
+            elif name in ['set', 'setex', 'hset', 'hmset', 'sadd', 'srem', 'zadd']:
+                return True
+            return None
+        return dummy_method
 
 class RedisCache:
-    """
-    A Redis-based cache implementation
+    """Redis-based caching system"""
     
-    This class provides a simple interface for caching data in Redis.
-    It handles serialization and deserialization of data.
-    """
-    
-    def __init__(self, namespace='general', expire_time=3600):
+    def __init__(self, namespace: str = 'cache', expire_time: int = 300, redis_client=None):
         """
-        Initialize the Redis cache
+        Initialize the cache
         
         Args:
-            namespace (str): The namespace to use for keys
-            expire_time (int): The default expiration time in seconds
+            namespace: Namespace prefix for cache keys
+            expire_time: Default cache expiration time in seconds (default: 5 minutes)
+            redis_client: Redis client instance (optional, will create if None)
         """
         self.namespace = namespace
         self.expire_time = expire_time
-        self._redis = None
-        self._connect()
+        self.redis = redis_client or get_redis_connection()
     
-    def _connect(self):
-        """Establish the Redis connection"""
-        if self._redis is None:
-            try:
-                self._redis = get_redis_connection()
-            except Exception as e:
-                logger.error(f"Failed to initialize Redis cache: {str(e)}")
-                raise
-    
-    def _make_key(self, key):
+    def _make_key(self, key: str) -> str:
         """
         Create a namespaced key
         
         Args:
-            key (str): The original key
+            key: Base key
             
         Returns:
-            str: The namespaced key
+            str: Namespaced key
         """
         return f"{self.namespace}:{key}"
     
-    def get(self, key, default=None):
+    def get(self, key: str, default: Any = None) -> Any:
         """
         Get a value from the cache
         
         Args:
-            key (str): The key to get
-            default: The default value to return if the key doesn't exist
+            key: Cache key
+            default: Default value if key not found
             
         Returns:
-            The cached value, or the default
+            Any: Cached value or default
         """
         try:
-            self._connect()
-            value = self._redis.get(self._make_key(key))
-            if value is None:
+            full_key = self._make_key(key)
+            data = self.redis.get(full_key)
+            
+            if data is None:
                 return default
+            
             try:
-                return json.loads(value)
-            except (json.JSONDecodeError, TypeError):
-                # If not JSON, return the raw value
-                return value
+                # Try to unpickle first (for complex objects)
+                return pickle.loads(data)
+            except:
+                # Fall back to string decoding
+                try:
+                    # Try to decode as JSON
+                    return json.loads(data.decode('utf-8'))
+                except:
+                    # Return raw decoded string
+                    return data.decode('utf-8')
+        
         except Exception as e:
-            logger.error(f"Error getting key {key} from Redis: {str(e)}")
+            logger.error(f"Error getting cache key {key}: {e}")
             return default
     
-    def set(self, key, value, expire=None):
+    def set(self, key: str, value: Any, expire: Optional[int] = None) -> bool:
         """
         Set a value in the cache
         
         Args:
-            key (str): The key to set
-            value: The value to cache
-            expire (int, optional): Override the default expiration time
+            key: Cache key
+            value: Value to cache
+            expire: Expiration time in seconds (None to use default)
             
         Returns:
-            bool: True if successful, False otherwise
+            bool: True if successful
         """
         try:
-            self._connect()
-            # Serialize non-string values to JSON
-            if not isinstance(value, (str, bytes, bytearray)):
-                value = json.dumps(value)
+            full_key = self._make_key(key)
             
-            # Set with expiration
-            expiration = expire if expire is not None else self.expire_time
-            return self._redis.setex(
-                self._make_key(key),
-                expiration,
-                value
-            )
+            # Use default expiration time if not specified
+            if expire is None:
+                expire = self.expire_time
+            
+            # Convert value to storable format
+            if isinstance(value, str):
+                data = value.encode('utf-8')
+            elif isinstance(value, (dict, list, tuple, bool, int, float)) or value is None:
+                # Use JSON for simple types
+                data = json.dumps(value).encode('utf-8')
+            else:
+                # Use pickle for complex objects
+                data = pickle.dumps(value)
+            
+            # Store in Redis with expiration
+            if expire > 0:
+                return bool(self.redis.setex(full_key, expire, data))
+            else:
+                return bool(self.redis.set(full_key, data))
+        
         except Exception as e:
-            logger.error(f"Error setting key {key} in Redis: {str(e)}")
+            logger.error(f"Error setting cache key {key}: {e}")
             return False
     
-    def delete(self, key):
+    def delete(self, key: str) -> bool:
         """
         Delete a key from the cache
         
         Args:
-            key (str): The key to delete
+            key: Cache key
             
         Returns:
-            bool: True if the key was deleted, False otherwise
+            bool: True if key was deleted
         """
         try:
-            self._connect()
-            result = self._redis.delete(self._make_key(key))
-            return result > 0
+            full_key = self._make_key(key)
+            return bool(self.redis.delete(full_key))
+        
         except Exception as e:
-            logger.error(f"Error deleting key {key} from Redis: {str(e)}")
+            logger.error(f"Error deleting cache key {key}: {e}")
             return False
     
-    def exists(self, key):
+    def exists(self, key: str) -> bool:
         """
         Check if a key exists in the cache
         
         Args:
-            key (str): The key to check
+            key: Cache key
             
         Returns:
-            bool: True if the key exists, False otherwise
+            bool: True if key exists
         """
         try:
-            self._connect()
-            return self._redis.exists(self._make_key(key)) > 0
+            full_key = self._make_key(key)
+            return bool(self.redis.exists(full_key))
+        
         except Exception as e:
-            logger.error(f"Error checking existence of key {key} in Redis: {str(e)}")
+            logger.error(f"Error checking cache key {key}: {e}")
             return False
     
-    def incr(self, key, amount=1):
+    def incr(self, key: str, amount: int = 1) -> int:
         """
-        Increment a key in the cache
+        Increment a counter
         
         Args:
-            key (str): The key to increment
-            amount (int): The amount to increment by
+            key: Counter key
+            amount: Amount to increment (default: 1)
             
         Returns:
-            int: The new value, or None if there was an error
+            int: New counter value
         """
         try:
-            self._connect()
-            return self._redis.incrby(self._make_key(key), amount)
+            full_key = self._make_key(key)
+            return self.redis.incrby(full_key, amount)
+        
         except Exception as e:
-            logger.error(f"Error incrementing key {key} in Redis: {str(e)}")
-            return None
+            logger.error(f"Error incrementing cache key {key}: {e}")
+            return -1
     
-    def expire(self, key, time):
+    def expire(self, key: str, seconds: int) -> bool:
         """
-        Set the expiration time for a key
+        Set expiration on a key
         
         Args:
-            key (str): The key to set expiration for
-            time (int): The expiration time in seconds
+            key: Cache key
+            seconds: Expiration time in seconds
             
         Returns:
-            bool: True if successful, False otherwise
+            bool: True if successful
         """
         try:
-            self._connect()
-            return self._redis.expire(self._make_key(key), time)
+            full_key = self._make_key(key)
+            return bool(self.redis.expire(full_key, seconds))
+        
         except Exception as e:
-            logger.error(f"Error setting expiration for key {key} in Redis: {str(e)}")
+            logger.error(f"Error setting expiration for cache key {key}: {e}")
             return False
     
-    def ttl(self, key):
+    def ttl(self, key: str) -> int:
         """
-        Get the remaining time to live for a key
+        Get time to live for a key
         
         Args:
-            key (str): The key to check
+            key: Cache key
             
         Returns:
-            int: The remaining time in seconds, or None if there was an error
+            int: Seconds until expiration (-1 if no expiry, -2 if key doesn't exist)
         """
         try:
-            self._connect()
-            return self._redis.ttl(self._make_key(key))
+            full_key = self._make_key(key)
+            return self.redis.ttl(full_key)
+        
         except Exception as e:
-            logger.error(f"Error getting TTL for key {key} from Redis: {str(e)}")
-            return None
+            logger.error(f"Error getting TTL for cache key {key}: {e}")
+            return -2
     
-    def hset(self, key, field, value):
+    def hset(self, key: str, field: str, value: Any) -> bool:
         """
-        Set a hash field in the cache
+        Set a hash field
         
         Args:
-            key (str): The key of the hash
-            field (str): The field to set
-            value: The value to set
+            key: Hash key
+            field: Hash field
+            value: Value to set
             
         Returns:
-            bool: True if successful, False otherwise
+            bool: True if successful
         """
         try:
-            self._connect()
-            # Serialize non-string values to JSON
-            if not isinstance(value, (str, bytes, bytearray)):
-                value = json.dumps(value)
+            full_key = self._make_key(key)
             
-            self._redis.hset(self._make_key(key), field, value)
-            return True
+            # Convert value to storable format
+            if isinstance(value, str):
+                data = value
+            elif isinstance(value, (dict, list, tuple, bool, int, float)) or value is None:
+                # Use JSON for simple types
+                data = json.dumps(value)
+            else:
+                # Use pickle for complex objects (stored as base64 string)
+                import base64
+                data = base64.b64encode(pickle.dumps(value)).decode('utf-8')
+            
+            return bool(self.redis.hset(full_key, field, data))
+        
         except Exception as e:
-            logger.error(f"Error setting hash field {field} for key {key} in Redis: {str(e)}")
+            logger.error(f"Error setting hash field {key}.{field}: {e}")
             return False
     
-    def hget(self, key, field, default=None):
+    def hget(self, key: str, field: str, default: Any = None) -> Any:
         """
-        Get a hash field from the cache
+        Get a hash field
         
         Args:
-            key (str): The key of the hash
-            field (str): The field to get
-            default: The default value to return if the field doesn't exist
+            key: Hash key
+            field: Hash field
+            default: Default value if field not found
             
         Returns:
-            The value of the field, or the default
+            Any: Field value or default
         """
         try:
-            self._connect()
-            value = self._redis.hget(self._make_key(key), field)
-            if value is None:
+            full_key = self._make_key(key)
+            data = self.redis.hget(full_key, field)
+            
+            if data is None:
                 return default
+            
+            if isinstance(data, bytes):
+                data = data.decode('utf-8')
+            
             try:
-                return json.loads(value)
-            except (json.JSONDecodeError, TypeError):
-                # If not JSON, return the raw value
-                return value
+                # Try to decode as JSON
+                return json.loads(data)
+            except:
+                try:
+                    # Check if it's a pickled object (stored as base64)
+                    if data.startswith("gASV") or (len(data) > 8 and '=' in data[-8:]):
+                        import base64
+                        return pickle.loads(base64.b64decode(data.encode('utf-8')))
+                except:
+                    pass
+                
+                # Return as is
+                return data
+        
         except Exception as e:
-            logger.error(f"Error getting hash field {field} for key {key} from Redis: {str(e)}")
+            logger.error(f"Error getting hash field {key}.{field}: {e}")
             return default
     
-    def hdel(self, key, field):
+    def hdel(self, key: str, field: str) -> bool:
         """
-        Delete a hash field from the cache
+        Delete a hash field
         
         Args:
-            key (str): The key of the hash
-            field (str): The field to delete
+            key: Hash key
+            field: Hash field
             
         Returns:
-            bool: True if the field was deleted, False otherwise
+            bool: True if field was deleted
         """
         try:
-            self._connect()
-            result = self._redis.hdel(self._make_key(key), field)
-            return result > 0
+            full_key = self._make_key(key)
+            return bool(self.redis.hdel(full_key, field))
+        
         except Exception as e:
-            logger.error(f"Error deleting hash field {field} for key {key} from Redis: {str(e)}")
+            logger.error(f"Error deleting hash field {key}.{field}: {e}")
             return False
     
-    def hkeys(self, key):
+    def hkeys(self, key: str) -> List[str]:
         """
-        Get all fields in a hash
+        Get all hash fields
         
         Args:
-            key (str): The key of the hash
+            key: Hash key
             
         Returns:
-            list: A list of fields, or an empty list if there was an error
+            List[str]: List of field names
         """
         try:
-            self._connect()
-            keys = self._redis.hkeys(self._make_key(key))
-            # Convert from bytes to string if necessary
-            if keys and isinstance(keys[0], bytes):
-                keys = [k.decode('utf-8') for k in keys]
-            return keys
+            full_key = self._make_key(key)
+            result = self.redis.hkeys(full_key)
+            
+            # Convert bytes to strings
+            if result and isinstance(result[0], bytes):
+                return [x.decode('utf-8') for x in result]
+            
+            return list(result or [])
+        
         except Exception as e:
-            logger.error(f"Error getting hash keys for key {key} from Redis: {str(e)}")
+            logger.error(f"Error getting hash fields for {key}: {e}")
             return []
     
-    def clear_all(self):
+    def clear(self) -> bool:
         """
-        Clear all keys in the cache
+        Clear all keys in the namespace
         
         Returns:
-            bool: True if successful, False otherwise
+            bool: True if successful
         """
-        try:
-            self._connect()
-            self._redis.flushdb()
-            return True
-        except Exception as e:
-            logger.error(f"Error clearing all keys from Redis: {str(e)}")
-            return False
+        return self.clear_namespace()
     
-    def clear_namespace(self):
+    def clear_pattern(self, pattern: str) -> int:
         """
-        Clear all keys in the current namespace
-        
-        Returns:
-            int: The number of keys deleted
-        """
-        try:
-            self._connect()
-            pattern = f"{self.namespace}:*"
-            count = 0
-            
-            # Get all keys matching the pattern
-            cursor = 0
-            while True:
-                cursor, keys = self._redis.scan(cursor, match=pattern, count=100)
-                if keys:
-                    count += len(keys)
-                    self._redis.delete(*keys)
-                if cursor == 0:
-                    break
-            
-            return count
-        except Exception as e:
-            logger.error(f"Error clearing namespace {self.namespace} from Redis: {str(e)}")
-            return 0
-    
-    def clear_pattern(self, pattern):
-        """
-        Clear keys matching a pattern
+        Clear keys matching a pattern within the namespace
         
         Args:
-            pattern (str): The pattern to match (will be prefixed with namespace)
+            pattern: Key pattern to match (e.g., 'user:*')
             
         Returns:
-            int: The number of keys deleted
+            int: Number of keys deleted
         """
         try:
-            self._connect()
-            full_pattern = f"{self.namespace}:{pattern}"
-            count = 0
+            full_pattern = self._make_key(pattern)
             
-            # Get all keys matching the pattern
-            cursor = 0
-            while True:
-                cursor, keys = self._redis.scan(cursor, match=full_pattern, count=100)
-                if keys:
-                    count += len(keys)
-                    self._redis.delete(*keys)
-                if cursor == 0:
-                    break
+            # Find all matching keys
+            keys = self.redis.keys(full_pattern)
             
-            return count
+            if not keys:
+                return 0
+            
+            # Delete all matching keys
+            return self.redis.delete(*keys)
+        
         except Exception as e:
-            logger.error(f"Error clearing pattern {pattern} from Redis: {str(e)}")
+            logger.error(f"Error clearing keys with pattern {pattern}: {e}")
             return 0
     
-    def get_client_info(self):
+    def clear_namespace(self) -> int:
         """
-        Get information about the Redis client
+        Clear all keys within this namespace
         
         Returns:
-            dict: Client information, or None if there was an error
+            int: Number of keys deleted
+        """
+        return self.clear_pattern("*")
+    
+    def stats(self) -> Dict[str, Any]:
+        """
+        Get cache statistics
+        
+        Returns:
+            Dict[str, Any]: Cache statistics
         """
         try:
-            self._connect()
-            info = self._redis.info()
-            return info
+            key_count = len(self.redis.keys(self._make_key("*")))
+            
+            return {
+                "namespace": self.namespace,
+                "key_count": key_count,
+                "default_expire_time": self.expire_time,
+            }
+        
         except Exception as e:
-            logger.error(f"Error getting Redis client info: {str(e)}")
-            return None
+            logger.error(f"Error getting cache stats: {e}")
+            return {
+                "namespace": self.namespace,
+                "key_count": 0,
+                "default_expire_time": self.expire_time,
+                "error": str(e)
+            }
+    
+    def memoize(self, expire: Optional[int] = None, include_self: bool = False):
+        """
+        Decorator to memoize a function using Redis
+        
+        Args:
+            expire: Cache expiration time in seconds (None to use default)
+            include_self: Whether to include self in the cache key (for methods)
+            
+        Returns:
+            Decorated function
+        """
+        def decorator(func):
+            @functools.wraps(func)
+            def wrapper(*args, **kwargs):
+                # Generate cache key
+                key_parts = [func.__module__, func.__name__]
+                
+                # Skip self/cls for methods if not included
+                if args and not include_self and key_parts[0] != '__main__':
+                    if getattr(args[0].__class__, func.__name__, None) is not None:
+                        args = args[1:]
+                
+                # Add args to key
+                for arg in args:
+                    key_parts.append(str(arg))
+                
+                # Add kwargs to key (sorted for consistency)
+                for k, v in sorted(kwargs.items()):
+                    key_parts.append(f"{k}:{v}")
+                
+                # Create full key
+                cache_key = ":".join(key_parts)
+                
+                # Check cache
+                result = self.get(cache_key)
+                if result is not None:
+                    return result
+                
+                # Call function
+                result = func(*args, **kwargs)
+                
+                # Cache result
+                self.set(cache_key, result, expire)
+                
+                return result
+            
+            # Add clear_cache method to the wrapper
+            def clear_cache(*args, **kwargs):
+                key_parts = [func.__module__, func.__name__]
+                if args or kwargs:
+                    for arg in args:
+                        key_parts.append(str(arg))
+                    for k, v in sorted(kwargs.items()):
+                        key_parts.append(f"{k}:{v}")
+                    cache_key = ":".join(key_parts)
+                    self.delete(cache_key)
+                else:
+                    # Clear all caches for this function
+                    pattern = f"{func.__module__}:{func.__name__}:*"
+                    self.clear_pattern(pattern)
+            
+            wrapper.clear_cache = clear_cache
+            
+            return wrapper
+        
+        return decorator
     
     def pipeline(self):
         """
-        Create a Redis pipeline for batching commands
+        Get a Redis pipeline for batched operations
         
         Returns:
-            Pipeline: A Redis pipeline, or None if there was an error
+            Redis pipeline object
         """
         try:
-            self._connect()
-            return self._redis.pipeline()
+            return self.redis.pipeline()
         except Exception as e:
-            logger.error(f"Error creating Redis pipeline: {str(e)}")
+            logger.error(f"Error creating Redis pipeline: {e}")
             return None
+
+# Global cache instances (for convenient access)
+_cache_instances = {}
+
+def get_cache(namespace: str = 'cache', expire_time: int = 300) -> RedisCache:
+    """
+    Get or create a cache instance
+    
+    Args:
+        namespace: Cache namespace
+        expire_time: Default expiration time in seconds
+        
+    Returns:
+        RedisCache: Cache instance
+    """
+    global _cache_instances
+    
+    cache_key = f"{namespace}:{expire_time}"
+    if cache_key not in _cache_instances:
+        _cache_instances[cache_key] = RedisCache(namespace, expire_time)
+    
+    return _cache_instances[cache_key]
+
+def clear_cache(namespace: str = None, pattern: str = None) -> int:
+    """
+    Clear cache keys
+    
+    Args:
+        namespace: Cache namespace (None to use default)
+        pattern: Key pattern to match (e.g., 'user:*')
+        
+    Returns:
+        int: Number of keys deleted
+    """
+    if namespace is None:
+        namespace = 'cache'
+    
+    cache = get_cache(namespace)
+    
+    if pattern:
+        return cache.clear_pattern(pattern)
+    else:
+        return cache.clear_namespace()
+
+def memoize(namespace: str = 'cache', expire_time: int = 3600, include_self: bool = False):
+    """
+    Decorator to memoize a function using Redis
+    
+    Args:
+        namespace: Cache namespace
+        expire_time: Expiration time in seconds
+        include_self: Whether to include self in the cache key (for methods)
+        
+    Returns:
+        Decorated function
+    """
+    cache = get_cache(namespace, expire_time)
+    return cache.memoize(expire_time, include_self)

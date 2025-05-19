@@ -1,8 +1,9 @@
 """
 API Cache Module
 
-This module provides a Redis-backed caching system for API responses.
-It helps reduce load on external APIs and improves response times.
+This module provides Redis-backed caching for API responses,
+optimizing performance for repetitive API calls and reducing
+the load on external services.
 """
 
 import json
@@ -10,281 +11,285 @@ import hashlib
 import logging
 import time
 from functools import wraps
-from typing import Any, Dict, Optional, Callable, Union
+from typing import Dict, Any, Optional, Callable, TypeVar, List, Union
 
-from redis_cache import RedisCache
+from flask import Flask, request, g
+from werkzeug.local import LocalProxy
+
+from redis_cache import RedisCache, handle_redis_error
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Type vars for better typing support
+ResponseT = TypeVar('ResponseT')
+
 class ApiCache:
-    """
-    Redis-backed API response cache
+    """Redis-backed API cache for optimizing API responses"""
     
-    This class provides caching for API responses to reduce load on external APIs.
-    It handles serialization, deserialization, and cache invalidation.
-    """
-    
-    def __init__(self, namespace='api_cache', default_ttl=3600):
+    def __init__(self, namespace: str = 'api_cache:', 
+                 default_ttl: int = 3600,
+                 model_ttl_map: Optional[Dict[str, int]] = None):
         """
         Initialize the API cache
         
         Args:
-            namespace (str): The namespace for the cache keys
-            default_ttl (int): Default time-to-live for cache entries in seconds
+            namespace: Redis key namespace
+            default_ttl: Default TTL for cached responses in seconds
+            model_ttl_map: Optional mapping of model names to TTL values
         """
         self.namespace = namespace
         self.default_ttl = default_ttl
-        self.redis_cache = RedisCache(namespace=namespace, expire_time=default_ttl)
-    
+        self.redis = RedisCache(namespace=namespace, expire_time=default_ttl)
+        
+        # Model-specific TTL settings (for model API responses)
+        self.model_ttl_map = model_ttl_map or {
+            # Default TTLs for different model types (in seconds)
+            'embedding': 86400,       # Embedding models: 24 hours
+            'text-generation': 1800,  # Text generation models: 30 minutes
+            'vision': 3600,           # Vision models: 1 hour
+            'chat': 1800,             # Chat models: 30 minutes
+            
+            # Specific model overrides
+            'claude-3-opus': 3600,    # Claude 3 Opus: 1 hour
+            'claude-3-sonnet': 3600,  # Claude 3 Sonnet: 1 hour
+            'claude-3-haiku': 1800,   # Claude 3 Haiku: 30 minutes
+            'gpt-4': 3600,            # GPT-4: 1 hour
+            'gpt-3.5-turbo': 1800,    # GPT-3.5 Turbo: 30 minutes
+        }
+        
     def _generate_cache_key(self, *args, **kwargs) -> str:
         """
-        Generate a cache key from function arguments
+        Generate a cache key based on function arguments
         
         Args:
             *args: Positional arguments
             **kwargs: Keyword arguments
             
         Returns:
-            str: A unique cache key
+            str: Cache key
         """
-        # Create a string representation of the arguments
-        key_parts = [str(arg) for arg in args]
-        key_parts.extend([f"{k}={v}" for k, v in sorted(kwargs.items())])
-        key_str = ":".join(key_parts)
+        # Start with the base key
+        key_parts = []
         
-        # Create a hash of the string for a shorter key
-        key_hash = hashlib.md5(key_str.encode('utf-8')).hexdigest()
-        
-        return key_hash
+        # Add positional args
+        for arg in args:
+            try:
+                # Convert to JSON string
+                arg_str = json.dumps(arg, sort_keys=True)
+                key_parts.append(arg_str)
+            except (TypeError, ValueError):
+                # If not JSON serializable, use string representation
+                key_parts.append(str(arg))
+                
+        # Add keyword args (sorted to ensure consistent keys)
+        for k in sorted(kwargs.keys()):
+            try:
+                # Convert to JSON string
+                kwarg_str = json.dumps(kwargs[k], sort_keys=True)
+                key_parts.append(f"{k}:{kwarg_str}")
+            except (TypeError, ValueError):
+                # If not JSON serializable, use string representation
+                key_parts.append(f"{k}:{str(kwargs[k])}")
+                
+        # Join parts and hash
+        combined = '-'.join(key_parts)
+        return hashlib.md5(combined.encode('utf-8')).hexdigest()
     
-    def _get_cache_key(self, prefix, *args, **kwargs) -> str:
+    def _get_ttl_for_model(self, model_name: Optional[str] = None, 
+                           model_type: Optional[str] = None) -> int:
         """
-        Get a complete cache key with prefix
+        Get the appropriate TTL for a model
         
         Args:
-            prefix (str): Key prefix (usually the function name)
-            *args: Positional arguments
-            **kwargs: Keyword arguments
+            model_name: Optional model name
+            model_type: Optional model type
             
         Returns:
-            str: A unique cache key with prefix
+            int: TTL in seconds
         """
-        arg_key = self._generate_cache_key(*args, **kwargs)
-        return f"{prefix}:{arg_key}"
+        # Use exact model name if specified and in our map
+        if model_name and model_name.lower() in self.model_ttl_map:
+            return self.model_ttl_map[model_name.lower()]
+            
+        # Use model type if specified and in our map
+        if model_type and model_type.lower() in self.model_ttl_map:
+            return self.model_ttl_map[model_type.lower()]
+            
+        # Default TTL
+        return self.default_ttl
     
-    def get(self, key: str) -> Optional[Any]:
+    def cache_api_call(self, ttl: Optional[int] = None, 
+                       model_param: Optional[str] = None,
+                       skip_cache_condition: Optional[Callable] = None):
         """
-        Get a value from the cache
+        Decorator for caching API calls
         
         Args:
-            key (str): The cache key
+            ttl: Optional TTL override in seconds
+            model_param: Optional parameter name that contains the model name/type
+            skip_cache_condition: Optional function that returns True if caching should be skipped
             
         Returns:
-            Any: The cached value, or None if the key doesn't exist
-        """
-        return self.redis_cache.get(key)
-    
-    def set(self, key: str, value: Any, ttl: Optional[int] = None) -> bool:
-        """
-        Set a value in the cache
-        
-        Args:
-            key (str): The cache key
-            value (Any): The value to cache
-            ttl (int, optional): Time-to-live in seconds
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        return self.redis_cache.set(key, value, expire=ttl or self.default_ttl)
-    
-    def delete(self, key: str) -> bool:
-        """
-        Delete a value from the cache
-        
-        Args:
-            key (str): The cache key
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        return self.redis_cache.delete(key)
-    
-    def clear_pattern(self, pattern: str) -> int:
-        """
-        Clear all keys matching a pattern
-        
-        Args:
-            pattern (str): The pattern to match
-            
-        Returns:
-            int: The number of keys deleted
-        """
-        return self.redis_cache.clear_pattern(pattern)
-    
-    def cache(self, ttl: Optional[int] = None, prefix: Optional[str] = None, 
-              condition: Optional[Callable] = None, skip_cache_if_error: bool = False) -> Callable:
-        """
-        Decorator for caching function results
-        
-        Args:
-            ttl (int, optional): Time-to-live in seconds
-            prefix (str, optional): Key prefix (defaults to function name)
-            condition (callable, optional): Function that determines whether to use the cache
-            skip_cache_if_error (bool): Whether to skip caching if the function raises an error
-            
-        Returns:
-            callable: Decorated function
+            Decorator function
         """
         def decorator(func):
-            # Use function name as prefix if not specified
-            key_prefix = prefix or func.__name__
-            
             @wraps(func)
             def wrapper(*args, **kwargs):
-                # Check if we should use the cache
-                use_cache = condition(*args, **kwargs) if condition else True
-                
-                if not use_cache:
+                # Check if we should skip caching
+                if skip_cache_condition and skip_cache_condition(*args, **kwargs):
                     return func(*args, **kwargs)
                 
+                # Determine appropriate TTL
+                cache_ttl = ttl or self.default_ttl
+                
+                # If model param is provided, try to extract model info and use appropriate TTL
+                if model_param and model_param in kwargs:
+                    model_value = kwargs[model_param]
+                    cache_ttl = self._get_ttl_for_model(model_name=model_value)
+                
                 # Generate cache key
-                cache_key = self._get_cache_key(key_prefix, *args, **kwargs)
+                cache_key = self._generate_cache_key(*args, **kwargs)
                 
                 # Try to get from cache
-                cached_value = self.get(cache_key)
+                cached_result = self.redis.get(cache_key)
+                if cached_result is not None:
+                    logger.debug(f"Cache hit for key: {cache_key}")
+                    return cached_result
                 
-                if cached_value is not None:
-                    logger.debug(f"Cache hit for {func.__name__}({args}, {kwargs})")
-                    return cached_value
-                
-                # Cache miss, call the function
-                logger.debug(f"Cache miss for {func.__name__}({args}, {kwargs})")
-                
-                try:
-                    result = func(*args, **kwargs)
-                    
-                    # Cache the result if not None
-                    if result is not None:
-                        self.set(cache_key, result, ttl=ttl)
-                    
-                    return result
-                    
-                except Exception as e:
-                    if skip_cache_if_error:
-                        logger.warning(f"Error in {func.__name__}, not caching: {str(e)}")
-                        raise
-                    else:
-                        logger.error(f"Error in {func.__name__}, will still cache the error: {str(e)}")
-                        raise
-            
-            # Add a method to clear the cache for this function
-            def clear_cache(*args, **kwargs):
-                if args or kwargs:
-                    # Clear specific cache entry
-                    cache_key = self._get_cache_key(key_prefix, *args, **kwargs)
-                    deleted = self.delete(cache_key)
-                    logger.debug(f"Cleared cache for {func.__name__}({args}, {kwargs}): {deleted}")
-                    return deleted
-                else:
-                    # Clear all cache entries for this function
-                    pattern = f"{key_prefix}:*"
-                    count = self.clear_pattern(pattern)
-                    logger.debug(f"Cleared {count} cache entries for {func.__name__}")
-                    return count
-            
-            wrapper.clear_cache = clear_cache
-            
-            return wrapper
-        
-        return decorator
-    
-    def timed_cache(self, refresh_after: int, ttl: Optional[int] = None, 
-                   prefix: Optional[str] = None) -> Callable:
-        """
-        Decorator for timed caching - returns cached results for refresh_after seconds,
-        then refreshes in the background
-        
-        Args:
-            refresh_after (int): Time in seconds before refreshing the cache in the background
-            ttl (int, optional): Time-to-live in seconds (should be greater than refresh_after)
-            prefix (str, optional): Key prefix (defaults to function name)
-            
-        Returns:
-            callable: Decorated function
-        """
-        def decorator(func):
-            # Use function name as prefix if not specified
-            key_prefix = prefix or func.__name__
-            
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                # Generate cache keys for value and timestamp
-                cache_key = self._get_cache_key(key_prefix, *args, **kwargs)
-                timestamp_key = f"{cache_key}:timestamp"
-                
-                # Get from cache
-                cached_value = self.get(cache_key)
-                last_updated = self.get(timestamp_key) or 0
-                
-                current_time = time.time()
-                age = current_time - last_updated
-                
-                # If we have a cached value
-                if cached_value is not None:
-                    if age < refresh_after:
-                        # Return cached value without refreshing
-                        logger.debug(f"Cache hit (fresh) for {func.__name__}({args}, {kwargs})")
-                        return cached_value
-                    else:
-                        # Return cached value but refresh in the background
-                        logger.debug(f"Cache hit (stale) for {func.__name__}({args}, {kwargs}), refreshing in background")
-                        # In a real application, this would use a background job
-                        # For simplicity, we'll just refresh it now
-                        try:
-                            result = func(*args, **kwargs)
-                            self.set(cache_key, result, ttl=ttl or self.default_ttl)
-                            self.set(timestamp_key, current_time, ttl=ttl or self.default_ttl)
-                            return result
-                        except Exception as e:
-                            logger.error(f"Error refreshing cache for {func.__name__}: {str(e)}")
-                            return cached_value
-                
-                # Cache miss, call the function
-                logger.debug(f"Cache miss for {func.__name__}({args}, {kwargs})")
-                
+                # Call the original function
                 result = func(*args, **kwargs)
                 
                 # Cache the result
-                self.set(cache_key, result, ttl=ttl or self.default_ttl)
-                self.set(timestamp_key, current_time, ttl=ttl or self.default_ttl)
+                self.redis.set(cache_key, result, expire=cache_ttl)
+                logger.debug(f"Cached result with key: {cache_key}, TTL: {cache_ttl}s")
                 
                 return result
             
             # Add a method to clear the cache for this function
-            def clear_cache(*args, **kwargs):
-                if args or kwargs:
-                    # Clear specific cache entry
-                    cache_key = self._get_cache_key(key_prefix, *args, **kwargs)
-                    timestamp_key = f"{cache_key}:timestamp"
-                    deleted1 = self.delete(cache_key)
-                    deleted2 = self.delete(timestamp_key)
-                    logger.debug(f"Cleared cache for {func.__name__}({args}, {kwargs}): {deleted1 and deleted2}")
-                    return deleted1 and deleted2
-                else:
-                    # Clear all cache entries for this function
-                    pattern = f"{key_prefix}:*"
-                    count = self.clear_pattern(pattern)
-                    logger.debug(f"Cleared {count} cache entries for {func.__name__}")
-                    return count
-            
-            wrapper.clear_cache = clear_cache
+            wrapper.clear_cache = lambda: self.redis.flush()
             
             return wrapper
         
         return decorator
+    
+    def cache_api_response(self, ttl: Optional[int] = None, 
+                          model_param: Optional[str] = None,
+                          key_extractor: Optional[Callable] = None,
+                          skip_cache_condition: Optional[Callable] = None):
+        """
+        Decorator for caching API responses with more flexible key generation
+        
+        Args:
+            ttl: Optional TTL override in seconds
+            model_param: Optional parameter name that contains the model name/type
+            key_extractor: Optional function to extract custom cache key components
+            skip_cache_condition: Optional function that returns True if caching should be skipped
+            
+        Returns:
+            Decorator function
+        """
+        def decorator(func):
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                # Check if we should skip caching
+                if skip_cache_condition and skip_cache_condition(*args, **kwargs):
+                    return func(*args, **kwargs)
+                
+                # Extract custom key components if provided
+                custom_key = None
+                if key_extractor:
+                    try:
+                        custom_key = key_extractor(*args, **kwargs)
+                    except Exception as e:
+                        logger.error(f"Error extracting cache key: {str(e)}")
+                
+                # Generate cache key
+                if custom_key:
+                    cache_key = hashlib.md5(str(custom_key).encode('utf-8')).hexdigest()
+                else:
+                    cache_key = self._generate_cache_key(*args, **kwargs)
+                
+                # Determine appropriate TTL
+                cache_ttl = ttl or self.default_ttl
+                
+                # If model param is provided, try to extract model info and use appropriate TTL
+                if model_param and model_param in kwargs:
+                    model_value = kwargs[model_param]
+                    cache_ttl = self._get_ttl_for_model(model_name=model_value)
+                
+                # Try to get from cache
+                cached_result = self.redis.get(cache_key)
+                if cached_result is not None:
+                    logger.debug(f"Cache hit for key: {cache_key}")
+                    return cached_result
+                
+                # Start timing the API call
+                start_time = time.time()
+                
+                # Call the original function
+                result = func(*args, **kwargs)
+                
+                # Calculate API call duration
+                duration = time.time() - start_time
+                logger.debug(f"API call took {duration:.3f}s")
+                
+                # Cache the result
+                self.redis.set(cache_key, result, expire=cache_ttl)
+                logger.debug(f"Cached API response with key: {cache_key}, TTL: {cache_ttl}s")
+                
+                return result
+            
+            # Add a method to clear the cache for this function
+            wrapper.clear_cache = lambda: self.redis.flush()
+            
+            return wrapper
+        
+        return decorator
+
+# Global API cache instance
+_api_cache = None
+
+def get_api_cache() -> ApiCache:
+    """
+    Get or create the global API cache instance
+    
+    Returns:
+        ApiCache: API cache instance
+    """
+    global _api_cache
+    if _api_cache is None:
+        _api_cache = ApiCache()
+    return _api_cache
+
+# Create a LocalProxy for the API cache for easy access in Flask
+api_cache = LocalProxy(get_api_cache)
+
+def init_api_cache(app: Flask, namespace: str = 'api_cache:', 
+                  default_ttl: int = 3600,
+                  model_ttl_map: Optional[Dict[str, int]] = None) -> ApiCache:
+    """
+    Initialize the API cache for a Flask application
+    
+    Args:
+        app: Flask application
+        namespace: Redis key namespace
+        default_ttl: Default TTL for cached responses in seconds
+        model_ttl_map: Optional mapping of model names to TTL values
+        
+    Returns:
+        ApiCache: The initialized API cache instance
+    """
+    global _api_cache
+    _api_cache = ApiCache(
+        namespace=namespace,
+        default_ttl=default_ttl,
+        model_ttl_map=model_ttl_map
+    )
+    
+    # Add the API cache to the app extensions
+    app.extensions['api_cache'] = _api_cache
+    
+    logger.info("API cache initialized")
+    return _api_cache

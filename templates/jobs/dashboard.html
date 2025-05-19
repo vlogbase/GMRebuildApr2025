@@ -1,95 +1,172 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }}{% endblock %}
+{% block title %}Job Management Dashboard{% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-8">Background Job Dashboard</h1>
-    
-    <!-- Queue Summary Card -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-xl font-semibold mb-4">Queue Summary</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            {% for queue in queue_stats.queues %}
-            <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                <h3 class="text-lg font-medium mb-2">{{ queue.name }}</h3>
-                <div class="text-sm">
-                    <div class="flex justify-between mb-1">
-                        <span>Queued:</span>
-                        <span class="font-medium">{{ queue.jobs.queued }}</span>
-                    </div>
-                    <div class="flex justify-between mb-1">
-                        <span>Failed:</span>
-                        <span class="font-medium text-red-600">{{ queue.jobs.failed }}</span>
-                    </div>
-                    <div class="flex justify-between mb-1">
-                        <span>Finished:</span>
-                        <span class="font-medium text-green-600">{{ queue.jobs.finished }}</span>
-                    </div>
-                    <div class="flex justify-between mb-1">
-                        <span>Scheduled:</span>
-                        <span class="font-medium text-blue-600">{{ queue.jobs.scheduled }}</span>
-                    </div>
-                    <div class="border-t border-gray-200 mt-2 pt-2 flex justify-between">
-                        <span class="font-medium">Total:</span>
-                        <span class="font-bold">{{ queue.jobs.total }}</span>
-                    </div>
-                </div>
-                <div class="mt-4">
-                    <a href="{{ url_for('jobs.queue_detail', queue_name=queue.name) }}" class="text-blue-500 hover:text-blue-700 text-sm font-medium">
-                        View Details →
-                    </a>
-                </div>
-            </div>
-            {% endfor %}
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-semibold">Job Management Dashboard</h1>
+        <div>
+            <span class="text-sm text-gray-500">Auto-refresh: </span>
+            <select id="refresh-interval" class="text-sm rounded border border-gray-300 px-2 py-1">
+                <option value="0">Off</option>
+                <option value="5000" selected>5s</option>
+                <option value="10000">10s</option>
+                <option value="30000">30s</option>
+                <option value="60000">1m</option>
+            </select>
         </div>
     </div>
     
-    <!-- Worker Status Card -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-xl font-semibold mb-4">Worker Status</h2>
+    <!-- System Status -->
+    <div class="bg-white rounded-lg shadow mb-6 p-6">
+        <h2 class="text-lg font-semibold mb-4">System Status</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="bg-blue-50 rounded p-4">
+                <h3 class="text-blue-800 font-medium mb-2">Active Workers</h3>
+                <p class="text-3xl font-bold text-blue-700">{{ worker_count }}</p>
+                <p class="text-sm text-blue-600 mt-1">Currently processing jobs</p>
+            </div>
+            
+            <div class="bg-green-50 rounded p-4">
+                <h3 class="text-green-800 font-medium mb-2">Queued Jobs</h3>
+                <p class="text-3xl font-bold text-green-700">{{ queued_jobs }}</p>
+                <p class="text-sm text-green-600 mt-1">Waiting to be processed</p>
+            </div>
+            
+            <div class="bg-yellow-50 rounded p-4">
+                <h3 class="text-yellow-800 font-medium mb-2">Active Jobs</h3>
+                <p class="text-3xl font-bold text-yellow-700">{{ active_jobs }}</p>
+                <p class="text-sm text-yellow-600 mt-1">Currently running</p>
+            </div>
+            
+            <div class="bg-red-50 rounded p-4">
+                <h3 class="text-red-800 font-medium mb-2">Failed Jobs</h3>
+                <p class="text-3xl font-bold text-red-700">{{ failed_jobs }}</p>
+                <p class="text-sm text-red-600 mt-1">Need attention</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Queues Overview -->
+    <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <div class="p-6 pb-4">
+            <h2 class="text-lg font-semibold mb-2">Queues Overview</h2>
+        </div>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Queue Name</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Queued</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Active</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Completed</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Failed</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    {% for queue_name, stats in queues.items() %}
+                    <tr {% if stats.failed > 0 %}class="bg-red-50"{% endif %}>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <a href="{{ url_for('jobs.queue_detail', queue_name=queue_name) }}" class="text-blue-600 hover:text-blue-900 font-medium">
+                                {{ queue_name }}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ stats.queued }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ stats.started }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ stats.finished }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {% if stats.failed > 0 %}
+                            <span class="text-red-600 font-medium">{{ stats.failed }}</span>
+                            {% else %}
+                            {{ stats.failed }}
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ stats.scheduled }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <a href="{{ url_for('jobs.queue_detail', queue_name=queue_name) }}" class="text-indigo-600 hover:text-indigo-900 mr-3">View</a>
+                            {% if stats.queued > 0 or stats.started > 0 or stats.failed > 0 or stats.scheduled > 0 %}
+                            <form action="{{ url_for('jobs.action_clear_queue', queue_name=queue_name) }}" method="post" class="inline">
+                                <button type="submit" onclick="return confirm('Are you sure you want to clear all jobs in {{ queue_name }} queue?')" 
+                                        class="text-red-600 hover:text-red-900">
+                                    Clear
+                                </button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Workers -->
+    <div class="bg-white rounded-lg shadow mb-6 overflow-hidden">
+        <div class="p-6 pb-4">
+            <h2 class="text-lg font-semibold mb-2">Active Workers</h2>
+        </div>
+        
         {% if workers %}
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Queues</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">State</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Job</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Worker ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">State</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Queues</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Job</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Seen</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Birth Date</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
                     {% for worker in workers %}
                     <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ worker.name }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ worker.queues|join(", ") }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {{ worker.name }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {% if worker.state == 'busy' %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
                                 Working
                             </span>
-                            {% elif worker.state == 'idle' %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Idle
-                            </span>
                             {% else %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {{ worker.state }}
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Idle
                             </span>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {% for queue in worker.queues %}
+                            <span class="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800 mr-1">{{ queue }}</span>
+                            {% endfor %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                             {% if worker.current_job %}
-                                <a href="{{ url_for('jobs.job_detail', job_id=worker.current_job.id) }}" class="text-blue-500 hover:text-blue-700">
-                                    {{ worker.current_job.description or worker.current_job.id }}
-                                </a>
-                                <span class="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                    {{ worker.current_job.status }}
-                                </span>
+                            <a href="{{ url_for('jobs.job_detail', job_id=worker.current_job.id) }}" class="text-blue-600 hover:text-blue-900">
+                                {{ worker.current_job.func_name }}
+                            </a>
                             {% else %}
-                                <span class="text-gray-400">No active job</span>
+                            <span class="text-gray-500">-</span>
                             {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ worker.last_heartbeat.strftime('%Y-%m-%d %H:%M:%S') if worker.last_heartbeat else '-' }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {{ worker.birth_date.strftime('%Y-%m-%d %H:%M:%S') if worker.birth_date else '-' }}
                         </td>
                     </tr>
                     {% endfor %}
@@ -97,111 +174,68 @@
             </table>
         </div>
         {% else %}
-        <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <svg class="h-5 w-5 text-yellow-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                    </svg>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm text-yellow-700">
-                        No active workers found. Jobs will be queued but not processed.
-                    </p>
-                </div>
-            </div>
+        <div class="p-6 text-center text-gray-500">
+            No workers are currently active
         </div>
         {% endif %}
     </div>
     
-    <!-- Recent Jobs Card -->
-    <div class="bg-white rounded-lg shadow-md p-6">
-        <h2 class="text-xl font-semibold mb-4">Recent Jobs</h2>
-        {% if recent_jobs %}
+    <!-- Recent Failed Jobs -->
+    <div class="bg-white rounded-lg shadow overflow-hidden">
+        <div class="p-6 pb-4">
+            <h2 class="text-lg font-semibold mb-2">Recent Failed Jobs</h2>
+        </div>
+        
+        {% if failed_job_list %}
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Function</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Queue</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Created</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Queue</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Function</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Error</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Failed At</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    {% for job in recent_jobs %}
+                    {% for job in failed_job_list %}
                     <tr>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="text-blue-500 hover:text-blue-700">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="text-blue-600 hover:text-blue-900">
                                 {{ job.id[:8] }}...
                             </a>
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            <a href="{{ url_for('jobs.queue_detail', queue_name=job.queue) }}" class="text-blue-600 hover:text-blue-900">
+                                {{ job.queue }}
+                            </a>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                             {{ job.func_name }}
-                            {% if job.description %}
-                            <span class="block text-xs text-gray-400">{{ job.description }}</span>
+                            {% if job.description and job.description != job.func_name %}
+                            <span class="text-gray-500 font-normal block text-xs">{{ job.description }}</span>
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ job.origin }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ job.created_at_str }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            {% if job.status == 'finished' %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                Completed
-                            </span>
-                            {% elif job.status == 'failed' %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                                Failed
-                            </span>
-                            {% elif job.status == 'started' %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                Running
-                            </span>
-                            {% elif job.status == 'queued' %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                Queued
-                            </span>
-                            {% elif job.status == 'scheduled' %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                                Scheduled
-                            </span>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-red-500">
+                            {% if job.meta and job.meta.exception_message %}
+                            {{ job.meta.exception_message }}
                             {% else %}
-                            <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                {{ job.status }}
-                            </span>
-                            {% endif %}
-                            
-                            {% if job.progress > 0 and job.status == 'started' %}
-                            <div class="w-full bg-gray-200 rounded-full h-2.5 mt-2">
-                                <div class="bg-blue-600 h-2.5 rounded-full" style="width: {{ job.progress }}%"></div>
-                            </div>
-                            <span class="text-xs text-gray-500">{{ job.progress }}%</span>
+                            Unknown error
                             {% endif %}
                         </td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div class="flex space-x-2">
-                                <a href="{{ url_for('jobs.job_detail', job_id=job.id) }}" class="text-indigo-600 hover:text-indigo-900">
-                                    Details
-                                </a>
-                                
-                                {% if job.status == 'queued' or job.status == 'scheduled' %}
-                                <form action="{{ url_for('jobs.cancel_job', job_id=job.id, next=url_for('jobs.dashboard')) }}" method="post" class="inline">
-                                    <button type="submit" class="text-red-600 hover:text-red-900">
-                                        Cancel
-                                    </button>
-                                </form>
-                                {% endif %}
-                                
-                                {% if job.status == 'failed' %}
-                                <form action="{{ url_for('jobs.requeue_job', job_id=job.id, next=url_for('jobs.dashboard')) }}" method="post" class="inline">
-                                    <button type="submit" class="text-green-600 hover:text-green-900">
-                                        Retry
-                                    </button>
-                                </form>
-                                {% endif %}
-                            </div>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {% if job.ended_at %}
+                            {{ job.ended_at }}
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            <form action="{{ url_for('jobs.action_requeue_job', job_id=job.id) }}" method="post" class="inline">
+                                <button type="submit" class="text-indigo-600 hover:text-indigo-900">Retry</button>
+                            </form>
                         </td>
                     </tr>
                     {% endfor %}
@@ -209,18 +243,43 @@
             </table>
         </div>
         {% else %}
-        <div class="bg-gray-50 p-4 text-center rounded-lg">
-            <p class="text-gray-500">No jobs found.</p>
+        <div class="p-6 text-center text-gray-500">
+            No failed jobs found
         </div>
         {% endif %}
     </div>
 </div>
+{% endblock %}
 
-<!-- Auto-refresh script -->
+{% block scripts %}
 <script>
-    // Auto-refresh the page every 10 seconds
-    setTimeout(function() {
-        location.reload();
-    }, 10000);
+    document.addEventListener('DOMContentLoaded', function() {
+        let refreshTimer;
+        
+        // Set up refresh interval
+        const refreshSelect = document.getElementById('refresh-interval');
+        refreshSelect.addEventListener('change', function() {
+            clearInterval(refreshTimer);
+            const interval = parseInt(this.value);
+            if (interval > 0) {
+                refreshTimer = setInterval(() => {
+                    window.location.reload();
+                }, interval);
+            }
+        });
+        
+        // Initialize refresh timer
+        const interval = parseInt(refreshSelect.value);
+        if (interval > 0) {
+            refreshTimer = setInterval(() => {
+                window.location.reload();
+            }, interval);
+        }
+        
+        // Clear timer when leaving page
+        window.addEventListener('beforeunload', function() {
+            clearInterval(refreshTimer);
+        });
+    });
 </script>
 {% endblock %}

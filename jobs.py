@@ -1,674 +1,883 @@
 """
 Jobs Module
 
-This module provides a job system based on Redis Queue (RQ).
-It allows for background processing of tasks and reduces load on the main application.
+This module provides a Redis-backed job system using RQ (Redis Queue) to handle
+background processing tasks. It allows for running expensive or long-running
+operations asynchronously to improve user experience and application scalability.
 """
 
 import os
+import uuid
 import time
 import logging
-import json
-import traceback
+import functools
+from typing import Dict, List, Optional, Any, Callable, TypeVar, Union, cast
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional, Union, Callable
-from functools import wraps
-
-import redis
-from rq import Queue, Worker, job
-from rq.job import Job, JobStatus
-from rq.worker import Worker as RQWorker
-from rq.registry import FailedJobRegistry, ScheduledJobRegistry, FinishedJobRegistry
-from rq.exceptions import NoSuchJobError
-from rq import Connection
-
-from sqlalchemy import create_engine, inspect
-from sqlalchemy.orm import sessionmaker, scoped_session
-
-from redis_cache import get_redis_connection
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class JobManager:
-    """
-    Manager for background jobs
-    
-    This class provides an interface for enqueuing and managing background jobs.
-    """
-    
-    def __init__(self, queues=None, default_queue='default'):
-        """
-        Initialize the job manager
-        
-        Args:
-            queues (dict, optional): Dictionary of queue names to create
-                Example: {'default': {'ttl': 3600}, 'email': {'ttl': 7200}}
-            default_queue (str): Default queue name to use if none specified
-        """
-        self.redis_conn = get_redis_connection()
-        self.default_queue = default_queue
-        
-        # Default queues if none provided
-        if queues is None:
-            queues = {
-                'high': {'ttl': 3600, 'result_ttl': 3600},
-                'default': {'ttl': 3600, 'result_ttl': 3600},
-                'low': {'ttl': 3600, 'result_ttl': 3600},
-                'email': {'ttl': 7200, 'result_ttl': 3600},
-                'indexing': {'ttl': 10800, 'result_ttl': 3600}
-            }
-        
-        # Create queues
-        self.queues = {}
-        for queue_name, queue_config in queues.items():
-            ttl = queue_config.get('ttl', 3600)
-            result_ttl = queue_config.get('result_ttl', 3600)
-            
-            self.queues[queue_name] = Queue(
-                name=queue_name,
-                connection=self.redis_conn,
-                default_timeout=ttl,
-                result_ttl=result_ttl
-            )
-        
-        # Ensure default queue exists
-        if default_queue not in self.queues:
-            self.queues[default_queue] = Queue(
-                name=default_queue,
-                connection=self.redis_conn,
-                default_timeout=3600,
-                result_ttl=3600
-            )
-        
-        logger.info(f"Initialized job manager with queues: {', '.join(self.queues.keys())}")
-    
-    def get_queue(self, queue_name=None):
-        """
-        Get a queue by name
-        
-        Args:
-            queue_name (str, optional): Queue name, or None for default queue
-            
-        Returns:
-            Queue: The requested queue
-        """
-        if queue_name is None:
-            queue_name = self.default_queue
-        
-        if queue_name not in self.queues:
-            logger.warning(f"Queue {queue_name} not found, using default queue")
-            queue_name = self.default_queue
-        
-        return self.queues[queue_name]
-    
-    def enqueue(self, func, *args, queue_name=None, depends_on=None, **kwargs):
-        """
-        Enqueue a job
-        
-        Args:
-            func: The function to run
-            *args: Arguments to pass to the function
-            queue_name (str, optional): Queue name, or None for default queue
-            depends_on (Job, optional): Job that must complete before this one
-            **kwargs: Keyword arguments to pass to the function
-            
-        Returns:
-            Job: The enqueued job
-        """
-        queue = self.get_queue(queue_name)
-        
-        try:
-            logger.info(f"Enqueuing job {func.__name__} to queue {queue.name}")
-            
-            # Get special RQ keyword arguments (if any)
-            rq_kwargs = {}
-            for key in ['timeout', 'result_ttl', 'ttl', 'failure_ttl', 'description', 
-                        'meta', 'at_front', 'job_id', 'on_success', 'on_failure']:
-                if key in kwargs:
-                    rq_kwargs[key] = kwargs.pop(key)
-            
-            # Enqueue the job
-            job = queue.enqueue(func, *args, depends_on=depends_on, **kwargs, **rq_kwargs)
-            
-            logger.info(f"Job {func.__name__} enqueued with ID {job.id}")
-            return job
-            
-        except Exception as e:
-            logger.error(f"Error enqueuing job {func.__name__}: {str(e)}")
-            raise
-    
-    def enqueue_at(self, datetime_obj, func, *args, queue_name=None, **kwargs):
-        """
-        Enqueue a job to run at a specific time
-        
-        Args:
-            datetime_obj (datetime): When to run the job
-            func: The function to run
-            *args: Arguments to pass to the function
-            queue_name (str, optional): Queue name, or None for default queue
-            **kwargs: Keyword arguments to pass to the function
-            
-        Returns:
-            Job: The enqueued job
-        """
-        queue = self.get_queue(queue_name)
-        
-        try:
-            logger.info(f"Scheduling job {func.__name__} to run at {datetime_obj}")
-            
-            # Get special RQ keyword arguments (if any)
-            rq_kwargs = {}
-            for key in ['timeout', 'result_ttl', 'ttl', 'failure_ttl', 'description', 
-                        'meta', 'job_id', 'on_success', 'on_failure']:
-                if key in kwargs:
-                    rq_kwargs[key] = kwargs.pop(key)
-            
-            # Enqueue the job
-            job = queue.enqueue_at(datetime_obj, func, *args, **kwargs, **rq_kwargs)
-            
-            logger.info(f"Job {func.__name__} scheduled with ID {job.id}")
-            return job
-            
-        except Exception as e:
-            logger.error(f"Error scheduling job {func.__name__}: {str(e)}")
-            raise
-    
-    def enqueue_in(self, timedelta_obj, func, *args, queue_name=None, **kwargs):
-        """
-        Enqueue a job to run after a time interval
-        
-        Args:
-            timedelta_obj (timedelta): How long to wait before running the job
-            func: The function to run
-            *args: Arguments to pass to the function
-            queue_name (str, optional): Queue name, or None for default queue
-            **kwargs: Keyword arguments to pass to the function
-            
-        Returns:
-            Job: The enqueued job
-        """
-        queue = self.get_queue(queue_name)
-        
-        try:
-            logger.info(f"Scheduling job {func.__name__} to run in {timedelta_obj}")
-            
-            # Get special RQ keyword arguments (if any)
-            rq_kwargs = {}
-            for key in ['timeout', 'result_ttl', 'ttl', 'failure_ttl', 'description', 
-                        'meta', 'job_id', 'on_success', 'on_failure']:
-                if key in kwargs:
-                    rq_kwargs[key] = kwargs.pop(key)
-            
-            # Calculate the target datetime
-            target_datetime = datetime.now() + timedelta_obj
-            
-            # Enqueue the job
-            job = queue.enqueue_at(target_datetime, func, *args, **kwargs, **rq_kwargs)
-            
-            logger.info(f"Job {func.__name__} scheduled with ID {job.id}")
-            return job
-            
-        except Exception as e:
-            logger.error(f"Error scheduling job {func.__name__}: {str(e)}")
-            raise
-    
-    def fetch_job(self, job_id):
-        """
-        Fetch a job by ID
-        
-        Args:
-            job_id (str): The job ID
-            
-        Returns:
-            Job: The job, or None if not found
-        """
-        try:
-            return Job.fetch(job_id, connection=self.redis_conn)
-        except NoSuchJobError:
-            logger.warning(f"Job {job_id} not found")
-            return None
-        except Exception as e:
-            logger.error(f"Error fetching job {job_id}: {str(e)}")
-            return None
-    
-    def cancel_job(self, job_id):
-        """
-        Cancel a job by ID
-        
-        Args:
-            job_id (str): The job ID
-            
-        Returns:
-            bool: True if the job was cancelled, False otherwise
-        """
-        try:
-            job = self.fetch_job(job_id)
-            if job is None:
-                return False
-            
-            cancelled = job.cancel()
-            if cancelled:
-                logger.info(f"Job {job_id} cancelled")
-            else:
-                logger.warning(f"Job {job_id} could not be cancelled (already started or finished)")
-            
-            return cancelled
-        except Exception as e:
-            logger.error(f"Error cancelling job {job_id}: {str(e)}")
-            return False
-    
-    def requeue_job(self, job_id):
-        """
-        Requeue a failed job
-        
-        Args:
-            job_id (str): The job ID
-            
-        Returns:
-            Job: The requeued job, or None if not found or not failed
-        """
-        try:
-            job = self.fetch_job(job_id)
-            if job is None:
-                logger.warning(f"Job {job_id} not found for requeuing")
-                return None
-            
-            if job.is_failed:
-                logger.info(f"Requeuing failed job {job_id}")
-                job.requeue()
-                return job
-            else:
-                logger.warning(f"Job {job_id} is not failed, cannot requeue")
-                return None
-        except Exception as e:
-            logger.error(f"Error requeuing job {job_id}: {str(e)}")
-            return None
-    
-    def get_queue_stats(self, queue_name=None):
-        """
-        Get statistics for a queue
-        
-        Args:
-            queue_name (str, optional): Queue name, or None for all queues
-            
-        Returns:
-            dict: Queue statistics
-        """
-        if queue_name is not None:
-            # Stats for a specific queue
-            queue = self.get_queue(queue_name)
-            
-            # Get registries
-            failed_registry = FailedJobRegistry(queue=queue)
-            finished_registry = FinishedJobRegistry(queue=queue)
-            scheduled_registry = ScheduledJobRegistry(queue=queue)
-            
-            return {
-                'name': queue.name,
-                'jobs': {
-                    'queued': queue.count,
-                    'failed': len(failed_registry),
-                    'finished': len(finished_registry),
-                    'scheduled': len(scheduled_registry),
-                    'total': queue.count + len(failed_registry) + len(finished_registry) + len(scheduled_registry)
-                }
-            }
-        else:
-            # Stats for all queues
-            stats = {
-                'queues': [],
-                'total_jobs': 0
-            }
-            
-            for name, queue in self.queues.items():
-                queue_stats = self.get_queue_stats(name)
-                stats['queues'].append(queue_stats)
-                stats['total_jobs'] += queue_stats['jobs']['total']
-            
-            return stats
-    
-    def get_active_workers(self):
-        """
-        Get active worker information
-        
-        Returns:
-            list: List of active workers
-        """
-        try:
-            workers = Worker.all(connection=self.redis_conn)
-            
-            worker_info = []
-            for worker in workers:
-                info = {
-                    'name': worker.name,
-                    'queues': [q.name for q in worker.queues],
-                    'state': worker.state,
-                    'current_job': None
-                }
-                
-                # Get current job if any
-                if worker.get_current_job():
-                    job = worker.get_current_job()
-                    info['current_job'] = {
-                        'id': job.id,
-                        'status': job.get_status(),
-                        'description': job.description
-                    }
-                
-                worker_info.append(info)
-            
-            return worker_info
-        except Exception as e:
-            logger.error(f"Error getting active workers: {str(e)}")
-            return []
-    
-    def get_jobs(self, queue_name=None, status=None, start=0, end=100):
-        """
-        Get jobs from a queue
-        
-        Args:
-            queue_name (str, optional): Queue name, or None for all queues
-            status (str, optional): Job status to filter by (queued, started, finished, failed, scheduled, deferred)
-            start (int): Start index for pagination
-            end (int): End index for pagination
-            
-        Returns:
-            list: List of jobs
-        """
-        try:
-            if queue_name is not None:
-                # Get jobs from a specific queue
-                queue = self.get_queue(queue_name)
-                
-                if status == 'failed':
-                    # Get failed jobs
-                    registry = FailedJobRegistry(queue=queue)
-                    job_ids = registry.get_job_ids(start, end)
-                elif status == 'finished':
-                    # Get finished jobs
-                    registry = FinishedJobRegistry(queue=queue)
-                    job_ids = registry.get_job_ids(start, end)
-                elif status == 'scheduled':
-                    # Get scheduled jobs
-                    registry = ScheduledJobRegistry(queue=queue)
-                    job_ids = registry.get_job_ids(start, end)
-                elif status == 'started':
-                    # Get started jobs
-                    job_ids = [j.id for j in queue.started_job_registry.get_jobs(start, end)]
-                elif status == 'deferred':
-                    # Get deferred jobs
-                    job_ids = [j.id for j in queue.deferred_job_registry.get_jobs(start, end)]
-                else:
-                    # Get queued jobs
-                    job_ids = queue.get_job_ids(start, end)
-                
-                # Fetch job objects
-                jobs = []
-                for job_id in job_ids:
-                    try:
-                        job = Job.fetch(job_id, connection=self.redis_conn)
-                        jobs.append(job)
-                    except NoSuchJobError:
-                        continue
-                    except Exception as e:
-                        logger.error(f"Error fetching job {job_id}: {str(e)}")
-                        continue
-                
-                return jobs
-            else:
-                # Get jobs from all queues
-                jobs = []
-                for name in self.queues.keys():
-                    jobs.extend(self.get_jobs(name, status, start, end))
-                
-                return jobs
-        except Exception as e:
-            logger.error(f"Error getting jobs: {str(e)}")
-            return []
-    
-    def clear_queue(self, queue_name):
-        """
-        Remove all jobs from a queue
-        
-        Args:
-            queue_name (str): Queue name
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        try:
-            queue = self.get_queue(queue_name)
-            queue.empty()
-            
-            # Also clear registries
-            FailedJobRegistry(queue=queue).empty()
-            FinishedJobRegistry(queue=queue).empty()
-            ScheduledJobRegistry(queue=queue).empty()
-            
-            logger.info(f"Queue {queue_name} cleared")
-            return True
-        except Exception as e:
-            logger.error(f"Error clearing queue {queue_name}: {str(e)}")
-            return False
-    
-    def background_job(self, queue_name=None, **rq_kwargs):
-        """
-        Decorator for background jobs
-        
-        Args:
-            queue_name (str, optional): Queue name, or None for default queue
-            **rq_kwargs: Additional RQ job options
-            
-        Returns:
-            callable: Decorated function
-        """
-        def decorator(func):
-            @wraps(func)
-            def wrapper(*args, **kwargs):
-                # Run the job immediately if RQ_ASYNC is disabled,
-                # or if this code is running in an RQ worker
-                # (i.e., this is already a background job)
-                if (not os.environ.get('RQ_ASYNC', 'true').lower() in ('true', '1', 'yes')) or \
-                   (hasattr(wrapper, 'job') and wrapper.job):
-                    return func(*args, **kwargs)
-                
-                # Otherwise, enqueue the job
-                return self.enqueue(func, *args, queue_name=queue_name, **kwargs, **rq_kwargs)
-            
-            # Store the queue name for use in the admin interface
-            wrapper.queue_name = queue_name or self.default_queue
-            wrapper.is_background_job = True
-            
-            return wrapper
-        
-        return decorator
+# Import RQ
+try:
+    import redis
+    from redis import Redis
+    from rq import Queue, Worker, get_current_job, job
+    from rq.exceptions import NoSuchJobError
+    from rq.job import Job, JobStatus
+    JOB_STATUSES = [
+        JobStatus.QUEUED, 
+        JobStatus.STARTED, 
+        JobStatus.FINISHED, 
+        JobStatus.FAILED, 
+        JobStatus.SCHEDULED, 
+        JobStatus.CANCELED
+    ]
+except ImportError:
+    logger.error("RQ not installed. Please install with: pip install rq")
+    redis = None
+    Queue = None
+    Worker = None
+    Job = None
+    NoSuchJobError = Exception
+    JOB_STATUSES = []
 
+# Import Redis cache
+from redis_cache import get_redis_connection
 
-def setup_database_session():
+# Type variables
+T = TypeVar('T')
+F = TypeVar('F', bound=Callable[..., Any])
+
+# Global Redis connection
+_job_redis_connection = None
+
+def get_job_redis_connection():
     """
-    Set up a database session using SQLAlchemy
+    Get Redis connection for jobs
     
     Returns:
-        Session: SQLAlchemy session
+        Redis connection
     """
+    global _job_redis_connection
+    
+    # Return existing connection if available
+    if _job_redis_connection is not None:
+        return _job_redis_connection
+    
+    # Get a new connection
+    _job_redis_connection = get_redis_connection()
+    return _job_redis_connection
+
+def get_queue(queue_name: str = None) -> Queue:
+    """
+    Get or create a job queue
+    
+    Args:
+        queue_name: Queue name (optional, default: 'default')
+        
+    Returns:
+        Queue: RQ Queue instance
+    """
+    # Default queue name
+    if queue_name is None:
+        queue_name = 'default'
+    
+    # Check if RQ is available
+    if Queue is None:
+        class DummyQueue:
+            def enqueue(self, *args, **kwargs):
+                logger.warning(f"Dummy Queue: Cannot enqueue job in queue '{queue_name}' (RQ not available)")
+                return None
+            
+            def enqueue_at(self, *args, **kwargs):
+                logger.warning(f"Dummy Queue: Cannot schedule job in queue '{queue_name}' (RQ not available)")
+                return None
+            
+            def enqueue_in(self, *args, **kwargs):
+                logger.warning(f"Dummy Queue: Cannot schedule job in queue '{queue_name}' (RQ not available)")
+                return None
+            
+            def __getattr__(self, name):
+                def dummy_method(*args, **kwargs):
+                    logger.debug(f"Dummy Queue: {name}() called")
+                    return None
+                return dummy_method
+        
+        return DummyQueue()
+    
+    # Get Redis connection
+    redis_conn = get_job_redis_connection()
+    if redis_conn is None:
+        logger.error("Could not connect to Redis")
+        return None
+    
+    # Create queue
+    return Queue(queue_name, connection=redis_conn)
+
+def get_job(job_id: str) -> Optional[Job]:
+    """
+    Get a job by ID
+    
+    Args:
+        job_id: Job ID
+        
+    Returns:
+        Job: Job instance or None if not found
+    """
+    # Check if RQ is available
+    if Job is None:
+        logger.error("RQ not available")
+        return None
+    
+    # Get Redis connection
+    redis_conn = get_job_redis_connection()
+    if redis_conn is None:
+        logger.error("Could not connect to Redis")
+        return None
+    
+    # Get job
     try:
-        # Get database URL from environment
-        database_url = os.environ.get("DATABASE_URL")
-        
-        if not database_url:
-            logger.error("DATABASE_URL not set")
-            return None
-        
-        # Create engine and session
-        engine = create_engine(database_url, pool_recycle=300, pool_pre_ping=True)
-        Session = scoped_session(sessionmaker(bind=engine))
-        
-        return Session()
-    except Exception as e:
-        logger.error(f"Error setting up database session: {str(e)}")
+        return Job.fetch(job_id, connection=redis_conn)
+    except (NoSuchJobError, Exception) as e:
+        logger.error(f"Could not fetch job {job_id}: {e}")
         return None
 
-
-# Example job functions
-
-def example_email_job(recipient, subject, body):
+def get_job_result(job_id: str) -> Any:
     """
-    Example job for sending an email
+    Get job result
     
     Args:
-        recipient (str): Email recipient
-        subject (str): Email subject
-        body (str): Email body
-    """
-    logger.info(f"Sending email to {recipient} with subject '{subject}'")
-    # In a real application, this would use an email library
-    time.sleep(2)  # Simulate sending the email
-    logger.info(f"Email sent to {recipient}")
-    return {'status': 'sent', 'recipient': recipient, 'subject': subject}
-
-def example_report_job(user_id, report_type):
-    """
-    Example job for generating a report
-    
-    Args:
-        user_id (int): User ID
-        report_type (str): Type of report to generate
-    """
-    logger.info(f"Generating {report_type} report for user {user_id}")
-    
-    # Simulate database access
-    session = setup_database_session()
-    if session is None:
-        logger.error("Could not set up database session")
-        return {'status': 'error', 'message': 'Database connection failed'}
-    
-    try:
-        # Simulate report generation (would query the database in real code)
-        time.sleep(3)
+        job_id: Job ID
         
-        # Generate a report object
-        report = {
-            'user_id': user_id,
-            'type': report_type,
-            'generated_at': datetime.now().isoformat(),
-            'data': {
-                'summary': 'Example report data',
-                'details': [
-                    {'item': 'Item 1', 'value': 100},
-                    {'item': 'Item 2', 'value': 200},
-                    {'item': 'Item 3', 'value': 300}
-                ]
-            }
+    Returns:
+        Any: Job result or None if not available
+    """
+    job = get_job(job_id)
+    if job is None:
+        return None
+    
+    # Check if job is finished
+    if job.get_status() != 'finished':
+        return None
+    
+    # Return result
+    return job.result
+
+def get_job_status(job_id: str) -> str:
+    """
+    Get job status
+    
+    Args:
+        job_id: Job ID
+        
+    Returns:
+        str: Job status ('queued', 'started', 'finished', 'failed', 'scheduled', 'canceled', 'unknown')
+    """
+    job = get_job(job_id)
+    if job is None:
+        return 'unknown'
+    
+    return job.get_status()
+
+def get_queue_jobs(queue_name: str = None, status: str = None, count: int = 50) -> List[Dict]:
+    """
+    Get jobs in a queue
+    
+    Args:
+        queue_name: Queue name (optional, default: 'default')
+        status: Filter by status ('queued', 'started', 'finished', 'failed', 'scheduled')
+        count: Maximum number of jobs to return
+        
+    Returns:
+        List[Dict]: List of job info dictionaries
+    """
+    # Default queue name
+    if queue_name is None:
+        queue_name = 'default'
+    
+    # Check if RQ is available
+    if Queue is None or Job is None:
+        logger.error("RQ not available")
+        return []
+    
+    # Get Redis connection
+    redis_conn = get_job_redis_connection()
+    if redis_conn is None:
+        logger.error("Could not connect to Redis")
+        return []
+    
+    # Get registry for status
+    queue = Queue(queue_name, connection=redis_conn)
+    jobs = []
+    
+    # Get jobs by status
+    if status == 'queued':
+        job_ids = queue.get_job_ids()
+    elif status == 'started':
+        job_ids = Worker.all_worker_job_ids(connection=redis_conn)
+    elif status == 'finished':
+        job_ids = queue.finished_job_registry.get_job_ids()
+    elif status == 'failed':
+        job_ids = queue.failed_job_registry.get_job_ids()
+    elif status == 'scheduled':
+        job_ids = queue.scheduled_job_registry.get_job_ids()
+    elif status == 'deferred':
+        job_ids = queue.deferred_job_registry.get_job_ids()
+    else:
+        # Get all jobs
+        job_ids = []
+        job_ids.extend(queue.get_job_ids())
+        job_ids.extend(Worker.all_worker_job_ids(connection=redis_conn) or [])
+        job_ids.extend(queue.finished_job_registry.get_job_ids())
+        job_ids.extend(queue.failed_job_registry.get_job_ids())
+        job_ids.extend(queue.scheduled_job_registry.get_job_ids())
+        job_ids.extend(queue.deferred_job_registry.get_job_ids())
+    
+    # Fetch jobs
+    for job_id in job_ids[:count]:
+        try:
+            job = Job.fetch(job_id, connection=redis_conn)
+            jobs.append(get_job_info(job))
+        except Exception as e:
+            logger.error(f"Error fetching job {job_id}: {e}")
+    
+    return jobs
+
+def get_job_info(job: Union[Job, str]) -> Dict:
+    """
+    Get job information
+    
+    Args:
+        job: Job instance or job ID
+        
+    Returns:
+        Dict: Job information
+    """
+    # Convert job ID to job instance
+    if isinstance(job, str):
+        job = get_job(job)
+    
+    if job is None:
+        return {'id': 'unknown', 'status': 'unknown'}
+    
+    # Build job info
+    job_info = {
+        'id': job.id,
+        'queue': job.origin,
+        'func_name': job.func_name,
+        'args': job.args,
+        'kwargs': job.kwargs,
+        'result': job.result,
+        'status': job.get_status(),
+        'created_at': job.created_at.isoformat() if job.created_at else None,
+        'enqueued_at': job.enqueued_at.isoformat() if job.enqueued_at else None,
+        'started_at': job.started_at.isoformat() if job.started_at else None,
+        'ended_at': job.ended_at.isoformat() if job.ended_at else None,
+        'meta': job.meta,
+        'description': job.description,
+    }
+    
+    # Calculate execution time
+    if job.ended_at and job.started_at:
+        job_info['execution_time'] = (job.ended_at - job.started_at).total_seconds()
+    elif job.started_at:
+        job_info['execution_time'] = (datetime.now() - job.started_at).total_seconds()
+    else:
+        job_info['execution_time'] = None
+    
+    # Add progress information (if available)
+    job_info['progress'] = get_current_job_progress(job)
+    
+    return job_info
+
+def get_active_workers() -> List[Dict]:
+    """
+    Get active workers
+    
+    Returns:
+        List[Dict]: List of worker info dictionaries
+    """
+    # Check if RQ is available
+    if Worker is None:
+        logger.error("RQ not available")
+        return []
+    
+    # Get Redis connection
+    redis_conn = get_job_redis_connection()
+    if redis_conn is None:
+        logger.error("Could not connect to Redis")
+        return []
+    
+    # Get workers
+    workers = Worker.all(connection=redis_conn)
+    worker_info = []
+    
+    for worker in workers:
+        info = {
+            'name': worker.name,
+            'queues': [q.name for q in worker.queues],
+            'state': worker.state,
+            'current_job': get_job_info(worker.get_current_job_id()) if worker.get_current_job_id() else None,
+            'last_heartbeat': worker.last_heartbeat.isoformat() if worker.last_heartbeat else None,
+            'birth_date': worker.birth_date.isoformat() if worker.birth_date else None,
+            'successful_job_count': worker.successful_job_count,
+            'failed_job_count': worker.failed_job_count,
+            'total_working_time': worker.total_working_time,
         }
+        worker_info.append(info)
+    
+    return worker_info
+
+def get_queue_counts(queue_name: str = None) -> Dict[str, int]:
+    """
+    Get job counts for a queue
+    
+    Args:
+        queue_name: Queue name (optional, default: 'default')
         
-        logger.info(f"Report generated for user {user_id}")
-        return {'status': 'success', 'report': report}
-    except Exception as e:
-        logger.error(f"Error generating report: {str(e)}")
-        return {'status': 'error', 'message': str(e)}
-    finally:
-        session.close()
-
-def example_processing_job(data_id, options=None):
+    Returns:
+        Dict[str, int]: Counts by status
     """
-    Example job for processing data
+    # Default queue name
+    if queue_name is None:
+        queue_name = 'default'
+    
+    # Check if RQ is available
+    if Queue is None:
+        logger.error("RQ not available")
+        return {'queued': 0, 'started': 0, 'finished': 0, 'failed': 0, 'scheduled': 0, 'deferred': 0, 'total': 0}
+    
+    # Get Redis connection
+    redis_conn = get_job_redis_connection()
+    if redis_conn is None:
+        logger.error("Could not connect to Redis")
+        return {'queued': 0, 'started': 0, 'finished': 0, 'failed': 0, 'scheduled': 0, 'deferred': 0, 'total': 0}
+    
+    # Get counts
+    queue = Queue(queue_name, connection=redis_conn)
+    counts = {
+        'queued': queue.count,
+        'started': 0,  # Need to count from workers
+        'finished': queue.finished_job_registry.count,
+        'failed': queue.failed_job_registry.count,
+        'scheduled': queue.scheduled_job_registry.count,
+        'deferred': queue.deferred_job_registry.count,
+    }
+    
+    # Count jobs in progress from workers
+    workers = Worker.all(connection=redis_conn)
+    for worker in workers:
+        if worker.get_current_job_id() and worker.queue_names_list[0] == queue_name:
+            counts['started'] += 1
+    
+    # Calculate total
+    counts['total'] = sum(counts.values())
+    
+    return counts
+
+def cancel_job(job_id: str) -> bool:
+    """
+    Cancel a job
     
     Args:
-        data_id (int): ID of data to process
-        options (dict, optional): Processing options
-    """
-    if options is None:
-        options = {}
-    
-    logger.info(f"Processing data {data_id} with options {options}")
-    
-    # Simulate processing steps
-    steps = ['extract', 'transform', 'load']
-    results = {}
-    
-    try:
-        for step in steps:
-            logger.info(f"Processing step: {step}")
-            time.sleep(1)  # Simulate work
-            results[step] = f"Completed {step} step for data {data_id}"
+        job_id: Job ID
         
-        logger.info(f"Data processing complete for {data_id}")
-        return {'status': 'success', 'data_id': data_id, 'results': results}
-    except Exception as e:
-        logger.error(f"Error processing data: {str(e)}")
-        return {'status': 'error', 'message': str(e)}
-
-def example_cache_update_job(cache_key, new_value):
+    Returns:
+        bool: True if successful
     """
-    Example job for updating a cache
+    job = get_job(job_id)
+    if job is None:
+        return False
+    
+    # Check if job can be canceled
+    status = job.get_status()
+    if status in ['finished', 'failed', 'canceled']:
+        return False
+    
+    # Cancel job
+    job.cancel()
+    job.delete()
+    
+    return True
+
+def requeue_job(job_id: str) -> bool:
+    """
+    Requeue a failed job
     
     Args:
-        cache_key (str): Cache key to update
-        new_value: New value to set
+        job_id: Job ID
+        
+    Returns:
+        bool: True if successful
     """
-    logger.info(f"Updating cache key {cache_key}")
+    job = get_job(job_id)
+    if job is None:
+        return False
     
-    # Simulate cache update
-    time.sleep(1)
+    # Check if job can be requeued
+    status = job.get_status()
+    if status not in ['failed', 'finished', 'canceled']:
+        return False
     
-    # In a real application, this would use a cache manager
-    logger.info(f"Cache key {cache_key} updated")
-    return {'status': 'success', 'cache_key': cache_key}
+    # Requeue job
+    queue = Queue(job.origin, connection=job.connection)
+    new_job = queue.enqueue(
+        job.func,
+        *job.args,
+        **job.kwargs,
+        description=job.description,
+        job_id=str(uuid.uuid4()),
+        meta=job.meta
+    )
+    
+    return new_job is not None
 
-def example_long_task(duration=60, interval=5):
+def clear_queue(queue_name: str = None) -> bool:
     """
-    Example long-running task with progress updates
+    Clear a queue
     
     Args:
-        duration (int): Total duration in seconds
-        interval (int): Progress update interval in seconds
+        queue_name: Queue name (optional, default: 'default')
+        
+    Returns:
+        bool: True if successful
     """
-    logger.info(f"Starting long task (duration: {duration}s, interval: {interval}s)")
+    # Default queue name
+    if queue_name is None:
+        queue_name = 'default'
     
-    # Get the job instance (if running in the background)
+    # Check if RQ is available
+    if Queue is None:
+        logger.error("RQ not available")
+        return False
+    
+    # Get Redis connection
+    redis_conn = get_job_redis_connection()
+    if redis_conn is None:
+        logger.error("Could not connect to Redis")
+        return False
+    
+    # Clear queue
+    queue = Queue(queue_name, connection=redis_conn)
+    queue.empty()
+    
+    # Clear registries
+    queue.finished_job_registry.cleanup()
+    queue.failed_job_registry.cleanup()
+    queue.scheduled_job_registry.cleanup()
+    queue.deferred_job_registry.cleanup()
+    
+    return True
+
+def stop_worker(worker_name: str) -> bool:
+    """
+    Stop a worker
+    
+    Args:
+        worker_name: Worker name
+        
+    Returns:
+        bool: True if successful
+    """
+    # Check if RQ is available
+    if Worker is None:
+        logger.error("RQ not available")
+        return False
+    
+    # Get Redis connection
+    redis_conn = get_job_redis_connection()
+    if redis_conn is None:
+        logger.error("Could not connect to Redis")
+        return False
+    
+    # Find worker
+    workers = Worker.all(connection=redis_conn)
+    for worker in workers:
+        if worker.name == worker_name:
+            worker.register_death()
+            return True
+    
+    return False
+
+def log_job_progress(message: str, progress: float = None, status: str = None, result: Any = None, **kwargs):
+    """
+    Log job progress
+    
+    Args:
+        message: Progress message
+        progress: Progress percentage (0-100)
+        status: Status message
+        result: Partial result
+        **kwargs: Additional metadata
+    """
+    job = get_current_job()
+    if job is None:
+        logger.debug(f"Progress update (no job): {message}")
+        return False
+    
+    # Update job metadata
+    meta = job.meta.copy() if hasattr(job, 'meta') else {}
+    
+    # Update progress
+    if 'progress' not in meta:
+        meta['progress'] = {}
+    
+    now = datetime.now().isoformat()
+    meta['progress']['last_update'] = now
+    meta['progress']['message'] = message
+    
+    if progress is not None:
+        meta['progress']['percent'] = float(progress)
+    
+    if status is not None:
+        meta['progress']['status'] = status
+    
+    if result is not None:
+        meta['progress']['result'] = result
+    
+    # Add any additional metadata
+    if kwargs:
+        for key, value in kwargs.items():
+            meta['progress'][key] = value
+    
+    # Save metadata
+    job.meta = meta
+    job.save_meta()
+    
+    return True
+
+def background_job(func=None, *, queue_name=None, timeout=3600, result_ttl=86400, 
+                 failure_ttl=86400, ttl=None, description=None, depends_on=None,
+                 at_front=False, meta=None, job_id=None):
+    """
+    Decorator to mark a function as a background job
+    
+    Args:
+        func: Function to decorate
+        queue_name: Queue name (default: 'default')
+        timeout: Job timeout in seconds (default: 1 hour)
+        result_ttl: Result TTL in seconds (default: 1 day)
+        failure_ttl: Failure TTL in seconds (default: 1 day)
+        ttl: Job TTL in seconds (default: None)
+        description: Job description
+        depends_on: Job dependency
+        at_front: Enqueue at front of queue
+        meta: Initial metadata
+        job_id: Custom job ID
+        
+    Returns:
+        Decorated function that can be queued
+    """
+    def decorator(f):
+        @functools.wraps(f)
+        def wrapper(*args, **kwargs):
+            """Run the job directly (synchronously)"""
+            return f(*args, **kwargs)
+        
+        def async_run(*args, job_id=None, **kwargs):
+            """
+            Run the job asynchronously
+            
+            Args:
+                *args: Function arguments
+                job_id: Optional job ID (default: auto-generated)
+                **kwargs: Function keyword arguments
+                
+            Returns:
+                Job: Job instance
+            """
+            # Auto-generate job ID if not provided
+            if job_id is None:
+                job_id = str(uuid.uuid4())
+            
+            # Get queue
+            q = get_queue(queue_name)
+            
+            # Define metadata
+            job_meta = {} if meta is None else meta.copy()
+            
+            # Add function information to metadata
+            job_meta.update({
+                'source': f.__module__,
+                'function': f.__name__,
+                'queue': queue_name or 'default',
+                'created_at': datetime.now().isoformat(),
+            })
+            
+            # Enqueue job
+            return q.enqueue(
+                f,
+                *args,
+                **kwargs,
+                job_id=job_id,
+                timeout=timeout,
+                result_ttl=result_ttl,
+                failure_ttl=failure_ttl,
+                ttl=ttl,
+                description=description or f.__name__,
+                depends_on=depends_on,
+                at_front=at_front,
+                meta=job_meta
+            )
+        
+        # Attach async_run method to the wrapper
+        wrapper.async_run = async_run
+        
+        # Attach some metadata for introspection
+        wrapper._is_job = True
+        wrapper._queue_name = queue_name
+        wrapper._job_timeout = timeout
+        wrapper._job_result_ttl = result_ttl
+        
+        return wrapper
+    
+    if func is None:
+        return decorator
+    
+    return decorator(func)
+
+def notify_job_completion(job_id: str, callback_url: str = None, email: str = None) -> bool:
+    """
+    Set up a notification for when a job completes
+    
+    Args:
+        job_id: Job ID
+        callback_url: Callback URL to notify
+        email: Email to notify
+        
+    Returns:
+        bool: True if successful
+    """
+    job = get_job(job_id)
+    if job is None:
+        return False
+    
+    # Save notification info in job metadata
+    meta = job.meta.copy() if hasattr(job, 'meta') else {}
+    
+    if 'notifications' not in meta:
+        meta['notifications'] = []
+    
+    # Add notification details
+    notification = {'timestamp': datetime.now().isoformat()}
+    
+    if callback_url:
+        notification['type'] = 'webhook'
+        notification['url'] = callback_url
+    
+    if email:
+        notification['type'] = 'email'
+        notification['address'] = email
+    
+    meta['notifications'].append(notification)
+    
+    # Save metadata
+    job.meta = meta
+    job.save_meta()
+    
+    return True
+
+def schedule_job(func: Callable, args: List = None, kwargs: Dict = None, 
+               queue_name: str = None, job_id: str = None, 
+               run_at: datetime = None, run_in: timedelta = None,
+               repeat: bool = False, repeat_interval: int = 86400,
+               timeout: int = 3600, result_ttl: int = 86400,
+               description: str = None, meta: Dict = None) -> Optional[Job]:
+    """
+    Schedule a job to run later
+    
+    Args:
+        func: Function to run
+        args: Function arguments
+        kwargs: Function keyword arguments
+        queue_name: Queue name
+        job_id: Job ID
+        run_at: Datetime to run job
+        run_in: Timedelta to run job
+        repeat: Whether to repeat the job
+        repeat_interval: Repeat interval in seconds
+        timeout: Job timeout in seconds
+        result_ttl: Result TTL in seconds
+        description: Job description
+        meta: Initial metadata
+        
+    Returns:
+        Job: Scheduled job
+    """
+    # Check if RQ is available
+    if Queue is None:
+        logger.error("RQ not available")
+        return None
+    
+    # Validate arguments
+    if not callable(func):
+        raise ValueError("func must be callable")
+    
+    if run_at is None and run_in is None:
+        raise ValueError("Either run_at or run_in must be provided")
+    
+    # Calculate time to run
+    if run_at is None and run_in is not None:
+        run_at = datetime.now() + run_in
+    
+    # Default arguments
+    if args is None:
+        args = []
+    
+    if kwargs is None:
+        kwargs = {}
+    
+    # Auto-generate job ID if not provided
+    if job_id is None:
+        job_id = str(uuid.uuid4())
+    
+    # Get queue
+    queue = get_queue(queue_name)
+    
+    # Define metadata
+    job_meta = {} if meta is None else meta.copy()
+    
+    # Add scheduling information to metadata
+    job_meta.update({
+        'scheduled_at': datetime.now().isoformat(),
+        'run_at': run_at.isoformat(),
+        'repeat': repeat,
+        'repeat_interval': repeat_interval if repeat else None,
+    })
+    
+    # Set default description
+    if description is None:
+        description = f"Scheduled job: {func.__name__}"
+    
+    # Schedule job
     try:
-        job_instance = Job.fetch(job.get_current_job_id(), connection=get_redis_connection())
-    except:
-        job_instance = None
+        # Handle repeating jobs separately
+        if repeat:
+            # Schedule first execution
+            job = queue.enqueue_at(
+                run_at,
+                func,
+                *args,
+                **kwargs,
+                job_id=job_id,
+                timeout=timeout,
+                result_ttl=result_ttl,
+                description=description,
+                meta=job_meta
+            )
+            
+            # Set up metadata for rescheduling
+            job_meta['is_recurring'] = True
+            job_meta['next_run'] = (run_at + timedelta(seconds=repeat_interval)).isoformat()
+            job.meta = job_meta
+            job.save_meta()
+            
+            return job
+        else:
+            # Schedule one-time job
+            return queue.enqueue_at(
+                run_at,
+                func,
+                *args,
+                **kwargs,
+                job_id=job_id,
+                timeout=timeout,
+                result_ttl=result_ttl,
+                description=description,
+                meta=job_meta
+            )
     
+    except Exception as e:
+        logger.error(f"Error scheduling job: {e}")
+        return None
+
+def current_job_progress(message: str = None, progress: float = None, **kwargs):
+    """
+    Update progress for the current job
+    
+    Args:
+        message: Progress message
+        progress: Progress percentage (0-100)
+        **kwargs: Additional metadata
+    """
+    return log_job_progress(message, progress, **kwargs)
+
+def get_current_job_progress(job_or_id: Union[Job, str]) -> Dict:
+    """
+    Get progress information for a job
+    
+    Args:
+        job_or_id: Job instance or ID
+        
+    Returns:
+        Dict: Progress information
+    """
+    # Resolve job
+    if isinstance(job_or_id, str):
+        job = get_job(job_or_id)
+    else:
+        job = job_or_id
+    
+    if job is None:
+        return {'percent': 0, 'message': 'Unknown job'}
+    
+    # Get progress from metadata
+    meta = job.meta.copy() if hasattr(job, 'meta') and job.meta else {}
+    progress_info = meta.get('progress', {})
+    
+    # Set defaults if not available
+    if not progress_info:
+        status = job.get_status()
+        if status == 'queued':
+            progress_info = {'percent': 0, 'message': 'Queued', 'status': 'queued'}
+        elif status == 'started':
+            progress_info = {'percent': 0, 'message': 'Started', 'status': 'running'}
+        elif status == 'finished':
+            progress_info = {'percent': 100, 'message': 'Completed', 'status': 'completed'}
+        elif status == 'failed':
+            progress_info = {'percent': 100, 'message': 'Failed', 'status': 'failed'}
+        else:
+            progress_info = {'percent': 0, 'message': status.capitalize(), 'status': status}
+    
+    return progress_info
+
+def wait_for_job(job_id: str, timeout: int = 30, poll_interval: float = 0.5) -> Dict:
+    """
+    Wait for a job to complete
+    
+    Args:
+        job_id: Job ID
+        timeout: Timeout in seconds
+        poll_interval: Polling interval in seconds
+        
+    Returns:
+        Dict: Job info
+    """
     start_time = time.time()
-    end_time = start_time + duration
+    job = get_job(job_id)
     
-    try:
-        while time.time() < end_time:
-            elapsed = time.time() - start_time
-            progress = min(100, round(elapsed / duration * 100, 1))
-            
-            # Update job meta with progress
-            if job_instance:
-                job_instance.meta['progress'] = progress
-                job_instance.save_meta()
-            
-            logger.info(f"Long task progress: {progress}%")
-            
-            # Sleep for the interval or until the end time
-            sleep_time = min(interval, end_time - time.time())
-            if sleep_time > 0:
-                time.sleep(sleep_time)
+    if job is None:
+        return {'status': 'unknown', 'id': job_id, 'error': 'Job not found'}
+    
+    # Wait for job to complete
+    while time.time() - start_time < timeout:
+        status = job.get_status()
         
-        logger.info("Long task completed")
-        return {'status': 'success', 'progress': 100}
-    except Exception as e:
-        logger.error(f"Error in long task: {str(e)}")
-        return {'status': 'error', 'message': str(e)}
-
-
-# Create global job manager instance
-job_manager = JobManager()
-
-# Export decorated example jobs
-email_job = job_manager.background_job(queue_name='email')(example_email_job)
-report_job = job_manager.background_job(queue_name='default')(example_report_job)
-processing_job = job_manager.background_job(queue_name='high')(example_processing_job)
-cache_update_job = job_manager.background_job(queue_name='low')(example_cache_update_job)
-long_task = job_manager.background_job(queue_name='default', timeout=120)(example_long_task)
+        if status in ['finished', 'failed', 'canceled']:
+            break
+        
+        # Sleep before polling again
+        time.sleep(poll_interval)
+        
+        # Refresh job
+        job = get_job(job_id)
+        if job is None:
+            return {'status': 'unknown', 'id': job_id, 'error': 'Job disappeared'}
+    
+    # Check for timeout
+    if time.time() - start_time >= timeout:
+        return {'status': 'timeout', 'id': job_id, 'error': 'Timed out waiting for job'}
+    
+    # Return full job info
+    return get_job_info(job)
