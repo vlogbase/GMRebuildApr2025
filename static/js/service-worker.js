@@ -4,7 +4,7 @@ const ASSETS_TO_CACHE = [
   '/',
   '/static/css/style.css',
   '/static/js/script.js',
-  '/static/img/logo.svg',
+  // '/static/img/logo.svg', - Removed non-existent file
   '/static/img/favicon.ico',
   '/static/img/favicon.svg',
   '/static/img/favicon-96x96.png',
