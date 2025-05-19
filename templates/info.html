@@ -1161,6 +1161,10 @@
                     } else if (Array.isArray(data)) {
                         // Direct array format
                         pricingData = data;
+                    } else if (data.data === null) {
+                        // Handle the case where data.data is null by using an empty array
+                        console.warn('API returned null data, using empty array instead');
+                        pricingData = [];
                     } else {
                         console.error('Unexpected data format:', data);
                         throw new Error('Unexpected data format from server.');

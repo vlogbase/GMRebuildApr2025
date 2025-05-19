@@ -3797,7 +3797,7 @@ def get_model_pricing():
                     return {
                         "error": "Unable to retrieve model information",
                         "message": "Please try again later or contact support if the problem persists.",
-                        "data": []
+                        "data": []  # Always return an empty array instead of null
                     }
         
         # Get pricing data from cache or compute it
