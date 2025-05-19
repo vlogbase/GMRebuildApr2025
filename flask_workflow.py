@@ -1,29 +1,32 @@
 """
-Simple script to run the Flask application.
-This serves as the entry point for the workflow.
+Flask server workflow for testing the billing/account fix
 """
+
 import os
+import sys
 import logging
-from app import app
+from flask import Flask, render_template
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 def run():
     """
-    Run the Flask application with proper configuration.
+    Run the Flask application
     """
-    # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        filename='app_workflow.log'
-    )
+    # We import the app from the main application file
+    sys.path.insert(0, os.getcwd())
     
-    # Print startup message
-    print("Starting Flask application with unified file upload support...")
-    print("Server will be available at http://0.0.0.0:5000")
-    
-    # Run the application
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=True)
+    try:
+        # Import the app from app.py
+        from app import app
+        
+        # Run the Flask app
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    except Exception as e:
+        logger.error(f"Error running Flask app: {e}")
+        raise
 
 if __name__ == "__main__":
     run()

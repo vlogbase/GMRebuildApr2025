@@ -409,6 +409,44 @@ def commission_metrics():
         'data': chart_data
     })
 
+@affiliate_bp.route('/update-paypal-email', methods=['POST'])
+def update_paypal_email():
+    """Update affiliate's PayPal email address"""
+    # Import database models inside function to avoid circular imports
+    from database import User, Affiliate, db
+    
+    # Check if user is logged in
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    
+    user_id = session['user_id']
+    
+    # Get user's affiliate info
+    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    
+    if not affiliate:
+        return jsonify({'success': False, 'error': 'Not an affiliate'}), 403
+    
+    # Get and validate new email
+    paypal_email = request.form.get('paypal_email', '').strip()
+    
+    if not paypal_email:
+        flash('PayPal email is required', 'error')
+        return redirect(url_for('affiliate.dashboard'))
+    
+    # Update the affiliate's PayPal email
+    try:
+        affiliate.paypal_email = paypal_email
+        db.session.commit()
+        flash('PayPal email updated successfully', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating PayPal email: {str(e)}")
+        flash('An error occurred while updating your PayPal email', 'error')
+    
+    # Redirect back to dashboard
+    return redirect(url_for('affiliate.dashboard'))
+
 # Helper function for templates
 def affiliate_helpers():
     """Provide helper functions to affiliate templates"""

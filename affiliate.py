@@ -377,6 +377,38 @@ def init_app(app):
                 'daily_totals': daily_totals,
                 'status_breakdown': status_breakdown
             })
+        @affiliate_bp.route('/update-paypal-email', methods=['POST'])
+        @login_required
+        def update_paypal_email():
+            """Update affiliate's PayPal email address"""
+            try:
+                # Get the affiliate record for the current user
+                affiliate = Affiliate.query.filter_by(user_id=current_user.id).first()
+                
+                if not affiliate:
+                    flash('You must be an affiliate to update your PayPal email', 'error')
+                    return redirect(url_for('index'))
+                
+                # Get and validate new email
+                paypal_email = request.form.get('paypal_email', '').strip()
+                
+                if not paypal_email:
+                    flash('PayPal email is required', 'error')
+                    return redirect(url_for('affiliate.dashboard'))
+                
+                # Update the affiliate's PayPal email
+                affiliate.paypal_email = paypal_email
+                affiliate.updated_at = datetime.now()
+                db.session.commit()
+                
+                flash('PayPal email updated successfully', 'success')
+                return redirect(url_for('affiliate.dashboard'))
+                
+            except Exception as e:
+                logger.error(f"Error updating PayPal email: {e}", exc_info=True)
+                db.session.rollback()
+                flash(f'An error occurred: {str(e)}', 'error')
+                return redirect(url_for('affiliate.dashboard'))
             
         logger.info("Affiliate blueprint initialized successfully")
     except Exception as e:
