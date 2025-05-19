@@ -415,18 +415,19 @@ def update_paypal_email():
     # Import database models inside function to avoid circular imports
     from app import db
     from models import User, Affiliate
+    from flask_login import login_required, current_user
     
-    # Check if user is logged in
-    if 'user_id' not in session:
+    # Check if user is logged in via flask_login
+    # This explicitly handles the login check before processing
+    if not current_user.is_authenticated:
         return jsonify({'success': False, 'error': 'Not authenticated'}), 401
     
-    user_id = session['user_id']
-    
     # Get user's affiliate info
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    affiliate = Affiliate.query.filter_by(email=current_user.email).first()
     
     if not affiliate:
-        return jsonify({'success': False, 'error': 'Not an affiliate'}), 403
+        flash('You must be an affiliate to update your PayPal email', 'error')
+        return redirect(url_for('billing.account_management'))
     
     # Get and validate new email
     paypal_email = request.form.get('paypal_email', '').strip()

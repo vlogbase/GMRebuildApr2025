@@ -383,13 +383,12 @@ def init_app(app):
             """Update affiliate's PayPal email address"""
             try:
                 # Get the affiliate record for the current user
-                # The models are already imported at the top of the function
-                # via: from database import db, User, Affiliate, Commission, Transaction, CustomerReferral
-                affiliate = Affiliate.query.filter_by(user_id=current_user.id).first()
+                # Instead of looking up by user_id, find by email for better compatibility
+                affiliate = Affiliate.query.filter_by(email=current_user.email).first()
                 
                 if not affiliate:
                     flash('You must be an affiliate to update your PayPal email', 'error')
-                    return redirect(url_for('index'))
+                    return redirect(url_for('billing.account_management'))
                 
                 # Get and validate new email
                 paypal_email = request.form.get('paypal_email', '').strip()
