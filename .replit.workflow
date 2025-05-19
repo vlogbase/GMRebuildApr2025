@@ -6,4 +6,11 @@
   onBoot = "python workflows/test_marketing.py"
   
 [app]
-  onBoot = "python app.py"
+  onBoot = "python app_workflow.py"
+  clearOnRestart = false
+  restartPolicy = "on-failure"
+
+[job_worker]
+  onBoot = "python job_worker_workflow.py"
+  clearOnRestart = false
+  restartPolicy = "on-failure"

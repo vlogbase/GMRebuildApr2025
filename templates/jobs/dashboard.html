@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Job Dashboard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-800">Background Job Dashboard</h1>
+        <p class="text-gray-600">Monitor and manage background jobs</p>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white rounded-lg shadow-md p-4">
+            <h3 class="text-lg font-semibold text-gray-700">Active Workers</h3>
+            <p class="text-3xl font-bold text-blue-600">{{ stats.active_workers }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4">
+            <h3 class="text-lg font-semibold text-gray-700">Queued Jobs</h3>
+            <p class="text-3xl font-bold text-yellow-600">{{ stats.queued_jobs }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4">
+            <h3 class="text-lg font-semibold text-gray-700">Finished Jobs</h3>
+            <p class="text-3xl font-bold text-green-600">{{ stats.finished_jobs }}</p>
+        </div>
+        <div class="bg-white rounded-lg shadow-md p-4">
+            <h3 class="text-lg font-semibold text-gray-700">Failed Jobs</h3>
+            <p class="text-3xl font-bold text-red-600">{{ stats.failed_jobs }}</p>
+        </div>
+    </div>
+
+    <!-- Queue List -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Queues</h2>
+        
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700 text-left">
+                        <th class="py-3 px-4 font-semibold">Queue Name</th>
+                        <th class="py-3 px-4 font-semibold">Jobs Waiting</th>
+                        <th class="py-3 px-4 font-semibold">Active Jobs</th>
+                        <th class="py-3 px-4 font-semibold">Finished Jobs</th>
+                        <th class="py-3 px-4 font-semibold">Failed Jobs</th>
+                        <th class="py-3 px-4 font-semibold">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for queue in queue_stats %}
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="py-3 px-4">{{ queue.name }}</td>
+                        <td class="py-3 px-4">{{ queue.count }}</td>
+                        <td class="py-3 px-4">{{ queue.active_count }}</td>
+                        <td class="py-3 px-4">{{ queue.finished_count }}</td>
+                        <td class="py-3 px-4">{{ queue.failed_count }}</td>
+                        <td class="py-3 px-4">
+                            <a href="{{ url_for('jobs.view_queue', queue_name=queue.name) }}" 
+                               class="inline-block bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded text-sm">
+                                View
+                            </a>
+                            <a href="{{ url_for('jobs.view_queue', queue_name=queue.name, status='failed') }}" 
+                               class="inline-block bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded text-sm">
+                                Failed
+                            </a>
+                            <a href="{{ url_for('jobs.empty_queue', queue_name=queue.name) }}" 
+                               class="inline-block bg-gray-500 hover:bg-gray-600 text-white py-1 px-3 rounded text-sm"
+                               onclick="return confirm('Are you sure you want to empty this queue?');">
+                                Empty
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Workers List -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Workers ({{ stats.workers|length }})</h2>
+        
+        {% if stats.workers %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700 text-left">
+                        <th class="py-3 px-4 font-semibold">Name</th>
+                        <th class="py-3 px-4 font-semibold">PID</th>
+                        <th class="py-3 px-4 font-semibold">Status</th>
+                        <th class="py-3 px-4 font-semibold">Queues</th>
+                        <th class="py-3 px-4 font-semibold">Current Job</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for worker in stats.workers %}
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="py-3 px-4">{{ worker.name }}</td>
+                        <td class="py-3 px-4">{{ worker.pid }}</td>
+                        <td class="py-3 px-4">
+                            {% if worker.state == 'busy' %}
+                            <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Working</span>
+                            {% elif worker.state == 'idle' %}
+                            <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Idle</span>
+                            {% else %}
+                            <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">{{ worker.state }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4">
+                            {% for queue in worker.queues %}
+                            <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs mr-1">{{ queue }}</span>
+                            {% endfor %}
+                        </td>
+                        <td class="py-3 px-4">
+                            {% if worker.current_job %}
+                            <a href="{{ url_for('jobs.view_job', job_id=worker.current_job.id) }}" 
+                               class="text-blue-600 hover:text-blue-800 hover:underline">
+                                {{ worker.current_job.id[:8] }} - {{ worker.current_job.func_name }}
+                            </a>
+                            {% else %}
+                            <span class="text-gray-500">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="bg-gray-100 p-4 rounded">
+            <p class="text-gray-700">No active workers found.</p>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Test Jobs Section -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Test Jobs</h2>
+        
+        <div class="mb-4">
+            <a href="{{ url_for('jobs.enqueue_test_job') }}" 
+               class="inline-block bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded">
+                Enqueue Test Job
+            </a>
+        </div>
+        
+        <p class="text-sm text-gray-600">
+            Click the button above to enqueue a test job and verify the job processing system.
+        </p>
+    </div>
+</div>
+{% endblock %}

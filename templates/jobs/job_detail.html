@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}Job: {{ job.id[:8] }}{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <a href="{{ url_for('jobs.view_queue', queue_name=job.queue_name) }}" class="inline-block text-blue-600 hover:text-blue-800 mb-4">
+            <span class="inline-block mr-1">←</span> Back to Queue
+        </a>
+        <h1 class="text-3xl font-bold text-gray-800">Job Details</h1>
+        <div class="mt-2">
+            <span class="font-mono text-sm text-gray-500">{{ job.id }}</span>
+        </div>
+    </div>
+
+    <!-- Job Summary -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Summary</h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <table class="w-full">
+                    <tr class="border-b border-gray-200">
+                        <td class="py-3 font-semibold text-gray-700">Status</td>
+                        <td class="py-3">
+                            {% if job.status == 'queued' %}
+                            <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">Queued</span>
+                            {% elif job.status == 'started' %}
+                            <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-sm">Running</span>
+                            {% elif job.status == 'finished' %}
+                            <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">Finished</span>
+                            {% elif job.status == 'failed' %}
+                            <span class="inline-block bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm">Failed</span>
+                            {% else %}
+                            <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-sm">{{ job.status }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                        <td class="py-3 font-semibold text-gray-700">Function</td>
+                        <td class="py-3 font-mono text-sm">{{ job.func_name }}</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                        <td class="py-3 font-semibold text-gray-700">Queue</td>
+                        <td class="py-3">{{ job.queue_name }}</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                        <td class="py-3 font-semibold text-gray-700">Worker</td>
+                        <td class="py-3">{{ job.worker_name or 'N/A' }}</td>
+                    </tr>
+                </table>
+            </div>
+            
+            <div>
+                <table class="w-full">
+                    <tr class="border-b border-gray-200">
+                        <td class="py-3 font-semibold text-gray-700">Created</td>
+                        <td class="py-3">{{ job.created_at_str }}</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                        <td class="py-3 font-semibold text-gray-700">Enqueued</td>
+                        <td class="py-3">{{ job.enqueued_at_str or 'N/A' }}</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                        <td class="py-3 font-semibold text-gray-700">Started</td>
+                        <td class="py-3">{{ job.started_at_str or 'N/A' }}</td>
+                    </tr>
+                    <tr class="border-b border-gray-200">
+                        <td class="py-3 font-semibold text-gray-700">Ended</td>
+                        <td class="py-3">{{ job.ended_at_str or 'N/A' }}</td>
+                    </tr>
+                    {% if job.started_at and job.ended_at %}
+                    <tr class="border-b border-gray-200">
+                        <td class="py-3 font-semibold text-gray-700">Duration</td>
+                        <td class="py-3">{{ job.duration_seconds }} seconds</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+        
+        <!-- Actions -->
+        <div class="mt-6 flex space-x-3">
+            {% if job.status == 'failed' %}
+            <a href="{{ url_for('jobs.requeue_job', job_id=job.id) }}" 
+               class="inline-block bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
+               onclick="return confirm('Are you sure you want to requeue this job?');">
+                Requeue Job
+            </a>
+            {% endif %}
+            
+            <a href="{{ url_for('jobs.delete_job', job_id=job.id) }}" 
+               class="inline-block bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded"
+               onclick="return confirm('Are you sure you want to delete this job? This cannot be undone.');">
+                Delete Job
+            </a>
+        </div>
+    </div>
+    
+    <!-- Job Arguments -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Arguments</h2>
+        
+        {% if job.args or job.kwargs %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Positional Arguments -->
+            {% if job.args %}
+            <div>
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Positional Arguments</h3>
+                <div class="bg-gray-50 p-4 rounded-md overflow-x-auto">
+                    <pre class="font-mono text-sm whitespace-pre-wrap">{{ job.args | tojson(indent=2) }}</pre>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Keyword Arguments -->
+            {% if job.kwargs %}
+            <div>
+                <h3 class="text-lg font-semibold text-gray-700 mb-2">Keyword Arguments</h3>
+                <div class="bg-gray-50 p-4 rounded-md overflow-x-auto">
+                    <pre class="font-mono text-sm whitespace-pre-wrap">{{ job.kwargs | tojson(indent=2) }}</pre>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        {% else %}
+        <div class="bg-gray-100 p-4 rounded">
+            <p class="text-gray-700">No arguments provided for this job.</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Job Result or Error -->
+    {% if job.status == 'finished' and job.result %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Result</h2>
+        
+        <div class="bg-gray-50 p-4 rounded-md overflow-x-auto max-h-96">
+            <pre class="font-mono text-sm whitespace-pre-wrap">{{ job.result | tojson(indent=2) }}</pre>
+        </div>
+    </div>
+    {% elif job.status == 'failed' and job.exc_info %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Error</h2>
+        
+        <div class="bg-red-50 p-4 rounded-md overflow-x-auto max-h-96">
+            <div class="font-semibold text-red-700 mb-2">{{ job.exc_info.split('\n')[0] }}</div>
+            <pre class="font-mono text-sm text-red-800 whitespace-pre-wrap">{{ job.exc_info }}</pre>
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Job Meta Information -->
+    {% if job.meta %}
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">Metadata</h2>
+        
+        <div class="bg-gray-50 p-4 rounded-md overflow-x-auto">
+            <pre class="font-mono text-sm whitespace-pre-wrap">{{ job.meta | tojson(indent=2) }}</pre>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

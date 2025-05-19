@@ -115,6 +115,20 @@ class RedisCache:
             return self.redis_client.ping()
         except:
             return False
+            
+    def get_redis(self):
+        """
+        Get the underlying Redis client instance.
+        
+        This is useful when direct Redis client access is needed,
+        such as for RQ worker configuration.
+        
+        Returns:
+            redis.Redis: The Redis client instance, or None if not available
+        """
+        if not self.is_available():
+            return None
+        return self.redis_client
     
     def get(self, key: str, default=None) -> Any:
         """

@@ -59,6 +59,19 @@ wheels = [
 ]
 
 [[package]]
+name = "arrow"
+version = "1.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+    { name = "types-python-dateutil" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2e/00/0f6e8fcdb23ea632c866620cc872729ff43ed91d284c866b515c6342b173/arrow-1.3.0.tar.gz", hash = "sha256:d4540617648cb5f895730f1ad8c82a65f2dad0166f57b75f3ca54759c4d67a85", size = 131960 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f8/ed/e97229a566617f2ae958a6b13e7cc0f585470eac730a73e9e82c32a3cdd2/arrow-1.3.0-py3-none-any.whl", hash = "sha256:c728b120ebc00eb84e01882a6f5e7927a53960aa990ce7dd2b10f39005a67f80", size = 66419 },
+]
+
+[[package]]
 name = "asgiref"
 version = "3.8.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1304,6 +1317,18 @@ wheels = [
 ]
 
 [[package]]
+name = "python-dateutil"
+version = "2.9.0.post0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/66/c0/0c8b6ad9f17a802ee498c46e004a0eb49bc148f2fd230864601a86dcf6db/python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3", size = 342432 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427", size = 229892 },
+]
+
+[[package]]
 name = "python-docx"
 version = "1.1.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1370,6 +1395,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a6/af/e875d57383653e5d9065df8552de1deb7576b4d3cf3af90cde2e79ff7f65/redis-6.1.0.tar.gz", hash = "sha256:c928e267ad69d3069af28a9823a07726edf72c7e37764f43dc0123f37928c075", size = 4629300 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/28/5f/cf36360f80ae233bd1836442f5127818cfcfc7b1846179b60b2e9a4c45c9/redis-6.1.0-py3-none-any.whl", hash = "sha256:3b72622f3d3a89df2a6041e82acd896b0e67d9f54e9bcd906d091d23ba5219f6", size = 273750 },
+]
+
+[[package]]
+name = "redis-sentinel-url"
+version = "1.0.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "redis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/cc/e3/68de4c8aacbd9952667d7d0f5af55b873553a09a6227ac5b7f7c622610c9/Redis-Sentinel-Url-1.0.1.tar.gz", hash = "sha256:ec1854ab9379a28789423c3cd4082739fb69c7b4b11bb50ae7858697c131b13e", size = 7599 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/40/35/20f997f367c87ef1e6ebf418af7c2450cb5da860d066d7229226031534ad/Redis_Sentinel_Url-1.0.1-py2.py3-none-any.whl", hash = "sha256:c6991e2000c5c7a5e2b95eb2d62fd5b0a6b02a59554caf0f9f79d18e152d9663", size = 4685 },
 ]
 
 [[package]]
@@ -1462,6 +1499,8 @@ dependencies = [
     { name = "replit-object-storage" },
     { name = "reportlab" },
     { name = "requests" },
+    { name = "rq" },
+    { name = "rq-dashboard" },
     { name = "sqlalchemy" },
     { name = "stripe" },
     { name = "striprtf" },
@@ -1505,6 +1544,8 @@ requires-dist = [
     { name = "replit-object-storage", specifier = ">=1.0.2" },
     { name = "reportlab", specifier = ">=4.4.0" },
     { name = "requests", specifier = ">=2.32.3" },
+    { name = "rq", specifier = ">=2.3.3" },
+    { name = "rq-dashboard", specifier = ">=0.8.2.2" },
     { name = "sqlalchemy", specifier = ">=2.0.40" },
     { name = "stripe", specifier = ">=12.1.0" },
     { name = "striprtf", specifier = ">=0.0.29" },
@@ -1553,6 +1594,35 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/63/70/2bf7780ad2d390a8d301ad0b550f1581eadbd9a20f896afe06353c2a2913/requests-2.32.3.tar.gz", hash = "sha256:55365417734eb18255590a9ff9eb97e9e1da868d4ccd6402399eaf68af20a760", size = 131218 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f9/9b/335f9764261e915ed497fcdeb11df5dfd6f7bf257d4a6a2a686d80da4d54/requests-2.32.3-py3-none-any.whl", hash = "sha256:70761cfe03c773ceb22aa2f671b4757976145175cdfca038c02654d061d6dcc6", size = 64928 },
+]
+
+[[package]]
+name = "rq"
+version = "2.3.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "click" },
+    { name = "redis" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6a/d8/8dd3c33b1854e1a5247fc9945e5c052dbac61c3a6392b1e2ff50d089c2e7/rq-2.3.3.tar.gz", hash = "sha256:20c41c977b6f27c852a41bd855893717402bae7b8d9607dca21fe9dd55453e22", size = 649348 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/66/25/2e17899e70317497cf0fe2d2742ba464becf7e996f65e17b48440de88635/rq-2.3.3-py3-none-any.whl", hash = "sha256:2202c4409c4c527ac4bee409867d6c02515dd110030499eb0de54c7374aee0ce", size = 101012 },
+]
+
+[[package]]
+name = "rq-dashboard"
+version = "0.8.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "arrow" },
+    { name = "flask" },
+    { name = "redis" },
+    { name = "redis-sentinel-url" },
+    { name = "rq" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/b4/73/8e1c2fcae9ecaf79e743ea23d66837f1273740fa9fd43dc19ef87d7ea724/rq_dashboard-0.8.2.2.tar.gz", hash = "sha256:7fc1655a41e52087c221e3df76a91e5785122d98e31f1facfc399dcede80e1c2", size = 205925 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/d8/a15faefd6a93c2c03796a76e80739c9f12e1c0d25786e2bfcb6b976483cf/rq_dashboard-0.8.2.2-py2.py3-none-any.whl", hash = "sha256:764d1c6fe415b749444aec7e7bd01e72f09423fced9ecd41802853cbbfa1f382", size = 210355 },
 ]
 
 [[package]]
@@ -1702,6 +1772,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a8/4b/29b4ef32e036bb34e4ab51796dd745cdba7ed47ad142a9f4a1eb8e0c744d/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2", size = 169737 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d0/30/dc54f88dd4a2b5dc8a0279bdd7270e735851848b762aeb1c1184ed1f6b14/tqdm-4.67.1-py3-none-any.whl", hash = "sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2", size = 78540 },
+]
+
+[[package]]
+name = "types-python-dateutil"
+version = "2.9.0.20250516"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ef/88/d65ed807393285204ab6e2801e5d11fbbea811adcaa979a2ed3b67a5ef41/types_python_dateutil-2.9.0.20250516.tar.gz", hash = "sha256:13e80d6c9c47df23ad773d54b2826bd52dbbb41be87c3f339381c1700ad21ee5", size = 13943 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c5/3f/b0e8db149896005adc938a1e7f371d6d7e9eca4053a29b108978ed15e0c2/types_python_dateutil-2.9.0.20250516-py3-none-any.whl", hash = "sha256:2b2b3f57f9c6a61fba26a9c0ffb9ea5681c9b83e69cd897c6b5f668d9c0cab93", size = 14356 },
 ]
 
 [[package]]

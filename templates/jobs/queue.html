@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}Queue: {{ queue_name }} ({{ status }}){% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+    <div class="mb-8">
+        <a href="{{ url_for('jobs.index') }}" class="inline-block text-blue-600 hover:text-blue-800 mb-4">
+            <span class="inline-block mr-1">←</span> Back to Dashboard
+        </a>
+        <h1 class="text-3xl font-bold text-gray-800">Queue: {{ queue_name }}</h1>
+        <p class="text-gray-600">Viewing {{ status }} jobs</p>
+    </div>
+    
+    <!-- Status Filter -->
+    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Filter by Status</h2>
+        
+        <div class="flex space-x-2">
+            <a href="{{ url_for('jobs.view_queue', queue_name=queue_name, status='all') }}" 
+               class="px-4 py-2 rounded-md {% if status == 'all' %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                All
+            </a>
+            <a href="{{ url_for('jobs.view_queue', queue_name=queue_name, status='queued') }}" 
+               class="px-4 py-2 rounded-md {% if status == 'queued' %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                Queued
+            </a>
+            <a href="{{ url_for('jobs.view_queue', queue_name=queue_name, status='active') }}" 
+               class="px-4 py-2 rounded-md {% if status == 'active' %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                Active
+            </a>
+            <a href="{{ url_for('jobs.view_queue', queue_name=queue_name, status='finished') }}" 
+               class="px-4 py-2 rounded-md {% if status == 'finished' %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                Finished
+            </a>
+            <a href="{{ url_for('jobs.view_queue', queue_name=queue_name, status='failed') }}" 
+               class="px-4 py-2 rounded-md {% if status == 'failed' %}bg-blue-500 text-white{% else %}bg-gray-200 text-gray-700 hover:bg-gray-300{% endif %}">
+                Failed
+            </a>
+        </div>
+    </div>
+    
+    <!-- Jobs Table -->
+    <div class="bg-white rounded-lg shadow-md p-6">
+        <h2 class="text-2xl font-bold text-gray-800 mb-4">
+            Jobs ({{ jobs|length }})
+        </h2>
+        
+        {% if jobs %}
+        <div class="overflow-x-auto">
+            <table class="min-w-full bg-white">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700 text-left">
+                        <th class="py-3 px-4 font-semibold">ID</th>
+                        <th class="py-3 px-4 font-semibold">Function</th>
+                        <th class="py-3 px-4 font-semibold">Status</th>
+                        <th class="py-3 px-4 font-semibold">Created At</th>
+                        <th class="py-3 px-4 font-semibold">Started At</th>
+                        <th class="py-3 px-4 font-semibold">Ended At</th>
+                        <th class="py-3 px-4 font-semibold">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                    <tr class="border-b border-gray-200 hover:bg-gray-50">
+                        <td class="py-3 px-4">
+                            <a href="{{ url_for('jobs.view_job', job_id=job.id) }}" 
+                               class="text-blue-600 hover:text-blue-800 hover:underline">
+                                {{ job.id[:8] }}...
+                            </a>
+                        </td>
+                        <td class="py-3 px-4 font-mono text-sm">{{ job.func_name }}</td>
+                        <td class="py-3 px-4">
+                            {% if job.status == 'queued' %}
+                            <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">Queued</span>
+                            {% elif job.status == 'started' %}
+                            <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">Running</span>
+                            {% elif job.status == 'finished' %}
+                            <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">Finished</span>
+                            {% elif job.status == 'failed' %}
+                            <span class="inline-block bg-red-100 text-red-800 px-2 py-1 rounded-full text-xs">Failed</span>
+                            {% else %}
+                            <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">{{ job.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-4 text-sm text-gray-600">{{ job.created_at_str }}</td>
+                        <td class="py-3 px-4 text-sm text-gray-600">{{ job.started_at_str or 'N/A' }}</td>
+                        <td class="py-3 px-4 text-sm text-gray-600">{{ job.ended_at_str or 'N/A' }}</td>
+                        <td class="py-3 px-4">
+                            <div class="flex space-x-2">
+                                <a href="{{ url_for('jobs.view_job', job_id=job.id) }}" 
+                                   class="inline-block bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded text-sm">
+                                    View
+                                </a>
+                                
+                                {% if job.status == 'failed' %}
+                                <a href="{{ url_for('jobs.requeue_job', job_id=job.id) }}" 
+                                   class="inline-block bg-green-500 hover:bg-green-600 text-white py-1 px-3 rounded text-sm"
+                                   onclick="return confirm('Are you sure you want to requeue this job?');">
+                                    Requeue
+                                </a>
+                                {% endif %}
+                                
+                                <a href="{{ url_for('jobs.delete_job', job_id=job.id) }}" 
+                                   class="inline-block bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded text-sm"
+                                   onclick="return confirm('Are you sure you want to delete this job? This cannot be undone.');">
+                                    Delete
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="bg-gray-100 p-4 rounded">
+            <p class="text-gray-700">No jobs found with status: {{ status }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

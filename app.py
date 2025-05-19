@@ -323,6 +323,11 @@ try:
     from user_settings import user_settings_bp, init_user_settings
     init_user_settings(app)
     logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
+    
+    # Register jobs blueprint
+    from jobs_blueprint import init_app as init_jobs
+    init_jobs(app)
+    logger.info("Jobs blueprint registered successfully with prefix /jobs")
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
 
@@ -369,6 +374,17 @@ try:
         
 except Exception as e:
     logger.error(f"Error registering Admin blueprint: {str(e)}", exc_info=True)
+
+# Register jobs blueprint for background job processing
+try:
+    # Now import and initialize the jobs blueprint
+    from jobs_blueprint import init_app as init_jobs
+    init_jobs(app)
+    
+    # Log success
+    logger.info("Jobs blueprint registered successfully with prefix /jobs")
+except Exception as e:
+    logger.error(f"Error registering Jobs blueprint: {str(e)}", exc_info=True)
 
 # Helper function for admin access control
 def is_admin():
