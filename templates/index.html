@@ -91,23 +91,10 @@
             
             <div class="chat-messages" id="chat-messages">
                 <!-- Welcome message -->
-                <div class="welcome-container">
-                    <div class="welcome-icon">
-                        <img src="{{ url_for('static', filename='img/Gloriamundo256.webp') }}" alt="GloriaMundo Logo" style="width: 24px; height: 24px;">
+                <div class="welcome-container" style="display: flex; justify-content: center; align-items: center; height: 100%;">
+                    <div style="text-align: center;">
+                        <img src="{{ url_for('static', filename='img/Gloriamundo512.webp') }}" alt="GloriaMundo Logo" style="width: 30%; max-width: 300px; height: auto;">
                     </div>
-                    <h1 class="welcome-heading">Welcome to GloriaMundo!</h1>
-                    <p class="welcome-text">
-                        {% if current_user.is_authenticated %}
-                        Ask me anything and I'll provide helpful, accurate responses. Your conversations 
-                        are automatically saved and accessible from any device.
-                        {% else %}
-                        Ask me anything and I'll provide helpful, accurate responses. Sign in to 
-                        save your conversations and access them from any device.
-                        {% endif %}
-                    </p>
-                    <button class="example-question-btn" id="example-question-btn">
-                        <i class="fa-regular fa-lightbulb"></i> Try an example question
-                    </button>
                 </div>
                 
                 <!-- Chat messages will be added here dynamically -->
