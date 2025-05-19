@@ -43,13 +43,6 @@ def track_referral_cookie():
     2. This can happen any time before the user makes their first payment
     3. Once a customer is linked to an affiliate, they cannot be reassigned to another affiliate
     """
-    # Skip processing for static files and some routes to improve performance
-    if (request.path.startswith('/static/') or 
-        request.path.startswith('/favicon') or
-        request.path.startswith('/_/') or
-        request.path == '/health'):
-        return
-    
     try:
         # Check if the request has a referral code in URL
         ref_code = request.args.get('ref')
@@ -71,27 +64,22 @@ def track_referral_cookie():
                 
             # Set a flag to update cookies in the after_request handler
             g.update_cookies = True
-        
-        # Only check for stored referrals if user is authenticated and we haven't processed a referral yet
-        elif current_user.is_authenticated and not hasattr(g, 'update_cookies'):
-            # Limit frequency of checking for existing referrals
-            # Only process on main page loads or every 10th request (using a session counter)
-            counter = session.get('request_counter', 0)
-            session['request_counter'] = counter + 1
-            
-            if request.path == '/' or request.path.startswith('/chat') or counter % 10 == 0:
-                stored_ref_code = session.get('referral_code')
-                if stored_ref_code:
-                    # Get the affiliate from the stored referral code - only proceed if code exists
-                    affiliate = Affiliate.query.filter_by(referral_code=stored_ref_code).first()
-                    
-                    if affiliate and affiliate.status == AffiliateStatus.ACTIVE.value:
-                        # Try to create customer referral from stored session data
-                        create_customer_referral(current_user.id, affiliate.id, stored_ref_code)
+                
+        # If no ref_code in URL but user is authenticated, check session for stored referral code
+        elif current_user.is_authenticated:
+            stored_ref_code = session.get('referral_code')
+            if stored_ref_code:
+                # Get the affiliate from the stored referral code
+                affiliate = Affiliate.query.filter_by(referral_code=stored_ref_code).first()
+                
+                if affiliate and affiliate.status == AffiliateStatus.ACTIVE.value:
+                    # Try to create customer referral from stored session data
+                    create_customer_referral(current_user.id, affiliate.id, stored_ref_code)
                 
     except Exception as e:
-        # Log error but don't print full traceback to reduce log spam
+        import traceback
         logger.error(f"Error tracking referral cookie: {e}")
+        traceback.print_exc()
 
 def create_customer_referral(user_id, affiliate_id, ref_code):
     """
@@ -119,9 +107,7 @@ def create_customer_referral(user_id, affiliate_id, ref_code):
             logger.info(f"Created customer referral for user {user_id} from affiliate {affiliate_id} with code {ref_code}")
             return True
         else:
-            # Only log this in debug mode to reduce log spam
-            if current_app.debug:
-                logger.debug(f"User {user_id} already has a referral to affiliate {existing_referral.affiliate_id}, not creating another one")
+            logger.info(f"User {user_id} already has a referral to affiliate {existing_referral.affiliate_id}, not creating another one")
             return False
     except Exception as e:
         import traceback
