@@ -316,17 +316,22 @@ except Exception as e:
 
 # Register affiliate blueprint
 try:
+    # Import at the module level to avoid circular imports
     from affiliate import affiliate_bp
+    
+    # Register the blueprint with the app
     app.register_blueprint(affiliate_bp, url_prefix='/affiliate')
-    
-    # Register user settings blueprint
-    from user_settings import user_settings_bp, init_user_settings
-    init_user_settings(app)
     logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
-    
-    # Jobs blueprint is registered separately later in the file
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")
+    
+# Register user settings blueprint
+try:
+    from user_settings import user_settings_bp, init_user_settings
+    init_user_settings(app)
+    logger.info("User settings blueprint registered successfully")
+except Exception as e:
+    logger.error(f"Error registering User settings blueprint: {e}")
 
 # Register admin blueprint
 try:
@@ -374,9 +379,13 @@ except Exception as e:
 
 # Register jobs blueprint for background job processing
 try:
-    # Now import and initialize the jobs blueprint
-    from jobs_blueprint import init_app
-    init_app(app)
+    # Import the blueprint and its init function but do not run init_app here
+    # This prevents re-registration issues with context processors
+    import jobs_blueprint
+    
+    # Use the importable function directly, which now registers the context processor 
+    # correctly at the app level instead of the blueprint level
+    jobs_blueprint.init_app(app)
     
     # Log success
     logger.info("Jobs blueprint registered successfully with prefix /jobs")

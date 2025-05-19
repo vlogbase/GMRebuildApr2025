@@ -147,8 +147,22 @@ class RedisRateLimiter:
             Dict: Rate limit information
         """
         try:
-            # Get current count
-            count = self.redis.increment(key)
+            # Get current count - handle different Redis implementations
+            try:
+                count = self.redis.incr(key)
+            except AttributeError:
+                # Fallback implementation if incr is not available
+                current = self.redis.get(key)
+                if current is None:
+                    count = 1
+                    self.redis.set(key, count, self.expire_time)
+                else:
+                    try:
+                        count = int(current) + 1
+                        self.redis.set(key, count, self.expire_time)
+                    except (ValueError, TypeError):
+                        count = 1
+                        self.redis.set(key, count, self.expire_time)
             
             # Create timer key if it doesn't exist
             timer_key = f"{key}:reset"

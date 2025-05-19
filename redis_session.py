@@ -6,6 +6,7 @@ It allows sessions to be shared across multiple application instances, enabling
 horizontal scaling and improved reliability.
 """
 
+import os
 import json
 import pickle
 import uuid
@@ -76,8 +77,12 @@ class RedisSessionInterface(SessionInterface):
         """
         self.prefix = prefix
         self.expire = expire
-        self.redis = RedisCache(namespace=prefix, expire_time=expire)
+        
+        # Get Redis connection with proper error handling
         self.redis_conn = get_redis_connection(redis_url)
+        
+        # Create Redis cache with the connection
+        self.redis = RedisCache(namespace=prefix, expire_time=expire, redis_client=self.redis_conn)
     
     def _get_redis_session_key(self, sid):
         """Get the Redis key for a session ID"""
@@ -94,7 +99,9 @@ class RedisSessionInterface(SessionInterface):
         Returns:
             RedisSession: Session object
         """
-        sid = request.cookies.get(app.session_cookie_name)
+        # Get the session cookie name, default to 'session' if not set
+        session_cookie_name = getattr(app, 'session_cookie_name', 'session')
+        sid = request.cookies.get(session_cookie_name)
         
         if not sid:
             # Create a new session
@@ -133,7 +140,7 @@ class RedisSessionInterface(SessionInterface):
             if session.modified:
                 self.redis.delete(session.sid)
                 response.delete_cookie(
-                    app.session_cookie_name,
+                    getattr(app, 'session_cookie_name', 'session'),
                     domain=domain,
                     path=path
                 )
@@ -162,7 +169,7 @@ class RedisSessionInterface(SessionInterface):
             
         # Set cookie
         response.set_cookie(
-            app.session_cookie_name,
+            getattr(app, 'session_cookie_name', 'session'),
             session.sid,
             expires=self.get_expiration_time(app, session),
             httponly=httponly,
@@ -184,11 +191,33 @@ def setup_redis_session(app: Flask, expire: int = 86400, redis_url: Optional[str
     Returns:
         None
     """
-    # Use Redis as the session interface
+    # Use Redis as the session interface if available
     try:
-        session_interface = RedisSessionInterface(expire=expire, redis_url=redis_url)
-        app.session_interface = session_interface
-        logger.info("Redis session interface configured")
+        # First check if we can make a Redis connection at all
+        if redis_url is None:
+            # Try environment variables in order of preference
+            redis_url = os.environ.get('REDIS_HOST') or os.environ.get('REDIS_URL')
+            
+        if redis_url:
+            # Initialize Redis session interface
+            session_interface = RedisSessionInterface(expire=expire, redis_url=redis_url)
+            app.session_interface = session_interface
+            logger.info("Redis session interface configured successfully")
+        else:
+            # No Redis URL available, fallback to filesystem sessions
+            logger.warning("No Redis URL configured for sessions, using filesystem sessions")
+            
+            # Configure filesystem session
+            app.config['SESSION_TYPE'] = 'filesystem'
+            app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
+            app.config['SESSION_PERMANENT'] = False
+            app.config['SESSION_USE_SIGNER'] = True
+            app.config['SESSION_KEY_PREFIX'] = 'gloria_mundo_session:'
+            
+            from flask_session import Session
+            Session(app)
+            logger.info("Filesystem session configured as Redis fallback")
+            
     except Exception as e:
         logger.error(f"Error setting up Redis session interface: {e}")
-        logger.info("Falling back to Flask's default session interface")
+        logger.warning("Falling back to Flask's default session interface")

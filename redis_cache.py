@@ -60,30 +60,47 @@ def get_redis_connection(redis_url=None, use_ssl=None):
     Get or create a Redis connection
     
     Args:
-        redis_url: Redis URL (optional, defaults to REDIS_URL env var)
+        redis_url: Redis URL (optional, defaults to REDIS_HOST env var)
         use_ssl: Whether to use SSL (optional, detected from URL if not provided)
         
     Returns:
-        Redis client instance
+        Redis client instance or DummyRedis for graceful fallback
     """
     global _redis_connection
     
-    # Return existing connection if available
+    # Return existing connection if available, but verify it's still working
     if _redis_connection is not None:
-        return _redis_connection
+        try:
+            # Quick connection check with short timeout
+            _redis_connection.ping()
+            return _redis_connection
+        except Exception:
+            # Connection is no longer valid, reset it
+            logger.warning("Existing Redis connection failed, will create a new one")
+            _redis_connection = None
     
-    # Check if Redis is available
+    # Check if Redis module is available
     if redis is None:
         logger.error("Redis module not available")
-        return None
+        return DummyRedis()
+    
+    # Use shorter timeouts to prevent app hanging
+    connection_options = {
+        'socket_timeout': 2,          # Shorter socket timeout
+        'socket_connect_timeout': 2,  # Shorter connection timeout
+        'socket_keepalive': True,
+        'health_check_interval': 30,
+        'retry_on_timeout': True, 
+        'retry': 1                    # Limit retries to avoid long delays
+    }
     
     try:
         # Get Redis URL from environment if not provided
         if not redis_url:
             redis_url = os.environ.get('REDIS_HOST')
             if not redis_url:
-                logger.warning("REDIS_HOST environment variable not set, defaulting to localhost")
-                redis_url = 'redis://localhost:6379/0'
+                logger.warning("REDIS_HOST environment variable not set")
+                return DummyRedis()  # Return dummy immediately without trying localhost
         
         # Detect SSL from URL if not provided
         if use_ssl is None:
@@ -94,43 +111,58 @@ def get_redis_connection(redis_url=None, use_ssl=None):
         # Parse Redis URL and create connection
         if redis_url.startswith('redis://') or redis_url.startswith('rediss://'):
             # Use URL to create connection
-            connection_kwargs = {
-                'url': redis_url,
-                'socket_timeout': 5,
-                'socket_connect_timeout': 5,
-                'socket_keepalive': True,
-                'health_check_interval': 30,
-                'retry_on_timeout': True,
-            }
+            connection_options['url'] = redis_url
             
             if use_ssl:
-                connection_kwargs['ssl_cert_reqs'] = None
+                connection_options['ssl_cert_reqs'] = None
             
-            _redis_connection = redis.Redis(**connection_kwargs)
+            _redis_connection = redis.Redis(**connection_options)
         else:
-            # Assume host:port format
-            host, port = redis_url.split(':')
-            _redis_connection = redis.Redis(
-                host=host,
-                port=int(port),
-                socket_timeout=5,
-                socket_connect_timeout=5,
-                socket_keepalive=True,
-                health_check_interval=30,
-                retry_on_timeout=True,
-                ssl=use_ssl,
-                ssl_cert_reqs=None if use_ssl else 'none'
-            )
+            # Handle various possible formats for the Redis URL
+            try:
+                # Check if it has a host:port format
+                if ':' in redis_url:
+                    try:
+                        # Use maxsplit=1 to handle potential IPv6 addresses
+                        host, port_str = redis_url.split(':', 1)
+                        port = int(port_str)
+                    except ValueError:
+                        logger.warning(f"Invalid port in Redis URL: {redis_url}, using default 6379")
+                        host = redis_url
+                        port = 6379
+                    
+                    connection_options.update({
+                        'host': host,
+                        'port': port,
+                        'ssl': use_ssl
+                    })
+                else:
+                    # Just use as hostname with default port
+                    logger.info(f"Using Redis host {redis_url} with default port 6379")
+                    connection_options.update({
+                        'host': redis_url,
+                        'port': 6379,
+                        'ssl': use_ssl
+                    })
+                
+                if use_ssl:
+                    connection_options['ssl_cert_reqs'] = None
+                
+                _redis_connection = redis.Redis(**connection_options)
+            except Exception as e:
+                logger.error(f"Failed to parse Redis URL {redis_url}: {e}")
+                return DummyRedis()  # Return dummy without trying localhost
         
-        # Test connection
+        # Test connection with a short timeout
         _redis_connection.ping()
-        logger.info("Redis connection established")
+        logger.info("Redis connection established successfully")
         
         return _redis_connection
     
     except (RedisError, ValueError, ConnectionError) as e:
         logger.error(f"Error connecting to Redis: {e}")
         _redis_connection = None
+        logger.warning("Redis features will be unavailable - using fallback implementation")
         
         # Return dummy Redis for fallback
         return DummyRedis()

@@ -245,6 +245,26 @@ def action_clear_queue(queue_name):
     else:
         return redirect(url_for('jobs.queue_detail', queue_name=queue_name))
 
+# Define context processor function outside the init_app function
+# to avoid re-registration issues
+def job_status_classes():
+    """Provide job status CSS classes to templates"""
+    return {
+        'job_status_classes': {
+            'queued': 'bg-blue-100 text-blue-800',
+            'started': 'bg-yellow-100 text-yellow-800',
+            'deferred': 'bg-purple-100 text-purple-800',
+            'finished': 'bg-green-100 text-green-800',
+            'failed': 'bg-red-100 text-red-800',
+            'scheduled': 'bg-indigo-100 text-indigo-800',
+            'canceled': 'bg-gray-100 text-gray-800',
+            'unknown': 'bg-gray-100 text-gray-800'
+        }
+    }
+
+# DO NOT register the context processor at the module level to avoid re-registration issues
+# This will be done in init_app instead
+
 def init_app(app):
     """
     Initialize the jobs blueprint with a Flask application
@@ -255,21 +275,8 @@ def init_app(app):
     Returns:
         None
     """
-    # Define our job status classes context processor before registering the blueprint
-    @jobs_bp.app_context_processor
-    def job_status_classes():
-        return {
-            'job_status_classes': {
-                'queued': 'bg-blue-100 text-blue-800',
-                'started': 'bg-yellow-100 text-yellow-800',
-                'deferred': 'bg-purple-100 text-purple-800',
-                'finished': 'bg-green-100 text-green-800',
-                'failed': 'bg-red-100 text-red-800',
-                'scheduled': 'bg-indigo-100 text-indigo-800',
-                'canceled': 'bg-gray-100 text-gray-800',
-                'unknown': 'bg-gray-100 text-gray-800'
-            }
-        }
-    
-    # Register blueprint after setting up all decorators
+    # First register the blueprint
     app.register_blueprint(jobs_bp)
+    
+    # Then add the context processor to the app directly to avoid blueprint re-registration issues
+    app.context_processor(job_status_classes)

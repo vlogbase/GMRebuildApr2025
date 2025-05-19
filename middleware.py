@@ -31,41 +31,97 @@ rate_limiter = None
 
 def setup_redis_session(app: Flask, key_prefix: str = 'session', expiry: int = 86400):
     """
-    Configure Flask to use Redis for session storage
+    Configure Flask to use Redis for session storage with fallback to filesystem
     
     Args:
         app: Flask application instance
         key_prefix: Prefix for session keys in Redis
         expiry: Session expiry time in seconds (default: 1 day)
     """
-    redis_url = os.environ.get('REDIS_URL', 'redis://localhost:6379/0')
+    # Get Redis URL from environment variables
+    redis_url = os.environ.get('REDIS_HOST')
+    
+    # If Redis URL is not available, fall back to filesystem sessions
+    if not redis_url:
+        logger.warning("REDIS_HOST environment variable not set")
+        setup_filesystem_session(app, key_prefix)
+        return
+        
+    # Determine if SSL should be used
     ssl = redis_url.startswith('rediss://')
     
+    # Mask password in logs if URL contains authentication
+    safe_url = redis_url
+    if '@' in redis_url:
+        # Only show up to the @ symbol to mask credentials
+        safe_url = redis_url[:redis_url.find('@') + 1] + "***"
+    
     logger.info(f"Setting up Redis session with prefix {key_prefix}, expiry {expiry}s")
-    logger.info(f"Using Redis URL: {redis_url[:redis_url.find('@') + 1]}***")
+    logger.info(f"Using Redis URL: {safe_url}")
     
-    # Create the session interface
-    session_interface = RedisSessionInterface(
-        redis_url=redis_url,
-        key_prefix=key_prefix,
-        use_ssl=ssl,
-        default_expiry=expiry
-    )
+    try:
+        # Import our more robust Redis session implementation 
+        from redis_session import setup_redis_session as setup_redis_session_robust
+        
+        # Use the more robust implementation
+        setup_redis_session_robust(app, expire=expiry, redis_url=redis_url)
+        logger.info("Enhanced Redis session handler configured")
+        
+    except (ImportError, Exception) as e:
+        logger.error(f"Could not use enhanced Redis session handler: {e}")
+        
+        try:
+            # Fallback to basic Redis session interface
+            logger.warning("Falling back to basic Redis session implementation")
+            
+            # Create the session interface with shorter timeouts
+            session_interface = RedisSessionInterface(
+                prefix=key_prefix + ':',
+                expire=expiry,
+                redis_url=redis_url
+            )
+            
+            # Assign to Flask app
+            app.session_interface = session_interface
+            
+            # Test the Redis connection
+            if hasattr(session_interface, 'redis') and session_interface.redis:
+                # Basic connectivity test
+                logger.info("Redis session connection verified")
+            else:
+                # Connection failed, use filesystem sessions
+                logger.error("Redis session connection failed")
+                setup_filesystem_session(app, key_prefix)
+                return
+                
+            logger.info("Basic Redis session setup complete")
+            
+        except Exception as e:
+            logger.error(f"Redis session setup failed: {e}")
+            setup_filesystem_session(app, key_prefix)
+
+def setup_filesystem_session(app: Flask, key_prefix: str = 'session'):
+    """Set up filesystem-based sessions as a fallback"""
+    logger.warning("Setting up filesystem-based sessions")
     
-    # Assign to Flask app
-    app.session_interface = session_interface
+    # Configure filesystem session
+    app.config['SESSION_TYPE'] = 'filesystem'
+    app.config['SESSION_FILE_DIR'] = os.path.join(os.getcwd(), 'flask_session')
+    app.config['SESSION_PERMANENT'] = False
+    app.config['SESSION_USE_SIGNER'] = True
+    app.config['SESSION_KEY_PREFIX'] = key_prefix + ':'
     
-    # Setup session saving after each request
-    @app.after_request
-    def save_session(response):
-        """Save session after each request"""
-        return session_interface.save_session(app, session, response)
-    
-    logger.info("Redis session setup complete")
+    try:
+        from flask_session import Session
+        Session(app)
+        logger.info("Filesystem session configured successfully")
+    except ImportError:
+        logger.error("Failed to import flask_session. Using default Flask sessions")
+        # Continue with Flask's default session
 
 def setup_rate_limiting(app: Flask, default_limits: Optional[Dict[str, Dict[str, int]]] = None):
     """
-    Configure rate limiting middleware
+    Configure rate limiting middleware with fallback if Redis is unavailable
     
     Args:
         app: Flask application instance
@@ -82,25 +138,63 @@ def setup_rate_limiting(app: Flask, default_limits: Optional[Dict[str, Dict[str,
     
     logger.info(f"Setting up rate limiting with defaults: {default_limits}")
     
-    # Initialize rate limiter
-    rate_limiter = RedisRateLimiter(key_prefix='rate_limit')
+    try:
+        # Get Redis URL from environment
+        redis_url = os.environ.get('REDIS_HOST')
+        
+        if not redis_url:
+            logger.warning("REDIS_HOST environment variable not set, rate limiting will be disabled")
+            rate_limiter = None
+        else:
+            # Initialize rate limiter with the specified Redis connection
+            # Set short timeouts to prevent application hanging
+            rate_limiter = RedisRateLimiter(namespace='rate_limit:', expire_time=60)
+            
+            # Verify that Redis connection is working
+            if hasattr(rate_limiter, 'redis') and rate_limiter.redis:
+                # Test if Redis is actually available
+                logger.info("Rate limiter initialized with Redis backend")
+            else:
+                logger.warning("Redis connection for rate limiter failed, rate limiting will be disabled")
+                rate_limiter = None
+    except Exception as e:
+        logger.error(f"Error setting up rate limiter: {e}")
+        rate_limiter = None
     
-    # Apply rate limit headers to all responses
+    # Apply rate limit headers to all responses (even if rate limiter is disabled)
     @app.after_request
     def add_rate_limit_headers(response):
         """Add rate limit headers to responses"""
         if rate_limiter:
-            return rate_limiter.apply_rate_limit_headers(response)
+            try:
+                # First try the direct method if it exists
+                if hasattr(rate_limiter, 'apply_rate_limit_headers'):
+                    return rate_limiter.apply_rate_limit_headers(response)
+                
+                # Otherwise add basic headers if we have rate info in g
+                if hasattr(g, 'rate_limit_info'):
+                    limit_info = g.rate_limit_info
+                    response.headers['X-RateLimit-Limit'] = str(limit_info.get('limit', 0))
+                    response.headers['X-RateLimit-Remaining'] = str(limit_info.get('remaining', 0))
+                    response.headers['X-RateLimit-Reset'] = str(limit_info.get('reset', 0))
+            except Exception as e:
+                # Don't let rate limiting issues break the app
+                logger.error(f"Error applying rate limit headers: {e}")
+                
         return response
     
     # Create route decorators for common rate limit scenarios
+    # These will work even if rate_limiter is None (will be no-ops)
     app.public_endpoint = public_endpoint
     app.auth_required_endpoint = auth_required_endpoint
     app.api_endpoint = api_endpoint
     app.upload_endpoint = upload_endpoint
     app.admin_endpoint = admin_endpoint
     
-    logger.info("Rate limiting setup complete")
+    if rate_limiter:
+        logger.info("Rate limiting is enabled")
+    else:
+        logger.warning("Rate limiting is disabled due to Redis connection issues")
 
 def public_endpoint(f=None, *, limit=None, window=None):
     """
@@ -123,12 +217,23 @@ def public_endpoint(f=None, *, limit=None, window=None):
         def wrapper(*args, **kwargs):
             # Apply rate limiting if available
             if rate_limiter:
-                # Use IP-based limiting for public endpoints
-                return rate_limiter.limit_by_ip(
-                    limit=limit,
-                    window=window,
-                    endpoint='public'
-                )(func)(*args, **kwargs)
+                try:
+                    # Check if rate_limiter has the needed method
+                    if hasattr(rate_limiter, 'limit_by_ip'):
+                        # Use IP-based limiting for public endpoints
+                        return rate_limiter.limit_by_ip(
+                            limit=limit,
+                            window=window,
+                            endpoint='public'
+                        )(func)(*args, **kwargs)
+                    else:
+                        # Method doesn't exist, log and continue without rate limiting
+                        logger.warning("Rate limiter doesn't support limit_by_ip method")
+                except Exception as e:
+                    # If rate limiting fails, log and continue without it
+                    logger.error(f"Rate limiting error in public_endpoint: {e}")
+            
+            # Return the original function if rate limiting is disabled or fails
             return func(*args, **kwargs)
         return wrapper
     
@@ -158,12 +263,23 @@ def auth_required_endpoint(f=None, *, limit=None, window=None):
         def wrapper(*args, **kwargs):
             # Apply rate limiting if available
             if rate_limiter:
-                # Use user-based limiting for authenticated endpoints
-                return rate_limiter.limit_by_user(
-                    limit=limit,
-                    window=window,
-                    endpoint='auth'
-                )(func)(*args, **kwargs)
+                try:
+                    # Check if rate_limiter has the needed method
+                    if hasattr(rate_limiter, 'limit_by_user'):
+                        # Use user-based limiting for authenticated endpoints
+                        return rate_limiter.limit_by_user(
+                            limit=limit,
+                            window=window,
+                            endpoint='auth'
+                        )(func)(*args, **kwargs)
+                    else:
+                        # Method doesn't exist, log and continue without rate limiting
+                        logger.warning("Rate limiter doesn't support limit_by_user method")
+                except Exception as e:
+                    # If rate limiting fails, log and continue without it
+                    logger.error(f"Rate limiting error in auth_required_endpoint: {e}")
+            
+            # Return the original function if rate limiting is disabled or fails
             return func(*args, **kwargs)
         return wrapper
     

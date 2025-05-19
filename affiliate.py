@@ -18,7 +18,8 @@ from sqlalchemy import desc, func, and_, not_
 from flask_wtf.csrf import validate_csrf
 from werkzeug.security import generate_password_hash
 
-from app import db
+# Import database directly instead of through app to avoid circular imports
+from database import db
 from forms import AgreeToTermsForm, UpdatePayPalEmailForm
 from models import User, Affiliate, CustomerReferral, Commission, CommissionStatus, AffiliateStatus, PaymentStatus, Transaction
 from paypal_config import process_paypal_payout, check_payout_status, generate_sender_batch_id
