@@ -1,165 +1,254 @@
 {% extends "base.html" %}
 
-{% block title %}Job: {{ job.id[:8] }}{% endblock %}
+{% block title %}{{ title }}{% endblock %}
 
 {% block content %}
 <div class="container mx-auto px-4 py-8">
-    <div class="mb-8">
-        <a href="{{ url_for('jobs.view_queue', queue_name=job.queue_name) }}" class="inline-block text-blue-600 hover:text-blue-800 mb-4">
-            <span class="inline-block mr-1">←</span> Back to Queue
+    <div class="mb-6 flex items-center">
+        <a href="{{ url_for('jobs.dashboard') }}" class="text-blue-500 hover:text-blue-700 mr-4">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
+            </svg>
+            Back to Dashboard
         </a>
-        <h1 class="text-3xl font-bold text-gray-800">Job Details</h1>
-        <div class="mt-2">
-            <span class="font-mono text-sm text-gray-500">{{ job.id }}</span>
-        </div>
+        <h1 class="text-3xl font-bold">Job Details</h1>
     </div>
-
-    <!-- Job Summary -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">Summary</h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-                <table class="w-full">
-                    <tr class="border-b border-gray-200">
-                        <td class="py-3 font-semibold text-gray-700">Status</td>
-                        <td class="py-3">
-                            {% if job.status == 'queued' %}
-                            <span class="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm">Queued</span>
-                            {% elif job.status == 'started' %}
-                            <span class="inline-block bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-sm">Running</span>
-                            {% elif job.status == 'finished' %}
-                            <span class="inline-block bg-green-100 text-green-800 px-2 py-1 rounded-full text-sm">Finished</span>
-                            {% elif job.status == 'failed' %}
-                            <span class="inline-block bg-red-100 text-red-800 px-2 py-1 rounded-full text-sm">Failed</span>
-                            {% else %}
-                            <span class="inline-block bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-sm">{{ job.status }}</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    <tr class="border-b border-gray-200">
-                        <td class="py-3 font-semibold text-gray-700">Function</td>
-                        <td class="py-3 font-mono text-sm">{{ job.func_name }}</td>
-                    </tr>
-                    <tr class="border-b border-gray-200">
-                        <td class="py-3 font-semibold text-gray-700">Queue</td>
-                        <td class="py-3">{{ job.queue_name }}</td>
-                    </tr>
-                    <tr class="border-b border-gray-200">
-                        <td class="py-3 font-semibold text-gray-700">Worker</td>
-                        <td class="py-3">{{ job.worker_name or 'N/A' }}</td>
-                    </tr>
-                </table>
+    
+    <!-- Job Status Card -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div class="bg-white rounded-lg shadow-md p-6 lg:col-span-2">
+            <h2 class="text-xl font-semibold mb-4">Job Information</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">ID</p>
+                    <p class="font-medium">{{ job.id }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Function</p>
+                    <p class="font-medium">{{ job.func_name }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Description</p>
+                    <p class="font-medium">{{ job.description or 'No description' }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Queue</p>
+                    <p class="font-medium">{{ job.origin }}</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Status</p>
+                    <p>
+                        {% if job.status == 'finished' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Completed
+                        </span>
+                        {% elif job.status == 'failed' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                            Failed
+                        </span>
+                        {% elif job.status == 'started' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Running
+                        </span>
+                        {% elif job.status == 'queued' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            Queued
+                        </span>
+                        {% elif job.status == 'scheduled' %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                            Scheduled
+                        </span>
+                        {% else %}
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            {{ job.status }}
+                        </span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Timeout</p>
+                    <p class="font-medium">{{ job.timeout }} seconds</p>
+                </div>
+                <div>
+                    <p class="text-sm text-gray-500 mb-1">Time to Live (TTL)</p>
+                    <p class="font-medium">{{ job.ttl }} seconds</p>
+                </div>
             </div>
             
-            <div>
-                <table class="w-full">
-                    <tr class="border-b border-gray-200">
-                        <td class="py-3 font-semibold text-gray-700">Created</td>
-                        <td class="py-3">{{ job.created_at_str }}</td>
-                    </tr>
-                    <tr class="border-b border-gray-200">
-                        <td class="py-3 font-semibold text-gray-700">Enqueued</td>
-                        <td class="py-3">{{ job.enqueued_at_str or 'N/A' }}</td>
-                    </tr>
-                    <tr class="border-b border-gray-200">
-                        <td class="py-3 font-semibold text-gray-700">Started</td>
-                        <td class="py-3">{{ job.started_at_str or 'N/A' }}</td>
-                    </tr>
-                    <tr class="border-b border-gray-200">
-                        <td class="py-3 font-semibold text-gray-700">Ended</td>
-                        <td class="py-3">{{ job.ended_at_str or 'N/A' }}</td>
-                    </tr>
-                    {% if job.started_at and job.ended_at %}
-                    <tr class="border-b border-gray-200">
-                        <td class="py-3 font-semibold text-gray-700">Duration</td>
-                        <td class="py-3">{{ job.duration_seconds }} seconds</td>
-                    </tr>
-                    {% endif %}
-                </table>
+            <!-- Progress Bar (if applicable) -->
+            {% if job.progress > 0 and job.status == 'started' %}
+            <div class="mt-6">
+                <h3 class="text-lg font-medium mb-2">Progress</h3>
+                <div class="w-full bg-gray-200 rounded-full h-4">
+                    <div class="bg-blue-600 h-4 rounded-full" style="width: {{ job.progress }}%"></div>
+                </div>
+                <p class="text-sm text-gray-500 mt-1">{{ job.progress }}% complete</p>
             </div>
-        </div>
-        
-        <!-- Actions -->
-        <div class="mt-6 flex space-x-3">
-            {% if job.status == 'failed' %}
-            <a href="{{ url_for('jobs.requeue_job', job_id=job.id) }}" 
-               class="inline-block bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded"
-               onclick="return confirm('Are you sure you want to requeue this job?');">
-                Requeue Job
-            </a>
             {% endif %}
             
-            <a href="{{ url_for('jobs.delete_job', job_id=job.id) }}" 
-               class="inline-block bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded"
-               onclick="return confirm('Are you sure you want to delete this job? This cannot be undone.');">
-                Delete Job
-            </a>
+            <!-- Timestamps -->
+            <div class="mt-6">
+                <h3 class="text-lg font-medium mb-2">Timeline</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <p class="text-sm text-gray-500 mb-1">Created At</p>
+                        <p class="font-medium">{{ job.created_at_str or 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 mb-1">Enqueued At</p>
+                        <p class="font-medium">{{ job.enqueued_at_str or 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 mb-1">Started At</p>
+                        <p class="font-medium">{{ job.started_at_str or 'N/A' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-500 mb-1">Ended At</p>
+                        <p class="font-medium">{{ job.ended_at_str or 'N/A' }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions Card -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">Actions</h2>
+            <div class="space-y-4">
+                <!-- Cancel button for queued/scheduled jobs -->
+                {% if job.status == 'queued' or job.status == 'scheduled' %}
+                <form action="{{ url_for('jobs.cancel_job', job_id=job.id) }}" method="post">
+                    <button type="submit" class="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2 px-4 rounded">
+                        Cancel Job
+                    </button>
+                </form>
+                {% endif %}
+                
+                <!-- Requeue button for failed jobs -->
+                {% if job.status == 'failed' %}
+                <form action="{{ url_for('jobs.requeue_job', job_id=job.id) }}" method="post">
+                    <button type="submit" class="w-full bg-green-500 hover:bg-green-600 text-white font-medium py-2 px-4 rounded">
+                        Retry Job
+                    </button>
+                </form>
+                {% endif %}
+                
+                <!-- Auto-refresh toggle (for running jobs) -->
+                {% if job.status == 'started' %}
+                <div>
+                    <label class="flex items-center space-x-3 cursor-pointer">
+                        <input type="checkbox" id="autoRefreshToggle" checked class="form-checkbox h-5 w-5 text-blue-600">
+                        <span class="text-gray-700">Auto-refresh (10s)</span>
+                    </label>
+                </div>
+                {% endif %}
+                
+                <!-- Direct links to queue details -->
+                <div class="pt-4 border-t border-gray-200">
+                    <a href="{{ url_for('jobs.queue_detail', queue_name=job.origin) }}" class="text-blue-500 hover:text-blue-700 block mb-2">
+                        View Queue: {{ job.origin }}
+                    </a>
+                    <a href="{{ url_for('jobs.dashboard') }}" class="text-blue-500 hover:text-blue-700 block">
+                        Return to Dashboard
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
     
-    <!-- Job Arguments -->
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">Arguments</h2>
-        
-        {% if job.args or job.kwargs %}
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- Positional Arguments -->
-            {% if job.args %}
-            <div>
-                <h3 class="text-lg font-semibold text-gray-700 mb-2">Positional Arguments</h3>
-                <div class="bg-gray-50 p-4 rounded-md overflow-x-auto">
-                    <pre class="font-mono text-sm whitespace-pre-wrap">{{ job.args | tojson(indent=2) }}</pre>
+    <!-- Results / Arguments / Error Card -->
+    <div class="grid grid-cols-1 gap-6 mb-6">
+        <!-- Function Arguments -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">Function Arguments</h2>
+            {% if args_str or kwargs_str %}
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {% if args_str %}
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Positional Arguments</h3>
+                    <pre class="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm">{{ args_str }}</pre>
                 </div>
-            </div>
-            {% endif %}
-            
-            <!-- Keyword Arguments -->
-            {% if job.kwargs %}
-            <div>
-                <h3 class="text-lg font-semibold text-gray-700 mb-2">Keyword Arguments</h3>
-                <div class="bg-gray-50 p-4 rounded-md overflow-x-auto">
-                    <pre class="font-mono text-sm whitespace-pre-wrap">{{ job.kwargs | tojson(indent=2) }}</pre>
+                {% endif %}
+                
+                {% if kwargs_str %}
+                <div>
+                    <h3 class="text-lg font-medium mb-2">Keyword Arguments</h3>
+                    <pre class="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm">{{ kwargs_str }}</pre>
                 </div>
+                {% endif %}
             </div>
+            {% else %}
+            <p class="text-gray-500">No function arguments available.</p>
             {% endif %}
         </div>
-        {% else %}
-        <div class="bg-gray-100 p-4 rounded">
-            <p class="text-gray-700">No arguments provided for this job.</p>
+        
+        <!-- Result or Error -->
+        <div class="bg-white rounded-lg shadow-md p-6">
+            {% if job.status == 'finished' %}
+            <h2 class="text-xl font-semibold mb-4">Result</h2>
+            <pre class="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm">{{ job.result }}</pre>
+            {% elif job.status == 'failed' and exc_info_formatted %}
+            <h2 class="text-xl font-semibold mb-4 text-red-600">Error</h2>
+            <pre class="bg-red-50 p-4 rounded-lg overflow-x-auto text-sm text-red-900">{{ exc_info_formatted|safe }}</pre>
+            {% else %}
+            <h2 class="text-xl font-semibold mb-4">Result</h2>
+            <p class="text-gray-500">
+                {% if job.status == 'started' %}
+                Job is currently running. Check back later for results.
+                {% elif job.status == 'queued' %}
+                Job is queued and waiting to be processed.
+                {% elif job.status == 'scheduled' %}
+                Job is scheduled to run at a later time.
+                {% else %}
+                No result available.
+                {% endif %}
+            </p>
+            {% endif %}
+        </div>
+        
+        <!-- Metadata -->
+        {% if job.meta %}
+        <div class="bg-white rounded-lg shadow-md p-6">
+            <h2 class="text-xl font-semibold mb-4">Metadata</h2>
+            <pre class="bg-gray-50 p-4 rounded-lg overflow-x-auto text-sm">{{ job.meta }}</pre>
         </div>
         {% endif %}
     </div>
-    
-    <!-- Job Result or Error -->
-    {% if job.status == 'finished' and job.result %}
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">Result</h2>
-        
-        <div class="bg-gray-50 p-4 rounded-md overflow-x-auto max-h-96">
-            <pre class="font-mono text-sm whitespace-pre-wrap">{{ job.result | tojson(indent=2) }}</pre>
-        </div>
-    </div>
-    {% elif job.status == 'failed' and job.exc_info %}
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">Error</h2>
-        
-        <div class="bg-red-50 p-4 rounded-md overflow-x-auto max-h-96">
-            <div class="font-semibold text-red-700 mb-2">{{ job.exc_info.split('\n')[0] }}</div>
-            <pre class="font-mono text-sm text-red-800 whitespace-pre-wrap">{{ job.exc_info }}</pre>
-        </div>
-    </div>
-    {% endif %}
-    
-    <!-- Job Meta Information -->
-    {% if job.meta %}
-    <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 class="text-2xl font-bold text-gray-800 mb-4">Metadata</h2>
-        
-        <div class="bg-gray-50 p-4 rounded-md overflow-x-auto">
-            <pre class="font-mono text-sm whitespace-pre-wrap">{{ job.meta | tojson(indent=2) }}</pre>
-        </div>
-    </div>
-    {% endif %}
 </div>
+
+<!-- Auto-refresh script -->
+<script>
+    // Auto-refresh for running jobs
+    function setupAutoRefresh() {
+        const checkbox = document.getElementById('autoRefreshToggle');
+        if (!checkbox) return;
+        
+        let refreshTimer;
+        
+        function startAutoRefresh() {
+            refreshTimer = setTimeout(function() {
+                location.reload();
+            }, 10000);
+        }
+        
+        function stopAutoRefresh() {
+            clearTimeout(refreshTimer);
+        }
+        
+        checkbox.addEventListener('change', function() {
+            if (this.checked) {
+                startAutoRefresh();
+            } else {
+                stopAutoRefresh();
+            }
+        });
+        
+        // Start auto-refresh if checkbox is checked initially
+        if (checkbox.checked) {
+            startAutoRefresh();
+        }
+    }
+    
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', setupAutoRefresh);
+</script>
 {% endblock %}

@@ -1,40 +1,24 @@
 """
-Redis Session Interface for Flask
+Redis Session Module
 
-This module provides a SessionInterface implementation that uses Redis for
-server-side session storage. This allows for better scalability across
-multiple application instances.
+This module provides a Redis-backed session interface for Flask.
+It allows session data to be stored in Redis instead of signed cookies,
+which enables session sharing across multiple application instances.
 """
 
 import pickle
-import logging
+import uuid
 from datetime import timedelta
-from uuid import uuid4
-
 from flask.sessions import SessionInterface, SessionMixin
 from werkzeug.datastructures import CallbackDict
-from redis_cache import redis_cache
+from flask import current_app
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("RedisSession")
+from redis_cache import get_redis_connection
 
 class RedisSession(CallbackDict, SessionMixin):
-    """
-    Custom session implementation that works with Redis storage.
-    Extends CallbackDict for modification tracking and SessionMixin for Flask compatibility.
-    """
+    """Redis-backed session implementation"""
     
-    def __init__(self, initial=None, sid=None, new=False, prefix='session:'):
-        """
-        Initialize a new Redis session.
-        
-        Args:
-            initial: Initial session data
-            sid: Session ID
-            new: Whether this is a new session
-            prefix: Redis key prefix for the session
-        """
+    def __init__(self, initial=None, sid=None, new=False):
         def on_update(self):
             self.modified = True
             
@@ -42,163 +26,155 @@ class RedisSession(CallbackDict, SessionMixin):
         self.sid = sid
         self.new = new
         self.modified = False
-        self.prefix = prefix
-
 
 class RedisSessionInterface(SessionInterface):
-    """
-    A Flask session interface that uses Redis for storage.
-    This allows sessions to be shared across multiple application instances.
-    """
+    """Interface for Redis-backed sessions"""
     
-    serializer = pickle
-    session_class = RedisSession
-    
-    def __init__(self, prefix='session:', permanent_lifetime=timedelta(days=31)):
+    def __init__(self, prefix='session:', expiry=86400, key_prefix=''):
         """
-        Initialize the Redis session interface.
+        Initialize the Redis session interface
         
         Args:
-            prefix: Redis key prefix for sessions
-            permanent_lifetime: Default lifetime for permanent sessions
+            prefix (str): Prefix to use for session keys in Redis
+            expiry (int): Session expiration time in seconds (default: 1 day)
+            key_prefix (str): Additional prefix for session keys
         """
         self.prefix = prefix
-        self.permanent_lifetime = permanent_lifetime
-        
-    def _get_redis_expiration_time(self, app, session):
-        """
-        Get the session expiration time based on Flask app config.
-        
-        Args:
-            app: Flask application
-            session: Session object
-            
-        Returns:
-            int: Expiration time in seconds
-        """
-        if session.permanent:
-            return app.permanent_session_lifetime.total_seconds()
-        return 86400  # 1 day for non-permanent sessions
+        self.expiry = expiry
+        self.key_prefix = key_prefix
+        self._redis = None
+    
+    def _get_redis(self):
+        """Get a Redis connection"""
+        if self._redis is None:
+            self._redis = get_redis_connection()
+        return self._redis
+    
+    def _get_prefix(self):
+        """Get the full session key prefix"""
+        if self.key_prefix:
+            return f'{self.key_prefix}:{self.prefix}'
+        return self.prefix
+    
+    def _generate_sid(self):
+        """Generate a unique session ID"""
+        return str(uuid.uuid4())
+    
+    def _get_redis_session_key(self, sid):
+        """Get the Redis key for a session"""
+        return f'{self._get_prefix()}{sid}'
     
     def open_session(self, app, request):
         """
-        Open an existing session or create a new one.
+        Open a session from the request
         
         Args:
-            app: Flask application
-            request: Flask request object
+            app: The Flask app
+            request: The request object
             
         Returns:
             RedisSession: The session object
         """
-        # Check Redis availability
-        if not redis_cache.is_available():
-            logger.warning("Redis unavailable. Falling back to Flask's default session implementation.")
-            return None
+        sid = request.cookies.get(app.session_cookie_name)
         
-        # Get the session ID from the cookie
-        # Use a default cookie name if app.session_cookie_name is not available
-        cookie_name = getattr(app, 'session_cookie_name', 'session')
-        sid = request.cookies.get(cookie_name)
-        
-        # If no session ID, create a new session
         if not sid:
-            sid = str(uuid4())
-            return self.session_class(sid=sid, new=True, prefix=self.prefix)
+            # No session ID, create a new session
+            sid = self._generate_sid()
+            return RedisSession(sid=sid, new=True)
         
         # Try to load the session from Redis
-        session_key = f"{self.prefix}{sid}"
-        val = redis_cache.get(session_key)
+        redis_key = self._get_redis_session_key(sid)
+        session_data = None
         
-        if val is not None:
-            try:
-                data = self.serializer.loads(val)
-                return self.session_class(data, sid=sid, prefix=self.prefix)
-            except Exception as e:
-                logger.error(f"Error deserializing session: {e}")
+        try:
+            val = self._get_redis().get(redis_key)
+            if val is not None:
+                session_data = pickle.loads(val)
+        except Exception as e:
+            current_app.logger.error(f"Error loading session: {str(e)}")
+            # If there's an error, create a new session
+            sid = self._generate_sid()
+            return RedisSession(sid=sid, new=True)
         
-        # If session doesn't exist or is invalid, create a new one
-        return self.session_class(sid=sid, new=True, prefix=self.prefix)
+        if session_data is not None:
+            # Session exists, return it
+            return RedisSession(session_data, sid=sid)
+        
+        # Session doesn't exist or is expired, create a new one
+        sid = self._generate_sid()
+        return RedisSession(sid=sid, new=True)
     
     def save_session(self, app, session, response):
         """
-        Save the session to Redis.
+        Save the session
         
         Args:
-            app: Flask application
-            session: Session object
-            response: Flask response object
+            app: The Flask app
+            session: The session object
+            response: The response object
         """
-        # Check Redis availability
-        if not redis_cache.is_available():
-            logger.warning("Redis unavailable. Cannot save session.")
-            return
+        domain = self.get_cookie_domain(app)
+        path = self.get_cookie_path(app)
         
-        # Use a default cookie name if app.session_cookie_name is not available
-        cookie_name = getattr(app, 'session_cookie_name', 'session')
-        
-        # Don't save if session should be deleted
+        # Don't save empty sessions
         if not session:
             if session.modified:
-                session_key = f"{self.prefix}{session.sid}"
-                redis_cache.delete(session_key)
+                try:
+                    # Delete the session from Redis
+                    self._get_redis().delete(self._get_redis_session_key(session.sid))
+                except Exception as e:
+                    current_app.logger.error(f"Error deleting session: {str(e)}")
+                
+                # Delete the cookie
                 response.delete_cookie(
-                    cookie_name,
-                    domain=self.get_cookie_domain(app),
-                    path=self.get_cookie_path(app)
+                    app.session_cookie_name,
+                    domain=domain,
+                    path=path
                 )
             return
         
-        # Save if the session is modified or new
-        if not session.modified and not session.new:
-            return
-        
-        # Get session expiration
-        expiry = self._get_redis_expiration_time(app, session)
-        
-        # Create Redis key
-        session_key = f"{self.prefix}{session.sid}"
-        
-        # Serialize session data
-        try:
-            val = self.serializer.dumps(dict(session))
-            redis_cache.set(session_key, val, int(expiry))
-        except Exception as e:
-            logger.error(f"Error saving session to Redis: {e}")
-        
-        # Set the cookie with a default name if session_cookie_name is not available
-        cookie_name = getattr(app, 'session_cookie_name', 'session') 
-        response.set_cookie(
-            cookie_name,
-            session.sid,
-            expires=self.get_expiration_time(app, session),
-            httponly=True,
-            domain=self.get_cookie_domain(app),
-            path=self.get_cookie_path(app),
-            secure=self.get_cookie_secure(app),
-            samesite=self.get_cookie_samesite(app)
-        )
+        # Do we need to set the cookie?
+        if session.modified or session.new:
+            # Set expiration
+            expiry = self.get_expiration_time(app, session)
+            
+            # Determine Redis expiration time
+            if expiry is None:
+                redis_exp = self.expiry
+            else:
+                redis_exp = int(total_seconds(expiry - timedelta(seconds=1)))
+                
+            # Save to Redis
+            redis_key = self._get_redis_session_key(session.sid)
+            session_data = pickle.dumps(dict(session))
+            
+            try:
+                self._get_redis().setex(redis_key, redis_exp, session_data)
+            except Exception as e:
+                current_app.logger.error(f"Error saving session: {str(e)}")
+            
+            # Set the cookie
+            response.set_cookie(
+                app.session_cookie_name,
+                session.sid,
+                expires=expiry,
+                httponly=True,
+                domain=domain,
+                path=path,
+                secure=self.get_cookie_secure(app),
+                samesite=self.get_cookie_samesite(app)
+            )
 
-
-def setup_redis_session(app):
+def total_seconds(td):
     """
-    Set up Redis sessions for a Flask application.
+    Get the total seconds from a timedelta
+    
+    This is needed for compatibility with Python < 2.7
     
     Args:
-        app: Flask application to configure
+        td (timedelta): The timedelta
+        
+    Returns:
+        int: Total seconds
     """
-    # Check if Redis is available
-    if not redis_cache.is_available():
-        logger.warning("Redis is not available. Continuing with default session implementation.")
-        return
-    
-    # Configure the app to use Redis sessions
-    app.session_interface = RedisSessionInterface()
-    
-    # Set secure cookie flag in production
-    app.config.setdefault('SESSION_COOKIE_SECURE', app.config.get('ENV', '') == 'production')
-    
-    # Set session lifetime (default: 30 days)
-    app.config.setdefault('PERMANENT_SESSION_LIFETIME', timedelta(days=30))
-    
-    logger.info("Redis session interface configured successfully.")
+    return td.days * 24 * 60 * 60 + td.seconds

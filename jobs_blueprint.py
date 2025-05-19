@@ -1,410 +1,319 @@
 """
-Jobs Blueprint Module for GloriaMundo Chatbot
+Jobs Blueprint Module
 
-This module provides routes for managing and monitoring background jobs.
-It integrates with Redis Queue (RQ) for job processing.
+This module provides Flask routes for managing background jobs.
+It includes a dashboard for viewing and managing job status.
 """
 
 import os
 import json
-import logging
+import time
 from datetime import datetime
-from flask import Blueprint, render_template, request, jsonify, abort, redirect, url_for, current_app
-from flask_login import login_required, current_user
-from rq import Queue, Worker
-from rq.job import Job
+from typing import Dict, List, Optional, Any
+from functools import wraps
+
+from flask import Blueprint, request, render_template, jsonify, redirect, url_for, flash, current_app, g
+from rq.job import Job, JobStatus
 from rq.exceptions import NoSuchJobError
-from rq.registry import FinishedJobRegistry, FailedJobRegistry, StartedJobRegistry
-from redis_cache import redis_cache
-from jobs import queues
 
-logger = logging.getLogger(__name__)
+from jobs import job_manager
+from redis_cache import get_redis_connection
 
-# Create the Blueprint
-jobs_bp = Blueprint('jobs', __name__, template_folder='templates')
+# Create blueprint
+jobs_bp = Blueprint('jobs', __name__, url_prefix='/jobs', template_folder='templates/jobs')
 
-@jobs_bp.route('/')
-@login_required
-def index():
+# Decorator for admin authentication
+def admin_required(f):
+    """Decorator to restrict access to admin users only"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        # Check if the user is logged in and is an admin
+        if not hasattr(g, 'user') or not g.user:
+            flash('Please log in to access this page.', 'error')
+            return redirect(url_for('login', next=request.url))
+        
+        # Check if the user is an admin (specific to your application)
+        if not hasattr(g.user, 'is_admin') or not g.user.is_admin:
+            flash('You do not have permission to access this page.', 'error')
+            return redirect(url_for('index'))
+        
+        return f(*args, **kwargs)
+    return decorated_function
+
+# Utility functions
+def format_job_for_display(job: Job) -> Dict[str, Any]:
     """
-    Display the jobs dashboard
-    """
-    # Verify that user is an admin
-    if not is_admin():
-        abort(403, "Access denied: Admin privileges required")
+    Format a job for display in templates
     
-    # Get all queues and stats
-    stats = {
-        'queues': list(queues.keys()),
-        'queued_jobs': 0,
-        'active_workers': 0,
-        'workers': [],
-        'finished_jobs': 0,
-        'failed_jobs': 0
+    Args:
+        job (Job): The job to format
+        
+    Returns:
+        dict: Formatted job data
+    """
+    # Get timestamps as strings
+    created_at_str = job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else None
+    ended_at_str = job.ended_at.strftime('%Y-%m-%d %H:%M:%S') if job.ended_at else None
+    enqueued_at_str = job.enqueued_at.strftime('%Y-%m-%d %H:%M:%S') if job.enqueued_at else None
+    started_at_str = job.started_at.strftime('%Y-%m-%d %H:%M:%S') if job.started_at else None
+    
+    # Get the result as a string
+    if job.is_finished:
+        try:
+            result = str(job.result)
+        except Exception as e:
+            result = f"Error getting result: {str(e)}"
+    elif job.is_failed:
+        result = f"Job failed: {job.exc_info}"
+    elif job.is_started:
+        result = "Job is running..."
+    else:
+        result = "Job has not completed yet"
+    
+    # Get meta data as a string
+    meta = json.dumps(job.meta, indent=2) if job.meta else None
+    
+    # Format the job data
+    job_data = {
+        'id': job.id,
+        'status': job.get_status(),
+        'func_name': job.func_name,
+        'description': job.description,
+        'origin': job.origin,
+        'created_at': job.created_at,
+        'created_at_str': created_at_str,
+        'enqueued_at': job.enqueued_at,
+        'enqueued_at_str': enqueued_at_str,
+        'started_at': job.started_at,
+        'started_at_str': started_at_str,
+        'ended_at': job.ended_at,
+        'ended_at_str': ended_at_str,
+        'result': result,
+        'meta': meta,
+        'timeout': job.timeout,
+        'ttl': job.ttl,
+        'is_failed': job.is_failed,
+        'is_finished': job.is_finished,
+        'is_queued': job.is_queued,
+        'is_started': job.is_started,
+        'dependencies': [dep.id for dep in job.dependencies] if job.dependencies else [],
+        'progress': job.meta.get('progress', 0) if job.meta else 0
     }
     
-    queue_stats = []
-    for name, queue in queues.items():
-        finished_registry = FinishedJobRegistry(queue=queue)
-        failed_registry = FailedJobRegistry(queue=queue)
-        started_registry = StartedJobRegistry(queue=queue)
-        
-        queue_info = {
-            'name': name,
-            'count': queue.count,
-            'active_count': len(started_registry),
-            'finished_count': len(finished_registry),
-            'failed_count': len(failed_registry)
-        }
-        queue_stats.append(queue_info)
-        
-        # Update total stats
-        stats['queued_jobs'] += queue.count
-        stats['finished_jobs'] += len(finished_registry)
-        stats['failed_jobs'] += len(failed_registry)
-    
-    # Get worker information
-    workers = Worker.all(connection=redis_cache.get_redis())
-    worker_info = []
-    for worker in workers:
-        # Get the current job for this worker, if any
-        current_job = worker.get_current_job()
-        worker_data = {
-            'name': worker.name,
-            'pid': getattr(worker, 'pid', 'N/A'),
-            'queues': worker.queues,
-            'state': 'busy' if current_job else 'idle',
-            'current_job': current_job,
-            'birth_date': worker.birth_date.strftime('%Y-%m-%d %H:%M:%S') if hasattr(worker, 'birth_date') else 'N/A'
-        }
-        worker_info.append(worker_data)
-    
-    stats['workers'] = worker_info
-    stats['active_workers'] = len([w for w in worker_info if w['state'] == 'busy'])
-    
-    return render_template('jobs/dashboard.html', 
-                           queues=queue_stats, 
-                           workers=worker_info, 
-                           stats=stats)
+    return job_data
 
-@jobs_bp.route('/queue/<queue_name>')
-@jobs_bp.route('/queue/<queue_name>/<status>')
-@login_required
-def view_queue(queue_name, status='all'):
-    """
-    View jobs in a specific queue with optional status filtering
+# Routes
+
+@jobs_bp.route('/')
+@admin_required
+def dashboard():
+    """Job dashboard showing all queues and jobs"""
+    # Get queue statistics
+    queue_stats = job_manager.get_queue_stats()
     
-    Args:
-        queue_name (str): Name of the queue to view
-        status (str, optional): Status filter ('all', 'queued', 'active', 'finished', 'failed')
-    """
-    if not is_admin():
-        abort(403, "Access denied: Admin privileges required")
+    # Get active workers
+    workers = job_manager.get_active_workers()
     
-    if queue_name not in queues:
-        abort(404, f"Queue '{queue_name}' not found")
+    # Get recent jobs
+    recent_jobs = []
+    for queue_name in job_manager.queues.keys():
+        # Get some jobs from each queue
+        queue_jobs = job_manager.get_jobs(queue_name, status=None, start=0, end=10)
+        for job in queue_jobs:
+            recent_jobs.append(format_job_for_display(job))
     
-    queue = queues[queue_name]
+    # Sort recent jobs by creation time
+    recent_jobs.sort(key=lambda j: j['created_at'] if j['created_at'] else datetime.min, reverse=True)
     
-    # Pagination parameters
-    page = int(request.args.get('page', 1))
-    per_page = int(request.args.get('per_page', 10))
+    # Limit to the 20 most recent jobs
+    recent_jobs = recent_jobs[:20]
     
-    # Get jobs based on status
-    jobs = []
+    return render_template(
+        'jobs/dashboard.html',
+        title='Job Dashboard',
+        queue_stats=queue_stats,
+        workers=workers,
+        recent_jobs=recent_jobs
+    )
+
+@jobs_bp.route('/queues/<queue_name>')
+@admin_required
+def queue_detail(queue_name):
+    """Detail view for a specific queue"""
+    # Get queue statistics
+    queue_stats = job_manager.get_queue_stats(queue_name)
+    
+    # Get active jobs
+    active_jobs = job_manager.get_jobs(queue_name, status='started', start=0, end=100)
+    active_jobs = [format_job_for_display(job) for job in active_jobs]
+    
+    # Get queued jobs
+    queued_jobs = job_manager.get_jobs(queue_name, status=None, start=0, end=100)
+    queued_jobs = [format_job_for_display(job) for job in queued_jobs]
+    
+    # Get failed jobs
+    failed_jobs = job_manager.get_jobs(queue_name, status='failed', start=0, end=100)
+    failed_jobs = [format_job_for_display(job) for job in failed_jobs]
+    
+    # Get finished jobs
+    finished_jobs = job_manager.get_jobs(queue_name, status='finished', start=0, end=100)
+    finished_jobs = [format_job_for_display(job) for job in finished_jobs]
+    
+    # Get scheduled jobs
+    scheduled_jobs = job_manager.get_jobs(queue_name, status='scheduled', start=0, end=100)
+    scheduled_jobs = [format_job_for_display(job) for job in scheduled_jobs]
+    
+    return render_template(
+        'jobs/queue_detail.html',
+        title=f'Queue: {queue_name}',
+        queue_stats=queue_stats,
+        active_jobs=active_jobs,
+        queued_jobs=queued_jobs,
+        failed_jobs=failed_jobs,
+        finished_jobs=finished_jobs,
+        scheduled_jobs=scheduled_jobs
+    )
+
+@jobs_bp.route('/jobs/<job_id>')
+@admin_required
+def job_detail(job_id):
+    """Detail view for a specific job"""
+    # Fetch the job
+    job = job_manager.fetch_job(job_id)
+    
+    if job is None:
+        flash(f'Job {job_id} not found', 'error')
+        return redirect(url_for('jobs.dashboard'))
+    
+    # Format the job
+    job_data = format_job_for_display(job)
+    
+    # Get job arguments
+    args_str = None
+    kwargs_str = None
     
     try:
-        if status == 'queued' or status == 'all':
-            # Get all job IDs then apply pagination
-            all_job_ids = queue.job_ids
-            job_ids = all_job_ids[(page-1)*per_page:page*per_page]
-            for job_id in job_ids:
-                try:
-                    job = Job.fetch(job_id, connection=redis_cache.get_redis())
-                    jobs.append({
-                        'id': job.id,
-                        'status': 'queued',
-                        'created_at': job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else 'N/A',
-                        'description': job.description
-                    })
-                except NoSuchJobError:
-                    continue
-    
-        if status == 'active' or status == 'all':
-            registry = StartedJobRegistry(queue=queue)
-            job_ids = registry.get_job_ids()
-            for job_id in job_ids:
-                try:
-                    job = Job.fetch(job_id, connection=redis_cache.get_redis())
-                    jobs.append({
-                        'id': job.id,
-                        'status': 'active',
-                        'created_at': job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else 'N/A',
-                        'description': job.description
-                    })
-                except NoSuchJobError:
-                    continue
-    
-        if status == 'finished' or status == 'all':
-            registry = FinishedJobRegistry(queue=queue)
-            job_ids = registry.get_job_ids()
-            for job_id in job_ids:
-                try:
-                    job = Job.fetch(job_id, connection=redis_cache.get_redis())
-                    jobs.append({
-                        'id': job.id,
-                        'status': 'finished',
-                        'created_at': job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else 'N/A',
-                        'description': job.description
-                    })
-                except NoSuchJobError:
-                    continue
-    
-        if status == 'failed' or status == 'all':
-            registry = FailedJobRegistry(queue=queue)
-            job_ids = registry.get_job_ids()
-            for job_id in job_ids:
-                try:
-                    job = Job.fetch(job_id, connection=redis_cache.get_redis())
-                    jobs.append({
-                        'id': job.id,
-                        'status': 'failed',
-                        'created_at': job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else 'N/A',
-                        'description': job.description
-                    })
-                except NoSuchJobError:
-                    continue
-                    
+        # Get the job's function arguments
+        if hasattr(job, 'args') and job.args:
+            args_str = json.dumps(job.args, indent=2)
+        if hasattr(job, 'kwargs') and job.kwargs:
+            kwargs_str = json.dumps(job.kwargs, indent=2)
     except Exception as e:
-        logger.error(f"Error fetching jobs for queue {queue_name}: {str(e)}")
-        abort(500, f"Error fetching jobs: {str(e)}")
-        
-    return render_template('jobs/queue.html', 
-                           queue_name=queue_name, 
-                           job_status=status, 
-                           jobs=jobs, 
-                           page=page, 
-                           per_page=per_page)
-
-@jobs_bp.route('/job/<job_id>')
-@login_required
-def view_job(job_id):
-    """
-    View details of a specific job
+        args_str = f"Error getting arguments: {str(e)}"
+        kwargs_str = None
     
-    Args:
-        job_id (str): ID of the job to view
-    """
-    if not is_admin():
-        abort(403, "Access denied: Admin privileges required")
+    # Format exception info for display
+    exc_info_formatted = None
+    if job.exc_info:
+        exc_info_formatted = job.exc_info.replace('\n', '<br>')
     
-    try:
-        job = Job.fetch(job_id, connection=redis_cache.get_redis())
-        
-        # Format data for display
-        created_at_str = job.created_at.strftime('%Y-%m-%d %H:%M:%S') if job.created_at else 'N/A'
-        ended_at_str = job.ended_at.strftime('%Y-%m-%d %H:%M:%S') if job.ended_at else 'N/A'
-        enqueued_at_str = job.enqueued_at.strftime('%Y-%m-%d %H:%M:%S') if job.enqueued_at else 'N/A'
-        started_at_str = job.started_at.strftime('%Y-%m-%d %H:%M:%S') if job.started_at else 'N/A'
-        
-        # Add the formatted dates as new attributes to avoid trying to modify Job properties
-        job.created_at_str = created_at_str
-        job.ended_at_str = ended_at_str
-        job.enqueued_at_str = enqueued_at_str
-        job.started_at_str = started_at_str
-            
-        # Format result and args/kwargs for display
-        if job.result:
-            try:
-                if isinstance(job.result, (dict, list)):
-                    job.result = json.dumps(job.result, indent=2)
-                else:
-                    job.result = str(job.result)
-            except:
-                job.result = str(job.result)
-        
-        # Format args and kwargs
-        job.args = ', '.join([str(arg) for arg in job.args]) if job.args else ''
-        
-        if job.kwargs:
-            formatted_kwargs = []
-            for key, value in job.kwargs.items():
-                if isinstance(value, (dict, list)):
-                    formatted_value = json.dumps(value)
-                else:
-                    formatted_value = str(value)
-                formatted_kwargs.append(f"{key}={formatted_value}")
-            job.kwargs = ', '.join(formatted_kwargs)
-            
-        # Format meta data
-        if job.meta:
-            job.meta = json.dumps(job.meta, indent=2)
-            
-        return render_template('jobs/job_detail.html', job=job)
-        
-    except NoSuchJobError:
-        abort(404, f"Job {job_id} not found")
-    except Exception as e:
-        logger.error(f"Error fetching job {job_id}: {str(e)}")
-        abort(500, f"Error fetching job: {str(e)}")
+    return render_template(
+        'jobs/job_detail.html',
+        title=f'Job: {job_id}',
+        job=job_data,
+        args_str=args_str,
+        kwargs_str=kwargs_str,
+        exc_info_formatted=exc_info_formatted
+    )
 
-@jobs_bp.route('/job/<job_id>/requeue', methods=['POST'])
-@login_required
+@jobs_bp.route('/jobs/<job_id>/cancel', methods=['POST'])
+@admin_required
+def cancel_job(job_id):
+    """Cancel a job"""
+    result = job_manager.cancel_job(job_id)
+    
+    if result:
+        flash(f'Job {job_id} has been cancelled', 'success')
+    else:
+        flash(f'Could not cancel job {job_id}', 'error')
+    
+    # Check if we should redirect back to a specific page
+    next_url = request.args.get('next')
+    if next_url:
+        return redirect(next_url)
+    
+    return redirect(url_for('jobs.job_detail', job_id=job_id))
+
+@jobs_bp.route('/jobs/<job_id>/requeue', methods=['POST'])
+@admin_required
 def requeue_job(job_id):
-    """
-    Requeue a failed job
+    """Requeue a failed job"""
+    job = job_manager.requeue_job(job_id)
     
-    Args:
-        job_id (str): ID of the job to requeue
-    """
-    if not is_admin():
-        abort(403, "Access denied: Admin privileges required")
+    if job:
+        flash(f'Job {job_id} has been requeued', 'success')
+    else:
+        flash(f'Could not requeue job {job_id}', 'error')
     
-    try:
-        job = Job.fetch(job_id, connection=redis_cache.get_redis())
-        
-        # Get the original queue
-        queue = queues.get(job.origin) or queues['default']
-        
-        # Requeue the job
-        new_job = queue.enqueue_job(job)
-        
-        return redirect(url_for('jobs.view_job', job_id=new_job.id))
-        
-    except NoSuchJobError:
-        abort(404, f"Job {job_id} not found")
-    except Exception as e:
-        logger.error(f"Error requeuing job {job_id}: {str(e)}")
-        abort(500, f"Error requeuing job: {str(e)}")
+    # Check if we should redirect back to a specific page
+    next_url = request.args.get('next')
+    if next_url:
+        return redirect(next_url)
+    
+    return redirect(url_for('jobs.job_detail', job_id=job_id))
 
-@jobs_bp.route('/job/<job_id>/delete', methods=['POST'])
-@login_required
-def delete_job(job_id):
-    """
-    Delete a job from the queue and registry
+@jobs_bp.route('/queues/<queue_name>/clear', methods=['POST'])
+@admin_required
+def clear_queue(queue_name):
+    """Remove all jobs from a queue"""
+    result = job_manager.clear_queue(queue_name)
     
-    Args:
-        job_id (str): ID of the job to delete
-    """
-    if not is_admin():
-        abort(403, "Access denied: Admin privileges required")
+    if result:
+        flash(f'Queue {queue_name} has been cleared', 'success')
+    else:
+        flash(f'Could not clear queue {queue_name}', 'error')
     
-    try:
-        job = Job.fetch(job_id, connection=redis_cache.get_redis())
-        queue_name = job.origin
-        
-        # Delete the job
-        job.delete()
-        
-        return redirect(url_for('jobs.view_queue', queue_name=queue_name))
-        
-    except NoSuchJobError:
-        abort(404, f"Job {job_id} not found")
-    except Exception as e:
-        logger.error(f"Error deleting job {job_id}: {str(e)}")
-        abort(500, f"Error deleting job: {str(e)}")
+    return redirect(url_for('jobs.queue_detail', queue_name=queue_name))
 
-@jobs_bp.route('/queue/<queue_name>/empty', methods=['POST'])
-@login_required
-def empty_queue(queue_name):
-    """
-    Empty all jobs from a queue
-    
-    Args:
-        queue_name (str): Name of the queue to empty
-    """
-    if not is_admin():
-        abort(403, "Access denied: Admin privileges required")
-    
-    if queue_name not in queues:
-        abort(404, f"Queue '{queue_name}' not found")
-    
-    try:
-        queue = queues[queue_name]
-        
-        # Empty the queue
-        queue.empty()
-        
-        return redirect(url_for('jobs.view_queue', queue_name=queue_name))
-        
-    except Exception as e:
-        logger.error(f"Error emptying queue {queue_name}: {str(e)}")
-        abort(500, f"Error emptying queue: {str(e)}")
+@jobs_bp.route('/api/queues')
+@admin_required
+def api_queues():
+    """API endpoint for queue statistics"""
+    queue_stats = job_manager.get_queue_stats()
+    return jsonify(queue_stats)
 
-@jobs_bp.route('/enqueue-test-job', methods=['GET', 'POST'])
-@login_required
-def enqueue_test_job():
-    """
-    Enqueue a test job for demonstration purposes
-    """
-    if not is_admin():
-        abort(403, "Access denied: Admin privileges required")
-    
-    try:
-        # Default to export job type
-        job_type = request.form.get('job_type', 'export')
-        queue_name = request.form.get('queue', 'default')
-        description = request.form.get('description', 'Test job')
-        
-        queue = queues.get(queue_name) or queues['default']
-        
-        # Import our job functions from jobs.py
-        from jobs import export_user_data, process_large_document, send_batch_notifications, calculate_usage_statistics
-        
-        # Enqueue the appropriate job based on type
-        if job_type == 'export':
-            job = queue.enqueue(
-                export_user_data,
-                user_id=123,
-                description=description or 'Export user data test job'
-            )
-        elif job_type == 'document':
-            job = queue.enqueue(
-                process_large_document,
-                document_id='test-doc-123',
-                options={'summary_length': 'medium'},
-                description=description or 'Document processing test job'
-            )
-        elif job_type == 'notifications':
-            job = queue.enqueue(
-                send_batch_notifications,
-                user_ids=[1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-                notification_type='email',
-                message='This is a test notification',
-                description=description or 'Batch notifications test job'
-            )
-        elif job_type == 'stats':
-            job = queue.enqueue(
-                calculate_usage_statistics,
-                start_date='2023-01-01',
-                end_date=datetime.now().strftime('%Y-%m-%d'),
-                description=description or 'Usage statistics calculation test job'
-            )
-        else:
-            abort(400, f"Invalid job type: {job_type}")
-        
-        # Add flash message for better user feedback
-        if job:
-            flash(f'Test job of type "{job_type}" enqueued successfully with ID: {job.id}', 'success')
-        
-        return redirect(url_for('jobs.view_job', job_id=job.id))
-        
-    except Exception as e:
-        logger.error(f"Error enqueueing test job: {str(e)}")
-        abort(500, f"Error enqueueing test job: {str(e)}")
+@jobs_bp.route('/api/workers')
+@admin_required
+def api_workers():
+    """API endpoint for worker information"""
+    workers = job_manager.get_active_workers()
+    return jsonify(workers)
 
-def is_admin():
-    """Check if the current user is an admin"""
-    if hasattr(current_user, 'email'):
-        return current_user.email == 'andy@sentigral.com'
-    return False
+@jobs_bp.route('/api/jobs/<job_id>')
+@admin_required
+def api_job(job_id):
+    """API endpoint for job information"""
+    job = job_manager.fetch_job(job_id)
+    
+    if job is None:
+        return jsonify({'error': 'Job not found'}), 404
+    
+    job_data = format_job_for_display(job)
+    return jsonify(job_data)
+
+@jobs_bp.route('/api/jobs/<job_id>/progress')
+@admin_required
+def api_job_progress(job_id):
+    """API endpoint for job progress"""
+    job = job_manager.fetch_job(job_id)
+    
+    if job is None:
+        return jsonify({'error': 'Job not found'}), 404
+    
+    progress = job.meta.get('progress', 0) if job.meta else 0
+    status = job.get_status()
+    
+    return jsonify({
+        'id': job.id,
+        'status': status,
+        'progress': progress,
+        'complete': status in ('finished', 'failed'),
+        'failed': status == 'failed'
+    })
 
 def init_app(app):
-    """
-    Initialize the jobs blueprint with the Flask app
+    """Register blueprint with app"""
+    app.register_blueprint(jobs_bp)
     
-    Args:
-        app (Flask): The Flask application instance
-    """
-    app.register_blueprint(jobs_bp, url_prefix='/jobs')
-    logger.info("Jobs blueprint registered with prefix /jobs")
+    # Add job manager to app context
+    app.job_manager = job_manager

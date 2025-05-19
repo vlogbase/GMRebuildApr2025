@@ -325,8 +325,8 @@ try:
     logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
     
     # Register jobs blueprint
-    from jobs_blueprint import init_app as init_jobs
-    init_jobs(app)
+    from jobs_blueprint import init_jobs_bp
+    init_jobs_bp(app)
     logger.info("Jobs blueprint registered successfully with prefix /jobs")
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}")

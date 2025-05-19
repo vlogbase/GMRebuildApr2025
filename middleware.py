@@ -1,165 +1,198 @@
 """
-Middleware for GloriaMundo Chatbot
+Middleware Module
 
-This module contains middleware functions that can be applied to the Flask application
-to provide additional functionality like rate limiting.
+This module provides Flask middleware for integrating Redis-based components:
+- Session management with Redis
+- Rate limiting
+- Request/response hooks for caching
 """
 
-import time
+import os
 import logging
 from functools import wraps
-from flask import request, jsonify, g, current_app
-from redis_cache import redis_cache
+from flask import Flask, g, request, current_app
+
+from redis_cache import get_redis_connection
+from redis_session import RedisSessionInterface
+from redis_rate_limiter import RedisRateLimiter
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("Middleware")
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+)
+logger = logging.getLogger(__name__)
 
-def setup_rate_limiting(app):
+# Global rate limiter instance
+rate_limiter = None
+
+def setup_redis_session(app, key_prefix="session", expiry=86400):
     """
-    Configure rate limiting for the application.
+    Set up Redis-backed sessions for a Flask app
     
     Args:
-        app: Flask application to configure
+        app (Flask): The Flask app
+        key_prefix (str): Prefix for session keys in Redis
+        expiry (int): Session expiration time in seconds (default: 1 day)
     """
-    @app.before_request
-    def rate_limit_middleware():
-        """
-        Rate limiting middleware that runs before each request.
-        Uses Redis to track and limit requests based on user ID or IP.
-        """
-        # Skip rate limiting for some routes
-        if should_skip_rate_limiting():
-            return None
-            
-        # Check if Redis is available
-        if not redis_cache.is_available():
-            logger.warning("Redis not available for rate limiting. Allowing request.")
-            return None
-            
-        # Get user ID or IP address for rate limiting
-        from flask_login import current_user
-        if current_user.is_authenticated:
-            # Use user ID for authenticated users
-            key = f"ratelimit:user:{current_user.id}:{request.endpoint}"
-            max_requests = get_authenticated_user_rate_limit(request.endpoint)
-        else:
-            # Use IP address for anonymous users
-            key = f"ratelimit:ip:{request.remote_addr}:{request.endpoint}"
-            max_requests = get_anonymous_user_rate_limit(request.endpoint)
-            
-        # Get current period (1 minute)
-        period = 60
-        current = int(time.time())
-        window_key = f"{key}:{current // period}"
-        
-        # Get current count
-        count = redis_cache.get(window_key)
-        count = int(count) if count is not None else 0
-        
-        # Calculate reset time and remaining requests
-        reset = (current // period + 1) * period
-        remaining = max(0, max_requests - count)
-        
-        # Store rate limit info in Flask g object for response headers
-        g.rate_limit_info = {
-            'limit': max_requests,
-            'remaining': remaining,
-            'reset': reset
+    logger.info("Setting up Redis-backed sessions")
+    session_interface = RedisSessionInterface(
+        prefix=key_prefix,
+        expiry=expiry,
+        key_prefix=app.name
+    )
+    app.session_interface = session_interface
+
+def setup_rate_limiter(app, default_limits=None):
+    """
+    Set up rate limiting for a Flask app
+    
+    Args:
+        app (Flask): The Flask app
+        default_limits (dict): Default rate limits for different route types
+            Example: {
+                'default': {'limit': 60, 'window': 60},
+                'api': {'limit': 30, 'window': 60}
+            }
+    """
+    global rate_limiter
+    
+    logger.info("Setting up rate limiting")
+    
+    # Default rate limits if none provided
+    if default_limits is None:
+        default_limits = {
+            'default': {'limit': 60, 'window': 60},  # 60 requests per minute for general routes
+            'api': {'limit': 30, 'window': 60},      # 30 requests per minute for API routes
+            'chat': {'limit': 10, 'window': 60}      # 10 requests per minute for chat routes
         }
-        
-        # Check if rate limited
-        if count >= max_requests:
-            logger.warning(f"Rate limit exceeded for {key}. Count: {count}/{max_requests}")
-            response = jsonify({
-                'error': 'Too many requests',
-                'message': f'Rate limit of {max_requests} requests per minute exceeded. Try again in {reset - current} seconds.'
-            })
-            response.status_code = 429
-            response.headers['X-RateLimit-Limit'] = str(max_requests)
-            response.headers['X-RateLimit-Remaining'] = '0'
-            response.headers['X-RateLimit-Reset'] = str(reset)
-            return response
-            
-        # Increment counter
-        try:
-            redis_cache.setex(window_key, period, count + 1)
-        except Exception as e:
-            logger.error(f"Error incrementing rate limit counter: {e}")
-            # Don't block the request if Redis fails
-            
-        return None
-        
+    
+    # Create rate limiter
+    rate_limiter = RedisRateLimiter(
+        key_prefix=f"rate_limit:{app.name}",
+        default_limit=default_limits['default']['limit'],
+        default_window=default_limits['default']['window']
+    )
+    
+    # Register after_request handler to add rate limit headers
     @app.after_request
     def add_rate_limit_headers(response):
-        """Add rate limit headers to responses"""
-        if hasattr(g, 'rate_limit_info'):
-            info = g.rate_limit_info
-            response.headers['X-RateLimit-Limit'] = str(info['limit'])
-            response.headers['X-RateLimit-Remaining'] = str(info['remaining'])
-            response.headers['X-RateLimit-Reset'] = str(info['reset'])
-        return response
-
-def should_skip_rate_limiting():
-    """
-    Determine if rate limiting should be skipped for the current request.
+        return rate_limiter.apply_rate_limit_headers(response)
     
-    Returns:
-        bool: True if rate limiting should be skipped
-    """
-    # Skip static files and certain endpoints
-    if request.path.startswith('/static/'):
-        return True
-        
-    # Skip OPTIONS requests
-    if request.method == 'OPTIONS':
-        return True
-        
-    # Skip health check and non-API endpoints
-    skip_endpoints = ['health', 'index', 'login']
-    if request.endpoint in skip_endpoints:
-        return True
-        
-    return False
+    # Store rate limiter in app context
+    app.rate_limiter = rate_limiter
+    
+    # Define rate limit decorators for different route types
+    app.limit_by_ip = rate_limiter.limit_by_ip
+    app.limit_by_user = rate_limiter.limit_by_user
+    
+    # Add convenience functions for different route types
+    def limit_api_route(f):
+        """Limit API routes"""
+        @wraps(f)
+        @rate_limiter.limit_by_ip(
+            limit=default_limits['api']['limit'],
+            window=default_limits['api']['window']
+        )
+        def decorated(*args, **kwargs):
+            return f(*args, **kwargs)
+        return decorated
+    
+    def limit_chat_route(f):
+        """Limit chat routes"""
+        @wraps(f)
+        @rate_limiter.limit_by_ip(
+            limit=default_limits['chat']['limit'],
+            window=default_limits['chat']['window']
+        )
+        def decorated(*args, **kwargs):
+            return f(*args, **kwargs)
+        return decorated
+    
+    # Add to app context
+    app.limit_api_route = limit_api_route
+    app.limit_chat_route = limit_chat_route
 
-def get_authenticated_user_rate_limit(endpoint):
+def setup_authenticated_rate_limits(app, authenticated_limits=None):
     """
-    Get rate limit for authenticated users based on endpoint.
+    Set up different rate limits for authenticated users
     
     Args:
-        endpoint: Flask endpoint name
-    
-    Returns:
-        int: Maximum requests per minute
+        app (Flask): The Flask app
+        authenticated_limits (dict): Rate limits for authenticated users
+            Example: {
+                'default': {'limit': 120, 'window': 60},
+                'api': {'limit': 60, 'window': 60}
+            }
     """
-    # Higher limits for authenticated users
-    limits = {
-        'chat': 20,  # 20 requests per minute for chat
-        'upload_file': 10,  # 10 uploads per minute
-        'get_model_pricing': 30,  # 30 requests per minute for pricing
-        'get_models': 30  # 30 requests per minute for models list
-    }
+    # Default authenticated limits if none provided
+    if authenticated_limits is None:
+        authenticated_limits = {
+            'default': {'limit': 120, 'window': 60},  # 120 requests per minute for general routes (2x)
+            'api': {'limit': 60, 'window': 60},       # 60 requests per minute for API routes (2x)
+            'chat': {'limit': 20, 'window': 60}       # 20 requests per minute for chat routes (2x)
+        }
     
-    # Default limit for other endpoints
-    return limits.get(endpoint, 60)  # Default: 60 per minute (1 per second)
+    # Define authenticated rate limit decorators
+    def limit_authenticated_api_route(f):
+        """Limit API routes with higher limits for authenticated users"""
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            # Use user-based limiting if user is authenticated,
+            # otherwise fall back to IP-based limiting
+            if hasattr(g, 'user') and g.user:
+                # User is authenticated, use higher limits
+                return rate_limiter.limit_by_user(
+                    limit=authenticated_limits['api']['limit'],
+                    window=authenticated_limits['api']['window']
+                )(f)(*args, **kwargs)
+            else:
+                # User is not authenticated, use default limits
+                return app.limit_api_route(f)(*args, **kwargs)
+        return decorated
+    
+    def limit_authenticated_chat_route(f):
+        """Limit chat routes with higher limits for authenticated users"""
+        @wraps(f)
+        def decorated(*args, **kwargs):
+            # Use user-based limiting if user is authenticated,
+            # otherwise fall back to IP-based limiting
+            if hasattr(g, 'user') and g.user:
+                # User is authenticated, use higher limits
+                return rate_limiter.limit_by_user(
+                    limit=authenticated_limits['chat']['limit'],
+                    window=authenticated_limits['chat']['window']
+                )(f)(*args, **kwargs)
+            else:
+                # User is not authenticated, use default limits
+                return app.limit_chat_route(f)(*args, **kwargs)
+        return decorated
+    
+    # Add to app context
+    app.limit_authenticated_api_route = limit_authenticated_api_route
+    app.limit_authenticated_chat_route = limit_authenticated_chat_route
 
-def get_anonymous_user_rate_limit(endpoint):
+def setup_redis_middleware(app, key_prefix="session", session_expiry=86400,
+                         default_limits=None, authenticated_limits=None):
     """
-    Get rate limit for anonymous users based on endpoint.
+    Set up all Redis middleware components for a Flask app
     
     Args:
-        endpoint: Flask endpoint name
-    
-    Returns:
-        int: Maximum requests per minute
+        app (Flask): The Flask app
+        key_prefix (str): Prefix for session keys in Redis
+        session_expiry (int): Session expiration time in seconds
+        default_limits (dict): Default rate limits for different route types
+        authenticated_limits (dict): Rate limits for authenticated users
     """
-    # Lower limits for anonymous users
-    limits = {
-        'chat': 5,  # 5 requests per minute for chat
-        'upload_file': 3,  # 3 uploads per minute
-        'get_model_pricing': 10,  # 10 requests per minute for pricing
-        'get_models': 10  # 10 requests per minute for models list
-    }
+    # Set up Redis session
+    setup_redis_session(app, key_prefix=key_prefix, expiry=session_expiry)
     
-    # Default limit for other endpoints
-    return limits.get(endpoint, 30)  # Default: 30 per minute (1 per 2 seconds)
+    # Set up rate limiting
+    setup_rate_limiter(app, default_limits=default_limits)
+    
+    # Set up authenticated rate limits
+    setup_authenticated_rate_limits(app, authenticated_limits=authenticated_limits)
+    
+    logger.info("Redis middleware setup complete")
+    
+    return app

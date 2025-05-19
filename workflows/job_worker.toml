@@ -1,13 +1,17 @@
 # Job Worker Workflow Configuration
-command = "python job_worker_workflow.py"
-clearOnRestart = false
-restartOn = ["job_worker_workflow.py", "jobs.py", "worker.py", "job_worker.py"]
-restartPolicy = "on-failure"
-onBoot = true
+# This workflow runs the background job processing system
+
+command = "python job_worker_workflow.py --workers 2 --queues high,default,low,email,indexing"
 
 [env]
-# Environment variables for job worker
-PYTHONUNBUFFERED = "1"  # Unbuffered output for better logging
-WORKER_TIMEOUT = "300"  # Worker timeout in seconds
-JOB_RESULT_TTL = "604800"  # Job result TTL in seconds (7 days)
-FAILED_JOB_TTL = "2592000"  # Failed job TTL in seconds (30 days)
+# Number of worker processes to run
+WORKER_COUNT = "2"
+
+# Queue names to listen on (in priority order)
+QUEUE_NAMES = "high,default,low,email,indexing"
+
+# Redis connection parameters
+REDIS_HOST = "my-bullmq-cache.redis.cache.windows.net"
+REDIS_PORT = "6380"
+REDIS_SSL = "true"
+# Redis password is stored in environment secrets

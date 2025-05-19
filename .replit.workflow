@@ -1,16 +1,8 @@
-[dev]
-  pattern = "**/*.py"
-  onFileChange = ["workflows/app_workflow.py"]
+[workflow]
+[workflow.app]
+onBoot = "cd '${REPL_HOME}' && python -m flask run --host=0.0.0.0 --port=5000"
+run = "cd '${REPL_HOME}' && python -m flask run --host=0.0.0.0 --port=5000"
 
-[test_marketing]
-  onBoot = "python workflows/test_marketing.py"
-  
-[app]
-  onBoot = "python app_workflow.py"
-  clearOnRestart = false
-  restartPolicy = "on-failure"
-
-[job_worker]
-  onBoot = "python job_worker_workflow.py"
-  clearOnRestart = false
-  restartPolicy = "on-failure"
+[workflow.job_worker]
+onBoot = "cd '${REPL_HOME}' && python job_worker_workflow.py --workers 2 --queues high,default,low,email,indexing"
+run = "cd '${REPL_HOME}' && python job_worker_workflow.py --workers 2 --queues high,default,low,email,indexing"
