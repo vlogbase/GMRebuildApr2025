@@ -72,7 +72,7 @@
             <!-- App Header -->
             <div class="app-header">
                 <div class="header-left">
-                    <button id="sidebar-toggle" class="sidebar-toggle-btn">
+                    <button id="sidebar-toggle" class="sidebar-toggle-btn" aria-label="Toggle sidebar">
                         <i class="fa-solid fa-bars"></i>
                     </button>
                     <div class="app-title">
@@ -81,7 +81,7 @@
                 </div>
                 {% if current_user.is_authenticated %}
                 <div class="app-account-access">
-                    <a href="{{ url_for('billing.account_management') }}" class="header-account-link">
+                    <a href="{{ url_for('billing.account_management') }}" class="header-account-link" aria-label="My Account">
                         <i class="fa-solid fa-user-circle"></i>
                         <span class="account-link-text">My Account</span>
                     </a>
@@ -94,7 +94,7 @@
                 <div class="welcome-container">
                     <div style="text-align: center;">
                         <a href="https://gloriamundo.com/info">
-                            <img src="{{ url_for('static', filename='img/Gloriamundo512.webp') }}" alt="GloriaMundo Logo" style="width: 30%; max-width: 300px; height: auto;">
+                            <img src="{{ url_for('static', filename='img/Gloriamundo512.webp') }}" alt="GloriaMundo Logo" width="512" height="512" style="width: 30%; max-width: 300px; height: auto;">
                         </a>
                     </div>
                 </div>
@@ -196,11 +196,11 @@
                             <button id="file-upload-button" class="btn btn-secondary" title="Upload image or PDF">
                                 <i class="fa-solid fa-paperclip"></i>
                             </button>
-                            <button id="camera-button" class="btn btn-secondary">
+                            <button id="camera-button" class="btn btn-secondary" aria-label="Open camera">
                                 <i class="fa-solid fa-camera"></i>
                             </button>
                             <!-- Unified file upload button handles both images and PDFs based on model capabilities -->
-                            <button id="send-btn" class="send-btn">
+                            <button id="send-btn" class="send-btn" aria-label="Send message">
                                 <i class="fa-solid fa-paper-plane"></i>
                             </button>
                         </div>
@@ -217,7 +217,7 @@
                     <div class="modal-content">
                         <div class="modal-header">
                             <h3 id="pdf-viewer-title">Document Viewer</h3>
-                            <button id="close-pdf-viewer" class="close-button">
+                            <button id="close-pdf-viewer" class="close-button" aria-label="Close document viewer">
                                 <i class="fa-solid fa-times"></i>
                             </button>
                         </div>
@@ -230,17 +230,17 @@
                 <div id="camera-modal" style="display: none;">
                     <div class="camera-modal-content">
                         <div class="camera-controls">
-                            <button id="close-camera-button">
+                            <button id="close-camera-button" aria-label="Close camera">
                                 <i class="fa-solid fa-times"></i>
                             </button>
                         </div>
                         <video id="camera-stream" autoplay playsinline></video>
                         <canvas id="image-canvas" style="display: none;"></canvas>
                         <div class="camera-buttons">
-                            <button id="capture-button" class="btn btn-primary">
+                            <button id="capture-button" class="btn btn-primary" aria-label="Take Photo">
                                 <i class="fa-solid fa-camera"></i> Take Photo
                             </button>
-                            <button id="switch-camera-button" class="btn btn-secondary">
+                            <button id="switch-camera-button" class="btn btn-secondary" aria-label="Switch Camera">
                                 <i class="fa-solid fa-sync"></i> Switch Camera
                             </button>
                         </div>
@@ -263,7 +263,7 @@
             <div class="modal-content login-prompt-modal-content">
                 <div class="modal-header">
                     <h3>Login to continue</h3>
-                    <button id="close-login-prompt" class="close-button">
+                    <button id="close-login-prompt" class="close-button" aria-label="Close login prompt">
                         <i class="fa-solid fa-times"></i>
                     </button>
                 </div>
