@@ -108,6 +108,56 @@ def get_redis_connection_params(namespace: str = '') -> Dict[str, Any]:
         'decode_responses': config['decode_responses']
     }
 
+def initialize_redis_client(namespace: str = '', decode_responses: bool = True) -> Optional[Any]:
+    """
+    Initialize a Redis client with the given namespace configuration
+    
+    This function creates and returns a Redis client instance configured
+    for the specified namespace. It handles connection errors gracefully
+    and returns None if the connection cannot be established.
+    
+    Args:
+        namespace: Optional namespace for specific Redis usage (e.g., 'cache', 'session')
+        decode_responses: Whether to decode Redis responses from bytes to strings
+        
+    Returns:
+        Redis client instance or None if connection failed
+    """
+    try:
+        # Import Redis only when needed
+        import redis
+        
+        # Get connection parameters for the namespace
+        params = get_redis_connection_params(namespace)
+        
+        # Override decode_responses if specified
+        if decode_responses is not None:
+            params['decode_responses'] = decode_responses
+        
+        # If Redis host is not configured, return None
+        if not params['host']:
+            logger.warning(f"Redis host not configured for {namespace or 'default'} namespace")
+            return None
+        
+        # Create Redis client with connection parameters
+        client = redis.Redis(**params)
+        
+        # Test the connection with a ping
+        if client.ping():
+            logger.info(f"Successfully connected to Redis for {namespace or 'default'} namespace")
+            return client
+        else:
+            logger.error(f"Redis ping failed for {namespace or 'default'} namespace")
+            return None
+            
+    except ImportError as e:
+        logger.error(f"Redis library not available: {e}")
+        return None
+        
+    except Exception as e:
+        logger.error(f"Failed to initialize Redis client for {namespace or 'default'} namespace: {e}")
+        return None
+
 def create_redis_client(namespace: str = '', decode_responses: bool = True) -> Optional[Any]:
     """
     Create a Redis client with the given namespace configuration
