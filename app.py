@@ -85,19 +85,34 @@ app.config['JSON_SORT_KEYS'] = False  # Prevent JSON sorting for faster response
 @app.after_request
 def add_performance_headers(response):
     """Add performance optimization headers to static assets."""
-    if 'Cache-Control' not in response.headers:
-        # Default cache policy
-        response.headers['Cache-Control'] = 'no-store'
-        
     # Set performance headers for static assets
     if request.path.startswith('/static/'):
         if request.path.endswith(('.css', '.js')):
             # Long cache for versioned assets (1 week)
             if 'v=' in request.query_string.decode('utf-8'):
                 response.headers['Cache-Control'] = 'public, max-age=604800, immutable'
+            else:
+                response.headers['Cache-Control'] = 'public, max-age=86400'
         elif request.path.endswith(('.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg')):
             # Cache images for 1 day
             response.headers['Cache-Control'] = 'public, max-age=86400'
+    # For HTML pages that don't need authentication, enable caching
+    elif (request.path in ['/', '/features', '/pricing', '/about', '/blog'] and 
+          request.method == 'GET' and
+          'text/html' in response.headers.get('Content-Type', '')):
+        response.headers['Cache-Control'] = 'public, max-age=3600'  # 1 hour
+    # Set default cache policy only if not already set and not a dynamic page 
+    # that needs to be fresh (like auth pages, account, etc.)
+    elif 'Cache-Control' not in response.headers:
+        if (request.path.startswith('/login') or 
+            request.path.startswith('/account') or 
+            request.path.startswith('/chat') or
+            request.path.startswith('/billing')):
+            # Pages with sensitive or user-specific content shouldn't be cached
+            response.headers['Cache-Control'] = 'private, no-store'
+        else:
+            # Default for other pages - allow browser caching but validate freshness
+            response.headers['Cache-Control'] = 'public, max-age=0, must-revalidate'
     
     # Add security and performance headers
     response.headers['X-Content-Type-Options'] = 'nosniff'
