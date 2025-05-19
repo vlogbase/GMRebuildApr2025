@@ -1,1 +1,1 @@
-web: gunicorn -c gunicorn.conf.py main:app
+web: gunicorn main:app -k gevent -w 4 --timeout 300 --bind 0.0.0.0:3000
