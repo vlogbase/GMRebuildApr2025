@@ -4331,6 +4331,7 @@ code {
         overflow-y: auto;
         display: flex;
         flex-direction: column;
+        padding-top: 50px; /* Add padding to the top to account for the fixed header */
     }
     
     /* Fixed header for mobile */
@@ -4349,8 +4350,6 @@ code {
     .chat-messages {
         flex: 1;
         padding: 20px;
-        /* Add padding at the top to account for fixed header */
-        padding-top: 60px;
         /* Ensure enough bottom padding to account for fixed input */
         padding-bottom: 140px; /* Increased to ensure all content is accessible by scrolling */
     }
