@@ -1020,7 +1020,12 @@ def test_url_formatting():
 
 @app.route('/')
 def index():
-    # Redirect non-authenticated users to the info page
+    """Main route that serves as both health check and app entry point"""
+    # Return a health check response for deployment verification
+    if request.headers.get('User-Agent', '').startswith('ELB-HealthChecker') or request.args.get('health') == 'check':
+        return jsonify({"status": "healthy", "message": "Application is running"})
+        
+    # Regular app behavior - redirect non-authenticated users to the info page
     if not current_user.is_authenticated:
         return redirect(url_for('info'))
     

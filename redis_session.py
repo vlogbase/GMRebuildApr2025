@@ -97,7 +97,9 @@ class RedisSessionInterface(SessionInterface):
             return None
         
         # Get the session ID from the cookie
-        sid = request.cookies.get(app.session_cookie_name)
+        # Use a default cookie name if app.session_cookie_name is not available
+        cookie_name = getattr(app, 'session_cookie_name', 'session')
+        sid = request.cookies.get(cookie_name)
         
         # If no session ID, create a new session
         if not sid:
@@ -132,13 +134,16 @@ class RedisSessionInterface(SessionInterface):
             logger.warning("Redis unavailable. Cannot save session.")
             return
         
+        # Use a default cookie name if app.session_cookie_name is not available
+        cookie_name = getattr(app, 'session_cookie_name', 'session')
+        
         # Don't save if session should be deleted
         if not session:
             if session.modified:
                 session_key = f"{self.prefix}{session.sid}"
                 redis_cache.delete(session_key)
                 response.delete_cookie(
-                    app.session_cookie_name,
+                    cookie_name,
                     domain=self.get_cookie_domain(app),
                     path=self.get_cookie_path(app)
                 )
@@ -161,9 +166,10 @@ class RedisSessionInterface(SessionInterface):
         except Exception as e:
             logger.error(f"Error saving session to Redis: {e}")
         
-        # Set the cookie
+        # Set the cookie with a default name if session_cookie_name is not available
+        cookie_name = getattr(app, 'session_cookie_name', 'session') 
         response.set_cookie(
-            app.session_cookie_name,
+            cookie_name,
             session.sid,
             expires=self.get_expiration_time(app, session),
             httponly=True,
