@@ -82,9 +82,8 @@ class RedisCache:
             try:
                 # Use the centralized Redis configuration
                 self.redis_client = initialize_redis_client(
-                    redis.Redis,
                     namespace=namespace,
-                    expire_time=expire_time
+                    decode_responses=True
                 )
                 
                 if self.redis_client:

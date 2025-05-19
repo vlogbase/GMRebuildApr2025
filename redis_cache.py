@@ -81,11 +81,24 @@ class RedisCache:
         if REDIS_AVAILABLE:
             try:
                 # Use the centralized Redis configuration
-                self.redis_client = initialize_redis_client(
-                    redis.Redis,
-                    namespace=namespace,
-                    expire_time=expire_time
-                )
+                try:
+                    logger.info(f"Attempting to initialize Redis client with namespace '{namespace}'")
+                    # Simple direct connection approach to avoid any parameter conflicts
+                    import redis
+                    from redis_config import get_redis_connection_params
+                    
+                    # Get connection parameters
+                    params = get_redis_connection_params(namespace)
+                    params['decode_responses'] = True
+                    
+                    # Create Redis client directly
+                    self.redis_client = redis.Redis(**params)
+                    
+                    # Test connection
+                    self.redis_client.ping()
+                except Exception as e:
+                    logger.error(f"Direct Redis connection failed: {e}")
+                    self.redis_client = None
                 
                 if self.redis_client:
                     logger.info(f"Redis cache initialized with namespace '{namespace}'")

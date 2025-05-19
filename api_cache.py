@@ -347,12 +347,17 @@ def init_api_cache(app: Flask, namespace: str = 'api_cache:',
     Returns:
         ApiCache: The initialized API cache instance
     """
-    global _api_cache
-    _api_cache = ApiCache(
-        namespace=namespace,
-        default_ttl=default_ttl,
-        model_ttl_map=model_ttl_map
-    )
+    try:
+        global _api_cache
+        _api_cache = ApiCache(
+            namespace=namespace,
+            default_ttl=default_ttl,
+            model_ttl_map=model_ttl_map
+        )
+    except Exception as e:
+        logger.error(f"Error initializing API cache: {e}")
+        # Initialize without Redis as a fallback
+        _api_cache = None
     
     # Add the API cache to the app extensions
     app.extensions['api_cache'] = _api_cache

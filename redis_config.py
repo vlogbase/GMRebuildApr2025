@@ -26,8 +26,8 @@ DEFAULT_CONFIG = {
     'port': os.environ.get('REDIS_PORT', 6379),
     'db': os.environ.get('REDIS_DB', 0),
     'password': os.environ.get('REDIS_PASSWORD', None),
-    'socket_timeout': 2.0,  # Short timeout to prevent app hanging
-    'socket_connect_timeout': 2.0,
+    'socket_timeout': 10.0,  # Increased timeout for better reliability with Azure Redis
+    'socket_connect_timeout': 10.0,  # Increased timeout for SSL handshake
     'retry_on_timeout': True,
     'health_check_interval': 30,
     'max_connections': 10,
@@ -153,6 +153,7 @@ def initialize_redis_client(namespace: str = '', decode_responses: bool = True,
         # Import Redis only when needed
         import redis
         import time
+        import ssl
         from redis.exceptions import RedisError
         
         # Get connection parameters for the namespace
@@ -166,6 +167,41 @@ def initialize_redis_client(namespace: str = '', decode_responses: bool = True,
         if not params['host']:
             logger.warning(f"Redis host not configured for {namespace or 'default'} namespace")
             return None
+        
+        # Configure TLS 1.2 for SSL connections (like Azure Redis on port 6380)
+        port = int(params.get('port', 6379))
+        if params.get('ssl', False) or port == 6380:
+            # Explicitly configure SSL with TLS 1.2 for Azure Redis
+            try:
+                # Create an SSL context configured for TLS 1.2
+                ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+                
+                # Configure certificate validation based on ssl_cert_reqs parameter
+                ssl_cert_reqs = params.get('ssl_cert_reqs', 'required')
+                if ssl_cert_reqs == 'required':
+                    ssl_context.verify_mode = ssl.CERT_REQUIRED
+                    ssl_context.check_hostname = True
+                    # Load default system CA certificates
+                    ssl_context.load_default_certs(ssl.Purpose.SERVER_AUTH)
+                else:
+                    ssl_context.verify_mode = ssl.CERT_NONE
+                    ssl_context.check_hostname = False
+                
+                # Set minimum TLS version to 1.2 for Azure Redis
+                ssl_context.minimum_version = ssl.TLSVersion.TLSv1_2
+                
+                # Replace individual SSL parameters with the context
+                params['ssl_context'] = ssl_context
+                
+                # Remove individual ssl params as ssl_context takes precedence
+                for param in ['ssl', 'ssl_cert_reqs', 'ssl_ca_certs', 'ssl_keyfile', 'ssl_certfile']:
+                    if param in params:
+                        params.pop(param)
+                
+                logger.info(f"Configured SSLContext for {namespace or 'default'} with TLS 1.2 minimum")
+            except Exception as e_ssl:
+                logger.error(f"Error creating SSLContext for {namespace or 'default'}: {e_ssl}")
+                # Don't return yet, let the connection attempt happen
         
         # Add retry logic for better connection reliability
         attempt = 0
