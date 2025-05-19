@@ -1,15 +1,17 @@
 """
 Main Application Workflow Script
 
-This script runs the Flask application with all its components.
+This script runs the Flask application with all improved components:
+- Redis connection with fallback mechanisms
+- Fixed blueprint registrations for jobs and affiliate modules
+- Robust error handling for Redis operations
 """
 
 import os
 import sys
 import logging
-from app import app
 
-# Configure logging
+# Configure logging first (before any other imports)
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
@@ -20,6 +22,31 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# Set up Redis environment variables for testing if not present
+# This allows the system to start up with Redis in fallback mode
+if not os.environ.get("REDIS_HOST"):
+    logger.warning("REDIS_HOST not set, Redis features will use fallback mode")
+    os.environ["REDIS_HOST"] = ""  # Empty string to trigger fallback
+
+# Import the improved modules with fixed circular dependencies
+# Import these before importing the app to ensure they're available
+logger.info("Initializing improved modules")
+try:
+    from jobs_blueprint_improved import init_app as init_jobs_bp
+    logger.info("Imported improved jobs blueprint")
+except Exception as e:
+    logger.error(f"Error importing improved jobs blueprint: {e}")
+
+try:
+    from affiliate_blueprint_improved import init_app as init_affiliate_bp
+    logger.info("Imported improved affiliate blueprint")
+except Exception as e:
+    logger.error(f"Error importing improved affiliate blueprint: {e}")
+
+# Now import the app module
+logger.info("Importing main app module")
+from app import app
 
 def run():
     """Run the Flask application server"""

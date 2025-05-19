@@ -1,194 +1,253 @@
 """
 Redis Configuration Module
 
-This module provides centralized configuration for Redis connections across
-different components of the application, with robust error handling and
-fallback mechanisms when Redis is unavailable.
+This module centralizes Redis configuration settings and provides a unified
+interface for establishing Redis connections with proper error handling.
+
+Features:
+- Environment-based configuration (different settings for dev/prod)
+- Connection pooling for better performance
+- Automatic fallback mechanisms when Redis is unavailable
+- Consistent timeout and retry settings across the application
 """
 
 import os
 import logging
 import time
-from typing import Dict, Any, Optional
+from typing import Optional, Dict, Any, Union
 from urllib.parse import urlparse
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Default timeout values (in seconds)
-DEFAULT_CONNECT_TIMEOUT = 5.0
-DEFAULT_SOCKET_TIMEOUT = 5.0
-DEFAULT_RETRY_ON_TIMEOUT = True
-DEFAULT_POOL_SIZE = 10
+# Default Redis configuration
+DEFAULT_CONFIG = {
+    'host': os.environ.get('REDIS_HOST', ''),
+    'port': os.environ.get('REDIS_PORT', 6379),
+    'db': os.environ.get('REDIS_DB', 0),
+    'password': os.environ.get('REDIS_PASSWORD', None),
+    'socket_timeout': 2.0,  # Short timeout to prevent app hanging
+    'socket_connect_timeout': 2.0,
+    'retry_on_timeout': True,
+    'health_check_interval': 30,
+    'max_connections': 10,
+    'decode_responses': True  # Default to decode responses
+}
 
-def get_redis_url() -> Optional[str]:
+# Cache for connection pools to avoid recreating them
+_connection_pools = {}
+
+def get_redis_config(namespace: str = '') -> Dict[str, Any]:
     """
-    Get Redis URL from environment variables with consistent naming
+    Get Redis configuration settings with optional namespace-specific overrides
     
-    Checks both REDIS_HOST and REDIS_URL for backward compatibility
-    
+    Args:
+        namespace: Optional namespace for specific Redis usage (e.g., 'session', 'cache')
+        
     Returns:
-        Optional[str]: Redis URL or None if not available
+        Dict containing Redis connection parameters
     """
-    # Primary parameter is REDIS_HOST
-    redis_url = os.environ.get('REDIS_HOST')
+    config = DEFAULT_CONFIG.copy()
     
-    # Fall back to REDIS_URL for backward compatibility
-    if not redis_url:
-        redis_url = os.environ.get('REDIS_URL')
-        if redis_url:
-            logger.info("Using REDIS_URL environment variable (REDIS_HOST recommended)")
+    # Check for namespace-specific environment variables
+    if namespace:
+        namespace_prefix = f'REDIS_{namespace.upper()}_'
+        
+        # Look for namespace-specific variables
+        for key in ['HOST', 'PORT', 'DB', 'PASSWORD']:
+            env_var = f'{namespace_prefix}{key}'
+            if os.environ.get(env_var):
+                config_key = key.lower()
+                config[config_key] = os.environ.get(env_var)
     
-    if not redis_url:
-        logger.warning("No Redis host found in environment variables")
+    # If host is empty, Redis is disabled/unavailable
+    if not config['host']:
+        logger.warning(f"No Redis host available, {namespace}: Redis features will be disabled")
     
-    return redis_url
+    return config
+
+def is_redis_available(namespace: str = '') -> bool:
+    """
+    Check if Redis is available for the given namespace
+    
+    Args:
+        namespace: Optional namespace for specific Redis usage
+        
+    Returns:
+        bool: True if Redis is configured and available, False otherwise
+    """
+    config = get_redis_config(namespace)
+    return bool(config['host'])
+
+def create_redis_client(namespace: str = '', decode_responses: bool = True) -> Optional[Any]:
+    """
+    Create a Redis client with the given namespace configuration
+    
+    This function handles errors gracefully and returns None if Redis is unavailable,
+    allowing fallback mechanisms to be implemented.
+    
+    Args:
+        namespace: Optional namespace for specific Redis usage
+        decode_responses: Whether to decode byte responses to strings
+        
+    Returns:
+        Redis client instance or None if Redis is unavailable
+    """
+    try:
+        import redis
+        from redis.exceptions import RedisError
+        
+        config = get_redis_config(namespace)
+        
+        # Override decode_responses setting
+        config['decode_responses'] = decode_responses
+        
+        # Don't attempt connection if host is empty
+        if not config['host']:
+            return None
+        
+        # Create or get connection pool
+        pool_key = f"{namespace}:{config['host']}:{config['port']}:{config['db']}"
+        
+        if pool_key not in _connection_pools:
+            # Create a new connection pool
+            pool = redis.ConnectionPool(
+                host=config['host'],
+                port=int(config['port']),
+                db=int(config['db']),
+                password=config['password'],
+                socket_timeout=config['socket_timeout'],
+                socket_connect_timeout=config['socket_connect_timeout'],
+                retry_on_timeout=config['retry_on_timeout'],
+                health_check_interval=config['health_check_interval'],
+                max_connections=config['max_connections'],
+                decode_responses=config['decode_responses']
+            )
+            _connection_pools[pool_key] = pool
+        
+        # Create client using the pool
+        client = redis.Redis(connection_pool=_connection_pools[pool_key])
+        
+        # Test connection with minimal overhead
+        client.ping()
+        
+        return client
+    except ImportError:
+        logger.warning("Redis package not installed, falling back to file storage")
+        return None
+    except RedisError as e:
+        logger.warning(f"Redis connection error: {str(e)}")
+        return None
+    except Exception as e:
+        logger.warning(f"Unexpected error creating Redis client: {str(e)}", exc_info=True)
+        return None
+
+def get_redis_url(namespace: str = '') -> str:
+    """
+    Get a Redis URL based on configuration
+    
+    Args:
+        namespace: Optional namespace for specific Redis usage
+        
+    Returns:
+        str: Redis URL in the format redis://user:password@host:port/db
+    """
+    config = get_redis_config(namespace)
+    
+    if not config['host']:
+        return ''
+    
+    # Build URL
+    auth = f":{config['password']}@" if config['password'] else ''
+    return f"redis://{auth}{config['host']}:{config['port']}/{config['db']}"
 
 def parse_redis_url(url: str) -> Dict[str, Any]:
     """
-    Parse Redis URL into connection parameters
+    Parse a Redis URL into configuration parameters
     
     Args:
-        url: Redis connection URL
+        url: Redis URL in the format redis://user:password@host:port/db
         
     Returns:
-        Dict with Redis connection parameters
+        Dict containing Redis connection parameters
     """
-    try:
-        parsed = urlparse(url)
-        
-        # Extract username/password if provided
-        auth = None
-        if '@' in parsed.netloc:
-            auth, netloc = parsed.netloc.split('@', 1)
-        else:
-            netloc = parsed.netloc
-            
-        # Parse host and port
-        if ':' in netloc:
-            host, port = netloc.split(':', 1)
-            try:
-                port = int(port)
-            except ValueError:
-                port = 6379
-        else:
-            host = netloc
-            port = 6379
-            
-        # Extract password from auth part
-        password = None
-        if auth and ':' in auth:
-            _, password = auth.split(':', 1)
-            
-        # Extract database number from path
-        db = 0
-        if parsed.path and len(parsed.path) > 1:
-            try:
-                db = int(parsed.path[1:])
-            except ValueError:
-                pass
-                
-        return {
-            'host': host,
-            'port': port,
-            'password': password,
-            'db': db
-        }
-        
-    except Exception as e:
-        logger.error(f"Failed to parse Redis URL: {str(e)}")
-        # Return empty dict if parsing fails
-        return {}
-
-def get_redis_connection_params() -> Dict[str, Any]:
-    """
-    Get Redis connection parameters from environment variables
-    with sensible defaults for timeouts and retry policies.
+    if not url:
+        return {'host': '', 'port': 6379, 'db': 0, 'password': None}
     
-    Returns:
-        Dict with Redis connection parameters
-    """
-    # Get Redis URL
-    redis_url = get_redis_url()
+    parsed = urlparse(url)
     
-    # If no Redis URL is available, return None for all params
-    if not redis_url:
-        logger.warning("Redis is not configured, features requiring Redis will be disabled")
-        return {
-            'host': None, 
-            'port': None, 
-            'password': None,
-            'db': None,
-            'socket_timeout': None,
-            'socket_connect_timeout': None,
-            'retry_on_timeout': None,
-            'decode_responses': None
-        }
+    # Extract parts
+    host = parsed.hostname or ''
+    port = parsed.port or 6379
+    password = parsed.password or None
+    path = parsed.path or '/'
+    db = int(path[1:]) if path and path[1:].isdigit() else 0
     
-    # Parse Redis URL
-    parsed_params = parse_redis_url(redis_url)
-    
-    # Add connection timeout parameters
-    params = {
-        **parsed_params,
-        'socket_timeout': float(os.environ.get('REDIS_SOCKET_TIMEOUT', DEFAULT_SOCKET_TIMEOUT)),
-        'socket_connect_timeout': float(os.environ.get('REDIS_CONNECT_TIMEOUT', DEFAULT_CONNECT_TIMEOUT)),
-        'retry_on_timeout': os.environ.get('REDIS_RETRY_ON_TIMEOUT', DEFAULT_RETRY_ON_TIMEOUT) == 'True',
-        'decode_responses': True
+    return {
+        'host': host,
+        'port': port,
+        'db': db,
+        'password': password
     }
-    
-    return params
 
-def initialize_redis_client(redis_class, namespace: str = '', expire_time: int = 3600, **kwargs):
+def check_redis_health(namespace: str = '') -> Dict[str, Any]:
     """
-    Safely initialize a Redis client with error handling
+    Check Redis health and return status information
     
     Args:
-        redis_class: The Redis client class to initialize
-        namespace: Optional namespace prefix for keys
-        expire_time: Default expiration time in seconds
-        **kwargs: Additional arguments for the Redis client
+        namespace: Optional namespace for specific Redis usage
         
     Returns:
-        Initialized Redis client or None if initialization fails
+        Dict containing health check results
     """
+    start_time = time.time()
+    
     try:
-        # Get connection parameters
-        conn_params = get_redis_connection_params()
+        import redis
+        from redis.exceptions import RedisError
         
-        # If no Redis host, return None
-        if not conn_params['host']:
-            logger.warning(f"No Redis host available, {namespace} Redis features will be disabled")
-            return None
+        result = {
+            'status': 'unavailable',
+            'error': None,
+            'latency_ms': 0,
+            'info': None
+        }
         
-        # Override with any provided kwargs
-        conn_params.update(kwargs)
+        client = create_redis_client(namespace)
         
-        # Log Redis connection attempt with proper sanitization
-        sanitized_params = conn_params.copy()
-        if 'password' in sanitized_params and sanitized_params['password']:
-            sanitized_params['password'] = '******'
-        logger.debug(f"Initializing Redis client with params: {sanitized_params}")
+        if not client:
+            result['error'] = 'Redis client could not be created'
+            return result
         
-        # Initialize client
-        client = redis_class(**conn_params)
+        # Ping to check connectivity
+        client.ping()
         
-        # Set namespace and expire time if supported
-        if hasattr(client, 'namespace'):
-            client.namespace = namespace
+        # Get server info (limited subset)
+        info = client.info(section='server')
         
-        if hasattr(client, 'expire_time'):
-            client.expire_time = expire_time
+        result['status'] = 'available'
+        result['info'] = {
+            'version': info.get('redis_version', 'unknown'),
+            'uptime_days': info.get('uptime_in_days', 0),
+            'clients_connected': info.get('connected_clients', 0),
+            'memory_used_mb': round(info.get('used_memory', 0) / (1024 * 1024), 2)
+        }
         
-        # Test connection with ping if available
-        connection_start = time.time()
-        if hasattr(client, 'ping') and callable(client.ping):
-            client.ping()
-            connection_time = time.time() - connection_start
-            logger.info(f"Successfully connected to Redis at {conn_params['host']} in {connection_time:.3f}s")
+        # Calculate latency
+        result['latency_ms'] = round((time.time() - start_time) * 1000, 2)
         
-        return client
+        return result
+    except (ImportError, RedisError) as e:
+        return {
+            'status': 'unavailable',
+            'error': str(e),
+            'latency_ms': 0,
+            'info': None
+        }
     except Exception as e:
-        logger.error(f"Failed to initialize Redis client: {str(e)}")
-        return None
+        return {
+            'status': 'error',
+            'error': f"Unexpected error: {str(e)}",
+            'latency_ms': 0,
+            'info': None
+        }
