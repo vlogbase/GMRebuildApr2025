@@ -1,9 +1,11 @@
 """
-API Cache Module
+API Cache Module (Improved)
 
 This module provides Redis-backed caching for API responses,
 optimizing performance for repetitive API calls and reducing
 the load on external services.
+
+This improved version includes robust error handling for Redis connection failures.
 """
 
 import json
@@ -16,7 +18,8 @@ from typing import Dict, Any, Optional, Callable, TypeVar, List, Union
 from flask import Flask, request, g
 from werkzeug.local import LocalProxy
 
-from redis_cache import RedisCache, handle_redis_error
+from redis_cache import RedisCache
+from redis_helper import safe_flush, safe_get, safe_set
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -131,24 +134,6 @@ class ApiCache:
         # Default TTL
         return self.default_ttl
     
-    def safe_flush(self):
-        """Safely flush Redis cache with error handling"""
-        if self.redis is None:
-            logger.warning("Cannot flush cache: Redis client is not available")
-            return False
-        
-        try:
-            if hasattr(self.redis, 'flush') and callable(self.redis.flush):
-                self.redis.flush()
-                logger.debug("Successfully flushed Redis cache")
-                return True
-            else:
-                logger.warning("Redis client does not have a flush method")
-                return False
-        except Exception as e:
-            logger.error(f"Failed to flush Redis cache: {str(e)}")
-            return False
-    
     def cache_api_call(self, ttl: Optional[int] = None, 
                        model_param: Optional[str] = None,
                        skip_cache_condition: Optional[Callable] = None):
@@ -185,7 +170,7 @@ class ApiCache:
                 cached_result = None
                 if self.redis:
                     try:
-                        cached_result = self.redis.get(cache_key)
+                        cached_result = safe_get(self.redis, cache_key)
                         if cached_result is not None:
                             logger.debug(f"Cache hit for key: {cache_key}")
                             return cached_result
@@ -198,7 +183,7 @@ class ApiCache:
                 # Cache the result if Redis is available
                 if self.redis:
                     try:
-                        self.redis.set(cache_key, result, expire=cache_ttl)
+                        safe_set(self.redis, cache_key, result, expire=cache_ttl)
                         logger.debug(f"Cached result with key: {cache_key}, TTL: {cache_ttl}s")
                     except Exception as e:
                         logger.debug(f"Redis set operation failed: {str(e)}")
@@ -206,7 +191,7 @@ class ApiCache:
                 return result
             
             # Add a method to clear the cache for this function with error handling
-            wrapper.clear_cache = self.safe_flush
+            wrapper.clear_cache = lambda: safe_flush(self.redis)
             
             return wrapper
         
@@ -261,7 +246,7 @@ class ApiCache:
                 cached_result = None
                 if self.redis:
                     try:
-                        cached_result = self.redis.get(cache_key)
+                        cached_result = safe_get(self.redis, cache_key)
                         if cached_result is not None:
                             logger.debug(f"Cache hit for key: {cache_key}")
                             return cached_result
@@ -281,7 +266,7 @@ class ApiCache:
                 # Cache the result if Redis is available
                 if self.redis:
                     try:
-                        self.redis.set(cache_key, result, expire=cache_ttl)
+                        safe_set(self.redis, cache_key, result, expire=cache_ttl)
                         logger.debug(f"Cached API response with key: {cache_key}, TTL: {cache_ttl}s")
                     except Exception as e:
                         logger.debug(f"Redis set operation failed: {str(e)}")
@@ -289,7 +274,7 @@ class ApiCache:
                 return result
             
             # Add a method to clear the cache for this function with error handling
-            wrapper.clear_cache = self.safe_flush
+            wrapper.clear_cache = lambda: safe_flush(self.redis)
             
             return wrapper
         
@@ -348,14 +333,15 @@ def init_api_cache(app: Flask, namespace: str = 'api_cache:',
         ApiCache: The initialized API cache instance
     """
     global _api_cache
+    
+    # Create API cache instance
     _api_cache = ApiCache(
         namespace=namespace,
         default_ttl=default_ttl,
         model_ttl_map=model_ttl_map
     )
     
-    # Add the API cache to the app extensions
+    # Register with the application
     app.extensions['api_cache'] = _api_cache
     
-    logger.info("API cache initialized")
     return _api_cache
