@@ -60,8 +60,12 @@ window.addEventListener('load', function() {
             document.body.style.overflow = '';
             
             // Reset sidebar state when returning to desktop view
-            sidebar.classList.remove('active');
-            sidebarBackdrop.classList.remove('active');
+            if (sidebar) {
+                sidebar.classList.remove('active');
+            }
+            if (sidebarBackdrop) {
+                sidebarBackdrop.classList.remove('active');
+            }
         }
     });
     
