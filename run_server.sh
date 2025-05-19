@@ -1,5 +1,6 @@
 #!/bin/bash
-# Run the server in the background
-python start_server.py &
-echo "Server started. Listening on port 5000."
-sleep 3  # Wait a bit to let the server initialize
+
+echo "Starting GloriaMundo application on port 3000..."
+
+# Use gunicorn with configuration file for consistent port settings
+gunicorn -c gunicorn.conf.py main:app
