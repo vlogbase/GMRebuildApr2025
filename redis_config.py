@@ -79,6 +79,35 @@ def is_redis_available(namespace: str = '') -> bool:
     config = get_redis_config(namespace)
     return bool(config['host'])
 
+def get_redis_connection_params(namespace: str = '') -> Dict[str, Any]:
+    """
+    Get Redis connection parameters for a given namespace
+    
+    This function returns the necessary parameters for establishing a Redis connection,
+    with proper defaults and namespace-specific configuration if available.
+    
+    Args:
+        namespace: Optional namespace for specific Redis usage (e.g., 'cache', 'session')
+        
+    Returns:
+        Dict: Redis connection parameters that can be used to create a Redis client
+    """
+    # Get the base configuration
+    config = get_redis_config(namespace)
+    
+    # Return connection parameters
+    return {
+        'host': config['host'],
+        'port': config['port'],
+        'db': config['db'],
+        'password': config['password'],
+        'socket_timeout': config['socket_timeout'],
+        'socket_connect_timeout': config['socket_connect_timeout'],
+        'retry_on_timeout': config['retry_on_timeout'],
+        'health_check_interval': config['health_check_interval'],
+        'decode_responses': config['decode_responses']
+    }
+
 def create_redis_client(namespace: str = '', decode_responses: bool = True) -> Optional[Any]:
     """
     Create a Redis client with the given namespace configuration
