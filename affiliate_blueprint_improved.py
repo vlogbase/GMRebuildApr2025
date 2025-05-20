@@ -457,9 +457,8 @@ def agree_to_terms_handler():
         logger.info(f"CSRF token in form: {request.form['csrf_token'][:10]}... (truncated)")
     logger.info(f"Session CSRF token exists: {'csrf_token' in session}")
     
-    # Force regenerate a fresh CSRF token to ensure it's valid
-    new_csrf_token = generate_csrf()
-    logger.info(f"Generated fresh CSRF token: {new_csrf_token[:10]}... (truncated)")
+    # Do NOT regenerate a CSRF token here - it would invalidate validation
+    # The token submitted with the form must match the one already in the session
     
     if not form.validate_on_submit():
         # Log validation errors for debugging with high visibility
