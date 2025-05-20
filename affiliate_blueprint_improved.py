@@ -409,6 +409,109 @@ def commission_metrics():
         'data': chart_data
     })
 
+@affiliate_bp.route('/agree-to-terms', methods=['POST'])
+def agree_to_terms_handler():
+    """Handle the submission of the affiliate terms agreement form"""
+    # Import necessary modules and models inside function to avoid circular imports
+    from database import User, Affiliate, db
+    from forms import AgreeToTermsForm
+    from datetime import datetime
+    import string
+    import random
+    
+    # Check if user is logged in
+    if 'user_id' not in session:
+        flash('Please login to continue', 'warning')
+        return redirect(url_for('login'))
+    
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    if not user:
+        flash('User not found', 'error')
+        return redirect(url_for('login'))
+    
+    # Create and validate form
+    form = AgreeToTermsForm(request.form)
+    
+    if not form.validate():
+        # Handle validation errors
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{field}: {error}", 'error')
+        
+        # If the terms weren't agreed to, delete any pending_terms affiliate record
+        if 'agree_to_terms' in form.errors:
+            pending_affiliate = Affiliate.query.filter_by(
+                user_id=user_id, 
+                status='pending_terms'
+            ).first()
+            
+            if pending_affiliate:
+                logger.info(f"Deleting pending affiliate record for user {user_id} due to terms agreement failure")
+                db.session.delete(pending_affiliate)
+                db.session.commit()
+                flash('Your previous application has been discarded. Please start over when you are ready to agree to the terms.', 'info')
+        
+        # Redirect back to the account page's Tell a Friend tab
+        return redirect(url_for('billing.account_management') + '#tellFriend')
+    
+    # Form is valid, proceed with activating or creating affiliate
+    paypal_email = form.paypal_email.data
+    
+    # Find existing affiliate record
+    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    
+    try:
+        if affiliate:
+            # Update existing affiliate record
+            affiliate.status = 'active'
+            affiliate.terms_agreed_at = datetime.now()
+            
+            # Update PayPal email if provided
+            if paypal_email:
+                affiliate.paypal_email = paypal_email
+                
+            # If it was in pending_terms and didn't have a referral code, generate one
+            if not affiliate.referral_code:
+                # Generate a unique referral code
+                random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+                referral_code = f"{user.username.lower()}-{random_str}"
+                affiliate.referral_code = referral_code
+                
+            logger.info(f"Activated existing affiliate record for user {user_id}")
+            flash('Your affiliate account has been activated!', 'success')
+        else:
+            # Create new affiliate record with active status
+            # Generate a unique referral code
+            random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
+            referral_code = f"{user.username.lower()}-{random_str}"
+            
+            # Create new affiliate
+            affiliate = Affiliate(
+                user_id=user_id,
+                name=user.username,
+                email=user.email,
+                paypal_email=paypal_email,
+                referral_code=referral_code,
+                status='active',
+                terms_agreed_at=datetime.now()
+            )
+            db.session.add(affiliate)
+            logger.info(f"Created new active affiliate record for user {user_id}")
+            flash('You are now registered as an affiliate!', 'success')
+        
+        # Commit the changes
+        db.session.commit()
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error processing affiliate terms agreement: {str(e)}", exc_info=True)
+        flash('An error occurred while processing your request. Please try again.', 'error')
+    
+    # Redirect to the Tell a Friend tab
+    return redirect(url_for('billing.account_management') + '#tellFriend')
+
 @affiliate_bp.route('/update-paypal-email', methods=['POST'])
 def update_paypal_email():
     """Update affiliate's PayPal email address"""
