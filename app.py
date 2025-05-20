@@ -1120,6 +1120,47 @@ def info():
         logging.error(f"Error rendering info.html: {str(e)}")
         # Return detailed error for debugging
         return f"<h1>Error rendering marketing page</h1><p>Error: {str(e)}</p>", 500
+
+@app.route('/logout')
+def logout_view():
+    """
+    Handle user logout with consistent behavior
+    
+    This implementation:
+    1. Does NOT use login_required to avoid redirect loops
+    2. Always clears the session properly
+    3. Consistently redirects to the info page after logout
+    4. Handles errors gracefully
+    """
+    try:
+        # Log that logout was requested
+        logger.info("Logout requested")
+        
+        # Perform logout using Flask-Login's logout_user
+        logout_user()
+        
+        # Clear any remaining session data to prevent issues
+        session.clear()
+        
+        # Add a flash message to confirm logout
+        flash('You have been successfully logged out.', 'success')
+        
+        # Always redirect to the info page after logout
+        logger.info("Logout successful, redirecting to info page")
+        return redirect(url_for('info'))
+    except Exception as e:
+        # Log any errors during logout
+        logger.exception(f"Error during logout: {e}")
+        
+        # Make sure user is logged out even if there was an error
+        try:
+            logout_user()
+            session.clear()
+        except:
+            pass
+            
+        # Redirect to info page in case of error too
+        return redirect(url_for('info'))
     
 # Note: Removed redundant route handler for '/billing/account'
 # This is now properly handled by the billing blueprint with the '/account' route
