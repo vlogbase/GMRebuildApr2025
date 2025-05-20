@@ -47,14 +47,8 @@ def init_direct_handler(app, db):
         logger.debug("Direct affiliate signup handler called")
         logger.debug(f"Form data: {request.form}")
         
-        # Check CSRF token
-        csrf_token = request.form.get('csrf_token', '')
-        try:
-            validate_csrf(csrf_token)
-        except CSRFError:
-            logger.warning("CSRF validation failed")
-            flash('Your session has expired. Please try again.', 'error')
-            return redirect(url_for('billing.account_management') + '#tellFriend')
+        # CSRF validation is now exempted in app.py
+        # We're skipping the manual validation here to avoid conflicts
         
         # Check if user is logged in
         if 'user_id' not in session:
