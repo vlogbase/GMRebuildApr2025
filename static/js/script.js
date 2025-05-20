@@ -242,11 +242,10 @@ function performIdleCleanup() {
     if ('requestIdleCallback' in window) {
         requestIdleCallback(() => {
             console.log('Performing idle cleanup of empty conversations');
-            fetch('/api/cleanup-empty-conversations', {
+            fetchWithCSRF('/api/cleanup-empty-conversations', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
+                    'Content-Type': 'application/json'
                 }
             })
             .then(response => response.json())
@@ -273,11 +272,10 @@ function performIdleCleanup() {
         // Fallback for browsers that don't support requestIdleCallback
         setTimeout(() => {
             console.log('Performing delayed cleanup of empty conversations (fallback)');
-            fetch('/api/cleanup-empty-conversations', {
+            fetchWithCSRF('/api/cleanup-empty-conversations', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
+                    'Content-Type': 'application/json'
                 }
             })
             .then(response => response.json())
@@ -806,11 +804,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log("No current conversation (fallback case), creating a new one on page load");
                 
                 // Create a new conversation immediately (no blocking cleanup)
-                fetch('/api/create-conversation', {
+                fetchWithCSRF('/api/create-conversation', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
+                        'Content-Type': 'application/json'
                     }
                 })
                 .then(response => response.json())
@@ -3490,11 +3487,10 @@ window.resetToDefault = function(presetId) {
                 performIdleCleanup();
                 
                 // Create a new conversation immediately
-                fetch('/api/create-conversation', {
+                fetchWithCSRF('/api/create-conversation', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': getCSRFToken()
+                        'Content-Type': 'application/json'
                     }
                 })
                 .then(response => response.json())
