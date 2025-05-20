@@ -1,0 +1,8 @@
+[worker]
+command = "python -m workflows.csrf_fix_test"
+title = "CSRF Fix Test"
+description = "Test if CSRF token fixes have resolved the 400 Bad Request errors for AJAX endpoints"
+triggers = ["commit", "manual"]
+
+[env]
+PYTHONPATH = "."
