@@ -326,14 +326,6 @@ try:
     logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}", exc_info=True)
-
-# Register direct affiliate handler (this will override the blueprint's handler if needed)
-try:
-    from direct_affiliate_handler import init_direct_handler
-    init_direct_handler(app, db)
-    logger.info("Direct affiliate signup handler registered successfully")
-except Exception as e:
-    logger.error(f"Error registering direct affiliate handler: {e}", exc_info=True)
     
 # Register user settings blueprint
 try:

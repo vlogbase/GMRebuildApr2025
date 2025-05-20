@@ -1,46 +1,37 @@
 """
-Simple Flask server workflow for GloriaMundo
-
-This workflow runs the main Flask application with Redis caching and session support.
+Run the Flask application with app.py as the entry point.
 """
 
-import os
 import sys
+import os
 import logging
 
-def run():
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler('app_workflow.log')
+    ]
+)
+
+logger = logging.getLogger(__name__)
+
+def run_app():
     """
-    Run the Flask application
+    Run the Flask application using app.py as the entry point.
     """
-    # Configure logging
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.StreamHandler(sys.stdout)
-        ]
-    )
-    
-    logger = logging.getLogger(__name__)
-    logger.info("Starting GloriaMundo application workflow")
-    
-    # Import and run the app
     try:
-        import main
-        logger.info("Application imported successfully")
+        logger.info("Starting application workflow...")
         
-        # Print Redis environment variables (without passwords)
-        redis_host = os.environ.get('REDIS_HOST', 'Not configured')
-        redis_port = os.environ.get('REDIS_PORT', 'Not configured')
-        ssl_enabled = os.environ.get('REDIS_SSL', 'Not configured')
+        # Run the Flask application
+        os.system("python app.py")
         
-        logger.info(f"Redis configuration: host={redis_host}, port={redis_port}, ssl={ssl_enabled}")
-        
-        # Run the app on port 5000, accessible externally
-        from main import app
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        logger.info("Application workflow completed.")
     except Exception as e:
-        logger.error(f"Failed to start application: {e}", exc_info=True)
+        logger.error(f"Error in application workflow: {str(e)}", exc_info=True)
+        raise
 
 if __name__ == "__main__":
-    run()
+    run_app()

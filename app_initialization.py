@@ -136,6 +136,17 @@ def run_database_migrations() -> Dict[str, Any]:
                     logger.error(f"Error running Google username migration: {e}")
                     migration_results['google_username'] = False
                 
+                # Run affiliate user_id migration 
+                logger.info("Running affiliate user_id migration...")
+                try:
+                    from migrations.affiliate_migration import run_migration as run_affiliate_migration
+                    success = run_affiliate_migration(app, db)
+                    migration_results['affiliate'] = success
+                    logger.info(f"Affiliate user_id migration completed with status: {success}")
+                except Exception as e:
+                    logger.error(f"Error running affiliate user_id migration: {e}")
+                    migration_results['affiliate'] = False
+                
                 # Remove hypothetical migration that doesn't exist in the codebase
                 # This avoids the error with non-existent imports
                 migration_results['conversation_index'] = True  # Assume success for now

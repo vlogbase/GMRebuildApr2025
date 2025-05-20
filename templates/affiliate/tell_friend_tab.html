@@ -379,7 +379,7 @@
                         <h5 class="mb-0">Activate Your Account</h5>
                     </div>
                     <div class="card-body">
-                        <form action="{{ url_for('affiliate.agree_to_terms') }}" method="post">
+                        <form action="/affiliate/agree-to-terms" method="post">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-4">
                                 <div class="form-floating">
