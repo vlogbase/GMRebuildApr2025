@@ -74,6 +74,13 @@ if not app.secret_key:
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
+# Add route for CSRF token refreshing
+@app.route('/get-csrf-token', methods=['GET'])
+def get_csrf_token():
+    """Return a fresh CSRF token."""
+    from flask_wtf.csrf import generate_csrf
+    return jsonify(csrf_token=generate_csrf())
+
 # Configure Redis session support - this will use Redis if available or fall back to Flask's default
 try:
     from redis_session import setup_redis_session

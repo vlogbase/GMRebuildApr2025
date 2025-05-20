@@ -100,5 +100,63 @@ window.fetch = function(url, options = {}) {
     };
 })();
 
+// Add form submission handler to refresh CSRF tokens when potentially stale
+document.addEventListener('DOMContentLoaded', function() {
+    // Find all forms with csrf_token input
+    const forms = document.querySelectorAll('form');
+    
+    forms.forEach(form => {
+        // Check if form has a CSRF token input
+        const csrfInput = form.querySelector('input[name="csrf_token"]');
+        if (!csrfInput) return;
+        
+        // Add submit event listener
+        form.addEventListener('submit', function(e) {
+            // Check if token might be stale (older than 15 minutes)
+            const now = new Date().getTime();
+            const lastRefresh = parseInt(localStorage.getItem('csrf_last_refresh') || '0');
+            
+            // If token is potentially stale, refresh it before submission
+            if (now - lastRefresh > 15 * 60 * 1000) { // 15 minutes
+                e.preventDefault(); // Prevent form submission temporarily
+                console.log('CSRF Helper: Refreshing potentially stale token before form submission');
+                
+                // Make AJAX request to get a fresh token
+                fetch('/get-csrf-token', {
+                    method: 'GET',
+                    credentials: 'same-origin'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.csrf_token) {
+                        // Update the token in the form
+                        csrfInput.value = data.csrf_token;
+                        
+                        // Also update the meta tag for other requests
+                        const metaTag = document.querySelector('meta[name="csrf-token"]');
+                        if (metaTag) {
+                            metaTag.content = data.csrf_token;
+                        }
+                        
+                        // Store the refresh time
+                        localStorage.setItem('csrf_last_refresh', now.toString());
+                        
+                        console.log('CSRF Helper: Token refreshed successfully, submitting form');
+                        // Submit the form
+                        form.submit();
+                    } else {
+                        console.error('CSRF Helper: Failed to refresh token, continuing with form submission');
+                        form.submit();
+                    }
+                })
+                .catch(error => {
+                    console.error('CSRF Helper: Error refreshing token:', error);
+                    form.submit(); // Submit anyway
+                });
+            }
+        });
+    });
+});
+
 // Log that the CSRF helper is loaded
 console.log('CSRF Helper: Initialized protection for all AJAX requests');

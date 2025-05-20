@@ -8,7 +8,8 @@ import logging
 import string
 import secrets
 from datetime import datetime
-from flask import Flask, request, session, flash, redirect, url_for
+from flask import Flask, request, session, flash, redirect, url_for, render_template
+from flask_wtf.csrf import generate_csrf, validate_csrf, CSRFError
 from sqlalchemy.exc import IntegrityError
 
 # Configure logging
@@ -26,7 +27,7 @@ def init_direct_handler(app, db):
     """
     logger.info("Registering direct affiliate signup handler")
     
-    @app.route('/affiliate/agree-to-terms', methods=['POST'])
+    @app.route('/affiliate/agree-to-terms', methods=['GET', 'POST'])
     def direct_affiliate_signup():
         """
         Process the affiliate signup form submission.
@@ -34,11 +35,26 @@ def init_direct_handler(app, db):
         
         If terms are not agreed, we delete any pending affiliate record to put the user
         back in the state they were in before applying.
+        
+        Added GET method handling to provide a valid CSRF token and handle token issues.
         """
         from models import User, Affiliate
         
+        # Handle GET requests - redirect to the affiliate section of the billing page
+        if request.method == 'GET':
+            return redirect(url_for('billing.account_management') + '#tellFriend')
+        
         logger.debug("Direct affiliate signup handler called")
         logger.debug(f"Form data: {request.form}")
+        
+        # Check CSRF token
+        csrf_token = request.form.get('csrf_token', '')
+        try:
+            validate_csrf(csrf_token)
+        except CSRFError:
+            logger.warning("CSRF validation failed")
+            flash('Your session has expired. Please try again.', 'error')
+            return redirect(url_for('billing.account_management') + '#tellFriend')
         
         # Check if user is logged in
         if 'user_id' not in session:
