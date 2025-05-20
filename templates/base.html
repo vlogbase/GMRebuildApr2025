@@ -137,6 +137,9 @@
     <!-- CSRF Helper (loaded before other scripts to protect all AJAX requests) -->
     <script src="{{ url_for('static', filename='js/csrf_helper.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
+    <!-- CSRF Fix for problematic endpoints -->
+    <script src="{{ url_for('static', filename='js/csrf_fix.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    
     <!-- Main JavaScript (deferred to not block rendering) -->
     <script defer src="{{ url_for('static', filename='js/script.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
