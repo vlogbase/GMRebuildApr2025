@@ -198,6 +198,27 @@ def register():
     
     return render_template('affiliate/register.html', user=user)
 
+@affiliate_bp.route('/terms')
+def terms():
+    """Display affiliate terms and conditions"""
+    # Import database models inside function to avoid circular imports
+    from database import User, Affiliate, db
+    
+    # Check if user is logged in
+    user_is_logged_in = 'user_id' in session
+    user_id = session.get('user_id')
+    
+    # Get affiliate info if user is logged in and is an affiliate
+    affiliate = None
+    if user_is_logged_in:
+        affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    
+    return render_template(
+        'affiliate/terms.html',
+        affiliate=affiliate,
+        user_is_logged_in=user_is_logged_in
+    )
+
 @affiliate_bp.route('/tell-a-friend')
 def tell_a_friend():
     """Affiliate referral tools page"""
