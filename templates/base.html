@@ -158,6 +158,9 @@
     <!-- Message collapsing functionality -->
     <script defer src="{{ url_for('static', filename='js/message-collapse.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
+    <!-- CSRF Test Script (only active with ?test_csrf parameter) -->
+    <script defer src="{{ url_for('static', filename='js/csrf_test.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    
     <!-- Skimlinks - Automatic Affiliate Link Generator (lowest priority) -->
     <script defer type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js" fetchpriority="low"></script>
     
