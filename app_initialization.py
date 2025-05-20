@@ -99,7 +99,8 @@ def run_database_migrations() -> Dict[str, Any]:
             'user_chat_settings': False,
             'conversation_index': False,
             'message_index': False,
-            'affiliate': False
+            'affiliate': False,
+            'google_username': False  # New migration to update Google usernames
         }
         
         with app.app_context():
@@ -123,6 +124,17 @@ def run_database_migrations() -> Dict[str, Any]:
                 from migrations_user_chat_settings import run_migration
                 success = run_migration()
                 migration_results['user_chat_settings'] = success
+                
+                # Google username migration (to fix username uniqueness issues)
+                logger.info("Running Google username migration...")
+                try:
+                    from migrations_google_username import run_migration
+                    success = run_migration()
+                    migration_results['google_username'] = success
+                    logger.info(f"Google username migration completed with status: {success}")
+                except Exception as e:
+                    logger.error(f"Error running Google username migration: {e}")
+                    migration_results['google_username'] = False
                 
                 # Remove hypothetical migration that doesn't exist in the codebase
                 # This avoids the error with non-existent imports

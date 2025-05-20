@@ -89,7 +89,10 @@ def callback():
         is_new_user = True
         # Create user properly
         user = User()
-        user.username = users_name
+        
+        # Use email as username instead of first name
+        # This prevents conflicts with common names
+        user.username = users_email
         user.email = users_email
         user.enable_memory = True  # Enable memory by default for new users
         
@@ -98,8 +101,24 @@ def callback():
         user.profile_picture = userinfo.get("picture")
         user.last_login_at = datetime.datetime.utcnow()
         
-        db.session.add(user)
-        db.session.commit()
+        try:
+            db.session.add(user)
+            db.session.commit()
+        except Exception as e:
+            # If there's an error (like username conflict), rollback and try with a modified username
+            db.session.rollback()
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error creating user with email {users_email}: {str(e)}")
+            
+            # Try with a modified username (add a random suffix)
+            import uuid
+            unique_suffix = str(uuid.uuid4())[:8]
+            user.username = f"{users_email}_{unique_suffix}"
+            
+            db.session.add(user)
+            db.session.commit()
+            
     else:
         # Update existing user's Google info
         user.google_id = userinfo.get("sub")
