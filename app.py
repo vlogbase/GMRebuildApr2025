@@ -80,6 +80,9 @@ def get_csrf_token():
     """Return a fresh CSRF token."""
     from flask_wtf.csrf import generate_csrf
     return jsonify(csrf_token=generate_csrf())
+    
+# Exempt the chat endpoint from CSRF protection
+csrf.exempt('/chat')
 
 # Configure Redis session support - this will use Redis if available or fall back to Flask's default
 try:
