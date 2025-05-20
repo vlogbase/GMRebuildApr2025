@@ -11,6 +11,7 @@ from datetime import datetime
 from flask import Flask, request, session, flash, redirect, url_for, render_template
 from flask_wtf.csrf import generate_csrf, validate_csrf, CSRFError
 from sqlalchemy.exc import IntegrityError
+from forms import AgreeToTermsForm
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -48,7 +49,7 @@ def init_direct_handler(app, db):
         logger.debug(f"Form data: {request.form}")
         
         # CSRF validation is now exempted in app.py
-        # We're skipping the manual validation here to avoid conflicts
+        # We're using WTForms validation instead of manual validation
         
         # Check if user is logged in
         if 'user_id' not in session:
@@ -62,11 +63,22 @@ def init_direct_handler(app, db):
             flash('User not found', 'error')
             return redirect(url_for('login'))
         
-        # Get the PayPal email from the form
-        paypal_email = request.form.get('paypal_email', '').strip()
+        # Create and validate form
+        form = AgreeToTermsForm(request.form)
+        if not form.validate():
+            # Log validation errors
+            logger.error(f"Form validation errors: {form.errors}")
+            for field, errors in form.errors.items():
+                field_name = str(field)
+                for error in errors:
+                    # Safely get the label text if it exists
+                    label_text = form[field_name].label.text if hasattr(form[field_name], 'label') and form[field_name].label else field_name
+                    flash(f"{label_text}: {error}", 'error')
+            return redirect(url_for('billing.account_management') + '#tellFriend')
         
-        # Check if checkbox was checked
-        terms_agreed = request.form.get('agree_to_terms') == 'on'
+        # Get validated data from form
+        paypal_email = form.paypal_email.data.strip() if form.paypal_email.data else ''
+        terms_agreed = form.agree_to_terms.data
         
         # First, check for existing affiliate records
         affiliate = Affiliate.query.filter_by(user_id=user_id).first()

@@ -1,21 +1,19 @@
 """
-Simple script to run the test affiliate template in the Replit environment.
+Simple Flask server workflow for testing affiliate signup
 """
 
-import os
 import logging
-from test_affiliate_tabs import app
+from app import app
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def run():
     """
-    Run the test application.
+    Run the Flask application for testing affiliate signup
     """
-    try:
-        # Start the Flask server on port 5000
-        app.run(debug=True, host='0.0.0.0', port=5000)
-    except Exception as e:
-        logging.error(f"Error running test affiliate app: {e}")
-        raise
+    logger.info("Starting test affiliate workflow")
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 if __name__ == "__main__":
     run()

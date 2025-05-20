@@ -1,43 +1,20 @@
 """
-Simple Flask server workflow for GloriaMundo Chat Mobile UI Testing
-
-This workflow runs the Flask application to test the mobile UI improvements:
-1. Model selection buttons and interface
-2. Sidebar behavior on mobile
-3. Fixed layout with scrollable content
+Simple Flask server workflow for GloriaMundo Chat Application
 """
 
+from main import app
 import logging
-import os
-import sys
 
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
-)
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 def run():
-    """Run the Flask application with development settings enabled."""
-    logger.info("Starting GloriaMundo Chat application workflow")
-    
-    # Environment setup
-    os.environ["FLASK_APP"] = "app.py"
-    os.environ["FLASK_ENV"] = "development"
-    os.environ["FLASK_DEBUG"] = "1"
-    
-    # Import and run the Flask application
-    logger.info("Importing Flask application")
-    import app
-    
-    logger.info("Starting Flask server")
-    
-    # Run with host='0.0.0.0' to make the app accessible from outside
-    app.app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+    """
+    Run the Flask application
+    """
+    logger.info("Starting Flask application workflow")
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 if __name__ == "__main__":
     run()
