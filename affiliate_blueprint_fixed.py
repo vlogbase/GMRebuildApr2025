@@ -1,5 +1,5 @@
 """
-Affiliate Blueprint Module (Improved)
+Affiliate Blueprint Module (Improved and Fixed)
 
 This module provides a Flask blueprint for the affiliate system.
 This implementation resolves circular import issues and prevents the blueprint 
@@ -127,7 +127,8 @@ def dashboard():
 def register():
     """Register as an affiliate"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, db
+    from app import db
+    from models import User, Affiliate
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -183,8 +184,7 @@ def register():
             website=website,
             referral_code=referral_code,
             status='active',
-            terms_agreed=True,
-            terms_agreed_at=datetime.now()
+            terms_agreed_at=datetime.now()  # Using the correct field name
         )
         
         try:
@@ -203,7 +203,8 @@ def register():
 def terms():
     """Display affiliate terms and conditions"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, db
+    from app import db
+    from models import User, Affiliate
     
     # Check if user is logged in
     user_is_logged_in = 'user_id' in session
@@ -224,7 +225,8 @@ def terms():
 def tell_a_friend():
     """Affiliate referral tools page"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, db
+    from app import db
+    from models import User, Affiliate
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -302,7 +304,8 @@ def tell_a_friend():
 def commissions():
     """View affiliate commissions"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, Commission, db
+    from app import db
+    from models import User, Affiliate, Commission
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -340,7 +343,8 @@ def commissions():
 def track_referral():
     """API endpoint to track affiliate referrals"""
     # Import database models inside function to avoid circular imports
-    from database import Affiliate, CustomerReferral, db
+    from app import db
+    from models import Affiliate, CustomerReferral
     
     try:
         data = request.get_json()
@@ -388,7 +392,8 @@ def track_referral():
 def commission_metrics():
     """API endpoint to get commission metrics for charts"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, Commission, db
+    from app import db
+    from models import User, Affiliate, Commission
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -505,50 +510,41 @@ def update_paypal_email():
         flash('PayPal email updated successfully', 'success')
     except Exception as e:
         db.session.rollback()
-        logger.error(f"Error updating PayPal email: {str(e)}", exc_info=True)
+        logger.error(f"Error updating PayPal email: {str(e)}")
         flash(f'An error occurred: {str(e)}', 'error')
     
-    # Redirect back to account management page
     return redirect(url_for('billing.account_management'))
 
-# Helper function for templates
 def affiliate_helpers():
     """Provide helper functions to affiliate templates"""
     def format_date(date):
         """Format a date for display"""
         if not date:
-            return ''
-        if isinstance(date, str):
-            try:
-                date = datetime.fromisoformat(date.replace('Z', '+00:00'))
-            except ValueError:
-                return date
-        return date.strftime('%Y-%m-%d %H:%M')
+            return "N/A"
+        return date.strftime("%Y-%m-%d %H:%M")
     
     def format_currency(amount):
         """Format an amount as currency"""
         if amount is None:
-            return '$0.00'
-        return f'${amount:.2f}'
+            return "$0.00"
+        return f"${amount:.2f}"
     
     def get_status_class(status):
         """Get CSS class for status display"""
         status_classes = {
-            'pending': 'bg-blue-100 text-blue-800',
-            'ready': 'bg-yellow-100 text-yellow-800',
-            'approved': 'bg-green-100 text-green-800',
-            'paid': 'bg-purple-100 text-purple-800',
-            'rejected': 'bg-red-100 text-red-800',
-            'cancelled': 'bg-gray-100 text-gray-800',
-            'converted': 'bg-green-100 text-green-800'
+            'pending': 'secondary',
+            'ready': 'info',
+            'approved': 'success',
+            'paid': 'primary',
+            'rejected': 'danger'
         }
-        return status_classes.get(status, 'bg-gray-100 text-gray-800')
+        return status_classes.get(status, 'secondary')
     
-    return {
-        'format_affiliate_date': format_date,
-        'format_affiliate_currency': format_currency,
-        'get_affiliate_status_class': get_status_class
-    }
+    return dict(
+        format_date=format_date,
+        format_currency=format_currency,
+        get_status_class=get_status_class
+    )
 
 def init_app(app):
     """
@@ -563,13 +559,14 @@ def init_app(app):
     Returns:
         None
     """
-    try:
-        # Register the context processor first
-        app.context_processor(affiliate_helpers)
-        
-        # Then register the blueprint
+    # Only register the blueprint if it hasn't been registered yet
+    if 'affiliate' not in app.blueprints:
+        # Register the blueprint
         app.register_blueprint(affiliate_bp)
         
+        # Add template context processors
+        affiliate_bp.context_processor(affiliate_helpers)
+        
         logger.info("Affiliate blueprint initialized successfully")
-    except Exception as e:
-        logger.error(f"Error initializing affiliate blueprint: {e}")
+    else:
+        logger.info("Affiliate blueprint already registered, skipping initialization")
