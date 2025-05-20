@@ -129,34 +129,88 @@
             // Enhanced CSRF token handling for the terms agreement form
             document.addEventListener('DOMContentLoaded', function() {
                 const termsForm = document.getElementById('agreeToTermsForm');
-                if (termsForm) {
-                    console.log('Enhanced CSRF handling for terms agreement form activated');
+                if (!termsForm) return;
+                
+                console.log('Enhanced CSRF handling for terms agreement form activated');
+                
+                // Create a manual submission button to replace the form submission
+                const originalBtn = termsForm.querySelector('button[type="submit"]');
+                if (!originalBtn) return;
+                
+                // Create a new manual button with the same styling
+                const manualSubmitBtn = document.createElement('button');
+                manualSubmitBtn.type = 'button'; // Not a submit button
+                manualSubmitBtn.className = originalBtn.className;
+                manualSubmitBtn.innerHTML = originalBtn.innerHTML;
+                manualSubmitBtn.name = originalBtn.name;
+                manualSubmitBtn.value = originalBtn.value;
+                
+                // Replace the original button
+                originalBtn.style.display = 'none';
+                originalBtn.parentNode.insertBefore(manualSubmitBtn, originalBtn);
+                
+                // Add click handler for our manual button
+                manualSubmitBtn.addEventListener('click', async function() {
+                    // Disable button to prevent double submission
+                    this.disabled = true;
+                    const originalText = this.innerHTML;
+                    this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
                     
-                    termsForm.addEventListener('submit', async function(e) {
-                        e.preventDefault();
-                        
-                        try {
-                            // Refresh CSRF token before form submission
-                            const response = await fetch('/api/refresh-csrf-token');
-                            if (response.ok) {
-                                const data = await response.json();
-                                if (data.success && data.csrf_token) {
-                                    // Update the CSRF token field in the form
-                                    const csrfField = termsForm.querySelector('input[name="csrf_token"]');
-                                    if (csrfField) {
-                                        csrfField.value = data.csrf_token;
-                                        console.log('Form CSRF token field updated with fresh token');
-                                    }
-                                }
-                            }
-                        } catch (error) {
-                            console.error('Error refreshing CSRF token before form submission:', error);
+                    try {
+                        // Fetch fresh CSRF token from server
+                        console.log('Fetching fresh CSRF token');
+                        const response = await fetch('/api/refresh-csrf-token');
+                        if (!response.ok) {
+                            throw new Error(`Failed to refresh CSRF token: ${response.status}`);
                         }
                         
-                        // Submit the form with the refreshed token
+                        const data = await response.json();
+                        if (!data.success || !data.csrf_token) {
+                            throw new Error('Invalid CSRF token response from server');
+                        }
+                        
+                        // Update the form's CSRF token input
+                        console.log('Updating form CSRF token');
+                        const csrfField = termsForm.querySelector('input[name="csrf_token"]');
+                        if (csrfField) {
+                            csrfField.value = data.csrf_token;
+                            console.log('CSRF token updated to:', data.csrf_token.substring(0, 10) + '...');
+                        } else {
+                            throw new Error('CSRF token field not found in form');
+                        }
+                        
+                        // Update the meta tag for other AJAX requests
+                        const metaTag = document.querySelector('meta[name="csrf-token"]');
+                        if (metaTag) {
+                            metaTag.content = data.csrf_token;
+                        }
+                        
+                        // Important: Add hidden input with agree_to_terms=1
+                        const agreeTermsInput = document.createElement('input');
+                        agreeTermsInput.type = 'hidden';
+                        agreeTermsInput.name = 'agree_to_terms';
+                        agreeTermsInput.value = '1';
+                        termsForm.appendChild(agreeTermsInput);
+                        
+                        // Submit the form directly
+                        console.log('Manually submitting terms form with fresh token');
                         termsForm.submit();
-                    });
-                }
+                        
+                    } catch (error) {
+                        console.error('Error in CSRF refresh process:', error);
+                        alert('There was a problem with form submission. Please try again.');
+                        
+                        // Re-enable the button
+                        this.disabled = false;
+                        this.innerHTML = originalText;
+                    }
+                });
+                
+                // Prevent the original form submission entirely
+                termsForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
             });
             </script>
         </div>

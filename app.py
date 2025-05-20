@@ -83,11 +83,43 @@ app.config['WTF_CSRF_TIME_LIMIT'] = 7200  # 2 hours - increase for user convenie
 
 @app.route('/api/refresh-csrf-token', methods=['GET'])
 def refresh_csrf_token():
-    """Generate and return a fresh CSRF token"""
+    """Generate and return a fresh CSRF token
+    
+    This endpoint ensures the token is stored in the session
+    and returned to the client for synchronization.
+    """
     from flask_wtf.csrf import generate_csrf
-    # Generate a new CSRF token
+    from flask import session
+    from datetime import datetime
+    
+    # Log the request for debugging
+    app.logger.info("CSRF token refresh requested")
+    
+    # Remove any existing token first to ensure clean state
+    if 'csrf_token' in session:
+        app.logger.info(f"Previous CSRF token found in session: {session['csrf_token'][:10]}...")
+        session.pop('csrf_token', None)
+    
+    # Generate a new CSRF token - this will store it in the session
     token = generate_csrf()
-    return jsonify({'csrf_token': token, 'success': True})
+    app.logger.info(f"Generated fresh CSRF token: {token[:10]}...")
+    
+    # Double check that the token is in the session
+    if 'csrf_token' in session:
+        app.logger.info(f"Verified token in session: {session['csrf_token'][:10]}...")
+        if session['csrf_token'] != token:
+            app.logger.error("CRITICAL: Token mismatch between generated token and session token!")
+    else:
+        app.logger.error("CRITICAL: Token not stored in session after generation!")
+    
+    # Force session save to ensure persistence
+    session.modified = True
+    
+    return jsonify({
+        'csrf_token': token, 
+        'success': True,
+        'timestamp': str(datetime.now())
+    })
 
 # Configure Redis session support - this will use Redis if available or fall back to Flask's default
 try:
