@@ -13,6 +13,74 @@ function getCSRFToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content;
 }
 
+// Function to refresh CSRF token and update meta tag
+async function refreshCSRFToken() {
+    try {
+        const response = await fetch('/api/refresh-csrf-token');
+        if (!response.ok) {
+            throw new Error(`Failed to refresh CSRF token: ${response.status}`);
+        }
+        const data = await response.json();
+        if (data.success && data.csrf_token) {
+            // Update the meta tag with the new token
+            const metaTag = document.querySelector('meta[name="csrf-token"]');
+            if (metaTag) {
+                metaTag.content = data.csrf_token;
+                console.log('CSRF token refreshed successfully');
+                return true;
+            }
+        }
+        return false;
+    } catch (error) {
+        console.error('Error refreshing CSRF token:', error);
+        return false;
+    }
+}
+
+// Enhanced fetch with CSRF token refresh and retry mechanism
+async function fetchWithCSRF(url, options = {}) {
+    // Set default options if not provided
+    options.headers = options.headers || {};
+    // Add CSRF token to headers
+    options.headers['X-CSRFToken'] = getCSRFToken();
+    
+    try {
+        // First attempt
+        const response = await fetch(url, options);
+        
+        // If the response is a 400 error (likely CSRF token expired)
+        if (response.status === 400) {
+            const text = await response.text();
+            // Check if error is CSRF related
+            if (text.includes('CSRF') || text.includes('csrf')) {
+                console.log('CSRF token expired, attempting to refresh...');
+                
+                // Try to refresh the token
+                const refreshed = await refreshCSRFToken();
+                
+                if (refreshed) {
+                    // Update the token in the headers and retry the request
+                    options.headers['X-CSRFToken'] = getCSRFToken();
+                    console.log('Retrying request with new CSRF token');
+                    return fetch(url, options);
+                }
+            }
+            
+            // If not a CSRF error or token refresh failed, reconstruct a Response object
+            return new Response(text, {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers
+            });
+        }
+        
+        return response;
+    } catch (error) {
+        console.error('Error in fetchWithCSRF:', error);
+        throw error;
+    }
+}
+
 // Utility function to force a browser repaint on an element
 // This is used to fix rendering issues where content doesn't appear until window focus changes
 function forceRepaint(element) {
@@ -673,11 +741,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                     console.log("Creating new conversation after page load");
                     // Create a new conversation
-                    fetch('/api/create-conversation', {
+                    fetchWithCSRF('/api/create-conversation', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json',
-                            'X-CSRFToken': getCSRFToken()
+                            'Content-Type': 'application/json'
                         }
                     })
                     .then(response => response.json())
@@ -3310,11 +3377,10 @@ window.resetToDefault = function(presetId) {
     // Function to save model preference to the server
     // Expose this function globally for mobile UI
     window.saveModelPreference = function(presetId, modelId, buttonElement) {
-        fetch('/save_preference', {
+        fetchWithCSRF('/save_preference', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 preset_id: presetId,

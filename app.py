@@ -74,6 +74,18 @@ if not app.secret_key:
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
+# Set CSRF token lifetime (3600 seconds = 1 hour by default)
+app.config['WTF_CSRF_TIME_LIMIT'] = 7200  # 2 hours - increase for user convenience
+
+# CSRF token refresh endpoint
+@app.route('/api/refresh-csrf-token', methods=['GET'])
+def refresh_csrf_token():
+    """Generate and return a fresh CSRF token"""
+    from flask_wtf.csrf import generate_csrf
+    # Generate a new CSRF token
+    token = generate_csrf()
+    return jsonify({'csrf_token': token, 'success': True})
+
 # Configure Redis session support - this will use Redis if available or fall back to Flask's default
 try:
     from redis_session import setup_redis_session
