@@ -29,8 +29,7 @@ affiliate_bp = Blueprint('affiliate', __name__, url_prefix='/affiliate', templat
 def dashboard():
     """Affiliate dashboard view"""
     # Import database models inside function to avoid circular imports
-    from app import db
-    from models import User, Affiliate, Commission, Transaction, CustomerReferral
+    from database import User, Affiliate, Commission, Transaction, CustomerReferral, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -198,27 +197,6 @@ def register():
             flash('An error occurred while registering. Please try again.', 'error')
     
     return render_template('affiliate/register.html', user=user)
-
-@affiliate_bp.route('/terms')
-def terms():
-    """Display affiliate terms and conditions"""
-    # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, db
-    
-    # Check if user is logged in
-    user_is_logged_in = 'user_id' in session
-    user_id = session.get('user_id')
-    
-    # Get affiliate info if user is logged in and is an affiliate
-    affiliate = None
-    if user_is_logged_in:
-        affiliate = Affiliate.query.filter_by(user_id=user_id).first()
-    
-    return render_template(
-        'affiliate/terms.html',
-        affiliate=affiliate,
-        user_is_logged_in=user_is_logged_in
-    )
 
 @affiliate_bp.route('/tell-a-friend')
 def tell_a_friend():
@@ -430,43 +408,6 @@ def commission_metrics():
         'success': True,
         'data': chart_data
     })
-
-@affiliate_bp.route('/agree-to-terms', methods=['POST'])
-def agree_to_terms():
-    """Handle affiliate agreement to terms submission"""
-    # Import database models inside function to avoid circular imports
-    from app import db
-    from models import User, Affiliate
-    
-    # Check if user is logged in
-    if 'user_id' not in session:
-        flash('Please login to continue', 'warning')
-        return redirect(url_for('login'))
-    
-    user_id = session['user_id']
-    
-    # Get user's affiliate info
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
-    
-    if not affiliate:
-        flash('You must be registered as an affiliate first', 'error')
-        return redirect(url_for('affiliate.register'))
-    
-    # Mark terms as agreed by setting the timestamp
-    affiliate.terms_agreed_at = datetime.now()
-    
-    # Update status to active once terms are agreed
-    affiliate.status = 'active'
-    
-    try:
-        db.session.commit()
-        flash('Thank you for agreeing to the affiliate terms!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error updating terms agreement: {str(e)}")
-        flash('An error occurred. Please try again.', 'error')
-    
-    return redirect(url_for('affiliate.dashboard'))
 
 @affiliate_bp.route('/update-paypal-email', methods=['POST'])
 def update_paypal_email():

@@ -99,8 +99,7 @@ def run_database_migrations() -> Dict[str, Any]:
             'user_chat_settings': False,
             'conversation_index': False,
             'message_index': False,
-            'affiliate': False,
-            'google_username': False  # New migration to update Google usernames
+            'affiliate': False
         }
         
         with app.app_context():
@@ -124,28 +123,6 @@ def run_database_migrations() -> Dict[str, Any]:
                 from migrations_user_chat_settings import run_migration
                 success = run_migration()
                 migration_results['user_chat_settings'] = success
-                
-                # Google username migration (to fix username uniqueness issues)
-                logger.info("Running Google username migration...")
-                try:
-                    from migrations_google_username import run_migration
-                    success = run_migration()
-                    migration_results['google_username'] = success
-                    logger.info(f"Google username migration completed with status: {success}")
-                except Exception as e:
-                    logger.error(f"Error running Google username migration: {e}")
-                    migration_results['google_username'] = False
-                
-                # Run affiliate user_id migration 
-                logger.info("Running affiliate user_id migration...")
-                try:
-                    from migrations.affiliate_migration import run_migration as run_affiliate_migration
-                    success = run_affiliate_migration(app, db)
-                    migration_results['affiliate'] = success
-                    logger.info(f"Affiliate user_id migration completed with status: {success}")
-                except Exception as e:
-                    logger.error(f"Error running affiliate user_id migration: {e}")
-                    migration_results['affiliate'] = False
                 
                 # Remove hypothetical migration that doesn't exist in the codebase
                 # This avoids the error with non-existent imports

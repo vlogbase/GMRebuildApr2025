@@ -1,11 +1,3 @@
-[app_workflow]
-run = "python app.py"
-language = "python"
-entrypoint = "app.py"
-guessImports = true
-
-[app_workflow.env]
-PYTHONPATH = "$PYTHONPATH:."
-PYTHONUNBUFFERED = "1"
-FLASK_ENV = "development"
-FLASK_DEBUG = "1"
+run = ["python", "app_workflow.py"]
+language = "python3"
+onBoot = "python app_workflow.py"

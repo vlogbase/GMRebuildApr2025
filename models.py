@@ -256,7 +256,6 @@ class Package(db.Model):
 class Affiliate(db.Model):
     """Affiliate model for the affiliate program"""
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True, index=True)
     name = db.Column(db.String(64), nullable=False)
     email = db.Column(db.String(120), nullable=False, unique=True, index=True)
     paypal_email = db.Column(db.String(120), nullable=True, unique=True)

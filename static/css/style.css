@@ -854,7 +854,6 @@ body.account-page .tab-pane {
 
 .new-chat-btn {
     width: 100%;
-    min-width: 120px; /* Prevent button from shrinking too much */
     padding: 10px;
     background-color: transparent;
     color: var(--text-color);
@@ -866,8 +865,6 @@ body.account-page .tab-pane {
     justify-content: center;
     gap: 8px;
     transition: background-color 0.2s;
-    white-space: nowrap; /* Prevent text from wrapping */
-    position: relative; /* For absolute positioning of spinner */
 }
 
 .new-chat-btn:hover {
@@ -1051,19 +1048,6 @@ body.account-page .tab-pane {
     border-top-color: var(--accent-color);
     animation: spin 1s ease-in-out infinite;
     margin-bottom: 10px;
-}
-
-/* Spinner specifically for the New Chat button */
-.new-chat-btn .spinner {
-    width: 18px;
-    height: 18px;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    border-radius: 50%;
-    border-top-color: var(--accent-color);
-    animation: spin 1s ease-in-out infinite;
-    display: inline-block;
-    margin-right: 8px;
-    vertical-align: middle;
 }
 
 @keyframes spin {

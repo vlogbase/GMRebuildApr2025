@@ -74,17 +74,6 @@ if not app.secret_key:
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
-# Add route for CSRF token refreshing
-@app.route('/get-csrf-token', methods=['GET'])
-def get_csrf_token():
-    """Return a fresh CSRF token."""
-    from flask_wtf.csrf import generate_csrf
-    return jsonify(csrf_token=generate_csrf())
-    
-# Exempt specific endpoints from CSRF protection
-csrf.exempt('/chat')
-csrf.exempt('/affiliate/agree-to-terms')
-
 # Configure Redis session support - this will use Redis if available or fall back to Flask's default
 try:
     from redis_session import setup_redis_session
@@ -327,8 +316,8 @@ except Exception as e:
 
 # Register affiliate blueprint
 try:
-    # Import the fixed affiliate blueprint module that avoids circular imports
-    from affiliate_blueprint_fixed import init_app as init_affiliate_bp
+    # Import the improved affiliate blueprint module that avoids circular imports
+    from affiliate_blueprint_improved import init_app as init_affiliate_bp
     
     # Initialize the affiliate blueprint with our Flask app
     init_affiliate_bp(app)
@@ -337,14 +326,6 @@ try:
     logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
 except Exception as e:
     logger.error(f"Error registering Affiliate blueprint: {e}", exc_info=True)
-
-# Register direct affiliate handler (this will override the blueprint's handler if needed)
-try:
-    from direct_affiliate_handler import init_direct_handler
-    init_direct_handler(app, db)
-    logger.info("Direct affiliate signup handler registered successfully")
-except Exception as e:
-    logger.error(f"Error registering direct affiliate handler: {e}", exc_info=True)
     
 # Register user settings blueprint
 try:
@@ -1059,14 +1040,18 @@ def test_url_formatting():
     """Render the URL formatting test page"""
     return render_template('test_url_formatting.html')
 
-@app.route('/health')
-def health_check():
-    """Dedicated health check endpoint for monitoring systems"""
-    return 'Application is healthy!', 200
-
 @app.route('/')
 def index():
-    """Main application entry point"""
+    """Main route that serves as both health check and app entry point"""
+    # Return a health check response for any health checker or if explicitly requested
+    # Replit's deployment system checks the root path for health checks
+    if (request.headers.get('User-Agent', '').startswith('ELB-HealthChecker') or 
+        'health' in request.args or 
+        'healthcheck' in request.args or
+        request.headers.get('User-Agent', '').lower().startswith('curl') or
+        request.headers.get('Accept', '').startswith('*/*')):
+        return 'Application is healthy!', 200
+        
     # Regular app behavior - redirect non-authenticated users to the info page
     if not current_user.is_authenticated:
         return redirect(url_for('info'))
@@ -1139,47 +1124,6 @@ def info():
         logging.error(f"Error rendering info.html: {str(e)}")
         # Return detailed error for debugging
         return f"<h1>Error rendering marketing page</h1><p>Error: {str(e)}</p>", 500
-
-@app.route('/logout')
-def logout_view():
-    """
-    Handle user logout with consistent behavior
-    
-    This implementation:
-    1. Does NOT use login_required to avoid redirect loops
-    2. Always clears the session properly
-    3. Consistently redirects to the info page after logout
-    4. Handles errors gracefully
-    """
-    try:
-        # Log that logout was requested
-        logger.info("Logout requested")
-        
-        # Perform logout using Flask-Login's logout_user
-        logout_user()
-        
-        # Clear any remaining session data to prevent issues
-        session.clear()
-        
-        # Add a flash message to confirm logout
-        flash('You have been successfully logged out.', 'success')
-        
-        # Always redirect to the info page after logout
-        logger.info("Logout successful, redirecting to info page")
-        return redirect(url_for('info'))
-    except Exception as e:
-        # Log any errors during logout
-        logger.exception(f"Error during logout: {e}")
-        
-        # Make sure user is logged out even if there was an error
-        try:
-            logout_user()
-            session.clear()
-        except:
-            pass
-            
-        # Redirect to info page in case of error too
-        return redirect(url_for('info'))
     
 # Note: Removed redundant route handler for '/billing/account'
 # This is now properly handled by the billing blueprint with the '/account' route

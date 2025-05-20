@@ -379,11 +379,12 @@
                         <h5 class="mb-0">Activate Your Account</h5>
                     </div>
                     <div class="card-body">
-                        <form action="/affiliate/agree-to-terms" method="post">
+                        <form action="{{ url_for('affiliate.agree_to_terms') }}" method="post">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-4">
                                 <div class="form-floating">
-                                    <input type="email" class="form-control" id="paypal_email" name="paypal_email">
+                                    <input type="email" class="form-control" id="paypal_email" name="paypal_email" 
+                                           placeholder="your-email@example.com">
                                     <label for="paypal_email">PayPal Email (Optional)</label>
                                 </div>
                                 <div class="form-text">You can add or update this later after activation.</div>

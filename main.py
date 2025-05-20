@@ -60,11 +60,10 @@ Session(app)
 logger.info(f"Flask session initialized with {app.config['SESSION_TYPE']} backend")
 
 # Register health check routes for deployment health checks
-# We're now using dedicated health check endpoints that won't conflict with the main app
 try:
     from gunicorn_health_check import init_app as init_health_check
     init_health_check(app)
-    logger.info("Health check routes registered successfully on dedicated endpoints")
+    logger.info("Health check routes registered successfully")
 except ImportError as e:
     logger.warning(f"Failed to import health check module: {e}")
 except Exception as e:

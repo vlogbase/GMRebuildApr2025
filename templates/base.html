@@ -134,17 +134,8 @@
     <!-- Bootstrap JS Bundle with Popper (critical for UI functionality) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- CSRF Helper (loaded before other scripts to protect all AJAX requests) -->
-    <script src="{{ url_for('static', filename='js/csrf_helper.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    
-    <!-- CSRF Fix for problematic endpoints -->
-    <script src="{{ url_for('static', filename='js/csrf_fix.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    
     <!-- Main JavaScript (deferred to not block rendering) -->
     <script defer src="{{ url_for('static', filename='js/script.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    
-    <!-- API Fetch Error Fix -->
-    {% include 'base_includes/fetch_error_fix.html' %}
     
     <!-- Cookie Consent JavaScript (non-critical, can be deferred) -->
     <script defer src="{{ url_for('static', filename='js/cookie_consent.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
@@ -157,9 +148,6 @@
     
     <!-- Message collapsing functionality -->
     <script defer src="{{ url_for('static', filename='js/message-collapse.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    
-    <!-- CSRF Test Script (only active with ?test_csrf parameter) -->
-    <script defer src="{{ url_for('static', filename='js/csrf_test.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
     <!-- Skimlinks - Automatic Affiliate Link Generator (lowest priority) -->
     <script defer type="text/javascript" src="https://s.skimresources.com/js/44501X1766367.skimlinks.js" fetchpriority="low"></script>

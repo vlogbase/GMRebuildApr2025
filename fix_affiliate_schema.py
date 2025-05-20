@@ -1,70 +1,158 @@
 """
-Fix the Affiliate model to include a user_id field.
-
-This script:
-1. Adds a user_id field to the Affiliate model if it doesn't exist
-2. Creates a migration to update existing affiliates with their corresponding user_id based on email matching
+Script to fix affiliate schema issues in the database.
+This comprehensive script ensures all affiliate tables and columns are correctly set up.
 """
 
+import os
 import logging
-from datetime import datetime
-from sqlalchemy import Column, Integer, ForeignKey, inspect
-from app import app, db
-from models import Affiliate, User
+import sys
+from sqlalchemy import create_engine, inspect, text
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, 
-                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def check_if_user_id_exists():
-    """Check if user_id column already exists in the Affiliate table"""
-    inspector = inspect(db.engine)
-    columns = [c['name'] for c in inspector.get_columns('affiliate')]
-    return 'user_id' in columns
+# Get database URL from environment
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    logger.error("DATABASE_URL environment variable not set")
+    sys.exit(1)
 
-def add_user_id_field():
-    """Add user_id field to Affiliate model if it doesn't exist"""
-    if check_if_user_id_exists():
-        logger.info("user_id field already exists in Affiliate table")
-        return False
+def main():
+    """Run all database schema fixes for affiliate functionality"""
+    logger.info("Starting affiliate schema fixes")
     
-    try:
-        # Add the column to the database
-        logger.info("Adding user_id column to Affiliate table")
-        db.engine.execute('ALTER TABLE affiliate ADD COLUMN user_id INTEGER REFERENCES user(id)')
-        
-        # Update existing records to set user_id based on email matching
-        logger.info("Updating existing affiliate records with user_id")
-        with db.session.begin():
-            affiliates = Affiliate.query.all()
-            updated_count = 0
-            
-            for affiliate in affiliates:
-                # Find user with matching email
-                user = User.query.filter_by(email=affiliate.email).first()
-                if user:
-                    db.engine.execute(
-                        'UPDATE affiliate SET user_id = %s WHERE id = %s',
-                        (user.id, affiliate.id)
-                    )
-                    updated_count += 1
-            
-            logger.info(f"Updated {updated_count} affiliate records with user_id")
-        
-        logger.info("Successfully added and populated user_id field in Affiliate table")
-        return True
-    except Exception as e:
-        logger.error(f"Error adding user_id field: {str(e)}")
-        return False
+    # Create database engine
+    engine = create_engine(DATABASE_URL)
+    
+    # Get database inspector
+    inspector = inspect(engine)
+    
+    # Check if tables exist
+    tables = inspector.get_table_names()
+    logger.info(f"Found {len(tables)} tables in database")
+    
+    # Check and create/fix affiliate table
+    fix_affiliate_table(engine, inspector, tables)
+    
+    # Check and create/fix customer_referral table
+    fix_customer_referral_table(engine, inspector, tables)
+    
+    # Check and create/fix commission table
+    fix_commission_table(engine, inspector, tables)
+    
+    logger.info("All affiliate schema fixes completed successfully")
 
-def run_migration():
-    """Run the migration to add user_id field to Affiliate model"""
-    with app.app_context():
-        if add_user_id_field():
-            logger.info("Migration completed successfully")
-        else:
-            logger.info("Migration not needed or failed")
+def fix_affiliate_table(engine, inspector, tables):
+    """Create or fix the affiliate table"""
+    if 'affiliate' not in tables:
+        logger.info("Creating missing 'affiliate' table")
+        with engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE affiliate (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(64) NOT NULL,
+                    email VARCHAR(120) NOT NULL UNIQUE,
+                    paypal_email VARCHAR(120) NULL UNIQUE,
+                    paypal_email_verified_at TIMESTAMP NULL,
+                    referral_code VARCHAR(16) NOT NULL UNIQUE,
+                    referred_by_affiliate_id INTEGER NULL REFERENCES affiliate(id),
+                    status VARCHAR(20) NOT NULL DEFAULT 'pending_terms',
+                    terms_agreed_at TIMESTAMP NULL,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            conn.commit()
+        logger.info("'affiliate' table created successfully")
+    else:
+        logger.info("'affiliate' table exists, checking columns")
+        
+        # Get existing columns
+        columns = {col['name']: col for col in inspector.get_columns('affiliate')}
+        
+        # Check for missing columns
+        if 'terms_agreed_at' not in columns:
+            logger.info("Adding missing 'terms_agreed_at' column to affiliate table")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE affiliate ADD COLUMN terms_agreed_at TIMESTAMP NULL"))
+                conn.commit()
+            logger.info("'terms_agreed_at' column added successfully")
+            
+        # Check if paypal_email is non-nullable and fix it
+        if 'paypal_email' in columns and not columns['paypal_email']['nullable']:
+            logger.info("Fixing 'paypal_email' column to allow NULL values")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE affiliate ALTER COLUMN paypal_email DROP NOT NULL"))
+                conn.commit()
+            logger.info("'paypal_email' column fixed to allow NULL values")
+
+def fix_customer_referral_table(engine, inspector, tables):
+    """Create or fix the customer_referral table"""
+    if 'customer_referral' not in tables:
+        logger.info("Creating missing 'customer_referral' table")
+        with engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE customer_referral (
+                    id SERIAL PRIMARY KEY,
+                    customer_user_id INTEGER NOT NULL REFERENCES "user"(id),
+                    affiliate_id INTEGER NOT NULL REFERENCES affiliate(id),
+                    signup_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    CONSTRAINT customer_affiliate_unique UNIQUE (customer_user_id)
+                )
+            """))
+            conn.commit()
+        logger.info("'customer_referral' table created successfully")
+    else:
+        logger.info("'customer_referral' table exists")
+
+def fix_commission_table(engine, inspector, tables):
+    """Create or fix the commission table"""
+    if 'commission' not in tables:
+        logger.info("Creating missing 'commission' table")
+        with engine.connect() as conn:
+            conn.execute(text("""
+                CREATE TABLE commission (
+                    id SERIAL PRIMARY KEY,
+                    affiliate_id INTEGER NOT NULL REFERENCES affiliate(id),
+                    triggering_transaction_id VARCHAR(128) NOT NULL,
+                    stripe_payment_status VARCHAR(32) NOT NULL,
+                    purchase_amount_base FLOAT NOT NULL,
+                    commission_rate FLOAT NOT NULL,
+                    commission_amount FLOAT NOT NULL,
+                    commission_tier INTEGER NOT NULL,
+                    currency VARCHAR(3) NOT NULL DEFAULT 'GBP',
+                    payment_batch_id VARCHAR(128) NULL,
+                    status VARCHAR(20) NOT NULL DEFAULT 'held',
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
+            # Create index for triggering_transaction_id
+            conn.execute(text("CREATE INDEX idx_commission_transaction_id ON commission (triggering_transaction_id)"))
+            conn.commit()
+        logger.info("'commission' table created successfully")
+    else:
+        logger.info("'commission' table exists")
+        
+        # Get existing columns
+        columns = {col['name']: col for col in inspector.get_columns('commission')}
+        
+        # Check for missing columns
+        if 'commission_tier' not in columns:
+            logger.info("Adding missing 'commission_tier' column to commission table")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE commission ADD COLUMN commission_tier INTEGER NOT NULL DEFAULT 1"))
+                conn.commit()
+            logger.info("'commission_tier' column added successfully")
+            
+        if 'currency' not in columns:
+            logger.info("Adding missing 'currency' column to commission table")
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE commission ADD COLUMN currency VARCHAR(3) NOT NULL DEFAULT 'GBP'"))
+                conn.commit()
+            logger.info("'currency' column added successfully")
 
 if __name__ == "__main__":
-    run_migration()
+    main()

@@ -6,8 +6,8 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/static/img/icons/icon-512x512.png",
-      "sizes": "512x512",
+      "src": "/static/img/splash_screens/icon.png",
+      "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"
     },
