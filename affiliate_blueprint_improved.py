@@ -450,9 +450,11 @@ def agree_to_terms():
         flash('You must be registered as an affiliate first', 'error')
         return redirect(url_for('affiliate.register'))
     
-    # Mark terms as agreed
-    affiliate.terms_agreed = True
+    # Mark terms as agreed by setting the timestamp
     affiliate.terms_agreed_at = datetime.now()
+    
+    # Update status to active once terms are agreed
+    affiliate.status = 'active'
     
     try:
         db.session.commit()
