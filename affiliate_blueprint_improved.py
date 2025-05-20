@@ -362,6 +362,11 @@ def track_referral():
         logger.error(f"Error tracking referral: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+@affiliate_bp.route('/terms')
+def terms():
+    """Display the affiliate terms and conditions"""
+    return render_template('affiliate/terms.html')
+
 @affiliate_bp.route('/api/commission-metrics', methods=['GET'])
 def commission_metrics():
     """API endpoint to get commission metrics for charts"""
@@ -409,7 +414,7 @@ def commission_metrics():
         'data': chart_data
     })
 
-@affiliate_bp.route('/agree-to-terms', methods=['POST'])
+@affiliate_bp.route('/agree-to-terms', methods=['POST'], endpoint='agree_to_terms')
 def agree_to_terms_handler():
     """Handle the submission of the affiliate terms agreement form"""
     # Import necessary modules and models inside function to avoid circular imports
