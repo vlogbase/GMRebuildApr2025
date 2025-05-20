@@ -1,0 +1,173 @@
+<!-- Fetch Error Fix Script -->
+<script>
+  // Create a more reliable fetch wrapper for API calls
+  window.apiFetch = function(url, options = {}) {
+    // Set default options for better reliability
+    const defaultOptions = {
+      credentials: 'same-origin',
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]')?.content || ''
+      }
+    };
+    
+    // Merge options
+    const fetchOptions = {
+      ...defaultOptions,
+      ...options,
+      headers: {
+        ...defaultOptions.headers,
+        ...(options.headers || {})
+      }
+    };
+    
+    // Perform fetch with improved error handling
+    return fetch(url, fetchOptions)
+      .then(response => {
+        if (!response.ok) {
+          // Enhanced error with status and statusText
+          const error = new Error(`HTTP error ${response.status}: ${response.statusText}`);
+          error.status = response.status;
+          error.response = response;
+          throw error;
+        }
+        return response.json();
+      })
+      .catch(error => {
+        console.error(`API Error for ${url}:`, error);
+        // Rethrow to let calling code handle the error
+        throw error;
+      });
+  };
+
+  // Fix for save_preference fetch errors
+  const originalSaveModelPreference = window.saveModelPreference;
+  if (typeof originalSaveModelPreference === 'function') {
+    window.saveModelPreference = function(presetId, modelId, buttonElement) {
+      console.log('Using enhanced saveModelPreference');
+      
+      // Show loading state
+      if (buttonElement) {
+        buttonElement.classList.add('loading');
+      }
+      
+      // Use enhanced fetch for better reliability
+      return window.apiFetch('/save_preference', {
+        method: 'POST',
+        body: JSON.stringify({
+          preset_id: presetId,
+          model_id: modelId
+        })
+      })
+      .then(data => {
+        console.log('Preference saved:', data);
+        
+        // Show success feedback
+        if (buttonElement) {
+          buttonElement.classList.remove('loading');
+          buttonElement.classList.add('save-success');
+          setTimeout(() => {
+            buttonElement.classList.remove('save-success');
+          }, 1000);
+        }
+        
+        return data;
+      })
+      .catch(error => {
+        console.error('Error saving preference:', error);
+        
+        // Show error state
+        if (buttonElement) {
+          buttonElement.classList.remove('loading');
+          buttonElement.classList.add('save-error');
+          setTimeout(() => {
+            buttonElement.classList.remove('save-error');
+          }, 1000);
+        }
+        
+        // Store preference locally as fallback
+        try {
+          localStorage.setItem(`model_preference_${presetId}`, modelId);
+          console.log('Saved preference to localStorage as fallback');
+        } catch (storageError) {
+          console.error('Failed to save to localStorage:', storageError);
+        }
+      });
+    };
+  }
+
+  // Fix for create-conversation fetch errors
+  document.addEventListener('DOMContentLoaded', function() {
+    // Find the new chat button
+    const newChatButton = document.getElementById('new-chat-btn');
+    if (newChatButton) {
+      // Store original click handler
+      const originalClickHandler = newChatButton.onclick;
+      
+      // Replace with enhanced handler
+      newChatButton.onclick = function(event) {
+        console.log('Enhanced new chat button handler');
+        event.preventDefault();
+        
+        // Save original content for restoring later
+        const originalContent = newChatButton.innerHTML;
+        newChatButton.setAttribute('data-original-content', originalContent);
+        
+        // Show loading state
+        newChatButton.innerHTML = '<span class="spinner"></span>';
+        newChatButton.disabled = true;
+        
+        // Clear chat UI
+        if (typeof clearChat === 'function') {
+          clearChat();
+        }
+        
+        // Check if user is logged in
+        const userIsLoggedIn = !!document.getElementById('logout-btn');
+        if (!userIsLoggedIn) {
+          // Restore button state
+          newChatButton.innerHTML = originalContent;
+          newChatButton.disabled = false;
+          return;
+        }
+        
+        // Create a new conversation with enhanced error handling
+        window.apiFetch('/api/create-conversation', {
+          method: 'POST'
+        })
+        .then(data => {
+          // Restore button state
+          newChatButton.innerHTML = originalContent;
+          newChatButton.disabled = false;
+          
+          if (data.success && data.conversation) {
+            // Set current conversation ID
+            window.currentConversationId = data.conversation.id;
+            console.log(`Created new conversation with ID: ${window.currentConversationId}`);
+            
+            // Update sidebar
+            if (typeof fetchConversations === 'function') {
+              fetchConversations(true);
+            }
+          } else {
+            console.error('Failed to create conversation:', data.error || 'Unknown error');
+          }
+        })
+        .catch(error => {
+          console.error('Error creating conversation:', error);
+          
+          // Restore button state
+          newChatButton.innerHTML = originalContent;
+          newChatButton.disabled = false;
+          
+          // Create fallback local ID if needed
+          if (typeof window.currentConversationId === 'undefined' || window.currentConversationId === null) {
+            window.currentConversationId = 'local-' + Date.now();
+            console.log(`Created fallback local conversation ID: ${window.currentConversationId}`);
+          }
+        });
+      };
+    }
+  });
+</script>

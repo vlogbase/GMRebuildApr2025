@@ -409,6 +409,40 @@ def commission_metrics():
         'data': chart_data
     })
 
+@affiliate_bp.route('/agree-to-terms', methods=['POST'])
+def agree_to_terms():
+    """Handle affiliate agreement to terms submission"""
+    # Import database models inside function to avoid circular imports
+    from database import User, Affiliate, db
+    
+    # Check if user is logged in
+    if 'user_id' not in session:
+        flash('Please login to continue', 'warning')
+        return redirect(url_for('login'))
+    
+    user_id = session['user_id']
+    
+    # Get user's affiliate info
+    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    
+    if not affiliate:
+        flash('You must be registered as an affiliate first', 'error')
+        return redirect(url_for('affiliate.register'))
+    
+    # Mark terms as agreed
+    affiliate.terms_agreed = True
+    affiliate.terms_agreed_at = datetime.now()
+    
+    try:
+        db.session.commit()
+        flash('Thank you for agreeing to the affiliate terms!', 'success')
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating terms agreement: {str(e)}")
+        flash('An error occurred. Please try again.', 'error')
+    
+    return redirect(url_for('affiliate.dashboard'))
+
 @affiliate_bp.route('/update-paypal-email', methods=['POST'])
 def update_paypal_email():
     """Update affiliate's PayPal email address"""
