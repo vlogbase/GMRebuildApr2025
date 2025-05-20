@@ -9,17 +9,17 @@ from flask import jsonify
 def init_app(app):
     """Initialize health check routes for the Flask application"""
     
-    @app.route('/')
-    def root_health_check():
-        """Root health check endpoint for Replit Deployments"""
+    @app.route('/healthz')
+    def kubernetes_health_check():
+        """Kubernetes-style health check endpoint for Replit Deployments"""
         return jsonify({
             "status": "ok",
             "message": "GloriaMundo API is running"
         })
     
-    @app.route('/health')
-    def health_check():
-        """Explicit health check endpoint"""
+    @app.route('/health/status')
+    def detailed_health_check():
+        """Detailed health check endpoint with version info"""
         return jsonify({
             "status": "ok",
             "service": "GloriaMundo",

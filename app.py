@@ -1040,18 +1040,14 @@ def test_url_formatting():
     """Render the URL formatting test page"""
     return render_template('test_url_formatting.html')
 
+@app.route('/health')
+def health_check():
+    """Dedicated health check endpoint for monitoring systems"""
+    return 'Application is healthy!', 200
+
 @app.route('/')
 def index():
-    """Main route that serves as both health check and app entry point"""
-    # Return a health check response for any health checker or if explicitly requested
-    # Replit's deployment system checks the root path for health checks
-    if (request.headers.get('User-Agent', '').startswith('ELB-HealthChecker') or 
-        'health' in request.args or 
-        'healthcheck' in request.args or
-        request.headers.get('User-Agent', '').lower().startswith('curl') or
-        request.headers.get('Accept', '').startswith('*/*')):
-        return 'Application is healthy!', 200
-        
+    """Main application entry point"""
     # Regular app behavior - redirect non-authenticated users to the info page
     if not current_user.is_authenticated:
         return redirect(url_for('info'))

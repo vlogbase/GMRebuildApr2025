@@ -33,11 +33,11 @@ def run():
         # Import the Flask app
         from app import app
         
-        # Add health check routes
+        # Add health check routes (dedicated endpoints only)
         try:
             from gunicorn_health_check import init_app as init_health_check
             init_health_check(app)
-            logger.info("Health check routes registered successfully")
+            logger.info("Health check routes registered successfully on dedicated endpoints")
         except Exception as e:
             logger.error(f"Error setting up health check routes: {e}")
         
