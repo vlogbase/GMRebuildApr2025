@@ -86,21 +86,6 @@
     {% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
-    <script>
-        // Apply 80% zoom for desktop non-Firefox browsers
-        document.addEventListener('DOMContentLoaded', function() {
-            // Simple detection for mobile devices
-            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-            
-            // Check if browser is not Firefox
-            const isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
-            
-            // Apply zoom only on desktop non-Firefox browsers
-            if (!isMobile && !isFirefox) {
-                document.body.style.zoom = "0.8";
-            }
-        });
-    </script>
     {% if request.path.startswith('/share/') %}
     <!-- Header for shared conversations -->
     <header>
