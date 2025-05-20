@@ -31,6 +31,9 @@ def init_direct_handler(app, db):
         """
         Process the affiliate signup form submission.
         Creates a new affiliate account or updates an existing one.
+        
+        If terms are not agreed, we delete any pending affiliate record to put the user
+        back in the state they were in before applying.
         """
         from models import User, Affiliate
         
@@ -54,14 +57,44 @@ def init_direct_handler(app, db):
         
         # Check if checkbox was checked
         terms_agreed = request.form.get('agree_to_terms') == 'on'
+        
+        # First, check for existing affiliate records
+        affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+        
+        # Also check by email as a fallback (for older records without user_id)
+        if not affiliate:
+            affiliate = Affiliate.query.filter_by(email=user.email).first()
+            
+        # If terms are not agreed, delete any pending affiliate record
         if not terms_agreed:
+            if affiliate and affiliate.status == 'pending_terms':
+                logger.info(f"Terms not agreed, deleting pending affiliate record for user {user_id}")
+                try:
+                    db.session.delete(affiliate)
+                    db.session.commit()
+                    logger.info(f"Successfully deleted pending affiliate record for user {user_id}")
+                except Exception as e:
+                    db.session.rollback()
+                    logger.error(f"Error deleting pending affiliate record: {str(e)}")
+            
             flash('You must agree to the affiliate terms', 'error')
             return redirect(url_for('billing.account_management') + '#tellFriend')
         
-        # Get user's affiliate info
-        affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+        # If we have an existing affiliate record in pending status, delete it and create a new one
+        if affiliate and affiliate.status == 'pending_terms':
+            logger.info(f"Deleting pending affiliate record for user {user_id} to create a new one")
+            try:
+                db.session.delete(affiliate)
+                db.session.commit()
+                affiliate = None  # Set to None so we create a new record
+                logger.info(f"Successfully deleted pending affiliate record for user {user_id}")
+            except Exception as e:
+                db.session.rollback()
+                logger.error(f"Error deleting pending affiliate record: {str(e)}")
+                flash('An error occurred while processing your application. Please try again.', 'error')
+                return redirect(url_for('billing.account_management') + '#tellFriend')
         
-        # If the user is not an affiliate yet, create an affiliate record
+        # If the user is not an affiliate yet or we deleted a pending record, create a new affiliate record
         if not affiliate:
             logger.info(f"Creating new affiliate record for user {user_id}")
             try:
@@ -86,7 +119,7 @@ def init_direct_handler(app, db):
                         'email': user.email,    # Use the user's email
                         'paypal_email': paypal_email,
                         'referral_code': referral_code,
-                        'status': 'active',
+                        'status': 'active',     # Always create as active
                         'terms_agreed_at': datetime.now()  # Set terms agreed timestamp
                     }
                     
@@ -104,7 +137,7 @@ def init_direct_handler(app, db):
                         'email': user.email,
                         'paypal_email': paypal_email,
                         'referral_code': referral_code,
-                        'status': 'active',
+                        'status': 'active',     # Always create as active
                         'terms_agreed_at': datetime.now()
                     }
                     affiliate = Affiliate(**affiliate_data)
@@ -126,7 +159,7 @@ def init_direct_handler(app, db):
             logger.info(f"Updating existing affiliate record for user {user_id}")
             try:
                 affiliate.terms_agreed_at = datetime.now()
-                affiliate.status = 'active'
+                affiliate.status = 'active'  # Ensure status is always active when terms are agreed
                 
                 # Update PayPal email if provided
                 if paypal_email:
