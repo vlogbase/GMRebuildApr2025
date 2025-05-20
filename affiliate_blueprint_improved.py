@@ -418,6 +418,7 @@ def agree_to_terms_handler():
     from datetime import datetime
     import string
     import random
+    from flask_wtf.csrf import generate_csrf
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -431,14 +432,31 @@ def agree_to_terms_handler():
         flash('User not found', 'error')
         return redirect(url_for('login'))
     
-    # Create and validate form
-    form = AgreeToTermsForm(request.form)
+    # Create and validate form using Flask-WTF's validate_on_submit()
+    # This properly handles CSRF validation along with field validation
+    form = AgreeToTermsForm()
     
-    if not form.validate():
-        # Handle validation errors
-        for field, errors in form.errors.items():
-            for error in errors:
-                flash(f"{field}: {error}", 'error')
+    # Log form data for debugging (omitting sensitive fields)
+    logger.debug(f"Form submission to agree-to-terms: has agree_to_terms: {'agree_to_terms' in request.form}")
+    logger.debug(f"Form submission CSRF token present: {'csrf_token' in request.form}")
+    
+    if not form.validate_on_submit():
+        # Log validation errors for debugging
+        logger.error(f"Form validation failed with errors: {form.errors}")
+        
+        # Handle validation errors with user-friendly messages
+        if 'csrf_token' in form.errors:
+            flash('Your security token has expired or is invalid. Please try submitting the form again.', 'error')
+        else:
+            for field, errors in form.errors.items():
+                for error in errors:
+                    # Make error messages more user-friendly
+                    if field == 'agree_to_terms':
+                        flash('You must agree to the terms and conditions to continue', 'error')
+                    elif field == 'paypal_email' and error.lower().find('valid email') >= 0:
+                        flash('Please provide a valid PayPal email address', 'error')
+                    else:
+                        flash(f"{error}", 'error')
         
         # If the terms weren't agreed to, delete any pending_terms affiliate record
         if 'agree_to_terms' in form.errors:
@@ -457,6 +475,7 @@ def agree_to_terms_handler():
         return redirect(url_for('billing.account_management') + '#tellFriend')
     
     # Form is valid, proceed with activating or creating affiliate
+    # Get PayPal email from validated form
     paypal_email = form.paypal_email.data
     
     # Find existing affiliate record
@@ -464,6 +483,9 @@ def agree_to_terms_handler():
     
     try:
         if affiliate:
+            # Record successful validation
+            logger.info(f"Form validation successful for user {user_id}, updating existing affiliate record")
+            
             # Update existing affiliate record
             affiliate.status = 'active'
             affiliate.terms_agreed_at = datetime.now()
@@ -482,6 +504,9 @@ def agree_to_terms_handler():
             logger.info(f"Activated existing affiliate record for user {user_id}")
             flash('Your affiliate account has been activated!', 'success')
         else:
+            # Record successful validation for new affiliate
+            logger.info(f"Form validation successful for user {user_id}, creating new affiliate record")
+            
             # Create new affiliate record with active status
             # Generate a unique referral code
             random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
