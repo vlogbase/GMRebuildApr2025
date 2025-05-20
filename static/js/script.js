@@ -2289,7 +2289,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to fetch user preferences for model presets
     // Expose this globally for the mobile UI
     window.fetchUserPreferences = function() {
-        return fetch('/get_preferences')
+        return fetchWithCSRF('/get_preferences')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -2546,7 +2546,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Call the refresh endpoint
-        return fetch('/api/refresh_model_prices', {
+        return fetchWithCSRF('/api/refresh_model_prices', {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCSRFToken(),
@@ -2625,7 +2625,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Fetch ONLY from the endpoint that includes cost bands
         // IMPORTANT: This function must always return a promise that resolves with the models
         // to maintain proper promise chaining and event synchronization
-        return fetch('/api/get_model_prices')
+        return fetchWithCSRF('/api/get_model_prices')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -3296,7 +3296,7 @@ window.resetToDefault = function(presetId) {
         }
         
         // Call the API to reset preference(s)
-        fetch('/reset_preferences', {
+        fetchWithCSRF('/reset_preferences', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -4445,7 +4445,7 @@ window.resetToDefault = function(presetId) {
         console.log('📤 Sending payload to backend:', JSON.stringify(payload, null, 2));
         
         // Create fetch request to /chat endpoint
-        fetch('/chat', {
+        fetchWithCSRF('/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -5291,7 +5291,7 @@ window.resetToDefault = function(presetId) {
             this.disabled = true;
             
             // Send the files to the server
-            fetch('/upload', {
+            fetchWithCSRF('/upload', {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCSRFToken()

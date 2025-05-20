@@ -120,10 +120,45 @@
         <div class="terms-actions">
             <a href="{{ url_for('billing.account_management') }}" class="back-button">Back to Account</a>
             
-            <form action="{{ url_for('affiliate.agree_to_terms') }}" method="post">
+            <form action="{{ url_for('affiliate.agree_to_terms') }}" method="post" id="agreeToTermsForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" name="agree_to_terms" value="1" class="agree-button">I Agree to These Terms</button>
             </form>
+            
+            <script>
+            // Enhanced CSRF token handling for the terms agreement form
+            document.addEventListener('DOMContentLoaded', function() {
+                const termsForm = document.getElementById('agreeToTermsForm');
+                if (termsForm) {
+                    console.log('Enhanced CSRF handling for terms agreement form activated');
+                    
+                    termsForm.addEventListener('submit', async function(e) {
+                        e.preventDefault();
+                        
+                        try {
+                            // Refresh CSRF token before form submission
+                            const response = await fetch('/api/refresh-csrf-token');
+                            if (response.ok) {
+                                const data = await response.json();
+                                if (data.success && data.csrf_token) {
+                                    // Update the CSRF token field in the form
+                                    const csrfField = termsForm.querySelector('input[name="csrf_token"]');
+                                    if (csrfField) {
+                                        csrfField.value = data.csrf_token;
+                                        console.log('Form CSRF token field updated with fresh token');
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error refreshing CSRF token before form submission:', error);
+                        }
+                        
+                        // Submit the form with the refreshed token
+                        termsForm.submit();
+                    });
+                }
+            });
+            </script>
         </div>
     </div>
 </div>

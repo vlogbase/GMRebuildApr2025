@@ -450,13 +450,20 @@ def agree_to_terms_handler():
     # This properly handles CSRF validation along with field validation
     form = AgreeToTermsForm()
     
-    # Log form data for debugging (omitting sensitive fields)
-    logger.debug(f"Form submission to agree-to-terms: has agree_to_terms: {'agree_to_terms' in request.form}")
-    logger.debug(f"Form submission CSRF token present: {'csrf_token' in request.form}")
+    # Enhanced logging for form submission
+    logger.info(f"Form submission to agree-to-terms: has agree_to_terms: {'agree_to_terms' in request.form}")
+    logger.info(f"Form submission CSRF token present: {'csrf_token' in request.form}")
+    if 'csrf_token' in request.form:
+        logger.info(f"CSRF token in form: {request.form['csrf_token'][:10]}... (truncated)")
+    logger.info(f"Session CSRF token exists: {'csrf_token' in session}")
+    
+    # Force regenerate a fresh CSRF token to ensure it's valid
+    new_csrf_token = generate_csrf()
+    logger.info(f"Generated fresh CSRF token: {new_csrf_token[:10]}... (truncated)")
     
     if not form.validate_on_submit():
-        # Log validation errors for debugging
-        logger.error(f"Form validation failed with errors: {form.errors}")
+        # Log validation errors for debugging with high visibility
+        logger.error(f"FORM VALIDATION FAILED: {form.errors}")
         
         # Handle validation errors with user-friendly messages
         if 'csrf_token' in form.errors:
