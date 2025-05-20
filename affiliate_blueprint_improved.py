@@ -17,6 +17,13 @@ from typing import Dict, List, Optional, Any, Union
 
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app, flash, session
 
+# Global import of database and models that can be used throughout the blueprint
+def get_models():
+    """Import models to avoid circular dependencies"""
+    from models import User, Affiliate, Commission, Transaction, CustomerReferral
+    from database import db
+    return User, Affiliate, Commission, Transaction, CustomerReferral, db
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -29,7 +36,8 @@ affiliate_bp = Blueprint('affiliate', __name__, url_prefix='/affiliate', templat
 def dashboard():
     """Affiliate dashboard view"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, Commission, Transaction, CustomerReferral, db
+    from models import User, Affiliate, Commission, Transaction, CustomerReferral
+    from database import db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -126,7 +134,7 @@ def dashboard():
 def register():
     """Register as an affiliate"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, db
+    User, Affiliate, _, _, _, db = get_models()
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -202,7 +210,7 @@ def register():
 def tell_a_friend():
     """Affiliate referral tools page"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, db
+    User, Affiliate, _, _, _, db = get_models()
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -280,7 +288,7 @@ def tell_a_friend():
 def commissions():
     """View affiliate commissions"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, Commission, db
+    User, Affiliate, Commission, _, _, db = get_models()
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -318,7 +326,7 @@ def commissions():
 def track_referral():
     """API endpoint to track affiliate referrals"""
     # Import database models inside function to avoid circular imports
-    from database import Affiliate, CustomerReferral, db
+    _, Affiliate, _, _, CustomerReferral, db = get_models()
     
     try:
         data = request.get_json()
@@ -371,7 +379,7 @@ def terms():
 def commission_metrics():
     """API endpoint to get commission metrics for charts"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, Commission, db
+    User, Affiliate, Commission, _, _, db = get_models()
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -418,7 +426,8 @@ def commission_metrics():
 def agree_to_terms_handler():
     """Handle the submission of the affiliate terms agreement form"""
     # Import necessary modules and models inside function to avoid circular imports
-    from database import User, Affiliate, db
+    from models import User, Affiliate
+    from database import db
     from forms import AgreeToTermsForm
     from datetime import datetime
     import string
