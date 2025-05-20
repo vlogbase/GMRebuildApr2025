@@ -78,10 +78,8 @@ csrf = CSRFProtect(app)
 app.config['WTF_CSRF_TIME_LIMIT'] = 7200  # 2 hours - increase for user convenience
 
 # CSRF token refresh endpoint
-@app.route('/health', methods=['GET'])
-def health_check():
-    """Simple health check endpoint for Replit deployment"""
-    return 'OK', 200
+# Health check endpoint is now managed by gunicorn_health_check.py
+# Removed duplicate /health endpoint to prevent conflicts
 
 @app.route('/api/refresh-csrf-token', methods=['GET'])
 def refresh_csrf_token():

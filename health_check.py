@@ -25,5 +25,6 @@ def kubernetes_health():
 
 def init_app(app):
     """Register the health check blueprint with the Flask app"""
-    app.register_blueprint(health_bp)
-    logger.info("Health check routes registered")
+    # DISABLED: No longer registering this blueprint to avoid endpoint conflicts
+    # app.register_blueprint(health_bp)
+    logger.info("Health check blueprint disabled to avoid endpoint conflicts")
