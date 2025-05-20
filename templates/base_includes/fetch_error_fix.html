@@ -114,8 +114,8 @@
         const originalContent = newChatButton.innerHTML;
         newChatButton.setAttribute('data-original-content', originalContent);
         
-        // Show loading state
-        newChatButton.innerHTML = '<span class="spinner"></span>';
+        // Show loading state with text to maintain width
+        newChatButton.innerHTML = '<span class="spinner"></span> Creating...';
         newChatButton.disabled = true;
         
         // Clear chat UI
