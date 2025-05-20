@@ -442,6 +442,7 @@ def agree_to_terms():
     # Import database models inside function to avoid circular imports
     from app import db
     from models import User, Affiliate
+    import uuid
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -449,29 +450,62 @@ def agree_to_terms():
         return redirect(url_for('login'))
     
     user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    if not user:
+        flash('User not found', 'error')
+        return redirect(url_for('login'))
+    
+    # Get the PayPal email from the form
+    paypal_email = request.form.get('paypal_email', '').strip()
     
     # Get user's affiliate info
     affiliate = Affiliate.query.filter_by(user_id=user_id).first()
     
+    # If the user is not an affiliate yet, create an affiliate record
     if not affiliate:
-        flash('You must be registered as an affiliate first', 'error')
-        return redirect(url_for('affiliate.register'))
+        # Generate a unique referral code
+        referral_code = str(uuid.uuid4())[:8]
+        
+        # Create new affiliate
+        affiliate = Affiliate(
+            user_id=user_id,
+            name=user.username,  # Use the username as the affiliate name
+            email=user.email,    # Use the user's email
+            paypal_email=paypal_email,
+            referral_code=referral_code,
+            status='active',
+            terms_agreed_at=datetime.now()  # Set terms agreed timestamp
+        )
+        
+        try:
+            db.session.add(affiliate)
+            db.session.commit()
+            flash('You have successfully registered as an affiliate!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error registering affiliate: {str(e)}")
+            flash('An error occurred while registering. Please try again.', 'error')
+            return redirect(url_for('billing.account_management'))
+    else:
+        # User is already an affiliate, update the record
+        affiliate.terms_agreed_at = datetime.now()
+        affiliate.status = 'active'
+        
+        # Update PayPal email if provided
+        if paypal_email:
+            affiliate.paypal_email = paypal_email
+        
+        try:
+            db.session.commit()
+            flash('Thank you for agreeing to the affiliate terms!', 'success')
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error updating terms agreement: {str(e)}")
+            flash('An error occurred. Please try again.', 'error')
     
-    # Mark terms as agreed by setting the timestamp
-    affiliate.terms_agreed_at = datetime.now()
-    
-    # Update status to active once terms are agreed
-    affiliate.status = 'active'
-    
-    try:
-        db.session.commit()
-        flash('Thank you for agreeing to the affiliate terms!', 'success')
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error updating terms agreement: {str(e)}")
-        flash('An error occurred. Please try again.', 'error')
-    
-    return redirect(url_for('affiliate.dashboard'))
+    # Redirect to the account page's affiliate tab
+    return redirect(url_for('billing.account_management') + '#tellFriend')
 
 @affiliate_bp.route('/update-paypal-email', methods=['POST'])
 def update_paypal_email():
