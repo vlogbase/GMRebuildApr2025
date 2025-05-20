@@ -1043,15 +1043,28 @@ def test_url_formatting():
 @app.route('/')
 def index():
     """Main route that serves as both health check and app entry point"""
-    # Return a health check response for any health checker or if explicitly requested
-    # Replit's deployment system checks the root path for health checks
-    if (request.headers.get('User-Agent', '').startswith('ELB-HealthChecker') or 
-        'health' in request.args or 
-        'healthcheck' in request.args or
-        request.headers.get('User-Agent', '').lower().startswith('curl') or
-        request.headers.get('Accept', '').startswith('*/*')):
+    # ALWAYS return a 200 OK response for health checks for Replit deployment
+    # This allows the health check to pass while still directing users to the right place
+    
+    # If the request is a health check, return a 200 OK immediately
+    # We'll be very permissive here to ensure health checks pass
+    if (request.headers.get('User-Agent', '') and (
+        'health' in request.headers.get('User-Agent', '').lower() or
+        'check' in request.headers.get('User-Agent', '').lower() or
+        'curl' in request.headers.get('User-Agent', '').lower()
+    )) or (
+        request.headers.get('Accept', '') == '*/*' and
+        len(request.args) == 0 and
+        request.method == 'GET'
+    ):
         return 'Application is healthy!', 200
         
+    # If there's a query parameter indicating a health check, return 200 OK
+    if 'health' in request.args or 'healthcheck' in request.args:
+        return 'Application is healthy!', 200
+    
+    # For actual users, proceed with normal application logic
+    
     # Regular app behavior - redirect non-authenticated users to the info page
     if not current_user.is_authenticated:
         return redirect(url_for('info'))
