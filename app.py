@@ -74,85 +74,6 @@ if not app.secret_key:
 # Initialize CSRF protection
 csrf = CSRFProtect(app)
 
-# Set CSRF token lifetime (3600 seconds = 1 hour by default)
-app.config['WTF_CSRF_TIME_LIMIT'] = 7200  # 2 hours - increase for user convenience
-
-# CSRF token refresh endpoint
-# Health check endpoint is now managed by gunicorn_health_check.py
-# Removed duplicate /health endpoint to prevent conflicts
-
-@app.route('/api/refresh-csrf-token', methods=['GET'])
-def refresh_csrf_token():
-    """Generate and return a fresh CSRF token
-    
-    This endpoint ensures the token is stored in the session
-    and returned to the client for synchronization.
-    
-    The token synchronization process is now more robust to prevent
-    token mismatches between the app context and the session.
-    """
-    from flask_wtf.csrf import generate_csrf
-    from flask import session
-    from datetime import datetime
-    
-    # Log the request for debugging
-    app.logger.info("CSRF token refresh requested")
-    
-    try:
-        # Store the current session ID for troubleshooting
-        session_id = session.sid if hasattr(session, 'sid') else 'unknown'
-        app.logger.info(f"Processing token refresh for session ID: {session_id}")
-        
-        # Remove any existing token first to ensure clean state
-        if 'csrf_token' in session:
-            app.logger.info(f"Previous CSRF token found in session: {session['csrf_token'][:10]}...")
-            session.pop('csrf_token', None)
-        
-        # Generate a new CSRF token - this will store it in the session
-        token = generate_csrf()
-        app.logger.info(f"Generated fresh CSRF token: {token[:10]}...")
-        
-        # Explicitly set the token in session to ensure consistency
-        session['csrf_token'] = token
-        
-        # Double check that the token is in the session and matches
-        if 'csrf_token' in session:
-            app.logger.info(f"Verified token in session: {session['csrf_token'][:10]}...")
-            if session['csrf_token'] != token:
-                app.logger.error("CRITICAL: Token mismatch between generated token and session token!")
-                # Fix the mismatch by forcing the correct token
-                session['csrf_token'] = token
-                app.logger.info(f"Fixed token mismatch, session now has: {session['csrf_token'][:10]}...")
-        else:
-            app.logger.error("CRITICAL: Token not stored in session after generation!")
-            # Explicitly set it again if it failed
-            session['csrf_token'] = token
-            app.logger.info("Attempted to fix missing session token")
-        
-        # Force session save to ensure persistence
-        session.modified = True
-        
-        # Additional stability measure: store a backup token
-        session['csrf_token_backup'] = token
-        session['csrf_token_timestamp'] = datetime.now().isoformat()
-        
-        return jsonify({
-            'csrf_token': token, 
-            'success': True,
-            'timestamp': str(datetime.now())
-        })
-        
-    except Exception as e:
-        app.logger.error(f"Error in refresh_csrf_token: {str(e)}", exc_info=True)
-        # Generate a token even if there's an error
-        emergency_token = generate_csrf()
-        return jsonify({
-            'csrf_token': emergency_token,
-            'success': True,
-            'error_handled': True,
-            'timestamp': str(datetime.now())
-        })
-
 # Configure Redis session support - this will use Redis if available or fall back to Flask's default
 try:
     from redis_session import setup_redis_session
@@ -413,14 +334,6 @@ try:
     logger.info("User settings blueprint registered successfully")
 except Exception as e:
     logger.error(f"Error registering User settings blueprint: {e}")
-
-# Register direct PayPal update route (completely bypasses CSRF)
-try:
-    from direct_paypal_update import create_route
-    create_route(app)
-    logger.info("Direct PayPal update route registered and exempted from CSRF")
-except Exception as e:
-    logger.error(f"Error registering direct PayPal update route: {e}")
 
 # Register admin blueprint
 try:
@@ -1130,15 +1043,15 @@ def test_url_formatting():
 @app.route('/')
 def index():
     """Main route that serves as both health check and app entry point"""
-    # ALWAYS return a 200 OK response for health checks for Replit deployment
-    
-    # For health checks, return a simple 200 response - making this extremely simple
-    # to ensure deployment health checks always pass
-    if request.method == 'GET' and not request.cookies:
-        return 'OK', 200
+    # Return a health check response for any health checker or if explicitly requested
+    # Replit's deployment system checks the root path for health checks
+    if (request.headers.get('User-Agent', '').startswith('ELB-HealthChecker') or 
+        'health' in request.args or 
+        'healthcheck' in request.args or
+        request.headers.get('User-Agent', '').lower().startswith('curl') or
+        request.headers.get('Accept', '').startswith('*/*')):
+        return 'Application is healthy!', 200
         
-    # For actual users, proceed with normal application logic
-    
     # Regular app behavior - redirect non-authenticated users to the info page
     if not current_user.is_authenticated:
         return redirect(url_for('info'))

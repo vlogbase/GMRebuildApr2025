@@ -2174,38 +2174,5 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
-
-    // Add specialized CSRF token handling for affiliate form submissions
-    document.addEventListener('DOMContentLoaded', function() {
-        const affiliateForm = document.querySelector('#tellFriend form');
-        if (affiliateForm) {
-            console.log('Enhanced CSRF handling for affiliate form activated');
-            affiliateForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
-                try {
-                    // Refresh CSRF token before form submission
-                    const refreshed = await refreshCSRFToken();
-                    if (refreshed) {
-                        console.log('CSRF token refreshed before form submission');
-                        
-                        // Update the CSRF token field in the form
-                        const csrfField = affiliateForm.querySelector('input[name="csrf_token"]');
-                        if (csrfField) {
-                            csrfField.value = document.querySelector('meta[name="csrf-token"]').content;
-                            console.log('Form CSRF token field updated with fresh token');
-                        }
-                    }
-                    
-                    // Submit the form
-                    affiliateForm.submit();
-                } catch (error) {
-                    console.error('Error refreshing CSRF token before form submission:', error);
-                    // Submit anyway, server-side validation will handle any remaining issues
-                    affiliateForm.submit();
-                }
-            });
-        }
-    });
 </script>
 {% endblock %}

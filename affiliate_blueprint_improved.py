@@ -17,13 +17,6 @@ from typing import Dict, List, Optional, Any, Union
 
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for, current_app, flash, session
 
-# Global import of database and models that can be used throughout the blueprint
-def get_models():
-    """Import models to avoid circular dependencies"""
-    from models import User, Affiliate, Commission, Transaction, CustomerReferral
-    from database import db
-    return User, Affiliate, Commission, Transaction, CustomerReferral, db
-
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -36,8 +29,7 @@ affiliate_bp = Blueprint('affiliate', __name__, url_prefix='/affiliate', templat
 def dashboard():
     """Affiliate dashboard view"""
     # Import database models inside function to avoid circular imports
-    from models import User, Affiliate, Commission, Transaction, CustomerReferral
-    from database import db
+    from database import User, Affiliate, Commission, Transaction, CustomerReferral, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -134,7 +126,7 @@ def dashboard():
 def register():
     """Register as an affiliate"""
     # Import database models inside function to avoid circular imports
-    User, Affiliate, _, _, _, db = get_models()
+    from database import User, Affiliate, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -210,7 +202,7 @@ def register():
 def tell_a_friend():
     """Affiliate referral tools page"""
     # Import database models inside function to avoid circular imports
-    User, Affiliate, _, _, _, db = get_models()
+    from database import User, Affiliate, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -288,7 +280,7 @@ def tell_a_friend():
 def commissions():
     """View affiliate commissions"""
     # Import database models inside function to avoid circular imports
-    User, Affiliate, Commission, _, _, db = get_models()
+    from database import User, Affiliate, Commission, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -326,7 +318,7 @@ def commissions():
 def track_referral():
     """API endpoint to track affiliate referrals"""
     # Import database models inside function to avoid circular imports
-    _, Affiliate, _, _, CustomerReferral, db = get_models()
+    from database import Affiliate, CustomerReferral, db
     
     try:
         data = request.get_json()
@@ -370,16 +362,11 @@ def track_referral():
         logger.error(f"Error tracking referral: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-@affiliate_bp.route('/terms')
-def terms():
-    """Display the affiliate terms and conditions"""
-    return render_template('affiliate/terms.html')
-
 @affiliate_bp.route('/api/commission-metrics', methods=['GET'])
 def commission_metrics():
     """API endpoint to get commission metrics for charts"""
     # Import database models inside function to avoid circular imports
-    User, Affiliate, Commission, _, _, db = get_models()
+    from database import User, Affiliate, Commission, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -422,14 +409,12 @@ def commission_metrics():
         'data': chart_data
     })
 
-@affiliate_bp.route('/agree-to-terms', methods=['POST'], endpoint='agree_to_terms')
+@affiliate_bp.route('/agree-to-terms', methods=['POST'])
 def agree_to_terms_handler():
     """Handle the submission of the affiliate terms agreement form"""
     # Import necessary modules and models inside function to avoid circular imports
-    from models import User, Affiliate
-    from database import db
-    # Bypass form validation entirely due to persistent CSRF issues
-    # from forms import AgreeToTermsForm 
+    from database import User, Affiliate, db
+    from forms import AgreeToTermsForm
     from datetime import datetime
     import string
     import random
@@ -446,76 +431,75 @@ def agree_to_terms_handler():
         flash('User not found', 'error')
         return redirect(url_for('login'))
     
-    # BYPASS FORM VALIDATION APPROACH:
-    # This implementation bypasses Flask-WTF validation entirely due to persistent CSRF token issues
-    # This is a last-resort approach to ensure the affiliate system works
+    # Create and validate form
+    form = AgreeToTermsForm(request.form)
     
-    # Enhanced logging for form submission
-    logger.info(f"Form submission to agree-to-terms: has agree_to_terms: {'agree_to_terms' in request.form}")
-    logger.info(f"USING DIRECT FORM PROCESSING - BYPASSING CSRF VALIDATION")
+    if not form.validate():
+        # Handle validation errors
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"{field}: {error}", 'error')
+        
+        # If the terms weren't agreed to, delete any pending_terms affiliate record
+        if 'agree_to_terms' in form.errors:
+            pending_affiliate = Affiliate.query.filter_by(
+                user_id=user_id, 
+                status='pending_terms'
+            ).first()
+            
+            if pending_affiliate:
+                logger.info(f"Deleting pending affiliate record for user {user_id} due to terms agreement failure")
+                db.session.delete(pending_affiliate)
+                db.session.commit()
+                flash('Your previous application has been discarded. Please start over when you are ready to agree to the terms.', 'info')
+        
+        # Redirect back to the account page's Tell a Friend tab
+        return redirect(url_for('billing.account_management') + '#tellFriend')
     
-    # Check for any affiliate record for this user that needs to be processed
-    # We'll handle both pending_terms and not_affiliate statuses
-    existing_affiliate = Affiliate.query.filter_by(user_id=user_id).first()
-    
-    if existing_affiliate:
-        logger.info(f"Found affiliate record in {existing_affiliate.status} state for user {user_id}, will be removed if validation fails or promoted if validation succeeds")
-    
-    # Get PayPal email (optional field)
-    paypal_email = request.form.get('paypal_email', '').strip()
-    
-    # For simplicity, we're now automatically activating ALL users as affiliates
-    # No need to check for agree_to_terms - users are automatically agreeing to terms
-    logger.info(f"Auto-activating affiliate for user {user_id} - simplified flow")
+    # Form is valid, proceed with activating or creating affiliate
+    paypal_email = form.paypal_email.data
     
     # Find existing affiliate record
     affiliate = Affiliate.query.filter_by(user_id=user_id).first()
     
     try:
         if affiliate:
-            # Update existing affiliate record - ALWAYS SET TO ACTIVE
-            logger.info(f"Auto-activating existing affiliate record for user {user_id}")
-            
-            # Set status to active and set terms agreed date
+            # Update existing affiliate record
             affiliate.status = 'active'
-            if not affiliate.terms_agreed_at:
-                affiliate.terms_agreed_at = datetime.now()
+            affiliate.terms_agreed_at = datetime.now()
             
             # Update PayPal email if provided
             if paypal_email:
                 affiliate.paypal_email = paypal_email
-                logger.info(f"Updated PayPal email to: {paypal_email}")
                 
-            # If it didn't have a referral code, generate one
+            # If it was in pending_terms and didn't have a referral code, generate one
             if not affiliate.referral_code:
                 # Generate a unique referral code
                 random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
                 referral_code = f"{user.username.lower()}-{random_str}"
                 affiliate.referral_code = referral_code
                 
-            logger.info(f"Updated affiliate record for user {user_id}")
-            flash('Your PayPal email has been updated!', 'success')
+            logger.info(f"Activated existing affiliate record for user {user_id}")
+            flash('Your affiliate account has been activated!', 'success')
         else:
-            # Create new affiliate record as active
-            logger.info(f"Creating new active affiliate record for user {user_id}")
-            
+            # Create new affiliate record with active status
             # Generate a unique referral code
             random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
             referral_code = f"{user.username.lower()}-{random_str}"
             
-            # Create new affiliate - ALWAYS create as ACTIVE
+            # Create new affiliate
             affiliate = Affiliate(
                 user_id=user_id,
                 name=user.username,
                 email=user.email,
                 paypal_email=paypal_email,
                 referral_code=referral_code,
-                status='active',  # Always set to active
+                status='active',
                 terms_agreed_at=datetime.now()
             )
             db.session.add(affiliate)
             logger.info(f"Created new active affiliate record for user {user_id}")
-            flash('Your affiliate account is now active!', 'success')
+            flash('You are now registered as an affiliate!', 'success')
         
         # Commit the changes
         db.session.commit()
@@ -535,62 +519,23 @@ def update_paypal_email():
     from app import db
     from models import User, Affiliate
     from flask_login import login_required, current_user
-    from flask_wtf.csrf import validate_csrf, ValidationError
     
-    # Enhanced logging for form submission
-    logger.info(f"PayPal email update requested for user: {current_user.id if current_user.is_authenticated else 'Not authenticated'}")
-    
-    # Check if CSRF token is present
-    csrf_token = request.form.get('csrf_token')
-    logger.info(f"CSRF token found in form: {bool(csrf_token)}")
-    
-    # Validate CSRF token if present
-    if csrf_token:
-        try:
-            validate_csrf(csrf_token)
-            logger.info("CSRF token validated successfully")
-        except ValidationError as e:
-            # If validation fails, log it but continue processing
-            logger.warning(f"CSRF validation failed but continuing anyway: {e}")
-    else:
-        logger.warning("No CSRF token found in the form submission")
-    
-    # Check if user is logged in - first check flask_login's current_user
+    # Check if user is logged in via flask_login
+    # This explicitly handles the login check before processing
     if not current_user.is_authenticated:
-        # Fallback to session-based authentication if flask_login doesn't work
-        if 'user_id' not in session:
-            logger.error("User not authenticated for PayPal email update - no user_id in session")
-            flash('Please login to update your PayPal email', 'warning')
-            return redirect(url_for('login'))
-            
-        # Get the user ID from session
-        user_id = session['user_id']
-        user = User.query.get(user_id)
-        
-        if not user:
-            logger.error(f"User not found for ID {user_id}")
-            flash('User not found', 'error')
-            return redirect(url_for('login'))
-    else:
-        # Use the current_user from flask_login
-        user = current_user
+        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
     
-    # Get user's affiliate info - use the user variable we just set up
-    affiliate = Affiliate.query.filter_by(email=user.email).first()
-    logger.info(f"Looking up affiliate record for email: {user.email}")
+    # Get user's affiliate info
+    affiliate = Affiliate.query.filter_by(email=current_user.email).first()
     
     if not affiliate:
         flash('You must be an affiliate to update your PayPal email', 'error')
         return redirect(url_for('billing.account_management'))
     
-    # Get and validate new email - directly processing form data to bypass potential CSRF issues
-    logger.info("PayPal email update: Direct form processing without WTF validation")
-    
-    # Direct validation of form fields - bypass Flask-WTF which is causing CSRF token issues
+    # Get and validate new email
     paypal_email = request.form.get('paypal_email', '').strip()
     
     if not paypal_email:
-        logger.error("PayPal email update failed: No email provided")
         flash('PayPal email is required', 'error')
         return redirect(url_for('billing.account_management'))
     

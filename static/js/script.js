@@ -13,74 +13,6 @@ function getCSRFToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content;
 }
 
-// Function to refresh CSRF token and update meta tag
-async function refreshCSRFToken() {
-    try {
-        const response = await fetch('/api/refresh-csrf-token');
-        if (!response.ok) {
-            throw new Error(`Failed to refresh CSRF token: ${response.status}`);
-        }
-        const data = await response.json();
-        if (data.success && data.csrf_token) {
-            // Update the meta tag with the new token
-            const metaTag = document.querySelector('meta[name="csrf-token"]');
-            if (metaTag) {
-                metaTag.content = data.csrf_token;
-                console.log('CSRF token refreshed successfully');
-                return true;
-            }
-        }
-        return false;
-    } catch (error) {
-        console.error('Error refreshing CSRF token:', error);
-        return false;
-    }
-}
-
-// Enhanced fetch with CSRF token refresh and retry mechanism
-async function fetchWithCSRF(url, options = {}) {
-    // Set default options if not provided
-    options.headers = options.headers || {};
-    // Add CSRF token to headers
-    options.headers['X-CSRFToken'] = getCSRFToken();
-    
-    try {
-        // First attempt
-        const response = await fetch(url, options);
-        
-        // If the response is a 400 error (likely CSRF token expired)
-        if (response.status === 400) {
-            const text = await response.text();
-            // Check if error is CSRF related
-            if (text.includes('CSRF') || text.includes('csrf')) {
-                console.log('CSRF token expired, attempting to refresh...');
-                
-                // Try to refresh the token
-                const refreshed = await refreshCSRFToken();
-                
-                if (refreshed) {
-                    // Update the token in the headers and retry the request
-                    options.headers['X-CSRFToken'] = getCSRFToken();
-                    console.log('Retrying request with new CSRF token');
-                    return fetch(url, options);
-                }
-            }
-            
-            // If not a CSRF error or token refresh failed, reconstruct a Response object
-            return new Response(text, {
-                status: response.status,
-                statusText: response.statusText,
-                headers: response.headers
-            });
-        }
-        
-        return response;
-    } catch (error) {
-        console.error('Error in fetchWithCSRF:', error);
-        throw error;
-    }
-}
-
 // Utility function to force a browser repaint on an element
 // This is used to fix rendering issues where content doesn't appear until window focus changes
 function forceRepaint(element) {
@@ -242,10 +174,11 @@ function performIdleCleanup() {
     if ('requestIdleCallback' in window) {
         requestIdleCallback(() => {
             console.log('Performing idle cleanup of empty conversations');
-            fetchWithCSRF('/api/cleanup-empty-conversations', {
+            fetch('/api/cleanup-empty-conversations', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
                 }
             })
             .then(response => response.json())
@@ -272,10 +205,11 @@ function performIdleCleanup() {
         // Fallback for browsers that don't support requestIdleCallback
         setTimeout(() => {
             console.log('Performing delayed cleanup of empty conversations (fallback)');
-            fetchWithCSRF('/api/cleanup-empty-conversations', {
+            fetch('/api/cleanup-empty-conversations', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
                 }
             })
             .then(response => response.json())
@@ -739,10 +673,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                     console.log("Creating new conversation after page load");
                     // Create a new conversation
-                    fetchWithCSRF('/api/create-conversation', {
+                    fetch('/api/create-conversation', {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCSRFToken()
                         }
                     })
                     .then(response => response.json())
@@ -804,10 +739,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.log("No current conversation (fallback case), creating a new one on page load");
                 
                 // Create a new conversation immediately (no blocking cleanup)
-                fetchWithCSRF('/api/create-conversation', {
+                fetch('/api/create-conversation', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
                     }
                 })
                 .then(response => response.json())
@@ -2289,7 +2225,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Function to fetch user preferences for model presets
     // Expose this globally for the mobile UI
     window.fetchUserPreferences = function() {
-        return fetchWithCSRF('/get_preferences')
+        return fetch('/get_preferences')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -2546,7 +2482,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         
         // Call the refresh endpoint
-        return fetchWithCSRF('/api/refresh_model_prices', {
+        return fetch('/api/refresh_model_prices', {
             method: 'POST',
             headers: {
                 'X-CSRFToken': getCSRFToken(),
@@ -2625,7 +2561,7 @@ document.addEventListener('DOMContentLoaded', function() {
         // Fetch ONLY from the endpoint that includes cost bands
         // IMPORTANT: This function must always return a promise that resolves with the models
         // to maintain proper promise chaining and event synchronization
-        return fetchWithCSRF('/api/get_model_prices')
+        return fetch('/api/get_model_prices')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -3296,7 +3232,7 @@ window.resetToDefault = function(presetId) {
         }
         
         // Call the API to reset preference(s)
-        fetchWithCSRF('/reset_preferences', {
+        fetch('/reset_preferences', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -3374,10 +3310,11 @@ window.resetToDefault = function(presetId) {
     // Function to save model preference to the server
     // Expose this function globally for mobile UI
     window.saveModelPreference = function(presetId, modelId, buttonElement) {
-        fetchWithCSRF('/save_preference', {
+        fetch('/save_preference', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
             },
             body: JSON.stringify({
                 preset_id: presetId,
@@ -3487,10 +3424,11 @@ window.resetToDefault = function(presetId) {
                 performIdleCleanup();
                 
                 // Create a new conversation immediately
-                fetchWithCSRF('/api/create-conversation', {
+                fetch('/api/create-conversation', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
                     }
                 })
                 .then(response => response.json())
@@ -4445,7 +4383,7 @@ window.resetToDefault = function(presetId) {
         console.log('📤 Sending payload to backend:', JSON.stringify(payload, null, 2));
         
         // Create fetch request to /chat endpoint
-        fetchWithCSRF('/chat', {
+        fetch('/chat', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -5291,7 +5229,7 @@ window.resetToDefault = function(presetId) {
             this.disabled = true;
             
             // Send the files to the server
-            fetchWithCSRF('/upload', {
+            fetch('/upload', {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': getCSRFToken()

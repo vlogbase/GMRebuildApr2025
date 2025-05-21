@@ -6,7 +6,7 @@
                 <h5 class="mb-0">Tell a Friend</h5>
             </div>
             <div class="card-body">
-                {% if affiliate %}
+                {% if affiliate and affiliate.status == 'active' %}
                     <!-- For active affiliates who have agreed to terms -->
                     <div class="row mb-4">
                         <div class="col-12"> <!-- Changed from col-md-8 to col-12 for full width -->
@@ -258,10 +258,6 @@
                 </div>
                 <div class="card-body">
                     <div class="mb-4">
-                        <p class="mb-3">
-                            By using our affiliate program, you agree to the <a href="{{ url_for('affiliate.terms') }}" target="_blank">Affiliate Terms and Conditions</a>.
-                        </p>
-                        
                         <label class="form-label">Email Address</label>
                         
                         <div class="d-flex align-items-center mb-3" style="gap: 10px;">
@@ -284,9 +280,9 @@
                     
                     <!-- Hidden email editor form that appears when Edit is clicked -->
                     <div id="paypalEmailEditor" style="display: none;">
-                        <form action="{{ url_for('direct_paypal_update') }}" method="post" class="border rounded p-3 mb-4 bg-dark">
+                        <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post" class="border rounded p-3 mb-4 bg-dark">
                             <h5 class="mb-3">Update PayPal Email</h5>
-                            <!-- Uses special no-CSRF route -->
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             
                             <div class="mb-3">
                                 <label for="newPaypalEmail" class="form-label">New PayPal Email</label>
@@ -409,147 +405,7 @@
                             <button type="submit" class="btn btn-primary w-100" id="activateReferralBtn" disabled>
                                 <i class="fas fa-check-circle me-2"></i> Activate Referral Program
                             </button>
-                            
-                            <script>
-                            // Enable/disable submit button based on checkbox state
-                            document.addEventListener('DOMContentLoaded', function() {
-                                const agreeCheckbox = document.getElementById('agreeToTerms');
-                                const submitButton = document.getElementById('activateReferralBtn');
-                                
-                                if (agreeCheckbox && submitButton) {
-                                    // Initial state
-                                    submitButton.disabled = !agreeCheckbox.checked;
-                                    
-                                    // Update button state when checkbox changes
-                                    agreeCheckbox.addEventListener('change', function() {
-                                        submitButton.disabled = !this.checked;
-                                    });
-                                }
-                            });
-                            </script>
                         </form>
-                        
-                        <script>
-                        // Enhanced CSRF token handling for the affiliate form submission
-                        document.addEventListener('DOMContentLoaded', function() {
-                            // Register a manual CSRF token refresh and submit mechanism
-                            const affiliateForm = document.querySelector('form[action*="agree_to_terms"]');
-                            if (!affiliateForm) return;
-                            
-                            console.log('Enhanced CSRF handling for affiliate form activated');
-                            
-                            // Create a direct manual submission button that will bypass the form's submit event
-                            const manualSubmitBtn = document.createElement('button');
-                            manualSubmitBtn.type = 'button'; // Not a submit button
-                            manualSubmitBtn.className = 'btn btn-primary w-100';
-                            manualSubmitBtn.innerHTML = '<i class="fas fa-check-circle me-2"></i> Activate Referral Program';
-                            manualSubmitBtn.id = 'manualSubmitAffiliateBtn';
-                            manualSubmitBtn.disabled = true;
-                            
-                            // Replace the original submit button with our manual one
-                            const originalBtn = document.getElementById('activateReferralBtn');
-                            if (originalBtn) {
-                                originalBtn.style.display = 'none';
-                                originalBtn.parentNode.insertBefore(manualSubmitBtn, originalBtn);
-                            }
-                            
-                            // Connect the checkbox to our new button
-                            const agreeCheckbox = document.getElementById('agreeToTerms');
-                            if (agreeCheckbox) {
-                                manualSubmitBtn.disabled = !agreeCheckbox.checked;
-                                agreeCheckbox.addEventListener('change', function() {
-                                    manualSubmitBtn.disabled = !this.checked;
-                                });
-                            }
-                            
-                            // Add click handler for our manual button
-                            manualSubmitBtn.addEventListener('click', async function() {
-                                // Disable button to prevent double submission
-                                this.disabled = true;
-                                this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Processing...';
-                                
-                                try {
-                                    // Fetch fresh CSRF token from server
-                                    console.log('Fetching fresh CSRF token');
-                                    const response = await fetch('/api/refresh-csrf-token');
-                                    if (!response.ok) {
-                                        throw new Error(`Failed to refresh CSRF token: ${response.status}`);
-                                    }
-                                    
-                                    const data = await response.json();
-                                    if (!data.success || !data.csrf_token) {
-                                        throw new Error('Invalid CSRF token response from server');
-                                    }
-                                    
-                                    // Update the form's CSRF token input
-                                    console.log('Updating form CSRF token');
-                                    const csrfField = affiliateForm.querySelector('input[name="csrf_token"]');
-                                    if (csrfField) {
-                                        csrfField.value = data.csrf_token;
-                                        console.log('CSRF token updated to:', data.csrf_token.substring(0, 10) + '...');
-                                    } else {
-                                        throw new Error('CSRF token field not found in form');
-                                    }
-                                    
-                                    // Update the meta tag for any subsequent AJAX requests
-                                    const metaTag = document.querySelector('meta[name="csrf-token"]');
-                                    if (metaTag) {
-                                        metaTag.content = data.csrf_token;
-                                    }
-                                    
-                                    // Make sure the agree_to_terms checkbox status is properly included
-                                    // This is critical for form validation
-                                    const agreeCheckboxValue = agreeCheckbox ? agreeCheckbox.checked : false;
-                                    console.log('Agree to terms checkbox value:', agreeCheckboxValue);
-                                    
-                                    // Create a FormData object and make sure agree_to_terms is included
-                                    const formData = new FormData(affiliateForm);
-                                    
-                                    // Log form data to ensure all required fields are present
-                                    for (let [key, value] of formData.entries()) {
-                                        console.log(`Form contains ${key}: ${value}`);
-                                    }
-                                    
-                                    if (!formData.has('agree_to_terms') && agreeCheckboxValue) {
-                                        console.log('Adding missing agree_to_terms field to form data');
-                                        // Add a hidden field to ensure agree_to_terms value is submitted
-                                        const hiddenAgree = document.createElement('input');
-                                        hiddenAgree.type = 'hidden';
-                                        hiddenAgree.name = 'agree_to_terms';
-                                        hiddenAgree.value = 'y'; // Value doesn't matter as long as it's not empty
-                                        affiliateForm.appendChild(hiddenAgree);
-                                    }
-                                    
-                                    // Double-check checkbox status one more time before submission
-                                    const finalCheckValue = document.getElementById('agreeToTerms')?.checked;
-                                    console.log('Final agree_to_terms checkbox value before submission:', finalCheckValue);
-                                    
-                                    // Submit the form directly without going through the submit event
-                                    console.log('Manually submitting form with fresh token');
-                                    affiliateForm.submit();
-                                    
-                                } catch (error) {
-                                    console.error('Error in CSRF refresh process:', error);
-                                    alert('There was a problem with form submission. Please try again.');
-                                    
-                                    // Re-enable the button
-                                    this.disabled = false;
-                                    this.innerHTML = '<i class="fas fa-check-circle me-2"></i> Activate Referral Program';
-                                }
-                            });
-                            
-                            // Prevent the original form submission entirely
-                            affiliateForm.addEventListener('submit', function(e) {
-                                // Stop the default form submission to prevent validation issues
-                                e.preventDefault();
-                                // Trigger our manual submission if agreebox is checked
-                                if (agreeCheckbox && agreeCheckbox.checked && !manualSubmitBtn.disabled) {
-                                    manualSubmitBtn.click();
-                                }
-                                return false;
-                            });
-                        });
-                        </script>
                     </div>
                 </div>
             </div>
