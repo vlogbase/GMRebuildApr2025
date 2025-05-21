@@ -493,6 +493,29 @@
                                         metaTag.content = data.csrf_token;
                                     }
                                     
+                                    // Make sure the agree_to_terms checkbox status is properly included
+                                    // This is critical for form validation
+                                    const agreeCheckboxValue = agreeCheckbox ? agreeCheckbox.checked : false;
+                                    console.log('Agree to terms checkbox value:', agreeCheckboxValue);
+                                    
+                                    // Create a FormData object and make sure agree_to_terms is included
+                                    const formData = new FormData(affiliateForm);
+                                    
+                                    // Log form data to ensure all required fields are present
+                                    for (let [key, value] of formData.entries()) {
+                                        console.log(`Form contains ${key}: ${value}`);
+                                    }
+                                    
+                                    if (!formData.has('agree_to_terms') && agreeCheckboxValue) {
+                                        console.log('Adding missing agree_to_terms field to form data');
+                                        // Add a hidden field to ensure agree_to_terms value is submitted
+                                        const hiddenAgree = document.createElement('input');
+                                        hiddenAgree.type = 'hidden';
+                                        hiddenAgree.name = 'agree_to_terms';
+                                        hiddenAgree.value = 'y'; // Value doesn't matter as long as it's not empty
+                                        affiliateForm.appendChild(hiddenAgree);
+                                    }
+                                    
                                     // Submit the form directly without going through the submit event
                                     console.log('Manually submitting form with fresh token');
                                     affiliateForm.submit();
