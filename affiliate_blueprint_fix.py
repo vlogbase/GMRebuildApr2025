@@ -365,11 +365,14 @@ def agree_to_terms_handler():
             # Create new affiliate
             referral_code = str(uuid.uuid4())[:8]
             
+            # Use provided paypal_email if available, otherwise default to user's email
+            affiliate_paypal_email = paypal_email if paypal_email else user.email
+            
             affiliate = Affiliate(
                 user_id=user_id,
                 name=user.username,
                 email=user.email,
-                paypal_email=paypal_email if paypal_email else None,
+                paypal_email=affiliate_paypal_email,
                 referral_code=referral_code,
                 status='active',
                 terms_agreed_at=datetime.now()
@@ -422,6 +425,7 @@ def update_paypal_email():
             user_id=user_id,
             name=user.username,
             email=user.email,
+            paypal_email=user.email,  # Pre-fill with login email for convenience
             referral_code=referral_code,
             status='active',
             terms_agreed_at=datetime.now()
