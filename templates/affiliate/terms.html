@@ -119,11 +119,6 @@
         
         <div class="terms-actions">
             <a href="{{ url_for('billing.account_management') }}" class="back-button">Back to Account</a>
-            
-            <form action="{{ url_for('affiliate.agree_to_terms') }}" method="post">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" name="agree_to_terms" value="1" class="agree-button">I Agree to These Terms</button>
-            </form>
         </div>
     </div>
 </div>

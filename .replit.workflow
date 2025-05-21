@@ -1,3 +1,2 @@
-run = ["python", "app_workflow.py"]
-language = "python3"
-onBoot = "python app_workflow.py"
+[app_workflow]
+run = "python app_workflow.py"

@@ -379,31 +379,34 @@
                         <h5 class="mb-0">Activate Your Account</h5>
                     </div>
                     <div class="card-body">
-                        <form action="{{ url_for('affiliate.agree_to_terms') }}" method="post">
+                        <!-- Information about affiliate program -->
+                        <div class="alert alert-info mb-4">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-info-circle fa-2x"></i>
+                                </div>
+                                <div>
+                                    <h5 class="alert-heading">Your Affiliate Program is Active</h5>
+                                    <p class="mb-2">You're automatically enrolled in our affiliate program. Just share your referral link to start earning commissions on purchases.</p>
+                                    <p class="mb-0">Please review our <a href="{{ url_for('affiliate.terms') }}" target="_blank" class="alert-link">Affiliate Terms &amp; Conditions</a>. By using this program, you agree to these terms.</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Set up your PayPal email directly -->
+                        <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             <div class="mb-4">
                                 <div class="form-floating">
                                     <input type="email" class="form-control" id="paypal_email" name="paypal_email" 
                                            placeholder="your-email@example.com">
-                                    <label for="paypal_email">PayPal Email (Optional)</label>
+                                    <label for="paypal_email">PayPal Email for Commissions</label>
                                 </div>
-                                <div class="form-text">You can add or update this later after activation.</div>
+                                <div class="form-text">Add your PayPal email to receive commission payments.</div>
                             </div>
                             
-                            <div class="mb-4">
-                                <a href="{{ url_for('affiliate.terms') }}" target="_blank" class="btn btn-outline-secondary mb-3 w-100">
-                                    <i class="fas fa-file-contract me-2"></i>Read Terms &amp; Conditions
-                                </a>
-                                <div class="form-check">
-                                    <input class="form-check-input" type="checkbox" id="agreeToTerms" name="agree_to_terms" required>
-                                    <label class="form-check-label" for="agreeToTerms">
-                                        I have read and agree to the Affiliate Terms &amp; Conditions
-                                    </label>
-                                </div>
-                            </div>
-                            
-                            <button type="submit" class="btn btn-primary w-100" id="activateReferralBtn" disabled>
-                                <i class="fas fa-check-circle me-2"></i> Activate Referral Program
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i> Save PayPal Email
                             </button>
                         </form>
                     </div>
