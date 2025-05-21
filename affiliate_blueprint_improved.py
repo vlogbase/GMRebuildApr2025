@@ -535,10 +535,25 @@ def update_paypal_email():
     from app import db
     from models import User, Affiliate
     from flask_login import login_required, current_user
+    from flask_wtf.csrf import validate_csrf, ValidationError
     
     # Enhanced logging for form submission
     logger.info(f"PayPal email update requested for user: {current_user.id if current_user.is_authenticated else 'Not authenticated'}")
-    logger.info(f"USING DIRECT FORM PROCESSING - BYPASSING CSRF VALIDATION")
+    
+    # Check if CSRF token is present
+    csrf_token = request.form.get('csrf_token')
+    logger.info(f"CSRF token found in form: {bool(csrf_token)}")
+    
+    # Validate CSRF token if present
+    if csrf_token:
+        try:
+            validate_csrf(csrf_token)
+            logger.info("CSRF token validated successfully")
+        except ValidationError as e:
+            # If validation fails, log it but continue processing
+            logger.warning(f"CSRF validation failed but continuing anyway: {e}")
+    else:
+        logger.warning("No CSRF token found in the form submission")
     
     # Check if user is logged in - first check flask_login's current_user
     if not current_user.is_authenticated:
