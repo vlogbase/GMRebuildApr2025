@@ -71,7 +71,8 @@ if not app.secret_key:
      logger.warning("SESSION_SECRET environment variable not set. Using default for development.")
      app.secret_key = "default-dev-secret-key-please-change"
 
-# Initialize CSRF protection
+# Initialize CSRF protection with extended timeout
+app.config['WTF_CSRF_TIME_LIMIT'] = 86400  # Set CSRF token timeout to 24 hours (in seconds)
 csrf = CSRFProtect(app)
 
 # Configure Redis session support - this will use Redis if available or fall back to Flask's default

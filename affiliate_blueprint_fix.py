@@ -395,8 +395,12 @@ def agree_to_terms_handler():
             if paypal_email:
                 affiliate.paypal_email = paypal_email
             
+            # Always ensure status is active, regardless of previous state
             affiliate.status = 'active'
-            affiliate.terms_agreed_at = datetime.now()
+            
+            # Update agreement timestamp if not already set
+            if not affiliate.terms_agreed_at:
+                affiliate.terms_agreed_at = datetime.now()
             
             if hasattr(affiliate, 'updated_at'):
                 affiliate.updated_at = datetime.now()
@@ -483,6 +487,11 @@ def update_paypal_email():
         # Log the update for debugging
         logger.info(f"Updating PayPal email for affiliate {affiliate.id} to {paypal_email}")
         
+        # Ensure affiliate status is always 'active'
+        if affiliate.status != 'active':
+            affiliate.status = 'active'
+            logger.info(f"Setting affiliate {affiliate.id} status to active")
+        
         # Only update if the email has changed
         if affiliate.paypal_email != paypal_email:
             affiliate.paypal_email = paypal_email
@@ -490,17 +499,18 @@ def update_paypal_email():
             # Update timestamp
             if hasattr(affiliate, 'updated_at'):
                 affiliate.updated_at = datetime.now()
-                
-            db.session.commit()
+            
             flash('PayPal email updated successfully!', 'success')
             logger.info(f"Successfully updated PayPal email for affiliate {affiliate.id}")
-            
-            # Set a session variable that can be checked in JavaScript
-            session['paypal_email_updated'] = True
         else:
-            # No change needed
             flash('No changes made - PayPal email is already set to this value', 'info')
             logger.info(f"PayPal email unchanged for affiliate {affiliate.id}")
+            
+        # Always commit changes to ensure status updates are saved
+        db.session.commit()
+            
+        # Set a session variable that can be checked in JavaScript
+        session['paypal_email_updated'] = True
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error updating PayPal email: {str(e)}", exc_info=True)
