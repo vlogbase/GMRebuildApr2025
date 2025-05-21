@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Affiliate Registration{% endblock %}
+{% block title %}Affiliate Program{% endblock %}
 
 {% block content %}
 <div class="container mt-5">
@@ -8,12 +8,24 @@
         <div class="col-md-8">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
-                    <h2 class="h4 mb-0">Affiliate Registration</h2>
+                    <h2 class="h4 mb-0">Your Affiliate Program</h2>
                 </div>
                 <div class="card-body">
+                    <!-- Success message for automatic activation -->
+                    <div class="alert alert-success">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <i class="fas fa-check-circle fa-2x"></i> 
+                            </div>
+                            <div>
+                                <h5 class="alert-heading">You're Now an Active Affiliate!</h5>
+                                <p class="mb-0">Your affiliate account has been automatically activated. You can start earning commissions right away!</p>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <p class="card-text mb-4">
-                        Join our affiliate program and earn money by referring new users to GloriaMundo Chatbot.
-                        You'll earn:
+                        As an active affiliate, you'll earn:
                     </p>
                     <div class="row mb-4">
                         <div class="col-md-6">
@@ -48,99 +60,27 @@
                         {% endif %}
                     {% endwith %}
                     
-                    <form method="post" action="{{ url_for('affiliate.register') }}">
-                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        {% if ref_code %}
-                            <div class="alert alert-info">
-                                <p class="mb-0">You were referred by an affiliate with code: <strong>{{ ref_code }}</strong></p>
-                                <input type="hidden" name="ref_code" value="{{ ref_code }}">
+                    <div class="alert alert-info mb-4">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <i class="fas fa-info-circle fa-2x"></i>
                             </div>
-                        {% endif %}
-                        
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Full Name</label>
-                            <input type="text" class="form-control" id="name" name="name" required>
+                            <div>
+                                <h5 class="alert-heading">Add Your PayPal Email</h5>
+                                <p class="mb-0">To receive your commission payments, please add your PayPal email in the "Tell a Friend" tab.</p>
+                            </div>
                         </div>
-                        
-                        <div class="mb-3">
-                            <label for="email" class="form-label">Email Address</label>
-                            <input type="email" class="form-control" id="email" name="email" required>
-                            <div class="form-text">We'll use this email to communicate with you about your commissions and program updates.</div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="paypal_email" class="form-label">PayPal Email Address</label>
-                            <input type="email" class="form-control" id="paypal_email" name="paypal_email" required>
-                            <div class="form-text">This is where your commission payments will be sent. Must be a valid PayPal account.</div>
-                        </div>
-                        
-                        <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="terms" required>
-                            <label class="form-check-label" for="terms">I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">Affiliate Terms and Conditions</a></label>
-                        </div>
-                        
-                        <button type="submit" class="btn btn-primary">Register as Affiliate</button>
-                    </form>
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('billing.account_management') }}#tellFriend" class="btn btn-primary btn-lg">
+                            <i class="fas fa-link me-2"></i> Go to Affiliate Dashboard
+                        </a>
+                        <a href="{{ url_for('affiliate.terms') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-file-contract me-2"></i> View Affiliate Terms
+                        </a>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Terms and Conditions Modal -->
-<div class="modal fade" id="termsModal" tabindex="-1" aria-labelledby="termsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-scrollable modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="termsModalLabel">Affiliate Terms and Conditions</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <h5>1. Eligibility</h5>
-                <p>To be eligible for the GloriaMundo Affiliate Program, you must:</p>
-                <ul>
-                    <li>Be at least 18 years of age</li>
-                    <li>Have a valid PayPal account</li>
-                    <li>Provide accurate information during registration</li>
-                </ul>
-                
-                <h5>2. Commission Structure</h5>
-                <p>Our two-tier affiliate program works as follows:</p>
-                <ul>
-                    <li>Level 1 (Direct Referrals): 10% commission on all purchases made by users you directly refer</li>
-                    <li>Level 2 (Sub-Affiliate Referrals): 5% commission on all purchases made by users referred by your referrals</li>
-                </ul>
-                
-                <h5>3. Commission Payments</h5>
-                <ul>
-                    <li>Commissions are held for 30 days to allow for refunds and chargebacks</li>
-                    <li>Payments are processed via PayPal to the email address you provide</li>
-                    <li>Minimum payout threshold: £50.00</li>
-                    <li>Payments are processed monthly for eligible commissions</li>
-                </ul>
-                
-                <h5>4. Prohibited Activities</h5>
-                <p>The following activities are strictly prohibited:</p>
-                <ul>
-                    <li>Self-referrals or creating multiple accounts</li>
-                    <li>Spam, misleading advertising, or deceptive marketing practices</li>
-                    <li>Using the GloriaMundo name or trademarks without permission</li>
-                    <li>Violating any applicable laws or regulations</li>
-                </ul>
-                
-                <h5>5. Termination</h5>
-                <p>We reserve the right to terminate your affiliate account if:</p>
-                <ul>
-                    <li>You violate any of these terms and conditions</li>
-                    <li>Your account remains inactive for over 12 months</li>
-                    <li>We suspect fraudulent activity</li>
-                </ul>
-                
-                <h5>6. Modifications</h5>
-                <p>We reserve the right to modify these terms at any time. Continued participation in the program after modifications constitutes acceptance of the new terms.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
             </div>
         </div>
     </div>
