@@ -73,12 +73,6 @@ if not app.secret_key:
 
 # Initialize CSRF protection with extended timeout
 app.config['WTF_CSRF_TIME_LIMIT'] = 86400  # Set CSRF token timeout to 24 hours (in seconds)
-# Disable strict SSL checking for CSRF to handle Cloudflare and non-Cloudflare modes
-app.config['WTF_CSRF_SSL_STRICT'] = False
-
-# Make sure CSRF cookie matches the domain being used
-app.config['WTF_CSRF_SAMESITE'] = 'Lax'
-
 csrf = CSRFProtect(app)
 
 # Configure Redis session support - this will use Redis if available or fall back to Flask's default
@@ -317,7 +311,6 @@ try:
     app.register_blueprint(billing_bp, url_prefix='/billing')
     # Exempt Stripe webhook from CSRF protection
     csrf.exempt('billing.stripe_webhook')
-    csrf.exempt('affiliate.update_paypal_email')  # Exempt PayPal email update form
     logger.info("Billing blueprint registered successfully with prefix /billing")
 except Exception as e:
     logger.error(f"Error registering Billing blueprint: {e}")
