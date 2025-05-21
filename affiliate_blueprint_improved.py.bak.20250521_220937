@@ -1,10 +1,9 @@
 """
-Affiliate Blueprint Module (Improved and Fixed)
+Affiliate Blueprint Module (Memory Optimized Version)
 
 This module provides a Flask blueprint for the affiliate system.
-This implementation resolves circular import issues and prevents the blueprint 
-from being registered multiple times. It also fixes issues with PayPal email
-updates and eliminates redirects to obsolete pages.
+This implementation resolves circular import issues, prevents memory leaks,
+and optimizes database queries for better performance.
 """
 
 import os
@@ -31,7 +30,7 @@ def dashboard():
     """Affiliate dashboard view"""
     # Import database models inside function to avoid circular imports
     from database import db
-from models import User, Affiliate, Commission, Transaction, CustomerReferral
+    from models import User, Affiliate, Commission, Transaction, CustomerReferral
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -74,29 +73,60 @@ from models import User, Affiliate, Commission, Transaction, CustomerReferral
             flash('There was a problem creating your affiliate account. Please try again.', 'error')
             return redirect(url_for('billing.account_management'))
     
-    # Get affiliate commissions
-    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(Commission.created_at.desc()).all()
+    # Get affiliate commissions (limited to most recent 50 for dashboard display)
+    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(Commission.created_at.desc()).limit(50).all()
     
-    # Get referrals
-    referrals = CustomerReferral.query.filter_by(affiliate_id=affiliate.id).order_by(CustomerReferral.created_at.desc()).all()
+    # Get referrals (limited to most recent 50 for dashboard display)
+    referrals = CustomerReferral.query.filter_by(affiliate_id=affiliate.id).order_by(CustomerReferral.created_at.desc()).limit(50).all()
     
-    # Calculate stats
-    total_earned = sum(c.commission_amount for c in commissions if c.status in ['approved', 'paid'])
-    total_pending = sum(c.commission_amount for c in commissions if c.status in ['pending', 'ready'])
-    total_referrals = len(referrals)
-    total_conversions = sum(1 for r in referrals if r.converted)
+    # For calculating totals, use aggregation directly at the database level
+    # This avoids loading all records into memory
+    total_earned_result = db.session.query(db.func.sum(Commission.commission_amount)).filter(
+        Commission.affiliate_id == affiliate.id,
+        Commission.status.in_(['approved', 'paid'])
+    ).scalar()
+    total_earned = total_earned_result or 0
+    
+    total_pending_result = db.session.query(db.func.sum(Commission.commission_amount)).filter(
+        Commission.affiliate_id == affiliate.id,
+        Commission.status.in_(['pending', 'ready'])
+    ).scalar()
+    total_pending = total_pending_result or 0
+    
+    # Count the total number of referrals
+    total_referrals = CustomerReferral.query.filter_by(affiliate_id=affiliate.id).count()
+    
+    # Count conversions
+    total_conversions = CustomerReferral.query.filter_by(
+        affiliate_id=affiliate.id, 
+        converted=True
+    ).count()
+    
     conversion_rate = (total_conversions / total_referrals * 100) if total_referrals > 0 else 0
     
-    # Calculate earnings by month (for chart)
-    monthly_data = {}
-    for commission in commissions:
-        if commission.status in ['approved', 'paid']:
-            month_key = commission.created_at.strftime('%Y-%m')
-            if month_key not in monthly_data:
-                monthly_data[month_key] = 0
-            monthly_data[month_key] += commission.commission_amount
+    # Calculate earnings by month (for chart) - again using aggregation at DB level
+    # Get the date 6 months ago
+    six_months_ago = datetime.now() - timedelta(days=180)
     
-    # Ensure at least 6 months of data for the chart
+    # Query for monthly earnings for the past 6 months
+    monthly_earnings = db.session.query(
+        db.func.date_trunc('month', Commission.created_at).label('month'),
+        db.func.sum(Commission.commission_amount).label('amount')
+    ).filter(
+        Commission.affiliate_id == affiliate.id,
+        Commission.status.in_(['approved', 'paid']),
+        Commission.created_at >= six_months_ago
+    ).group_by(
+        db.func.date_trunc('month', Commission.created_at)
+    ).all()
+    
+    # Convert to dictionary for easy lookup
+    monthly_data = {
+        month.strftime('%Y-%m'): float(amount) 
+        for month, amount in monthly_earnings
+    }
+    
+    # Ensure 6 months of data
     months = []
     values = []
     today = datetime.now()
@@ -107,11 +137,11 @@ from models import User, Affiliate, Commission, Transaction, CustomerReferral
         months.append(month_label)
         values.append(monthly_data.get(month_key, 0))
     
-    # Get recent activity
+    # Get recent activity - limit to 10 most recent items
     recent_activity = []
     
-    # Add commissions to activity
-    for commission in commissions[:10]:
+    # Add commissions to activity - only the few most recent
+    for commission in commissions[:5]:
         activity = {
             'type': 'commission',
             'date': commission.created_at,
@@ -121,8 +151,8 @@ from models import User, Affiliate, Commission, Transaction, CustomerReferral
         }
         recent_activity.append(activity)
     
-    # Add referrals to activity
-    for referral in referrals[:10]:
+    # Add referrals to activity - only the few most recent
+    for referral in referrals[:5]:
         activity = {
             'type': 'referral',
             'date': referral.created_at,
@@ -158,8 +188,7 @@ def register():
     This is a compatibility route that now automatically creates active affiliates.
     """
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import User, Affiliate
+    from database import User, Affiliate, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -219,8 +248,7 @@ from models import User, Affiliate
 def tell_a_friend():
     """Affiliate referral tools page"""
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import User, Affiliate
+    from database import User, Affiliate, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -233,7 +261,7 @@ from models import User, Affiliate
     affiliate = Affiliate.query.filter_by(user_id=user_id).first()
     
     if not affiliate:
-        # Auto-create an affiliate account instead of redirecting
+        # Auto-create an affiliate account
         try:
             # Get user data
             user = User.query.get(user_id)
@@ -259,7 +287,7 @@ from models import User, Affiliate
             flash('You have been automatically registered as an affiliate!', 'success')
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Error auto-creating affiliate during tell-a-friend access: {str(e)}", exc_info=True)
+            logger.error(f"Error auto-creating affiliate: {str(e)}", exc_info=True)
             flash('There was a problem setting up your affiliate account. Please try again.', 'error')
             return redirect(url_for('billing.account_management'))
     
@@ -324,8 +352,7 @@ from models import User, Affiliate
 def commissions():
     """View affiliate commissions"""
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import User, Affiliate, Commission
+    from database import User, Affiliate, Commission, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -338,7 +365,7 @@ from models import User, Affiliate, Commission
     affiliate = Affiliate.query.filter_by(user_id=user_id).first()
     
     if not affiliate:
-        # Auto-create an affiliate account instead of redirecting
+        # Auto-create an affiliate account
         try:
             # Get user data
             user = User.query.get(user_id)
@@ -364,17 +391,31 @@ from models import User, Affiliate, Commission
             flash('You have been automatically registered as an affiliate!', 'success')
         except Exception as e:
             db.session.rollback()
-            logger.error(f"Error auto-creating affiliate during commissions view: {str(e)}", exc_info=True)
+            logger.error(f"Error auto-creating affiliate: {str(e)}", exc_info=True)
             flash('There was a problem setting up your affiliate account. Please try again.', 'error')
             return redirect(url_for('billing.account_management'))
     
-    # Get affiliate commissions
-    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(Commission.created_at.desc()).all()
+    # Get affiliate commissions (limited to most recent 50 for performance)
+    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(Commission.created_at.desc()).limit(50).all()
     
-    # Calculate totals
-    total_earned = sum(c.commission_amount for c in commissions if c.status in ['approved', 'paid'])
-    total_pending = sum(c.commission_amount for c in commissions if c.status in ['pending', 'ready'])
-    total_ready = sum(c.commission_amount for c in commissions if c.status == 'ready')
+    # Calculate totals using direct database aggregation instead of loading all records
+    total_earned_result = db.session.query(db.func.sum(Commission.commission_amount)).filter(
+        Commission.affiliate_id == affiliate.id,
+        Commission.status.in_(['approved', 'paid'])
+    ).scalar()
+    total_earned = total_earned_result or 0
+    
+    total_pending_result = db.session.query(db.func.sum(Commission.commission_amount)).filter(
+        Commission.affiliate_id == affiliate.id,
+        Commission.status.in_(['pending', 'ready'])
+    ).scalar()
+    total_pending = total_pending_result or 0
+    
+    total_ready_result = db.session.query(db.func.sum(Commission.commission_amount)).filter(
+        Commission.affiliate_id == affiliate.id,
+        Commission.status == 'ready'
+    ).scalar()
+    total_ready = total_ready_result or 0
     
     return render_template(
         'affiliate/commissions.html',
@@ -389,8 +430,7 @@ from models import User, Affiliate, Commission
 def track_referral():
     """API endpoint to track affiliate referrals"""
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import Affiliate, CustomerReferral
+    from database import Affiliate, CustomerReferral, db
     
     try:
         data = request.get_json()
@@ -438,8 +478,7 @@ from models import Affiliate, CustomerReferral
 def commission_metrics():
     """API endpoint to get commission metrics for charts"""
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import User, Affiliate, Commission
+    from database import User, Affiliate, Commission, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -453,19 +492,28 @@ from models import User, Affiliate, Commission
     if not affiliate:
         return jsonify({'success': False, 'error': 'Not an affiliate'}), 403
     
-    # Get affiliate commissions
-    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(Commission.created_at.desc()).all()
+    # Use aggregation directly at DB level to avoid memory issues
+    six_months_ago = datetime.now() - timedelta(days=180)
     
-    # Calculate earnings by month (for chart)
-    monthly_data = {}
-    for commission in commissions:
-        if commission.status in ['approved', 'paid']:
-            month_key = commission.created_at.strftime('%Y-%m')
-            if month_key not in monthly_data:
-                monthly_data[month_key] = 0
-            monthly_data[month_key] += commission.commission_amount
+    # Query for monthly earnings for the past 6 months
+    monthly_earnings = db.session.query(
+        db.func.date_trunc('month', Commission.created_at).label('month'),
+        db.func.sum(Commission.commission_amount).label('amount')
+    ).filter(
+        Commission.affiliate_id == affiliate.id,
+        Commission.status.in_(['approved', 'paid']),
+        Commission.created_at >= six_months_ago
+    ).group_by(
+        db.func.date_trunc('month', Commission.created_at)
+    ).all()
     
-    # Ensure at least 6 months of data for the chart
+    # Convert to dictionary for easy lookup
+    monthly_data = {
+        month.strftime('%Y-%m'): float(amount) 
+        for month, amount in monthly_earnings
+    }
+    
+    # Ensure 6 months of data
     chart_data = []
     today = datetime.now()
     for i in range(5, -1, -1):
@@ -491,8 +539,7 @@ def agree_to_terms_handler():
     and just update the PayPal email if provided. No terms agreement is required.
     """
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import User, Affiliate
+    from database import User, Affiliate, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -557,7 +604,6 @@ def update_paypal_email():
     """Update affiliate's PayPal email address"""
     # Import database models inside function to avoid circular imports
     from database import db
-
     from models import User, Affiliate
     
     # Check if user is logged in via session

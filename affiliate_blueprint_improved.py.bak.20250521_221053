@@ -30,8 +30,7 @@ affiliate_bp = Blueprint('affiliate', __name__, url_prefix='/affiliate', templat
 def dashboard():
     """Affiliate dashboard view"""
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import User, Affiliate, Commission, Transaction, CustomerReferral
+    from database import User, Affiliate, Commission, Transaction, CustomerReferral, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -158,8 +157,7 @@ def register():
     This is a compatibility route that now automatically creates active affiliates.
     """
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import User, Affiliate
+    from database import User, Affiliate, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -219,8 +217,7 @@ from models import User, Affiliate
 def tell_a_friend():
     """Affiliate referral tools page"""
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import User, Affiliate
+    from database import User, Affiliate, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -324,8 +321,7 @@ from models import User, Affiliate
 def commissions():
     """View affiliate commissions"""
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import User, Affiliate, Commission
+    from database import User, Affiliate, Commission, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -389,8 +385,7 @@ from models import User, Affiliate, Commission
 def track_referral():
     """API endpoint to track affiliate referrals"""
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import Affiliate, CustomerReferral
+    from database import Affiliate, CustomerReferral, db
     
     try:
         data = request.get_json()
@@ -438,8 +433,7 @@ from models import Affiliate, CustomerReferral
 def commission_metrics():
     """API endpoint to get commission metrics for charts"""
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import User, Affiliate, Commission
+    from database import User, Affiliate, Commission, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -491,8 +485,7 @@ def agree_to_terms_handler():
     and just update the PayPal email if provided. No terms agreement is required.
     """
     # Import database models inside function to avoid circular imports
-    from database import db
-from models import User, Affiliate
+    from database import User, Affiliate, db
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -557,7 +550,6 @@ def update_paypal_email():
     """Update affiliate's PayPal email address"""
     # Import database models inside function to avoid circular imports
     from database import db
-
     from models import User, Affiliate
     
     # Check if user is logged in via session
