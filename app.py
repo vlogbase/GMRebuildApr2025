@@ -414,6 +414,14 @@ try:
 except Exception as e:
     logger.error(f"Error registering User settings blueprint: {e}")
 
+# Register our simplified PayPal email update blueprint
+try:
+    from simple_paypal_update import register_blueprint as register_simple_paypal
+    register_simple_paypal(app)
+    logger.info("Simple PayPal email update blueprint registered successfully")
+except Exception as e:
+    logger.error(f"Error registering Simple PayPal blueprint: {e}")
+
 # Register admin blueprint
 try:
     # Define custom error handler function that will be passed to admin module

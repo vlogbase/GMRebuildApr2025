@@ -284,10 +284,9 @@
                     
                     <!-- Hidden email editor form that appears when Edit is clicked -->
                     <div id="paypalEmailEditor" style="display: none;">
-                        <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post" class="border rounded p-3 mb-4 bg-dark">
+                        <form action="{{ url_for('simple_paypal.update_paypal_email') }}" method="post" class="border rounded p-3 mb-4 bg-dark">
                             <h5 class="mb-3">Update PayPal Email</h5>
-                            <!-- Add the CSRF token back -->
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <!-- No CSRF token in our simplified approach -->
                             
                             <div class="mb-3">
                                 <label for="newPaypalEmail" class="form-label">New PayPal Email</label>
