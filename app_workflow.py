@@ -1,13 +1,14 @@
 """
-Simple Flask server workflow for GloriaMundo Chatbot
+Simple Flask server workflow for GloriaMundo
+This runs the main application with the fixed affiliate blueprint
 """
-from app import app
 
 def run():
-    """
-    Run the Flask application
-    """
+    """Run the Flask application"""
+    from app import app
+    
+    # Run the app
     app.run(host='0.0.0.0', port=5000, debug=True)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()

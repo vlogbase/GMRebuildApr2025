@@ -557,7 +557,6 @@ def update_paypal_email():
     """Update affiliate's PayPal email address"""
     # Import database models inside function to avoid circular imports
     from database import db
-
     from models import User, Affiliate
     
     # Check if user is logged in via session

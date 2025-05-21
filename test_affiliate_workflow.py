@@ -1,21 +1,26 @@
 """
-Simple script to run the test affiliate template in the Replit environment.
+Test workflow for the affiliate system functionality.
+This workflow specifically tests the affiliate dashboard and PayPal email update.
 """
 
-import os
-import logging
-from test_affiliate_tabs import app
-
 def run():
-    """
-    Run the test application.
-    """
-    try:
-        # Start the Flask server on port 5000
-        app.run(debug=True, host='0.0.0.0', port=5000)
-    except Exception as e:
-        logging.error(f"Error running test affiliate app: {e}")
-        raise
+    """Run the Flask application for testing the affiliate system"""
+    import logging
+    from app import app
+    
+    # Set up logging
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+    
+    # Register routes correctly
+    logger.info("Starting affiliate test workflow")
+    logger.info("Registered routes:")
+    for rule in app.url_map.iter_rules():
+        if "affiliate" in rule.endpoint:
+            logger.info(f"  {rule.endpoint} - {rule}")
+    
+    # Run the app with debug enabled
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 if __name__ == "__main__":
     run()

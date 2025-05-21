@@ -317,7 +317,7 @@ except Exception as e:
 # Register affiliate blueprint
 try:
     # Import the improved affiliate blueprint module that avoids circular imports
-    from affiliate_blueprint_fix import init_app as init_affiliate_bp
+    from affiliate_blueprint_improved import init_app as init_affiliate_bp
     
     # Initialize the affiliate blueprint with our Flask app
     init_affiliate_bp(app)
