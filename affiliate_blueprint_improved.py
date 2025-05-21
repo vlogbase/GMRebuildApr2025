@@ -42,8 +42,32 @@ def dashboard():
     affiliate = Affiliate.query.filter_by(user_id=user_id).first()
     
     if not affiliate:
-        # User is not an affiliate yet, redirect to registration
-        return redirect(url_for('affiliate.register'))
+        # User is not an affiliate yet, create an affiliate account automatically
+        # Instead of redirecting to register, we'll handle it right here
+        try:
+            # Generate a random referral code
+            referral_code = str(uuid.uuid4())[:8]
+            
+            # Create a new active affiliate record
+            affiliate = Affiliate(
+                user_id=user_id,
+                name=user.username,
+                email=user.email,
+                referral_code=referral_code,
+                status='active',
+                terms_agreed_at=datetime.now()
+            )
+            db.session.add(affiliate)
+            db.session.commit()
+            logger.info(f"Auto-created affiliate account for user {user_id} during dashboard access")
+            flash('You have been automatically registered as an affiliate!', 'success')
+            
+            # Now proceed with the dashboard view since affiliate exists
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error auto-creating affiliate: {str(e)}", exc_info=True)
+            flash('There was a problem creating your affiliate account. Please try again.', 'error')
+            return redirect(url_for('billing.account_management'))
     
     # Get affiliate commissions
     commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(Commission.created_at.desc()).all()
