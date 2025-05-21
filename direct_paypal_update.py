@@ -24,14 +24,33 @@ def create_route(app):
         logger.info("Direct PayPal email update route activated")
         
         try:
-            # Check if user is logged in via session
-            if 'user_id' not in session:
-                logger.error("User not authenticated for direct PayPal update")
-                flash('Please login to update your PayPal email', 'warning')
-                return redirect(url_for('login'))
+            # Log the entire session contents for debugging
+            logger.info(f"Session contents: {dict(session)}")
+            logger.info(f"Session keys: {list(session.keys())}")
             
-            # Get user from session
-            user_id = session['user_id']
+            # Check all possible user ID keys that might be in the session
+            user_id = None
+            possible_keys = ['user_id', 'id', 'uid', '_user_id', 'user', 'flask_login_user_id']
+            
+            for key in possible_keys:
+                if key in session:
+                    user_id = session[key]
+                    logger.info(f"Found user identifier in session with key '{key}': {user_id}")
+                    break
+                    
+            if user_id is None:
+                # Try to detect if we're using Flask-Login
+                logger.info("No direct user ID in session, checking for Flask-Login session data")
+                if 'user' in session:
+                    logger.info(f"Found 'user' in session: {session['user']}")
+                    if isinstance(session['user'], dict) and 'id' in session['user']:
+                        user_id = session['user']['id']
+                        logger.info(f"Extracted user ID from session['user']: {user_id}")
+                
+            if user_id is None:
+                logger.error("No user identifier found in any expected session keys")
+                flash('Session authentication issue. Please try logging out and back in.', 'warning')
+                return redirect(url_for('login'))
             
             # Import models and get user
             from models import User, Affiliate
