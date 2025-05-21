@@ -460,6 +460,16 @@ def agree_to_terms_handler():
     # Do NOT regenerate a CSRF token here - it would invalidate validation
     # The token submitted with the form must match the one already in the session
     
+    # Always check for and remove any pending_terms affiliate records regardless of form validation outcome
+    # This ensures users never remain in a pending_terms state
+    pending_affiliate = Affiliate.query.filter_by(
+        user_id=user_id, 
+        status='pending_terms'
+    ).first()
+    
+    if pending_affiliate:
+        logger.info(f"Found affiliate record in pending_terms state for user {user_id}, will be removed if validation fails or promoted if validation succeeds")
+    
     if not form.validate_on_submit():
         # Log validation errors for debugging with high visibility
         logger.error(f"FORM VALIDATION FAILED: {form.errors}")
@@ -478,18 +488,13 @@ def agree_to_terms_handler():
                     else:
                         flash(f"{error}", 'error')
         
-        # If the terms weren't agreed to, delete any pending_terms affiliate record
-        if 'agree_to_terms' in form.errors:
-            pending_affiliate = Affiliate.query.filter_by(
-                user_id=user_id, 
-                status='pending_terms'
-            ).first()
-            
-            if pending_affiliate:
-                logger.info(f"Deleting pending affiliate record for user {user_id} due to terms agreement failure")
-                db.session.delete(pending_affiliate)
-                db.session.commit()
-                flash('Your previous application has been discarded. Please start over when you are ready to agree to the terms.', 'info')
+        # Always delete any pending_terms affiliate record if validation fails for any reason
+        # This prevents users from getting stuck in the pending_terms state
+        if pending_affiliate:
+            logger.info(f"Deleting pending affiliate record for user {user_id} due to form validation failure")
+            db.session.delete(pending_affiliate)
+            db.session.commit()
+            flash('Your previous application has been discarded. You can start over when ready.', 'info')
         
         # Redirect back to the account page's Tell a Friend tab
         return redirect(url_for('billing.account_management') + '#tellFriend')
