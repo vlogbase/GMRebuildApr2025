@@ -18,6 +18,16 @@ simple_paypal_bp = Blueprint('simple_paypal', __name__, url_prefix='/simple-payp
 @simple_paypal_bp.route('/update', methods=['POST'])
 def update_paypal_email():
     """Simple endpoint to update PayPal email without CSRF validation"""
+    # Import modules to exempt this view from CSRF protection
+    from flask_wtf.csrf import CSRFProtect, current_app
+    
+    # Disable CSRF protection for this view specifically
+    csrf = current_app.extensions.get('csrf', None)
+    if csrf is not None:
+        view_func = current_app.view_functions.get('simple_paypal.update_paypal_email')
+        if view_func:
+            csrf.exempt(view_func)
+            print("CSRF protection exempted for PayPal update endpoint", flush=True)
     # Import models inside function to avoid circular imports
     from models import User, Affiliate
     from database import db

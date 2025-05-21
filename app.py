@@ -414,13 +414,13 @@ try:
 except Exception as e:
     logger.error(f"Error registering User settings blueprint: {e}")
 
-# Register our simplified PayPal email update blueprint
+# Register direct PayPal update route (completely bypasses CSRF)
 try:
-    from simple_paypal_update import register_blueprint as register_simple_paypal
-    register_simple_paypal(app)
-    logger.info("Simple PayPal email update blueprint registered successfully")
+    from direct_paypal_update import create_route
+    create_route(app)
+    logger.info("Direct PayPal update route registered and exempted from CSRF")
 except Exception as e:
-    logger.error(f"Error registering Simple PayPal blueprint: {e}")
+    logger.error(f"Error registering direct PayPal update route: {e}")
 
 # Register admin blueprint
 try:
