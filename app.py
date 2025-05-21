@@ -1054,9 +1054,10 @@ def test_url_formatting():
 def direct_update_paypal_email():
     """Direct handler for PayPal email updates that bypasses CSRF validation"""
     import uuid
-    from models import Affiliate
+    from models import Affiliate, User
     
     logger.info(f"Direct PayPal email update request: {request.form}")
+    logger.info(f"Session data: {dict(session)}")
     
     if 'user_id' not in session:
         flash('Please login to update your PayPal email', 'warning')
@@ -1065,20 +1066,39 @@ def direct_update_paypal_email():
     try:
         # Get the email from the form
         paypal_email = request.form.get('paypal_email', '').strip()
-        user_email = session.get('user_email', '')
+        
+        # Get the user's email from their user record
+        user_id = session.get('user_id')
+        user = User.query.get(user_id)
+        
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('login'))
+            
+        user_email = user.email
+        logger.info(f"Found user: ID={user_id}, email={user_email}")
         
         if not paypal_email:
             flash('Please provide a PayPal email address', 'error')
             return redirect(url_for('billing.account_management', _anchor='tellFriend'))
         
-        # Find the affiliate by email
+        # Log the affiliate lookup
+        logger.info(f"Looking for affiliate with email: {user_email}")
+        
+        # Find affiliated by email
         affiliate = Affiliate.query.filter_by(email=user_email).first()
+        
+        # Log what we found
+        if affiliate:
+            logger.info(f"Found affiliate: ID={affiliate.id}, current PayPal email={affiliate.paypal_email}")
+        else:
+            logger.info(f"No affiliate found for email {user_email}")
         
         if not affiliate:
             # Create a new affiliate record
             logger.info(f"Creating new affiliate record for {user_email}")
             affiliate = Affiliate(
-                name=user_email,
+                name=user.username or user_email,
                 email=user_email,
                 paypal_email=paypal_email,
                 referral_code=str(uuid.uuid4())[:8],
@@ -1086,16 +1106,29 @@ def direct_update_paypal_email():
                 terms_agreed_at=datetime.now()
             )
             db.session.add(affiliate)
-        else:
-            # Update existing affiliate
-            logger.info(f"Updating PayPal email for affiliate ID {affiliate.id} to {paypal_email}")
-            affiliate.paypal_email = paypal_email
-            affiliate.status = 'active'  # Always ensure active status
+            
+            # Immediately commit to get ID
+            db.session.commit()
+            logger.info(f"Created new affiliate with ID {affiliate.id}")
+        
+        # Always update the PayPal email - this is the key fix!
+        old_email = affiliate.paypal_email
+        affiliate.paypal_email = paypal_email
+        affiliate.status = 'active'  # Always ensure active status
+        
+        # Log the change clearly
+        logger.info(f"CHANGING PayPal email for affiliate ID {affiliate.id} from '{old_email}' to '{paypal_email}'")
         
         # Commit changes
         db.session.commit()
-        flash('PayPal email updated successfully!', 'success')
-        logger.info(f"Successfully updated PayPal email")
+        
+        # Use a more specific success message
+        if old_email != paypal_email:
+            flash(f'PayPal email updated successfully from {old_email} to {paypal_email}!', 'success')
+        else:
+            flash('PayPal email saved (no change detected)', 'info')
+            
+        logger.info(f"Successfully updated PayPal email in database")
         
     except Exception as e:
         db.session.rollback()
