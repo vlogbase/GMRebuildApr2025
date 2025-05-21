@@ -454,15 +454,14 @@ def agree_to_terms_handler():
     logger.info(f"Form submission to agree-to-terms: has agree_to_terms: {'agree_to_terms' in request.form}")
     logger.info(f"USING DIRECT FORM PROCESSING - BYPASSING CSRF VALIDATION")
     
-    # Always check for and remove any pending_terms affiliate records
-    # This ensures users never remain in a pending_terms state
-    pending_affiliate = Affiliate.query.filter_by(
-        user_id=user_id, 
-        status='pending_terms'
+    # Always check for any pending_terms or not_affiliate records
+    # This ensures users properly transition to active status
+    existing_affiliate = Affiliate.query.filter_by(user_id=user_id).filter(
+        Affiliate.status.in_(['pending_terms', 'not_affiliate'])
     ).first()
     
-    if pending_affiliate:
-        logger.info(f"Found affiliate record in pending_terms state for user {user_id}, will be removed if validation fails or promoted if validation succeeds")
+    if existing_affiliate:
+        logger.info(f"Found affiliate record in {existing_affiliate.status} state for user {user_id}, will be removed if validation fails or promoted if validation succeeds")
     
     # Direct validation of form fields
     validation_errors = []
@@ -487,12 +486,12 @@ def agree_to_terms_handler():
         for error in validation_errors:
             flash(error, 'error')
         
-        # Delete any pending_terms affiliate record if validation fails
-        if pending_affiliate:
-            logger.info(f"Deleting pending affiliate record for user {user_id} due to validation failure")
-            db.session.delete(pending_affiliate)
+        # Reset any existing affiliate record if validation fails
+        if existing_affiliate:
+            logger.info(f"Resetting affiliate status for user {user_id} from {existing_affiliate.status} due to validation failure")
+            existing_affiliate.status = 'not_affiliate'
             db.session.commit()
-            flash('Your previous application has been discarded. You can start over when ready.', 'info')
+            flash('Your affiliate application has been reset. You can start over when ready.', 'info')
         
         # Redirect back to the account page's Tell a Friend tab
         return redirect(url_for('billing.account_management') + '#tellFriend')

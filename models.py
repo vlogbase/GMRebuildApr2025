@@ -30,10 +30,11 @@ class CommissionStatus(enum.Enum):
 
 class AffiliateStatus(enum.Enum):
     """Status for affiliate accounts"""
-    PENDING_TERMS = "pending_terms"
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    SUSPENDED = "suspended"
+    NOT_AFFILIATE = "not_affiliate"  # Default state for users who haven't signed up as affiliates
+    PENDING_TERMS = "pending_terms"  # Temporary state during signup
+    ACTIVE = "active"                # Fully active affiliate
+    INACTIVE = "inactive"            # Deactivated by user
+    SUSPENDED = "suspended"          # Suspended by admin
 
 class User(UserMixin, db.Model):
     """User model for authentication and storing user information"""
@@ -273,7 +274,7 @@ class Affiliate(db.Model):
     commissions = db.relationship('Commission', backref='affiliate', lazy='dynamic', cascade='all, delete-orphan')
     
     @staticmethod
-    def create_affiliate(name, email, paypal_email=None, referred_by_code=None, status=AffiliateStatus.PENDING_TERMS.value):
+    def create_affiliate(name, email, paypal_email=None, referred_by_code=None, status=AffiliateStatus.NOT_AFFILIATE.value):
         """Create a new affiliate with a unique referral code"""
         # Generate a unique referral code
         alphabet = string.ascii_uppercase + string.digits
@@ -309,11 +310,11 @@ class Affiliate(db.Model):
             if existing_affiliate:
                 return existing_affiliate
                 
-            # Generate a new affiliate with pending terms status
+            # Generate a new affiliate with not_affiliate status
             affiliate = Affiliate.create_affiliate(
                 name=user.username,
                 email=user.email,
-                status=AffiliateStatus.PENDING_TERMS.value
+                status=AffiliateStatus.NOT_AFFILIATE.value
             )
             
             # Save to database
