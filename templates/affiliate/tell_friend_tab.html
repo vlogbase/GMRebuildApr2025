@@ -516,6 +516,10 @@
                                         affiliateForm.appendChild(hiddenAgree);
                                     }
                                     
+                                    // Double-check checkbox status one more time before submission
+                                    const finalCheckValue = document.getElementById('agreeToTerms')?.checked;
+                                    console.log('Final agree_to_terms checkbox value before submission:', finalCheckValue);
+                                    
                                     // Submit the form directly without going through the submit event
                                     console.log('Manually submitting form with fresh token');
                                     affiliateForm.submit();
