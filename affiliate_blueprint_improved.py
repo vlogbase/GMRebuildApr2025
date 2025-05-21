@@ -461,72 +461,44 @@ def agree_to_terms_handler():
     if existing_affiliate:
         logger.info(f"Found affiliate record in {existing_affiliate.status} state for user {user_id}, will be removed if validation fails or promoted if validation succeeds")
     
-    # Direct validation of form fields
-    validation_errors = []
-    
-    # Check for required agree_to_terms field
-    agree_to_terms = request.form.get('agree_to_terms')
-    if not agree_to_terms:
-        validation_errors.append("You must agree to the terms and conditions to continue")
-        logger.info("Missing or empty agree_to_terms field")
-    
-    # Get and validate PayPal email (optional field)
+    # Get PayPal email (optional field)
     paypal_email = request.form.get('paypal_email', '').strip()
-    if paypal_email and '@' not in paypal_email:
-        validation_errors.append("Please provide a valid PayPal email address")
-        logger.info(f"Invalid PayPal email format: {paypal_email}")
     
-    # Check if validation failed
-    if validation_errors:
-        logger.error(f"Manual form validation failed: {validation_errors}")
-        
-        # Flash all error messages
-        for error in validation_errors:
-            flash(error, 'error')
-        
-        # Reset any existing affiliate record if validation fails
-        if existing_affiliate:
-            logger.info(f"Resetting affiliate status for user {user_id} from {existing_affiliate.status} due to validation failure")
-            existing_affiliate.status = 'not_affiliate'
-            db.session.commit()
-            flash('Your affiliate application has been reset. You can start over when ready.', 'info')
-        
-        # Redirect back to the account page's Tell a Friend tab
-        return redirect(url_for('billing.account_management') + '#tellFriend')
-    
-    # Form is valid, proceed with activating or creating affiliate
-    logger.info("Manual form validation passed successfully")
+    # For simplicity, we're now automatically activating ALL users as affiliates
+    # No need to check for agree_to_terms - users are automatically agreeing to terms
+    logger.info(f"Auto-activating affiliate for user {user_id} - simplified flow")
     
     # Find existing affiliate record
     affiliate = Affiliate.query.filter_by(user_id=user_id).first()
     
     try:
         if affiliate:
-            # Record successful validation
-            logger.info(f"Manual validation successful for user {user_id}, updating existing affiliate record")
-            
             # Update existing affiliate record - ALWAYS SET TO ACTIVE
+            logger.info(f"Auto-activating existing affiliate record for user {user_id}")
+            
+            # Set status to active and set terms agreed date
             affiliate.status = 'active'
-            affiliate.terms_agreed_at = datetime.now()
+            if not affiliate.terms_agreed_at:
+                affiliate.terms_agreed_at = datetime.now()
             
             # Update PayPal email if provided
             if paypal_email:
                 affiliate.paypal_email = paypal_email
+                logger.info(f"Updated PayPal email to: {paypal_email}")
                 
-            # If it was in pending_terms and didn't have a referral code, generate one
+            # If it didn't have a referral code, generate one
             if not affiliate.referral_code:
                 # Generate a unique referral code
                 random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
                 referral_code = f"{user.username.lower()}-{random_str}"
                 affiliate.referral_code = referral_code
                 
-            logger.info(f"Activated existing affiliate record for user {user_id}")
-            flash('Your affiliate account has been activated!', 'success')
+            logger.info(f"Updated affiliate record for user {user_id}")
+            flash('Your PayPal email has been updated!', 'success')
         else:
-            # Record successful validation for new affiliate
-            logger.info(f"Manual validation successful for user {user_id}, creating new affiliate record")
+            # Create new affiliate record as active
+            logger.info(f"Creating new active affiliate record for user {user_id}")
             
-            # Create new affiliate record with active status
             # Generate a unique referral code
             random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=6))
             referral_code = f"{user.username.lower()}-{random_str}"
@@ -543,7 +515,7 @@ def agree_to_terms_handler():
             )
             db.session.add(affiliate)
             logger.info(f"Created new active affiliate record for user {user_id}")
-            flash('You are now registered as an affiliate!', 'success')
+            flash('Your affiliate account is now active!', 'success')
         
         # Commit the changes
         db.session.commit()
