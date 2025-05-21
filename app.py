@@ -1048,6 +1048,63 @@ def test_url_formatting():
     """Render the URL formatting test page"""
     return render_template('test_url_formatting.html')
 
+
+# Direct handler for PayPal email updates without CSRF validation
+@app.route("/update_paypal_email", methods=["POST"])
+def direct_update_paypal_email():
+    """Direct handler for PayPal email updates that bypasses CSRF validation"""
+    import uuid
+    from models import Affiliate
+    
+    logger.info(f"Direct PayPal email update request: {request.form}")
+    
+    if 'user_id' not in session:
+        flash('Please login to update your PayPal email', 'warning')
+        return redirect(url_for('login'))
+    
+    try:
+        # Get the email from the form
+        paypal_email = request.form.get('paypal_email', '').strip()
+        user_email = session.get('user_email', '')
+        
+        if not paypal_email:
+            flash('Please provide a PayPal email address', 'error')
+            return redirect(url_for('billing.account_management', _anchor='tellFriend'))
+        
+        # Find the affiliate by email
+        affiliate = Affiliate.query.filter_by(email=user_email).first()
+        
+        if not affiliate:
+            # Create a new affiliate record
+            logger.info(f"Creating new affiliate record for {user_email}")
+            affiliate = Affiliate(
+                name=user_email,
+                email=user_email,
+                paypal_email=paypal_email,
+                referral_code=str(uuid.uuid4())[:8],
+                status='active',
+                terms_agreed_at=datetime.now()
+            )
+            db.session.add(affiliate)
+        else:
+            # Update existing affiliate
+            logger.info(f"Updating PayPal email for affiliate ID {affiliate.id} to {paypal_email}")
+            affiliate.paypal_email = paypal_email
+            affiliate.status = 'active'  # Always ensure active status
+        
+        # Commit changes
+        db.session.commit()
+        flash('PayPal email updated successfully!', 'success')
+        logger.info(f"Successfully updated PayPal email")
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating PayPal email: {str(e)}", exc_info=True)
+        flash('An error occurred while updating your PayPal email. Please try again.', 'error')
+    
+    return redirect(url_for('billing.account_management', _anchor='tellFriend'))
+
+
 @app.route('/')
 def index():
     """Main route that serves as both health check and app entry point"""
