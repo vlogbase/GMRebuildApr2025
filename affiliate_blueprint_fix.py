@@ -149,7 +149,46 @@ def register():
     Auto-creates an affiliate record for the user and redirects to dashboard.
     This is a compatibility route that now automatically creates active affiliates.
     """
-    return redirect(url_for('affiliate.dashboard'))
+    # Import database models inside function to avoid circular imports
+    from database import db
+    from models import User, Affiliate
+    
+    # Check if user is logged in via session
+    if 'user_id' not in session:
+        flash('Please login to access the affiliate program', 'warning')
+        return redirect(url_for('login'))
+    
+    user_id = session['user_id']
+    
+    # Check if the user already has an affiliate account
+    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    
+    if not affiliate:
+        # Get user info
+        user = User.query.get(user_id)
+        if not user:
+            flash('User account not found', 'error')
+            return redirect(url_for('index'))
+            
+        # Create a new affiliate account automatically
+        referral_code = str(uuid.uuid4())[:8]
+        
+        affiliate = Affiliate(
+            user_id=user_id,
+            name=user.username,
+            email=user.email,
+            paypal_email=user.email,  # Pre-fill with user email
+            referral_code=referral_code,
+            status='active',
+            terms_agreed_at=datetime.now()
+        )
+        db.session.add(affiliate)
+        db.session.commit()
+        
+        flash('Your affiliate account has been created!', 'success')
+    
+    # Redirect to the affiliate dashboard
+    return redirect(url_for('billing.account_management', _anchor='tellFriend'))
 
 @affiliate_bp.route('/tell-a-friend')
 def tell_a_friend():
@@ -387,8 +426,8 @@ def agree_to_terms_handler():
         logger.error(f"Error processing affiliate request: {str(e)}", exc_info=True)
         flash('An error occurred while processing your request. Please try again.', 'error')
     
-    # Redirect to the Tell a Friend tab
-    return redirect(url_for('billing.account_management') + '#tellFriend')
+    # Redirect to the Tell a Friend tab - using _anchor parameter for reliability
+    return redirect(url_for('billing.account_management', _anchor='tellFriend'))
 
 @affiliate_bp.route('/update-paypal-email', methods=['POST'])
 def update_paypal_email():
@@ -437,29 +476,39 @@ def update_paypal_email():
     
     if not paypal_email:
         flash('PayPal email is required', 'error')
-        return redirect(url_for('billing.account_management') + '#tellFriend')
+        return redirect(url_for('billing.account_management', _anchor='tellFriend'))
     
     # Update the affiliate's PayPal email
     try:
         # Log the update for debugging
         logger.info(f"Updating PayPal email for affiliate {affiliate.id} to {paypal_email}")
         
-        affiliate.paypal_email = paypal_email
-        
-        # Update timestamp
-        if hasattr(affiliate, 'updated_at'):
-            affiliate.updated_at = datetime.now()
+        # Only update if the email has changed
+        if affiliate.paypal_email != paypal_email:
+            affiliate.paypal_email = paypal_email
             
-        db.session.commit()
-        flash('PayPal email updated successfully', 'success')
-        logger.info(f"Successfully updated PayPal email for affiliate {affiliate.id}")
+            # Update timestamp
+            if hasattr(affiliate, 'updated_at'):
+                affiliate.updated_at = datetime.now()
+                
+            db.session.commit()
+            flash('PayPal email updated successfully!', 'success')
+            logger.info(f"Successfully updated PayPal email for affiliate {affiliate.id}")
+            
+            # Set a session variable that can be checked in JavaScript
+            session['paypal_email_updated'] = True
+        else:
+            # No change needed
+            flash('No changes made - PayPal email is already set to this value', 'info')
+            logger.info(f"PayPal email unchanged for affiliate {affiliate.id}")
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error updating PayPal email: {str(e)}", exc_info=True)
         flash('An error occurred while updating your PayPal email. Please try again.', 'error')
     
     # Redirect back to account management page, specifically the Tell a Friend tab
-    return redirect(url_for('billing.account_management') + '#tellFriend')
+    # Use a more reliable redirect to ensure the user stays on the correct page
+    return redirect(url_for('billing.account_management', _anchor='tellFriend'))
 
 # Helper function for templates
 def affiliate_helpers():
