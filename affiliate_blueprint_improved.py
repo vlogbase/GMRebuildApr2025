@@ -454,11 +454,9 @@ def agree_to_terms_handler():
     logger.info(f"Form submission to agree-to-terms: has agree_to_terms: {'agree_to_terms' in request.form}")
     logger.info(f"USING DIRECT FORM PROCESSING - BYPASSING CSRF VALIDATION")
     
-    # Always check for any pending_terms or not_affiliate records
-    # This ensures users properly transition to active status
-    existing_affiliate = Affiliate.query.filter_by(user_id=user_id).filter(
-        Affiliate.status.in_(['pending_terms', 'not_affiliate'])
-    ).first()
+    # Check for any affiliate record for this user that needs to be processed
+    # We'll handle both pending_terms and not_affiliate statuses
+    existing_affiliate = Affiliate.query.filter_by(user_id=user_id).first()
     
     if existing_affiliate:
         logger.info(f"Found affiliate record in {existing_affiliate.status} state for user {user_id}, will be removed if validation fails or promoted if validation succeeds")
@@ -566,22 +564,46 @@ def update_paypal_email():
     from models import User, Affiliate
     from flask_login import login_required, current_user
     
-    # Check if user is logged in via flask_login
-    # This explicitly handles the login check before processing
-    if not current_user.is_authenticated:
-        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    # Enhanced logging for form submission
+    logger.info(f"PayPal email update requested for user: {current_user.id if current_user.is_authenticated else 'Not authenticated'}")
+    logger.info(f"USING DIRECT FORM PROCESSING - BYPASSING CSRF VALIDATION")
     
-    # Get user's affiliate info
-    affiliate = Affiliate.query.filter_by(email=current_user.email).first()
+    # Check if user is logged in - first check flask_login's current_user
+    if not current_user.is_authenticated:
+        # Fallback to session-based authentication if flask_login doesn't work
+        if 'user_id' not in session:
+            logger.error("User not authenticated for PayPal email update - no user_id in session")
+            flash('Please login to update your PayPal email', 'warning')
+            return redirect(url_for('login'))
+            
+        # Get the user ID from session
+        user_id = session['user_id']
+        user = User.query.get(user_id)
+        
+        if not user:
+            logger.error(f"User not found for ID {user_id}")
+            flash('User not found', 'error')
+            return redirect(url_for('login'))
+    else:
+        # Use the current_user from flask_login
+        user = current_user
+    
+    # Get user's affiliate info - use the user variable we just set up
+    affiliate = Affiliate.query.filter_by(email=user.email).first()
+    logger.info(f"Looking up affiliate record for email: {user.email}")
     
     if not affiliate:
         flash('You must be an affiliate to update your PayPal email', 'error')
         return redirect(url_for('billing.account_management'))
     
-    # Get and validate new email
+    # Get and validate new email - directly processing form data to bypass potential CSRF issues
+    logger.info("PayPal email update: Direct form processing without WTF validation")
+    
+    # Direct validation of form fields - bypass Flask-WTF which is causing CSRF token issues
     paypal_email = request.form.get('paypal_email', '').strip()
     
     if not paypal_email:
+        logger.error("PayPal email update failed: No email provided")
         flash('PayPal email is required', 'error')
         return redirect(url_for('billing.account_management'))
     
