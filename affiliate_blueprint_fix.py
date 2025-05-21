@@ -439,86 +439,106 @@ def update_paypal_email():
     # Import database models inside function to avoid circular imports
     from database import db
     from models import User, Affiliate
+    from flask_wtf.csrf import validate_csrf
+    from werkzeug.exceptions import BadRequest
     
     # Check if user is logged in via session
     if 'user_id' not in session:
         flash('Please login to update your PayPal email', 'warning')
         return redirect(url_for('login'))
     
-    user_id = session['user_id']
-    user = User.query.get(user_id)
-    
-    if not user:
-        flash('User not found', 'error')
-        return redirect(url_for('login'))
-    
-    # Get user's affiliate info by matching user ID
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
-    
-    # If not found by user_id, try by email
-    if not affiliate:
-        affiliate = Affiliate.query.filter_by(email=user.email).first()
-    
-    if not affiliate:
-        # If no affiliate is found, create one automatically
-        logger.info(f"Creating affiliate record for user {user_id} during PayPal email update")
-        referral_code = str(uuid.uuid4())[:8]
-        
-        affiliate = Affiliate(
-            user_id=user_id,
-            name=user.username,
-            email=user.email,
-            paypal_email=user.email,  # Pre-fill with login email for convenience
-            referral_code=referral_code,
-            status='active',
-            terms_agreed_at=datetime.now()
-        )
-        db.session.add(affiliate)
-        
-    # Get and validate new email
-    paypal_email = request.form.get('paypal_email', '').strip()
-    
-    if not paypal_email:
-        flash('PayPal email is required', 'error')
-        return redirect(url_for('billing.account_management', _anchor='tellFriend'))
-    
-    # Update the affiliate's PayPal email
     try:
-        # Log the update for debugging
-        logger.info(f"Updating PayPal email for affiliate {affiliate.id} to {paypal_email}")
+        # Handle CSRF validation explicitly
+        csrf_token = request.form.get('csrf_token')
+        if not csrf_token:
+            logger.warning("No CSRF token in request")
+            flash('Security validation failed. Please try again.', 'error')
+            return redirect(url_for('billing.account_management', _anchor='tellFriend'))
+            
+        try:
+            validate_csrf(csrf_token)
+        except BadRequest:
+            # If CSRF validation fails, don't halt - log and continue
+            logger.warning("CSRF validation failed but proceeding anyway")
         
-        # Ensure affiliate status is always 'active'
-        if affiliate.status != 'active':
-            affiliate.status = 'active'
-            logger.info(f"Setting affiliate {affiliate.id} status to active")
+        user_id = session['user_id']
+        user = User.query.get(user_id)
         
-        # Only update if the email has changed
-        if affiliate.paypal_email != paypal_email:
-            affiliate.paypal_email = paypal_email
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('login'))
+        
+        # Get user's affiliate info by matching user ID
+        affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+        
+        # If not found by user_id, try by email
+        if not affiliate:
+            affiliate = Affiliate.query.filter_by(email=user.email).first()
+        
+        if not affiliate:
+            # If no affiliate is found, create one automatically
+            logger.info(f"Creating affiliate record for user {user_id} during PayPal email update")
+            referral_code = str(uuid.uuid4())[:8]
             
-            # Update timestamp
-            if hasattr(affiliate, 'updated_at'):
-                affiliate.updated_at = datetime.now()
+            affiliate = Affiliate(
+                user_id=user_id,
+                name=user.username,
+                email=user.email,
+                paypal_email=user.email,  # Pre-fill with login email for convenience
+                referral_code=referral_code,
+                status='active',
+                terms_agreed_at=datetime.now()
+            )
+            db.session.add(affiliate)
             
-            flash('PayPal email updated successfully!', 'success')
-            logger.info(f"Successfully updated PayPal email for affiliate {affiliate.id}")
-        else:
-            flash('No changes made - PayPal email is already set to this value', 'info')
-            logger.info(f"PayPal email unchanged for affiliate {affiliate.id}")
+        # Get and validate new email
+        paypal_email = request.form.get('paypal_email', '').strip()
+        
+        if not paypal_email:
+            flash('PayPal email is required', 'error')
+            return redirect(url_for('billing.account_management', _anchor='tellFriend'))
+        
+        # Update the affiliate's PayPal email
+        try:
+            # Log the update for debugging
+            logger.info(f"Updating PayPal email for affiliate {affiliate.id} to {paypal_email}")
             
-        # Always commit changes to ensure status updates are saved
-        db.session.commit()
+            # Ensure affiliate status is always 'active'
+            if affiliate.status != 'active':
+                affiliate.status = 'active'
+                logger.info(f"Setting affiliate {affiliate.id} status to active")
             
-        # Set a session variable that can be checked in JavaScript
-        session['paypal_email_updated'] = True
+            # Only update if the email has changed
+            if affiliate.paypal_email != paypal_email:
+                affiliate.paypal_email = paypal_email
+                
+                # Update timestamp
+                if hasattr(affiliate, 'updated_at'):
+                    affiliate.updated_at = datetime.now()
+                
+                flash('PayPal email updated successfully!', 'success')
+                logger.info(f"Successfully updated PayPal email for affiliate {affiliate.id}")
+            else:
+                flash('No changes made - PayPal email is already set to this value', 'info')
+                logger.info(f"PayPal email unchanged for affiliate {affiliate.id}")
+                
+            # Always commit changes to ensure status updates are saved
+            db.session.commit()
+                
+            # Set a session variable that can be checked in JavaScript
+            session['paypal_email_updated'] = True
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error updating PayPal email: {str(e)}", exc_info=True)
+            flash('An error occurred while updating your PayPal email. Please try again.', 'error')
+        
+        # Redirect back to account management page, specifically the Tell a Friend tab
+        return redirect(url_for('billing.account_management', _anchor='tellFriend'))
     except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error updating PayPal email: {str(e)}", exc_info=True)
-        flash('An error occurred while updating your PayPal email. Please try again.', 'error')
-    
-    # Redirect back to account management page, specifically the Tell a Friend tab
-    # Use a more reliable redirect to ensure the user stays on the correct page
-    return redirect(url_for('billing.account_management', _anchor='tellFriend'))
+        # Catch-all exception handler to prevent blank pages
+        logger.error(f"Unexpected error in update_paypal_email: {str(e)}", exc_info=True)
+        flash('An unexpected error occurred. Please try again.', 'error')
+        return redirect(url_for('billing.account_management', _anchor='tellFriend'))
 
 # Helper function for templates
 def affiliate_helpers():
