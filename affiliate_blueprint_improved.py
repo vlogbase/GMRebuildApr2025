@@ -480,44 +480,70 @@ def agree_to_terms_handler():
 def update_paypal_email():
     """Update affiliate's PayPal email address"""
     # Import database models inside function to avoid circular imports
-    from app import db
-    from models import User, Affiliate
-    from flask_login import login_required, current_user
+    from database import db, User, Affiliate
     
-    # Check if user is logged in via flask_login
-    # This explicitly handles the login check before processing
-    if not current_user.is_authenticated:
-        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+    # Check if user is logged in via session
+    if 'user_id' not in session:
+        flash('Please login to update your PayPal email', 'warning')
+        return redirect(url_for('login'))
     
-    # Get user's affiliate info
-    affiliate = Affiliate.query.filter_by(email=current_user.email).first()
+    user_id = session['user_id']
+    user = User.query.get(user_id)
+    
+    if not user:
+        flash('User not found', 'error')
+        return redirect(url_for('login'))
+    
+    # Get user's affiliate info by matching user ID
+    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    
+    # If not found by user_id, try by email
+    if not affiliate:
+        affiliate = Affiliate.query.filter_by(email=user.email).first()
     
     if not affiliate:
-        flash('You must be an affiliate to update your PayPal email', 'error')
-        return redirect(url_for('billing.account_management'))
-    
+        # If no affiliate is found, create one automatically
+        logger.info(f"Creating affiliate record for user {user_id} during PayPal email update")
+        referral_code = str(uuid.uuid4())[:8]
+        
+        affiliate = Affiliate(
+            user_id=user_id,  # Include user_id here
+            name=user.username,
+            email=user.email,
+            referral_code=referral_code,
+            status='active',
+            terms_agreed_at=datetime.now()
+        )
+        db.session.add(affiliate)
+        
     # Get and validate new email
     paypal_email = request.form.get('paypal_email', '').strip()
     
     if not paypal_email:
         flash('PayPal email is required', 'error')
-        return redirect(url_for('billing.account_management'))
+        return redirect(url_for('billing.account_management') + '#tellFriend')
     
     # Update the affiliate's PayPal email
     try:
+        # Log the update for debugging
+        logger.info(f"Updating PayPal email for affiliate {affiliate.id} to {paypal_email}")
+        
         affiliate.paypal_email = paypal_email
-        # Only update the timestamp field if it exists
+        
+        # Update timestamp
         if hasattr(affiliate, 'updated_at'):
             affiliate.updated_at = datetime.now()
+            
         db.session.commit()
         flash('PayPal email updated successfully', 'success')
+        logger.info(f"Successfully updated PayPal email for affiliate {affiliate.id}")
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error updating PayPal email: {str(e)}", exc_info=True)
-        flash(f'An error occurred: {str(e)}', 'error')
+        flash(f'An error occurred while updating your PayPal email. Please try again.', 'error')
     
-    # Redirect back to account management page
-    return redirect(url_for('billing.account_management'))
+    # Redirect back to account management page, specifically the Tell a Friend tab
+    return redirect(url_for('billing.account_management') + '#tellFriend')
 
 # Helper function for templates
 def affiliate_helpers():
