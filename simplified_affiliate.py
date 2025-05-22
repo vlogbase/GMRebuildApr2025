@@ -77,9 +77,11 @@ def init_app(app):
         app.register_blueprint(simplified_affiliate_bp)
         app.extensions['simplified_affiliate_bp_registered'] = True
         
-        # Make sure to exempt from CSRF protection
-        from flask_wtf.csrf import CSRFProtect
-        csrf = CSRFProtect(app)
-        csrf.exempt('simplified_affiliate.update_paypal_email')
+        # Get the existing CSRF protection instance instead of creating a new one
+        csrf = app.extensions.get('csrf', None)
+        if csrf:
+            # Exempt our route from CSRF protection using the existing instance
+            csrf.exempt('simplified_affiliate.update_paypal_email')
+            logger.info("CSRF exemption applied to simplified_affiliate.update_paypal_email")
         
         logger.info("Simplified Affiliate blueprint registered successfully")
