@@ -105,13 +105,13 @@ def account_management():
         # All users are considered active affiliates in the simplified system
         # Get total earned commissions
         earned_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
-            Commission.user_id == current_user.id,
+            Commission.affiliate_id == current_user.id,
             Commission.status.in_([CommissionStatus.APPROVED.value, CommissionStatus.PAID.value])
         ).scalar() or 0
             
         # Get pending commissions
         pending_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
-            Commission.user_id == current_user.id,
+            Commission.affiliate_id == current_user.id,
             Commission.status == CommissionStatus.HELD.value
         ).scalar() or 0
         
@@ -127,7 +127,7 @@ def account_management():
         }
         
         # Get recent commissions for dashboard view
-        commissions = Commission.query.filter_by(user_id=current_user.id) \
+        commissions = Commission.query.filter_by(affiliate_id=current_user.id) \
             .order_by(desc(Commission.created_at)).limit(10).all()
         
         # Get referred users (direct referrals)

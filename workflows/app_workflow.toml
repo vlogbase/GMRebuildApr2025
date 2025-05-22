@@ -1,2 +1,7 @@
-# Flask app workflow configuration
-run = "python app_workflow.py"
+[app_workflow]
+run = ["python3", "app.py"]
+language = "python3"
+hidden = false
+compile = false
+entrypoint = "app.py"
+onBoot = false
