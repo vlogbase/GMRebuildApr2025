@@ -1121,7 +1121,7 @@ function initializeSimplifiedAffiliateFunctions() {
             savePaypalBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
             
             // Make AJAX request to update PayPal email
-            fetch('{{ url_for("simplified_affiliate.update_paypal_email") }}', {
+            fetch('{{ url_for("affiliate.update_paypal_email") }}', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
