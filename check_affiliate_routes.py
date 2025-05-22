@@ -1,43 +1,48 @@
 """
-Simple script to check if affiliate routes are properly registered
+Check if the simplified affiliate routes are properly registered
 """
-
 import logging
-from app import app
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
+# Configure minimal logging
+logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
-def main():
-    """Check affiliate routes in the application"""
-    print("Checking registered routes in the application...")
+def check_routes():
+    """Check if simplified affiliate routes are registered in app"""
+    from app import app
     
     # Get all routes
-    routes = []
-    for rule in app.url_map.iter_rules():
-        routes.append({
-            'endpoint': rule.endpoint,
-            'methods': list(rule.methods - {'HEAD', 'OPTIONS'}),
-            'path': str(rule)
-        })
+    routes = [rule.rule for rule in app.url_map.iter_rules()]
     
-    # Filter for affiliate routes
-    affiliate_routes = [r for r in routes if r['endpoint'].startswith('affiliate.')]
+    # Check for affiliate routes
+    affiliate_routes = [r for r in routes if r.startswith('/affiliate')]
     
-    print(f"\nFound {len(affiliate_routes)} affiliate routes:")
-    for route in affiliate_routes:
-        print(f"  {route['endpoint']} - {route['path']} ({', '.join(route['methods'])})")
+    logger.info("=== SIMPLIFIED AFFILIATE ROUTES CHECK ===")
+    logger.info(f"Total affiliate routes found: {len(affiliate_routes)}")
     
-    # Specifically check for update_paypal_email route
-    paypal_routes = [r for r in routes if 'paypal' in r['endpoint'].lower()]
-    
-    if paypal_routes:
-        print("\nFound PayPal-related routes:")
-        for route in paypal_routes:
-            print(f"  {route['endpoint']} - {route['path']} ({', '.join(route['methods'])})")
+    if affiliate_routes:
+        logger.info("\nAffiliate routes:")
+        for route in sorted(affiliate_routes):
+            logger.info(f"  {route}")
     else:
-        print("\nNo PayPal-related routes found!")
-        
+        logger.info("No affiliate routes found!")
+    
+    # Look for specific critical routes
+    critical_routes = [
+        '/affiliate/dashboard',
+        '/affiliate/update_paypal_email', 
+        '/affiliate/referral/<code>'
+    ]
+    
+    logger.info("\nChecking critical routes:")
+    for route in critical_routes:
+        found = route in routes
+        logger.info(f"  {route}: {'✓' if found else '✗'}")
+    
+    return affiliate_routes
+
 if __name__ == "__main__":
-    main()
+    try:
+        check_routes()
+    except Exception as e:
+        logger.error(f"Error checking routes: {e}")

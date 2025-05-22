@@ -2,32 +2,29 @@
 Test workflow for the simplified affiliate system
 """
 import os
+import sys
 import logging
+from datetime import datetime
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 def run():
-    """
-    Run the Flask application for testing the affiliate system
-    """
-    # Import Flask app
-    from app import app
-    from flask_login import current_user
+    """Run the Flask application with the simplified affiliate system"""
+    logger.info("Starting simplified affiliate system test workflow")
     
-    # Override PORT environment variable
-    os.environ['PORT'] = '5000'
-    
-    # Configure Flask development settings
-    app.config['TEMPLATES_AUTO_RELOAD'] = True
-    app.config['DEBUG'] = True
-    
-    logger.info("Starting affiliate test workflow")
-    logger.info(f"Server will run at http://0.0.0.0:5000")
-    
-    # Start the server
-    app.run(host='0.0.0.0', port=5000, debug=True)
-    
-if __name__ == '__main__':
+    try:
+        # Import the necessary modules
+        from app import app
+        from simplified_affiliate import simplified_affiliate_bp
+        
+        # Run the app
+        logger.info("Starting Flask app on http://0.0.0.0:5000")
+        app.run(host='0.0.0.0', port=5000, debug=True)
+    except Exception as e:
+        logger.error(f"Error running the affiliate test workflow: {str(e)}")
+        sys.exit(1)
+
+if __name__ == "__main__":
     run()

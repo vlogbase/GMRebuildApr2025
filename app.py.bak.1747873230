@@ -304,7 +304,6 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 # Register blueprints
-app.register_blueprint(simplified_affiliate_bp)
 try:
     from google_auth import google_auth
     app.register_blueprint(google_auth)
@@ -322,7 +321,6 @@ try:
     logger.info("Billing blueprint registered successfully with prefix /billing")
 except Exception as e:
     logger.error(f"Error registering Billing blueprint: {e}")
-from simplified_affiliate import simplified_affiliate_bp
 
 # Register affiliate blueprint
 try:

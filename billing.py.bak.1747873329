@@ -104,18 +104,18 @@ def account_management():
         if affiliate and affiliate.status == AffiliateStatus.ACTIVE.value:
             # Get total earned commissions
             earned_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
-                Commission.user_id == affiliate.id,
+                Commission.affiliate_id == affiliate.id,
                 Commission.status.in_([CommissionStatus.APPROVED.value, CommissionStatus.PAID.value])
             ).scalar() or 0
             
             # Get pending commissions
             pending_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
-                Commission.user_id == affiliate.id,
+                Commission.affiliate_id == affiliate.id,
                 Commission.status == CommissionStatus.HELD.value
             ).scalar() or 0
             
             # Get referral count
-            referral_count = CustomerReferral.query.filter_by(user_id=affiliate.id).count()
+            referral_count = CustomerReferral.query.filter_by(affiliate_id=affiliate.id).count()
             
             # Calculate conversion rate - set as N/A since click tracking isn't implemented
             # Note: click_count attribute doesn't exist in the Affiliate model yet
@@ -127,7 +127,7 @@ def account_management():
             }
             
             # Get recent commissions for dashboard view
-            commissions = Commission.query.filter_by(user_id=affiliate.id) \
+            commissions = Commission.query.filter_by(affiliate_id=affiliate.id) \
                 .order_by(desc(Commission.created_at)).limit(10).all()
             
             # Get referred users (direct referrals)
@@ -139,7 +139,7 @@ def account_management():
             ).outerjoin(
                 Transaction, Transaction.user_id == User.id
             ).filter(
-                CustomerReferral.user_id == affiliate.id
+                CustomerReferral.affiliate_id == affiliate.id
             ).group_by(
                 User.id
             ).order_by(
@@ -164,7 +164,7 @@ def account_management():
             ).outerjoin(
                 Transaction, Transaction.user_id == User.id
             ).filter(
-                Affiliate.referred_by_user_id == affiliate.id
+                Affiliate.referred_by_affiliate_id == affiliate.id
             ).group_by(
                 Affiliate.id
             ).order_by(
@@ -1013,11 +1013,11 @@ def process_affiliate_commission(user_id, transaction):
             return False
         
         # Get the Level 1 (L1) affiliate
-        l1_affiliate = Affiliate.query.get(customer_referral.user_id)
+        l1_affiliate = Affiliate.query.get(customer_referral.affiliate_id)
         
         if not l1_affiliate or l1_affiliate.status != 'active':
             # L1 affiliate not found or not active
-            logger.info(f"L1 affiliate {customer_referral.user_id} not found or not active")
+            logger.info(f"L1 affiliate {customer_referral.affiliate_id} not found or not active")
             return False
         
         # Current time for commission dates
@@ -1050,7 +1050,7 @@ def process_affiliate_commission(user_id, transaction):
         
         # Create L1 commission record
         l1_commission = Commission(
-            user_id=l1_affiliate.id,
+            affiliate_id=l1_affiliate.id,
             triggering_transaction_id=transaction.stripe_payment_intent,
             stripe_payment_status='succeeded',
             purchase_amount_base=amount_gbp,
@@ -1066,9 +1066,9 @@ def process_affiliate_commission(user_id, transaction):
         logger.info(f"Created L1 commission of £{l1_commission_amount} for affiliate {l1_affiliate.id}")
         
         # Step 7: Check if there's a Level 2 (L2) affiliate
-        if l1_affiliate.referred_by_user_id:
+        if l1_affiliate.referred_by_affiliate_id:
             # Get the L2 affiliate
-            l2_affiliate = Affiliate.query.get(l1_affiliate.referred_by_user_id)
+            l2_affiliate = Affiliate.query.get(l1_affiliate.referred_by_affiliate_id)
             
             if l2_affiliate and l2_affiliate.status == 'active':
                 # Calculate and create L2 commission (5%)
@@ -1077,7 +1077,7 @@ def process_affiliate_commission(user_id, transaction):
                 
                 # Create L2 commission record
                 l2_commission = Commission(
-                    user_id=l2_affiliate.id,
+                    affiliate_id=l2_affiliate.id,
                     triggering_transaction_id=transaction.stripe_payment_intent,
                     stripe_payment_status='succeeded',
                     purchase_amount_base=amount_gbp,

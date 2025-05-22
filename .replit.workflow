@@ -1,18 +1,19 @@
-run = ["python3", "affiliate_test_workflow.py"]
-hidden = ["venv", ".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
-language = "python3"
-entrypoint = "affiliate_test_workflow.py"
+[auth]
+[auth.repl]
+accessToken = ""
 
-[nix]
-channel = "stable-23_11"
+[runner]
+initialState = "ready"
 
-[languages]
-
-[languages.python3]
-pattern = "**/*.py"
-
-[languages.python3.languageServer]
-start = "pylsp"
+[deployment]
+deploymentTarget = "cloudrun"
+ignorePorts = false
+publicDir = "/public"
 
 [dev]
-sslAllowInsecureLocalhost = true
+buildCommand = "echo 'no build step'"
+startCommand = "python3 app.py"
+
+[affiliate]
+buildCommand = "echo 'starting affiliate test workflow'"
+startCommand = "python3 affiliate_test_workflow.py"
