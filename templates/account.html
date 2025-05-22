@@ -2112,10 +2112,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const searchTerm = document.getElementById('modelSearch')?.value.toLowerCase() || '';
         
         // Filter data based on search term
-        const filteredData = pricingData.filter(model => 
-            model.model_name.toLowerCase().includes(searchTerm) || 
-            model.model_id.toLowerCase().includes(searchTerm)
-        );
+        const filteredData = pricingData.filter(function(model) {
+            return model.model_name.toLowerCase().includes(searchTerm) || 
+                   model.model_id.toLowerCase().includes(searchTerm);
+        });
         
         // Sort data with multi-level sorting support
         filteredData.sort(function(a, b) {
