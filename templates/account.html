@@ -3260,7 +3260,7 @@ block body_class %}account-page{% endblock %} {% block styles %} {{ super() }}
                         <td>
                             <div>
                                 <span class="${modelNameClass} fw-medium">${model.model_name}</span>
-                                ${costBand ? `<span class="cost-band-indicator ${costBandClass}">${costBand}</span>` : ''}
+                                ${costBand ? '<span class="cost-band-indicator ' + costBandClass + '">' + costBand + '</span>' : ''}
                             </div>
                             <small class="text-muted d-block text-truncate" style="max-width: 250px;">${model.model_id}</small>
                         </td>
@@ -3276,7 +3276,7 @@ block body_class %}account-page{% endblock %} {% block styles %} {{ super() }}
                                 : '<span class="badge bg-secondary">No</span>'}
                         </td>
                         <td class="text-center">
-                            ${costBand ? `<span class="cost-band-indicator ${costBandClass}">${costBand}</span>` : ''}
+                            ${costBand ? '<span class="cost-band-indicator ' + costBandClass + '">' + costBand + '</span>' : ''}
                         </td>
                     </tr>
                 `;
