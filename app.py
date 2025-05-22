@@ -330,19 +330,8 @@ try:
 except Exception as e:
     logger.error(f"Error registering Billing blueprint: {e}")
 # Simplified affiliate blueprint is imported in the try/except block above
-
-# Register affiliate blueprint
-try:
-    # Import the improved affiliate blueprint module that avoids circular imports
-    from affiliate_blueprint_fix import init_app as init_affiliate_bp
-    
-    # Initialize the affiliate blueprint with our Flask app
-    init_affiliate_bp(app)
-    
-    # Log success
-    logger.info("Affiliate blueprint registered successfully with prefix /affiliate")
-except Exception as e:
-    logger.error(f"Error registering Affiliate blueprint: {e}", exc_info=True)
+# We only register the simplified affiliate blueprint now
+# The old affiliate blueprint registration has been removed to avoid route conflicts
     
 # Register user settings blueprint
 try:
