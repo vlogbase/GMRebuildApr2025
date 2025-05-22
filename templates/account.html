@@ -947,8 +947,8 @@
                                                         <i class="fas fa-edit"></i> Edit
                                                     </button>
                                                 </div>
-                                                <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post" id="paypalEmailForm" style="display: none; margin-top: 15px; width: 100%;">
-                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <form id="paypalEmailForm" style="display: none; margin-top: 15px; width: 100%;">
+                                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" id="paypal_csrf_token">
                                                     <div class="mb-3">
                                                         <label for="paypal_email" class="form-label">PayPal Email Address</label>
                                                         <input type="email" class="form-control form-control-lg" id="paypal_email" name="paypal_email" 
@@ -956,9 +956,11 @@
                                                             style="min-width: 300px; width: 100%; font-size: 16px; padding: 10px;">
                                                     </div>
                                                     <div class="d-flex gap-2 mb-2">
-                                                        <button class="btn btn-primary" type="submit">Save Changes</button>
+                                                        <button class="btn btn-primary" type="button" id="savePaypalBtn">Save Changes</button>
                                                         <button class="btn btn-outline-secondary" type="button" id="cancelEditBtn">Cancel</button>
                                                     </div>
+                                                    <div class="alert alert-success d-none" id="paypalSuccessAlert">PayPal email updated successfully!</div>
+                                                    <div class="alert alert-danger d-none" id="paypalErrorAlert">Error updating PayPal email.</div>
                                                     <div class="form-text">We use this email to send your affiliate commission payments.</div>
                                                 </form>
                                             </div>
@@ -1037,12 +1039,26 @@ function initializeSimplifiedAffiliateFunctions() {
     
     // PayPal email edit functionality
     const editPaypalBtn = document.getElementById('editPaypalBtn');
+    const savePaypalBtn = document.getElementById('savePaypalBtn');
     const cancelEditBtn = document.getElementById('cancelEditBtn');
     const paypalEmailForm = document.getElementById('paypalEmailForm');
     const currentPaypalDisplay = document.getElementById('current-paypal-email');
+    const currentPaypalEmail = document.getElementById('currentPaypalEmail');
+    const paypalSuccessAlert = document.getElementById('paypalSuccessAlert');
+    const paypalErrorAlert = document.getElementById('paypalErrorAlert');
     
+    // Function to hide all alerts
+    function hidePaypalAlerts() {
+        if (paypalSuccessAlert) paypalSuccessAlert.classList.add('d-none');
+        if (paypalErrorAlert) paypalErrorAlert.classList.add('d-none');
+    }
+    
+    // Function to show the form
     if (editPaypalBtn && paypalEmailForm) {
         editPaypalBtn.addEventListener('click', function() {
+            // Hide any existing alerts
+            hidePaypalAlerts();
+            
             // Show form with a smooth transition
             paypalEmailForm.style.display = 'block';
             
@@ -1064,8 +1080,12 @@ function initializeSimplifiedAffiliateFunctions() {
         });
     }
     
+    // Function to handle cancel button
     if (cancelEditBtn && paypalEmailForm && editPaypalBtn) {
         cancelEditBtn.addEventListener('click', function() {
+            // Hide any existing alerts
+            hidePaypalAlerts();
+            
             // Hide form with a smooth transition
             paypalEmailForm.style.display = 'none';
             
@@ -1074,6 +1094,91 @@ function initializeSimplifiedAffiliateFunctions() {
             if (currentPaypalDisplay) {
                 currentPaypalDisplay.style.display = 'flex';
             }
+        });
+    }
+    
+    // AJAX form submission for PayPal email updates
+    if (savePaypalBtn && paypalEmailForm) {
+        savePaypalBtn.addEventListener('click', function() {
+            // Hide any existing alerts
+            hidePaypalAlerts();
+            
+            // Get the email value and CSRF token
+            const paypalEmail = document.getElementById('paypal_email').value;
+            const csrfToken = document.getElementById('paypal_csrf_token').value;
+            
+            // Validate email format
+            if (!paypalEmail || !paypalEmail.includes('@')) {
+                if (paypalErrorAlert) {
+                    paypalErrorAlert.textContent = 'Please enter a valid email address.';
+                    paypalErrorAlert.classList.remove('d-none');
+                }
+                return;
+            }
+            
+            // Show loading state
+            savePaypalBtn.disabled = true;
+            savePaypalBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+            
+            // Make AJAX request to update PayPal email
+            fetch('{{ url_for("simplified_affiliate.update_paypal_email") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({ paypal_email: paypalEmail })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Reset button state
+                savePaypalBtn.disabled = false;
+                savePaypalBtn.innerHTML = 'Save Changes';
+                
+                if (data.success) {
+                    // Update the displayed email
+                    if (currentPaypalEmail) {
+                        currentPaypalEmail.textContent = data.new_email;
+                    }
+                    
+                    // Show success message
+                    if (paypalSuccessAlert) {
+                        paypalSuccessAlert.textContent = data.message || 'PayPal email updated successfully!';
+                        paypalSuccessAlert.classList.remove('d-none');
+                    }
+                    
+                    // Hide form and show current email display after a delay
+                    setTimeout(() => {
+                        paypalEmailForm.style.display = 'none';
+                        if (editPaypalBtn) editPaypalBtn.style.display = 'inline-block';
+                        if (currentPaypalDisplay) currentPaypalDisplay.style.display = 'flex';
+                        
+                        // Hide success message after another delay
+                        setTimeout(() => {
+                            if (paypalSuccessAlert) paypalSuccessAlert.classList.add('d-none');
+                        }, 5000);
+                    }, 1500);
+                } else {
+                    // Show error message
+                    if (paypalErrorAlert) {
+                        paypalErrorAlert.textContent = data.error || 'Error updating PayPal email. Please try again.';
+                        paypalErrorAlert.classList.remove('d-none');
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error updating PayPal email:', error);
+                
+                // Reset button state
+                savePaypalBtn.disabled = false;
+                savePaypalBtn.innerHTML = 'Save Changes';
+                
+                // Show error message
+                if (paypalErrorAlert) {
+                    paypalErrorAlert.textContent = 'Network error. Please check your connection and try again.';
+                    paypalErrorAlert.classList.remove('d-none');
+                }
+            });
         });
     }
     
