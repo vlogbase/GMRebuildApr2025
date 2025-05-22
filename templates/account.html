@@ -1016,6 +1016,119 @@
 
 <script src="{{ url_for('static', filename='js/advanced_chat_preferences.js') }}"></script>
 <script>
+/* 
+ * Simplified affiliate functions - specifically created to fix
+ * the "Almost Ready!" message problem by replacing the old
+ * affiliate initialization code with simplified version
+ */
+function initializeSimplifiedAffiliateFunctions() {
+    console.log('Initializing simplified affiliate functions');
+    
+    // PayPal email edit functionality
+    const editPaypalBtn = document.getElementById('editPaypalBtn');
+    const cancelEditBtn = document.getElementById('cancelEditBtn');
+    const paypalEmailForm = document.getElementById('paypalEmailForm');
+    
+    if (editPaypalBtn && paypalEmailForm) {
+        editPaypalBtn.addEventListener('click', function() {
+            paypalEmailForm.style.display = 'block';
+            editPaypalBtn.style.display = 'none';
+        });
+    }
+    
+    if (cancelEditBtn && paypalEmailForm && editPaypalBtn) {
+        cancelEditBtn.addEventListener('click', function() {
+            paypalEmailForm.style.display = 'none';
+            editPaypalBtn.style.display = 'inline-block';
+        });
+    }
+    
+    // Copy referral link functionality
+    const copyBtn = document.getElementById('copyReferralLink');
+    const referralLinkInput = document.getElementById('referralLink');
+    
+    if (copyBtn && referralLinkInput) {
+        copyBtn.addEventListener('click', function() {
+            // Get the text to copy
+            const textToCopy = referralLinkInput.textContent;
+            
+            // Use modern Clipboard API with fallback
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => {
+                        console.log('Text copied to clipboard successfully');
+                        // Show feedback
+                        const originalText = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                        
+                        // Reset button text after 2 seconds
+                        setTimeout(() => {
+                            copyBtn.innerHTML = originalText;
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('Error copying text: ', err);
+                    });
+            } else {
+                // Fallback for older browsers
+                console.log('Using fallback clipboard method');
+                
+                // Create a temporary input element
+                const textArea = document.createElement('textarea');
+                textArea.value = textToCopy;
+                
+                // Make the textarea out of viewport
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                
+                // Focus and select the text
+                textArea.focus();
+                textArea.select();
+                
+                // Copy the text
+                let success = false;
+                try {
+                    success = document.execCommand('copy');
+                } catch (err) {
+                    console.error('Failed to copy: ', err);
+                }
+                
+                // Remove the temporary element
+                document.body.removeChild(textArea);
+                
+                // Provide feedback
+                if (success) {
+                    const originalText = copyBtn.innerHTML;
+                    copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                    
+                    // Reset button text after 2 seconds
+                    setTimeout(() => {
+                        copyBtn.innerHTML = originalText;
+                    }, 2000);
+                } else {
+                    copyBtn.innerHTML = '<i class="fas fa-times"></i> Failed';
+                    setTimeout(() => {
+                        copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                    }, 2000);
+                }
+            }
+        });
+    }
+}
+
+// Override the original problem functions that cause "Almost Ready!" message
+window.initializeTellFriendTabContent = function() {
+    console.log('Original initializeTellFriendTabContent called - redirected to simplified version');
+    initializeSimplifiedAffiliateFunctions();
+};
+
+window.initializeTellFriendTab = function() {
+    console.log('Original initializeTellFriendTab called - redirected to simplified version');
+    initializeSimplifiedAffiliateFunctions();
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired - Initializing account page functions');
     
@@ -1633,10 +1746,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (tabName === 'pricing') {
             loadPricingData();
         } else if (tabName === 'tellFriend') {
-            console.log('Loading Tell a Friend tab content');
+            console.log('Loading Tell a Friend tab content - SIMPLIFIED VERSION');
             // No need to set inline style - the .active class will handle this
             const tellFriendTab = document.getElementById('tellFriend');
             
+            // Initialize the "Tell a Friend" tab with simplified functionality
+            // This directly implements the needed functionality without relying on old functions
+            initializeSimplifiedAffiliateFunctions();
+            
+            /* 
+            // Old initialization method - DISABLED to fix "Almost Ready!" issue
             if (tellFriendTab && typeof window.initializeTellFriendTabContent === 'function') {
                 // Call the initialization function
                 window.initializeTellFriendTabContent();
@@ -1646,8 +1765,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     console.log('Delayed initialization of Tell a Friend tab');
                     if (typeof window.initializeTellFriendTab === 'function') {
                         window.initializeTellFriendTab();
-                    } else {
-                        // Last resort - use initializeTellFriendTab directly from the script element
+                    }
+                }, 500);
+            } 
+            */
                         try {
                             const scriptContent = document.querySelector('#tellFriend script');
                             if (scriptContent) {

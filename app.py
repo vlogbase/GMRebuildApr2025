@@ -304,14 +304,22 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 
 # Register blueprints
-# Try to import the simplified affiliate blueprint
+# Import and use the fixed affiliate blueprint
 try:
-    from simplified_affiliate import simplified_affiliate_bp
-    app.register_blueprint(simplified_affiliate_bp)
-    logger.info('Registered simplified_affiliate_bp')
+    # First try to use the completely fixed version
+    from affiliate_blueprint_improved_fixed import affiliate_bp, init_app as init_affiliate
+    init_affiliate(app)  # This function handles blueprint registration internally
+    logger.info('Registered fixed affiliate blueprint (affiliate_blueprint_improved_fixed)')
 except ImportError as e:
-    logger.warning(f'Could not import simplified_affiliate_bp: {e}')
-    simplified_affiliate_bp = None
+    logger.warning(f'Could not import fixed affiliate blueprint: {e}')
+    # Fall back to the simplified version if fixed is not available
+    try:
+        from simplified_affiliate import simplified_affiliate_bp
+        app.register_blueprint(simplified_affiliate_bp)
+        logger.info('Registered simplified_affiliate_bp (fallback)')
+    except ImportError as e2:
+        logger.warning(f'Could not import simplified_affiliate_bp: {e2}')
+        simplified_affiliate_bp = None
 try:
     from google_auth import google_auth
     app.register_blueprint(google_auth)

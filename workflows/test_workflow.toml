@@ -1,0 +1,7 @@
+[test_workflow]
+run = ["python3", "test_workflow.py"]
+language = "python3"
+hidden = false
+compile = false
+entrypoint = "test_workflow.py"
+onBoot = false

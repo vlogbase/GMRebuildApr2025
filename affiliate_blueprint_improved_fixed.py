@@ -30,7 +30,8 @@ affiliate_bp = Blueprint('affiliate', __name__, url_prefix='/affiliate', templat
 def dashboard():
     """Affiliate dashboard view"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, Commission, Transaction, CustomerReferral, db
+    from database import db
+    from models import User, Commission, Transaction, CustomerReferral, AffiliateStatus
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -39,45 +40,24 @@ def dashboard():
     
     user_id = session['user_id']
     
-    # Get user's affiliate info
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    # Get user data
+    user = User.query.get(user_id)
+    if not user:
+        flash('User not found', 'error')
+        return redirect(url_for('billing.account_management'))
     
-    if not affiliate:
-        # Auto-create an affiliate account
-        try:
-            # Get user data
-            user = User.query.get(user_id)
-            if not user:
-                flash('User not found', 'error')
-                return redirect(url_for('billing.account_management'))
-                
-            # Generate a unique referral code
-            referral_code = str(uuid.uuid4())[:8]
-            
-            # Create new affiliate record
-            affiliate = Affiliate(
-                user_id=user_id,
-                name=user.username,
-                email=user.email,
-                referral_code=referral_code,
-                status='active',
-                terms_agreed_at=datetime.now()
-            )
-            db.session.add(affiliate)
-            db.session.commit()
-            logger.info(f"Auto-created affiliate account for user {user_id} during dashboard access")
-            flash('You have been automatically registered as an affiliate!', 'success')
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error auto-creating affiliate: {str(e)}", exc_info=True)
-            flash('There was a problem creating your affiliate account. Please try again.', 'error')
-            return redirect(url_for('billing.account_management'))
+    # Generate a referral code if the user doesn't have one
+    if not user.referral_code:
+        # Generate a unique referral code
+        user.referral_code = str(uuid.uuid4())[:8]
+        db.session.commit()
+        logger.info(f"Auto-generated referral code for user {user_id}")
     
-    # Get affiliate commissions
-    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(Commission.created_at.desc()).all()
+    # Get commissions directly from user object
+    commissions = Commission.query.filter_by(user_id=user_id).order_by(Commission.created_at.desc()).all()
     
     # Get referrals
-    referrals = CustomerReferral.query.filter_by(affiliate_id=affiliate.id).order_by(CustomerReferral.created_at.desc()).all()
+    referrals = CustomerReferral.query.filter_by(referrer_user_id=user_id).order_by(CustomerReferral.created_at.desc()).all()
     
     # Calculate stats
     total_earned = sum(c.commission_amount for c in commissions if c.status in ['approved', 'paid'])
@@ -137,7 +117,7 @@ def dashboard():
     
     return render_template(
         'affiliate/dashboard.html',
-        affiliate=affiliate,
+        user=user,
         commissions=commissions,
         referrals=referrals,
         total_earned=total_earned,
@@ -156,68 +136,15 @@ def register():
     Auto-creates an affiliate record for the user and redirects to dashboard.
     This is a compatibility route that now automatically creates active affiliates.
     """
-    # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, db
-    
-    # Check if user is logged in
-    if 'user_id' not in session:
-        flash('Please login to access your affiliate dashboard', 'warning')
-        return redirect(url_for('login'))
-    
-    user_id = session['user_id']
-    user = User.query.get(user_id)
-    
-    if not user:
-        flash('User not found', 'error')
-        return redirect(url_for('login'))
-    
-    # Check if user is already an affiliate
-    existing_affiliate = Affiliate.query.filter_by(user_id=user_id).first()
-    if existing_affiliate:
-        # If they already have an affiliate record, ensure it's active
-        if existing_affiliate.status != 'active':
-            existing_affiliate.status = 'active'
-            existing_affiliate.terms_agreed_at = datetime.now()
-            try:
-                db.session.commit()
-                flash('Your affiliate account has been activated!', 'success')
-            except Exception as e:
-                db.session.rollback()
-                logger.error(f"Error activating affiliate: {str(e)}")
-        
-        # Redirect to dashboard
-        return redirect(url_for('affiliate.dashboard'))
-    
-    # Auto-create active affiliate for user
-    try:
-        # Generate a unique referral code
-        referral_code = str(uuid.uuid4())[:8]
-        
-        # Create new affiliate
-        affiliate = Affiliate(
-            user_id=user_id,
-            name=user.username,
-            email=user.email,
-            referral_code=referral_code,
-            status='active',
-            terms_agreed_at=datetime.now()
-        )
-        
-        db.session.add(affiliate)
-        db.session.commit()
-        flash('Your affiliate account has been activated!', 'success')
-        return redirect(url_for('affiliate.dashboard'))
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error auto-creating affiliate: {str(e)}")
-        flash('An error occurred while setting up your affiliate account. Please try again.', 'error')
-        return redirect(url_for('billing.account_management'))
+    # Just redirect to dashboard, which will handle everything
+    return redirect(url_for('affiliate.dashboard'))
 
 @affiliate_bp.route('/tell-a-friend')
 def tell_a_friend():
     """Affiliate referral tools page"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, db
+    from database import db
+    from models import User
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -226,43 +153,22 @@ def tell_a_friend():
     
     user_id = session['user_id']
     
-    # Get user's affiliate info
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    # Get user data
+    user = User.query.get(user_id)
+    if not user:
+        flash('User not found', 'error')
+        return redirect(url_for('billing.account_management'))
     
-    if not affiliate:
-        # Auto-create an affiliate account instead of redirecting
-        try:
-            # Get user data
-            user = User.query.get(user_id)
-            if not user:
-                flash('User not found', 'error')
-                return redirect(url_for('billing.account_management'))
-                
-            # Generate a unique referral code
-            referral_code = str(uuid.uuid4())[:8]
-            
-            # Create new affiliate record
-            affiliate = Affiliate(
-                user_id=user_id,
-                name=user.username,
-                email=user.email,
-                referral_code=referral_code,
-                status='active',
-                terms_agreed_at=datetime.now()
-            )
-            db.session.add(affiliate)
-            db.session.commit()
-            logger.info(f"Auto-created affiliate account for user {user_id} during tell-a-friend access")
-            flash('You have been automatically registered as an affiliate!', 'success')
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error auto-creating affiliate during tell-a-friend access: {str(e)}", exc_info=True)
-            flash('There was a problem setting up your affiliate account. Please try again.', 'error')
-            return redirect(url_for('billing.account_management'))
+    # Generate a referral code if the user doesn't have one
+    if not user.referral_code:
+        # Generate a unique referral code
+        user.referral_code = str(uuid.uuid4())[:8]
+        db.session.commit()
+        logger.info(f"Auto-generated referral code for user {user_id} during tell-a-friend access")
     
     # Generate referral URL
     base_url = request.host_url.rstrip('/')
-    referral_url = f"{base_url}/?ref={affiliate.referral_code}"
+    referral_url = f"{base_url}/?ref={user.referral_code}"
     
     # Generate email template
     email_template = f"""
@@ -308,8 +214,8 @@ def tell_a_friend():
     """
     
     return render_template(
-        'affiliate/tell_a_friend.html',
-        affiliate=affiliate,
+        'affiliate/tell_friend_tab_simplified.html',
+        user=user,
         referral_url=referral_url,
         email_template=email_template,
         twitter_template=twitter_template,
@@ -321,7 +227,8 @@ def tell_a_friend():
 def commissions():
     """View affiliate commissions"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, Commission, db
+    from database import db
+    from models import User, Commission
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -330,42 +237,21 @@ def commissions():
     
     user_id = session['user_id']
     
-    # Get user's affiliate info
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    # Get user data
+    user = User.query.get(user_id)
+    if not user:
+        flash('User not found', 'error')
+        return redirect(url_for('billing.account_management'))
     
-    if not affiliate:
-        # Auto-create an affiliate account instead of redirecting
-        try:
-            # Get user data
-            user = User.query.get(user_id)
-            if not user:
-                flash('User not found', 'error')
-                return redirect(url_for('billing.account_management'))
-                
-            # Generate a unique referral code
-            referral_code = str(uuid.uuid4())[:8]
-            
-            # Create new affiliate record
-            affiliate = Affiliate(
-                user_id=user_id,
-                name=user.username,
-                email=user.email,
-                referral_code=referral_code,
-                status='active',
-                terms_agreed_at=datetime.now()
-            )
-            db.session.add(affiliate)
-            db.session.commit()
-            logger.info(f"Auto-created affiliate account for user {user_id} during commissions view")
-            flash('You have been automatically registered as an affiliate!', 'success')
-        except Exception as e:
-            db.session.rollback()
-            logger.error(f"Error auto-creating affiliate during commissions view: {str(e)}", exc_info=True)
-            flash('There was a problem setting up your affiliate account. Please try again.', 'error')
-            return redirect(url_for('billing.account_management'))
+    # Generate a referral code if the user doesn't have one
+    if not user.referral_code:
+        # Generate a unique referral code
+        user.referral_code = str(uuid.uuid4())[:8]
+        db.session.commit()
+        logger.info(f"Auto-generated referral code for user {user_id} during commissions view")
     
-    # Get affiliate commissions
-    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(Commission.created_at.desc()).all()
+    # Get commissions
+    commissions = Commission.query.filter_by(user_id=user_id).order_by(Commission.created_at.desc()).all()
     
     # Calculate totals
     total_earned = sum(c.commission_amount for c in commissions if c.status in ['approved', 'paid'])
@@ -374,7 +260,7 @@ def commissions():
     
     return render_template(
         'affiliate/commissions.html',
-        affiliate=affiliate,
+        user=user,
         commissions=commissions,
         total_earned=total_earned,
         total_pending=total_pending,
@@ -385,7 +271,8 @@ def commissions():
 def track_referral():
     """API endpoint to track affiliate referrals"""
     # Import database models inside function to avoid circular imports
-    from database import Affiliate, CustomerReferral, db
+    from database import db
+    from models import User, CustomerReferral
     
     try:
         data = request.get_json()
@@ -395,10 +282,10 @@ def track_referral():
         if not referral_code:
             return jsonify({'success': False, 'error': 'Missing referral code'}), 400
         
-        # Look up affiliate by referral code
-        affiliate = Affiliate.query.filter_by(referral_code=referral_code).first()
+        # Look up user by referral code
+        user = User.query.filter_by(referral_code=referral_code).first()
         
-        if not affiliate:
+        if not user:
             return jsonify({'success': False, 'error': 'Invalid referral code'}), 404
         
         # Generate a cookie value to track this referral
@@ -406,12 +293,12 @@ def track_referral():
         
         # Create referral record
         referral = CustomerReferral(
-            affiliate_id=affiliate.id,
+            referrer_user_id=user.id,
             referral_code=referral_code,
             referral_source=referral_source,
             cookie_value=cookie_value,
             ip_address=request.remote_addr,
-            user_agent=request.user_agent.string,
+            user_agent=request.headers.get('User-Agent', ''),
             converted=False,
             created_at=datetime.now()
         )
@@ -419,38 +306,35 @@ def track_referral():
         db.session.add(referral)
         db.session.commit()
         
+        # Return cookie value for tracking
         return jsonify({
             'success': True,
-            'referral_id': referral.id,
             'cookie_value': cookie_value,
-            'expiry': (datetime.now() + timedelta(days=30)).isoformat()
+            'expires': (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d %H:%M:%S')
         })
+    
     except Exception as e:
-        logger.error(f"Error tracking referral: {str(e)}")
+        logger.error(f"Error tracking referral: {str(e)}", exc_info=True)
+        db.session.rollback()
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @affiliate_bp.route('/api/commission-metrics', methods=['GET'])
 def commission_metrics():
     """API endpoint to get commission metrics for charts"""
     # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, Commission, db
+    from database import db
+    from models import User, Commission
     
     # Check if user is logged in
     if 'user_id' not in session:
-        return jsonify({'success': False, 'error': 'Not authenticated'}), 401
+        return jsonify({'success': False, 'error': 'Authentication required'}), 401
     
     user_id = session['user_id']
     
-    # Get user's affiliate info
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    # Get commissions
+    commissions = Commission.query.filter_by(user_id=user_id).all()
     
-    if not affiliate:
-        return jsonify({'success': False, 'error': 'Not an affiliate'}), 403
-    
-    # Get affiliate commissions
-    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(Commission.created_at.desc()).all()
-    
-    # Calculate earnings by month (for chart)
+    # Group by month
     monthly_data = {}
     for commission in commissions:
         if commission.status in ['approved', 'paid']:
@@ -459,172 +343,76 @@ def commission_metrics():
                 monthly_data[month_key] = 0
             monthly_data[month_key] += commission.commission_amount
     
+    # Prepare data for chart
+    months = []
+    values = []
+    
     # Ensure at least 6 months of data for the chart
-    chart_data = []
     today = datetime.now()
     for i in range(5, -1, -1):
         month_date = today - timedelta(days=30 * i)
         month_key = month_date.strftime('%Y-%m')
         month_label = month_date.strftime('%b %Y')
-        chart_data.append({
-            'month': month_label,
-            'amount': monthly_data.get(month_key, 0)
-        })
+        months.append(month_label)
+        values.append(monthly_data.get(month_key, 0))
     
     return jsonify({
         'success': True,
-        'data': chart_data
+        'months': months,
+        'values': values
     })
-
-@affiliate_bp.route('/agree-to-terms', methods=['POST'])
-def agree_to_terms_handler():
-    """
-    Handle the submission of the affiliate terms agreement form
-    
-    This is now simplified to automatically create or activate an affiliate account
-    and just update the PayPal email if provided. No terms agreement is required.
-    """
-    # Import database models inside function to avoid circular imports
-    from database import User, Affiliate, db
-    
-    # Check if user is logged in
-    if 'user_id' not in session:
-        flash('Please login to continue', 'warning')
-        return redirect(url_for('login'))
-    
-    user_id = session['user_id']
-    user = User.query.get(user_id)
-    
-    if not user:
-        flash('User not found', 'error')
-        return redirect(url_for('login'))
-    
-    # Get PayPal email from form
-    paypal_email = request.form.get('paypal_email', '').strip()
-    
-    # Check if user is already an affiliate
-    existing_affiliate = Affiliate.query.filter_by(user_id=user_id).first()
-    
-    try:
-        if existing_affiliate:
-            # Update existing affiliate
-            existing_affiliate.status = 'active'
-            if paypal_email:
-                existing_affiliate.paypal_email = paypal_email
-            existing_affiliate.terms_agreed_at = datetime.now()
-            logger.info(f"Updated existing affiliate record for user {user_id} with status 'active'")
-            flash('Your affiliate account has been updated!', 'success')
-        else:
-            # Generate a unique referral code
-            referral_code = str(uuid.uuid4())[:8]
-            
-            # Create new affiliate
-            affiliate = Affiliate(
-                user_id=user_id,
-                name=user.username,
-                email=user.email,
-                referral_code=referral_code,
-                status='active',
-                terms_agreed_at=datetime.now()
-            )
-            if paypal_email:
-                affiliate.paypal_email = paypal_email
-            
-            db.session.add(affiliate)
-            logger.info(f"Created new active affiliate record for user {user_id}")
-            flash('You are now registered as an affiliate!', 'success')
-        
-        # Commit the changes
-        db.session.commit()
-        
-    except Exception as e:
-        db.session.rollback()
-        logger.error(f"Error processing affiliate request: {str(e)}", exc_info=True)
-        flash('An error occurred while processing your request. Please try again.', 'error')
-    
-    # Redirect to the Tell a Friend tab
-    return redirect(url_for('billing.account_management') + '#tellFriend')
 
 @affiliate_bp.route('/update-paypal-email', methods=['POST'])
 def update_paypal_email():
     """Update affiliate's PayPal email address"""
     # Import database models inside function to avoid circular imports
-    from database import db, User, Affiliate
+    from database import db
+    from models import User
     
-    # Check if user is logged in via session
+    # Check if user is logged in
     if 'user_id' not in session:
         flash('Please login to update your PayPal email', 'warning')
         return redirect(url_for('login'))
     
     user_id = session['user_id']
-    user = User.query.get(user_id)
     
-    if not user:
-        flash('User not found', 'error')
-        return redirect(url_for('login'))
-    
-    # Get user's affiliate info by matching user ID
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
-    
-    # If not found by user_id, try by email
-    if not affiliate:
-        affiliate = Affiliate.query.filter_by(email=user.email).first()
-    
-    if not affiliate:
-        # If no affiliate is found, create one automatically
-        logger.info(f"Creating affiliate record for user {user_id} during PayPal email update")
-        referral_code = str(uuid.uuid4())[:8]
-        
-        affiliate = Affiliate(
-            user_id=user_id,  # Include user_id here
-            name=user.username,
-            email=user.email,
-            referral_code=referral_code,
-            status='active',
-            terms_agreed_at=datetime.now()
-        )
-        db.session.add(affiliate)
-        
-    # Get and validate new email
-    paypal_email = request.form.get('paypal_email', '').strip()
+    # Get form data
+    paypal_email = request.form.get('paypal_email')
     
     if not paypal_email:
-        flash('PayPal email is required', 'error')
-        return redirect(url_for('billing.account_management') + '#tellFriend')
+        flash('Please enter a valid PayPal email address', 'error')
+        return redirect(url_for('billing.account_management'))
     
-    # Update the affiliate's PayPal email
+    # Update user's PayPal email
     try:
-        # Log the update for debugging
-        logger.info(f"Updating PayPal email for affiliate {affiliate.id} to {paypal_email}")
+        user = User.query.get(user_id)
+        if not user:
+            flash('User not found', 'error')
+            return redirect(url_for('billing.account_management'))
         
-        affiliate.paypal_email = paypal_email
-        
-        # Update timestamp
-        if hasattr(affiliate, 'updated_at'):
-            affiliate.updated_at = datetime.now()
-            
+        user.paypal_email = paypal_email
         db.session.commit()
-        flash('PayPal email updated successfully', 'success')
-        logger.info(f"Successfully updated PayPal email for affiliate {affiliate.id}")
+        logger.info(f"Updated PayPal email for user {user_id}")
+        flash('Your PayPal email has been updated successfully', 'success')
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error updating PayPal email: {str(e)}", exc_info=True)
-        flash('An error occurred while updating your PayPal email. Please try again.', 'error')
+        flash('There was a problem updating your PayPal email. Please try again.', 'error')
     
-    # Redirect back to account management page, specifically the Tell a Friend tab
     return redirect(url_for('billing.account_management') + '#tellFriend')
 
-# Helper function for templates
 def affiliate_helpers():
     """Provide helper functions to affiliate templates"""
     def format_date(date):
         """Format a date for display"""
         if not date:
             return ''
-        return date.strftime('%Y-%m-%d %H:%M')
+        return date.strftime('%b %d, %Y')
     
     def format_currency(amount):
         """Format an amount as currency"""
+        if amount is None:
+            return '$0.00'
         return f'${amount:.2f}'
     
     def get_status_class(status):
@@ -633,10 +421,11 @@ def affiliate_helpers():
             'pending': 'text-warning',
             'ready': 'text-info',
             'approved': 'text-success',
-            'paid': 'text-primary',
-            'rejected': 'text-danger'
+            'paid': 'text-success',
+            'rejected': 'text-danger',
+            'cancelled': 'text-secondary'
         }
-        return status_classes.get(status, '')
+        return status_classes.get(status, 'text-secondary')
     
     return dict(
         format_date=format_date,
@@ -657,14 +446,12 @@ def init_app(app):
     Returns:
         None
     """
-    # Only register the blueprint if it hasn't been registered yet
-    if not app.blueprints.get('affiliate'):
-        # Register blueprint
+    # Only register if the blueprint is not already registered
+    if 'affiliate' not in app.blueprints:
         app.register_blueprint(affiliate_bp)
-        
-        # Add template context processor for helper functions
+        # Add context processor for affiliate templates
         app.context_processor(affiliate_helpers)
         
-        logger.info("Affiliate blueprint registered successfully")
+        logging.info("Affiliate blueprint registered")
     else:
-        logger.info("Affiliate blueprint already registered, skipping")
+        logging.info("Affiliate blueprint already registered, skipping")

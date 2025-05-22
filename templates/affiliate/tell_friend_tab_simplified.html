@@ -283,8 +283,8 @@
 
 <!-- JavaScript for Tell a Friend tab -->
 <script>
-    function initializeTellFriendTab() {
-        console.log('Initializing Tell a Friend tab functions');
+    function initializeSimplifiedTellFriendTab() {
+        console.log('Initializing NEW simplified Tell a Friend tab functions');
     
         // Copy referral link functionality
         const copyBtn = document.getElementById('copyReferralLink');
@@ -384,13 +384,19 @@
         // Only initialize when this tab is actually visible
         if (document.getElementById('tellFriend').classList.contains('active') || 
             document.getElementById('tellFriend').classList.contains('show')) {
-            initializeTellFriendTab();
+            initializeSimplifiedTellFriendTab();
         }
         
-        // Define a global function to initialize this tab content
+        // Define a global function to initialize this tab content with unique name
+        window.initializeTellFriendTabContentNew = function() {
+            console.log('Tell a Friend tab activated, initializing NEW simplified content');
+            initializeSimplifiedTellFriendTab();
+        };
+        
+        // Override the original function to use our new one
         window.initializeTellFriendTabContent = function() {
-            console.log('Tell a Friend tab activated, initializing content');
-            initializeTellFriendTab();
+            console.log('Original initializeTellFriendTabContent called, redirecting to new version');
+            window.initializeTellFriendTabContentNew();
         };
     });
 </script>

@@ -1,28 +1,30 @@
 """
-Simple Flask server workflow for testing URL formatting in chat messages
+Simplified workflow script to test the Tell a Friend tab in account.html
 """
-
-import os
 import logging
-from app import app
+import sys
+from flask import Flask, render_template, session
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, 
+                   format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# Create a simple Flask app
+app = Flask(__name__)
+app.secret_key = "test_secret_key"
+
+@app.route('/')
+def index():
+    """Render the test account page with Tell a Friend tab selected"""
+    # Set a user in session so templates work
+    session['user_id'] = 1
+    return render_template('test_affiliate.html')
 
 def run():
-    """
-    Run the Flask application for testing URL formatting in chat messages.
-    """
-    # Configure logging
-    logging.basicConfig(level=logging.DEBUG)
-    logger = logging.getLogger(__name__)
-    
-    # Enable debug mode for development
-    app.debug = True
-    
-    # Get port from environment or use default
-    port = int(os.environ.get('PORT', 5000))
-    
-    # Run the app
-    logger.info(f"Starting Flask server on port {port}...")
-    app.run(host='0.0.0.0', port=port, debug=True)
+    """Run the Flask application"""
+    logger.info("Starting test server for Tell a Friend tab")
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     run()
