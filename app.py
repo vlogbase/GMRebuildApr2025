@@ -314,8 +314,8 @@ except ImportError as e:
     logger.warning(f'Could not import fixed affiliate blueprint: {e}')
     # Fall back to the simplified version if fixed is not available
     try:
-        from simplified_affiliate import simplified_affiliate_bp
-        app.register_blueprint(simplified_affiliate_bp)
+        from simplified_affiliate import simplified_affiliate_bp, init_app as init_simplified_affiliate
+        init_simplified_affiliate(app)  # Use the proper init function instead of direct registration
         logger.info('Registered simplified_affiliate_bp (fallback)')
     except ImportError as e2:
         logger.warning(f'Could not import simplified_affiliate_bp: {e2}')
