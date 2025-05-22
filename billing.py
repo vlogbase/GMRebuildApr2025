@@ -116,7 +116,7 @@ def account_management():
         ).scalar() or 0
         
         # Get referral count
-        referral_count = CustomerReferral.query.filter_by(referrer_id=current_user.id).count()
+        referral_count = CustomerReferral.query.filter_by(referrer_user_id=current_user.id).count()
         
         # Calculate conversion rate - set as N/A since click tracking isn't implemented
         commission_stats = {
@@ -139,7 +139,7 @@ def account_management():
         ).outerjoin(
             Transaction, Transaction.user_id == User.id
         ).filter(
-            CustomerReferral.referrer_id == current_user.id
+            CustomerReferral.referrer_user_id == current_user.id
         ).group_by(
             User.id
         ).order_by(
@@ -162,7 +162,7 @@ def account_management():
         ).join(
             CustomerReferral, CustomerReferral.customer_user_id == User.id
         ).join(
-            User, User.id == CustomerReferral.referrer_id, isouter=True
+            User, User.id == CustomerReferral.referrer_user_id, isouter=True
         ).outerjoin(
             Transaction, Transaction.user_id == User.id
         ).filter(
@@ -1017,11 +1017,11 @@ def process_affiliate_commission(user_id, transaction):
             return False
         
         # Get the Level 1 (L1) referring user
-        l1_user = User.query.get(customer_referral.referrer_id)
+        l1_user = User.query.get(customer_referral.referrer_user_id)
         
         if not l1_user or not l1_user.referral_code:
             # L1 referring user not found or doesn't have a referral code
-            logger.info(f"L1 referring user {customer_referral.referrer_id} not found or doesn't have a referral code")
+            logger.info(f"L1 referring user {customer_referral.referrer_user_id} not found or doesn't have a referral code")
             return False
         
         # Current time for commission dates

@@ -211,19 +211,12 @@ def commissions():
         flash('User not found', 'error')
         return redirect(url_for('login'))
     
-    # Get user's affiliate info by matching user ID
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    # Make sure user has a referral code
+    if not user.referral_code:
+        return redirect(url_for('affiliate.register'))
     
-    # If not found by user_id, try by email
-    if not affiliate:
-        affiliate = Affiliate.query.filter_by(email=user.email).first()
-    
-    # If no affiliate record exists, redirect to dashboard to auto-create one
-    if not affiliate:
-        return redirect(url_for('affiliate.dashboard'))
-    
-    # Get affiliate commissions (limit to 100 to avoid memory issues)
-    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(
+    # Get user commissions (limit to 100 to avoid memory issues)
+    commissions = Commission.query.filter_by(user_id=user.id).order_by(
         Commission.created_at.desc()
     ).limit(100).all()
     
@@ -247,7 +240,7 @@ def commissions():
     
     return render_template(
         'affiliate/commissions.html',
-        affiliate=affiliate,
+        affiliate=user,
         commissions=commissions,
         commission_stats=commission_stats
     )
@@ -257,14 +250,14 @@ def track_referral():
     """API endpoint to track affiliate referrals"""
     # Import database models inside function to avoid circular imports
     from database import db
-    from models import Affiliate, CustomerReferral
+    from models import User, CustomerReferral
     
     referral_code = request.args.get('code')
     if not referral_code:
         return jsonify({'success': False, 'message': 'No referral code provided'})
     
-    affiliate = Affiliate.query.filter_by(referral_code=referral_code).first()
-    if not affiliate:
+    user = User.query.filter_by(referral_code=referral_code).first()
+    if not user:
         return jsonify({'success': False, 'message': 'Invalid referral code'})
     
     # Store the referral code in session for later conversion
@@ -277,7 +270,7 @@ def commission_metrics():
     """API endpoint to get commission metrics for charts"""
     # Import database models inside function to avoid circular imports
     from database import db
-    from models import Affiliate, Commission, User
+    from models import Commission, User
     
     # Check if user is logged in via session
     if 'user_id' not in session:
@@ -285,16 +278,15 @@ def commission_metrics():
     
     user_id = session['user_id']
     
-    # Get user's affiliate info by matching user ID
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    # Get user info
+    user = User.query.get(user_id)
     
-    # If not found by user_id, try by email
-    if not affiliate and User.query.get(user_id):
-        user = User.query.get(user_id)
-        affiliate = Affiliate.query.filter_by(email=user.email).first()
+    if not user:
+        return jsonify({'success': False, 'message': 'User not found'})
     
-    if not affiliate:
-        return jsonify({'success': False, 'message': 'Affiliate not found'})
+    # Make sure user has a referral code
+    if not user.referral_code:
+        return jsonify({'success': False, 'message': 'User is not set up as an affiliate yet'})
     
     # Get monthly commissions for the past 6 months
     six_months_ago = datetime.now() - timedelta(days=180)
@@ -303,7 +295,7 @@ def commission_metrics():
         db.func.date_trunc('month', Commission.created_at).label('month'),
         db.func.sum(Commission.commission_amount).label('amount')
     ).filter(
-        Commission.affiliate_id == affiliate.id,
+        Commission.user_id == user.id,
         Commission.created_at >= six_months_ago
     ).group_by(
         db.func.date_trunc('month', Commission.created_at)
@@ -335,7 +327,7 @@ def agree_to_terms_handler():
     """
     # Import database models inside function to avoid circular imports
     from database import db
-    from models import User, Affiliate
+    from models import User
     
     # Check if user is logged in via session
     if 'user_id' not in session:
@@ -353,44 +345,13 @@ def agree_to_terms_handler():
     paypal_email = request.form.get('paypal_email', '').strip()
     
     try:
-        # Check if affiliate record already exists
-        affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+        # Directly update the user model
+        if paypal_email:
+            user.paypal_email = paypal_email
         
-        if not affiliate:
-            # If not found by user_id, try by email
-            affiliate = Affiliate.query.filter_by(email=user.email).first()
-        
-        if affiliate:
-            # Update existing affiliate
-            if paypal_email:
-                affiliate.paypal_email = paypal_email
-            
-            # Always ensure status is active, regardless of previous state
-            affiliate.status = 'active'
-            
-            # Update agreement timestamp if not already set
-            if not affiliate.terms_agreed_at:
-                affiliate.terms_agreed_at = datetime.now()
-            
-            if hasattr(affiliate, 'updated_at'):
-                affiliate.updated_at = datetime.now()
-        else:
-            # Create new affiliate
-            referral_code = str(uuid.uuid4())[:8]
-            
-            # Use provided paypal_email if available, otherwise default to user's email
-            affiliate_paypal_email = paypal_email if paypal_email else user.email
-            
-            affiliate = Affiliate(
-                user_id=user_id,
-                name=user.username,
-                email=user.email,
-                paypal_email=affiliate_paypal_email,
-                referral_code=referral_code,
-                status='active',
-                terms_agreed_at=datetime.now()
-            )
-            db.session.add(affiliate)
+        # Ensure user has a referral code
+        if not user.referral_code:
+            user.referral_code = str(uuid.uuid4())[:8]
         
         db.session.commit()
         flash('Your affiliate account is now active!', 'success')
@@ -408,7 +369,7 @@ def update_paypal_email():
     """Update affiliate's PayPal email address - completely rewritten version"""
     # Import database models inside function to avoid circular imports
     from database import db
-    from models import User, Affiliate
+    from models import User
     
     # Log all incoming data for debugging
     logger.info(f"PayPal email update request: {request.form}")
@@ -429,31 +390,17 @@ def update_paypal_email():
             flash('User not found', 'error')
             return redirect(url_for('login'))
         
-        # ALWAYS create or get affiliate record - never show application page
-        affiliate = Affiliate.query.filter_by(user_id=user_id).first()
-        
-        if not affiliate:
-            # Try by email as backup
-            affiliate = Affiliate.query.filter_by(email=user.email).first()
+        # Ensure user has a referral code (everyone is automatically an affiliate)
+        if not user.referral_code:
+            logger.info(f"Setting up referral code for user {user_id}")
+            user.referral_code = str(uuid.uuid4())[:8]
             
-        if not affiliate:
-            # No affiliate found - create one automatically
-            logger.info(f"Auto-creating affiliate record for user {user_id}")
-            referral_code = str(uuid.uuid4())[:8]
-            
-            # Create with minimal required fields
-            affiliate = Affiliate(
-                user_id=user_id,
-                name=user.username,
-                email=user.email,
-                paypal_email=user.email,  # Pre-fill with login email
-                referral_code=referral_code,
-                status='active',  # ALWAYS active
-                terms_agreed_at=datetime.now()
-            )
-            db.session.add(affiliate)
-            db.session.commit()  # Commit immediately to get ID
-            logger.info(f"Created new affiliate record with ID {affiliate.id}")
+            # Pre-fill with login email if paypal_email not set
+            if not hasattr(user, 'paypal_email') or not user.paypal_email:
+                user.paypal_email = user.email
+                
+            db.session.commit()  # Commit immediately
+            logger.info(f"Created referral code {user.referral_code} for user {user_id}")
         
         # Get the submitted email (with very basic validation)
         paypal_email = request.form.get('paypal_email', '').strip()
@@ -464,29 +411,19 @@ def update_paypal_email():
             flash('Please enter a valid email address for PayPal payments', 'error')
             return redirect(url_for('billing.account_management', _anchor='tellFriend'))
         
-        # ALWAYS ensure affiliate is active regardless of previous state
-        if affiliate.status != 'active':
-            affiliate.status = 'active'
-            logger.info(f"Forced affiliate status to active (was: {affiliate.status})")
-        
         # Update the email
-        old_email = affiliate.paypal_email
-        affiliate.paypal_email = paypal_email
-        
-        # Update timestamps
-        affiliate.terms_agreed_at = affiliate.terms_agreed_at or datetime.now()
-        if hasattr(affiliate, 'updated_at'):
-            affiliate.updated_at = datetime.now()
+        old_email = user.paypal_email if hasattr(user, 'paypal_email') and user.paypal_email else user.email
+        user.paypal_email = paypal_email
         
         # Commit changes
         db.session.commit()
         
         # Log the change
         if old_email != paypal_email:
-            logger.info(f"Updated PayPal email for affiliate {affiliate.id} from '{old_email}' to '{paypal_email}'")
+            logger.info(f"Updated PayPal email for user {user.id} from '{old_email}' to '{paypal_email}'")
             flash('PayPal email updated successfully!', 'success')
         else:
-            logger.info(f"PayPal email unchanged for affiliate {affiliate.id}: '{paypal_email}'")
+            logger.info(f"PayPal email unchanged for user {user.id}: '{paypal_email}'")
             flash('PayPal email saved', 'info')
         
         # Set a session flag for JavaScript to use

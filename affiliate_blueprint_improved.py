@@ -31,7 +31,7 @@ def dashboard():
     """Affiliate dashboard view"""
     # Import database models inside function to avoid circular imports
     from database import db
-from models import User, Affiliate, Commission, Transaction, CustomerReferral
+from models import User, Commission, Transaction, CustomerReferral, AffiliateStatus
     
     # Check if user is logged in
     if 'user_id' not in session:
@@ -40,24 +40,17 @@ from models import User, Affiliate, Commission, Transaction, CustomerReferral
     
     user_id = session['user_id']
     
-    # Get user's affiliate info
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    # Get user data
+    user = User.query.get(user_id)
+    if not user:
+        flash('User not found', 'error')
+        return redirect(url_for('billing.account_management'))
     
-    if not affiliate:
-        # Auto-create an affiliate account
-        try:
-            # Get user data
-            user = User.query.get(user_id)
-            if not user:
-                flash('User not found', 'error')
-                return redirect(url_for('billing.account_management'))
-                
-            # Generate a unique referral code
-            referral_code = str(uuid.uuid4())[:8]
-            
-            # Create new affiliate record
-            affiliate = Affiliate(
-                user_id=user_id,
+    # Generate a referral code if the user doesn't have one
+    if not user.referral_code:
+        # Generate a unique referral code
+        user.generate_referral_code()
+        db.session.commit()
                 name=user.username,
                 email=user.email,
                 referral_code=referral_code,

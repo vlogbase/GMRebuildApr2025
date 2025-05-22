@@ -325,7 +325,7 @@ try:
     app.register_blueprint(billing_bp, url_prefix='/billing')
     # Exempt Stripe webhook from CSRF protection
     csrf.exempt('billing.stripe_webhook')
-    csrf.exempt('affiliate.update_paypal_email')  # Exempt PayPal email update form
+    csrf.exempt('simplified_affiliate.update_paypal_email')  # Exempt PayPal email update form
     logger.info("Billing blueprint registered successfully with prefix /billing")
 except Exception as e:
     logger.error(f"Error registering Billing blueprint: {e}")
