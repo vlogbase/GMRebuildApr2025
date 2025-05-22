@@ -19,6 +19,17 @@ logger = logging.getLogger(__name__)
 # Create blueprint
 simplified_affiliate_bp = Blueprint('simplified_affiliate', __name__, url_prefix='/affiliate')
 
+@simplified_affiliate_bp.route('/')
+@login_required
+def index():
+    """
+    Main affiliate route - always shows the dashboard directly
+    No need to check status as every user is automatically an affiliate
+    """
+    # Simply redirect to the dashboard
+    logger.info(f"User {current_user.id} accessed main affiliate route, showing dashboard")
+    return redirect(url_for('simplified_affiliate.dashboard'))
+
 @simplified_affiliate_bp.route('/dashboard')
 @login_required
 def dashboard():
