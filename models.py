@@ -54,10 +54,16 @@ class User(UserMixin, db.Model):
     # Billing fields
     credits = db.Column(db.Integer, nullable=False, default=0)  # User's credit balance in credits (1 credit = $0.00001)
     
+    # Affiliate-related fields
+    paypal_email = db.Column(db.String(255))
+    referral_code = db.Column(db.String(20), unique=True)
+    referred_by_user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    
     # Relationships
     conversations = db.relationship('Conversation', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     preferences = db.relationship('UserPreference', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     transactions = db.relationship('Transaction', backref='user', lazy='dynamic', cascade='all, delete-orphan')
+    referrals = db.relationship('User', backref=db.backref('referred_by', remote_side=[id]), foreign_keys=[referred_by_user_id])
     usages = db.relationship('Usage', backref='user', lazy='dynamic', cascade='all, delete-orphan')
     
     def set_password(self, password):
