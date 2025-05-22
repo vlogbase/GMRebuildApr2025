@@ -3352,28 +3352,7 @@ block body_class %}account-page{% endblock %} {% block styles %} {{ super() }}
             }
         }, REFRESH_INTERVAL);
 
-        // Function to sort the pricing table
-        window.sortPricingTable = function(column) {
-            // Toggle sort direction if clicking the same column
-            if (sortColumn === column) {
-                sortDirection *= -1;
-            } else {
-                sortColumn = column;
-                sortDirection = 1;
-            }
-
-            // Update sort icons
-            for (let i = 0; i < 6; i++) {
-                const icon = document.getElementById(`sort-icon-${i}`);
-                if (i === column) {
-                    icon.className = sortDirection === 1 ? 'fas fa-sort-up' : 'fas fa-sort-down';
-                } else {
-                    icon.className = 'fas fa-sort';
-                }
-            }
-
-            renderPricingTable();
-        };
+        // Duplicate sortPricingTable function removed - using the more advanced version above
 
         // Load pricing data on page load if we're on the pricing tab
         if (window.location.hash === '#pricing') {
