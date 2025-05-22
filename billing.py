@@ -30,6 +30,7 @@ from reportlab.lib.units import inch, cm
 from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
 from models import CustomerReferral, Commission, CommissionStatus, AffiliateStatus
+# Note: Affiliate model has been deprecated - functionality moved to User model
 from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature, retrieve_session
 
 # Configure logging

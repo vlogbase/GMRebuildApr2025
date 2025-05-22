@@ -1063,7 +1063,7 @@ def test_url_formatting():
 def direct_update_paypal_email():
     """Direct handler for PayPal email updates that bypasses CSRF validation"""
     import uuid
-    from models import Affiliate, User
+    from models import User  # Affiliate model is deprecated, using User model directly now
     
     logger.info(f"Direct PayPal email update request: {request.form}")
     logger.info(f"Session data: {dict(session)}")
