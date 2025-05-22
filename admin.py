@@ -17,7 +17,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import func, desc, and_, not_, text
 from typing import NoReturn
 
-from models import User, Affiliate, Transaction, Commission, CustomerReferral, CommissionStatus, AffiliateStatus, PaymentStatus
+from models import User, Transaction, Commission, CustomerReferral, CommissionStatus, AffiliateStatus, PaymentStatus
 from database import db
 
 # Set up logger

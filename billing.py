@@ -116,7 +116,7 @@ def account_management():
         ).scalar() or 0
         
         # Get referral count
-        referral_count = CustomerReferral.query.filter_by(referrer_user_id=current_user.id).count()
+        referral_count = CustomerReferral.query.filter_by(affiliate_id=current_user.id).count()
         
         # Calculate conversion rate - set as N/A since click tracking isn't implemented
         commission_stats = {
@@ -139,7 +139,7 @@ def account_management():
         ).outerjoin(
             Transaction, Transaction.user_id == User.id
         ).filter(
-            CustomerReferral.referrer_user_id == current_user.id
+            CustomerReferral.affiliate_id == current_user.id
         ).group_by(
             User.id
         ).order_by(
@@ -162,7 +162,7 @@ def account_management():
         ).join(
             CustomerReferral, CustomerReferral.customer_user_id == User.id
         ).join(
-            User, User.id == CustomerReferral.referrer_user_id, isouter=True
+            User, User.id == CustomerReferral.affiliate_id, isouter=True
         ).outerjoin(
             Transaction, Transaction.user_id == User.id
         ).filter(

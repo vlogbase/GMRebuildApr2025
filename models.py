@@ -375,7 +375,8 @@ class CustomerReferral(db.Model):
     """Customer referral model to track which user referred another user"""
     id = db.Column(db.Integer, primary_key=True)
     customer_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    referrer_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    # Changed to match actual database schema
+    affiliate_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     signup_date = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     first_commissioned_purchase_at = db.Column(db.DateTime, nullable=True)
@@ -385,9 +386,9 @@ class CustomerReferral(db.Model):
         db.UniqueConstraint('customer_user_id', name='customer_referrer_unique'),
     )
     
-    # Relationships
+    # Updated relationships to use affiliate_id instead of referrer_user_id
     customer = db.relationship('User', foreign_keys=[customer_user_id], backref=db.backref('referral_info', uselist=False))
-    referrer = db.relationship('User', foreign_keys=[referrer_user_id], backref=db.backref('referred_users'))
+    referrer = db.relationship('User', foreign_keys=[affiliate_id], backref=db.backref('referred_users'))
     
     @classmethod
     def track_referral(cls, referral_code, user):
@@ -418,7 +419,7 @@ class CustomerReferral(db.Model):
             # Create a new customer referral record
             customer_referral = cls(
                 customer_user_id=user.id,
-                referrer_user_id=referring_user.id
+                affiliate_id=referring_user.id
             )
             
             # Update the user's referred_by_user_id field
