@@ -1098,8 +1098,12 @@ function initializeSimplifiedAffiliateFunctions() {
     }
     
     // AJAX form submission for PayPal email updates
+    console.log('Save PayPal button found:', savePaypalBtn ? 'Yes' : 'No');
+    
     if (savePaypalBtn && paypalEmailForm) {
+        console.log('Adding click event listener to Save PayPal button');
         savePaypalBtn.addEventListener('click', function() {
+            console.log('Save PayPal button clicked');
             // Hide any existing alerts
             hidePaypalAlerts();
             
@@ -2516,6 +2520,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize the usage analytics functionality
     handleUsageSubTabs();
     handleCsvExport();
+    
+    // Initialize affiliate functions
+    initializeSimplifiedAffiliateFunctions();
     
     // Memory preference toggle handler
     const enableMemoryToggle = document.getElementById('enableMemory');
