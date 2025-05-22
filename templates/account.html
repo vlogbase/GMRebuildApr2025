@@ -9,6 +9,12 @@
 <!-- Custom styles are now in static/css/style.css -->
 {% endblock %}
 
+{% block head %}
+{{ super() }}
+<!-- Add our affiliate fix script before any other JavaScript -->
+<script src="{{ url_for('static', filename='js/affiliate_fix.js') }}"></script>
+{% endblock %}
+
 {% block content %}
 <div class="container mt-4">
     <div class="row mb-4">
