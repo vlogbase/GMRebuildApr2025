@@ -1946,10 +1946,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Model Pricing Table functionality
-    let pricingData = [];
-    let sortColumn = 0;
-    let sortDirection = 1; // 1 for ascending, -1 for descending
-    let previousSorts = []; // Track previous sort criteria for multi-level sorting
+    var pricingData = [];
+    var sortColumn = 0;
+    var sortDirection = 1; // 1 for ascending, -1 for descending
+    var previousSorts = []; // Track previous sort criteria for multi-level sorting
     
     // Function to load pricing data from API
     function loadPricingData() {
