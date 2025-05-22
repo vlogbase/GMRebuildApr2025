@@ -463,7 +463,7 @@ class CustomerReferral(db.Model):
         return transaction_date <= eligibility_end_date
     
     def __repr__(self):
-        return f'<CustomerReferral {self.id}: User {self.customer_user_id} referred by User {self.referrer_user_id}>'
+        return f'<CustomerReferral {self.id}: User {self.customer_user_id} referred by User {self.affiliate_id}>'
 
 
 class OpenRouterModel(db.Model):

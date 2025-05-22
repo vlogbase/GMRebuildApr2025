@@ -143,12 +143,11 @@ def index():
             .limit(5)\
             .all()
             
-            # Affiliate stats
+            # Affiliate stats (now using User table since all users are affiliates)
             logger.info("Getting affiliate stats")
-            total_affiliates = db.session.query(func.count(Affiliate.id)).scalar() or 0
-            active_affiliates = db.session.query(func.count(Affiliate.id))\
-                .filter_by(status=AffiliateStatus.ACTIVE.value)\
-                .scalar() or 0
+            total_affiliates = db.session.query(func.count(User.id)).filter(User.referral_code != None).scalar() or 0
+            # In our simplified system, all users with referral codes are considered active affiliates
+            active_affiliates = total_affiliates
             
             # Commission stats
             logger.info("Getting commission stats")
@@ -279,7 +278,7 @@ def manage_commissions():
             # Get all affiliate info in a single query
             affiliate_ids = [t.affiliate_id for t in affiliate_totals]
             affiliates = {
-                a.id: a for a in db.session.query(Affiliate).filter(Affiliate.id.in_(affiliate_ids)).all()
+                u.id: u for u in db.session.query(User).filter(User.id.in_(affiliate_ids)).all()
             } if affiliate_ids else {}
             
             # For affiliates with significant commission counts, load last 5 commissions
@@ -397,8 +396,8 @@ def process_payouts():
         # Group commissions by affiliate
         payouts = {}
         for affiliate_id in affiliate_ids:
-            # Get the affiliate
-            affiliate = Affiliate.query.get(affiliate_id)
+            # Get the affiliate (now a User in our simplified system)
+            affiliate = User.query.get(affiliate_id)
             if not affiliate:
                 continue
                 

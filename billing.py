@@ -156,23 +156,30 @@ def account_management():
             })
             
         # Get sub-affiliates (tier 2) - users who were referred by users that current_user referred
+        # Using aliases to avoid duplicate table name issues
+        from sqlalchemy.orm import aliased
+        
+        # Create aliases for the User table
+        ReferredUser = aliased(User)
+        ReferringUser = aliased(User)
+        
         sub_affiliate_query = db.session.query(
-            User,
+            ReferredUser,
             func.sum(Transaction.amount_usd).label('total_purchases')
         ).join(
-            CustomerReferral, CustomerReferral.customer_user_id == User.id
+            CustomerReferral, CustomerReferral.customer_user_id == ReferredUser.id
         ).join(
-            User, User.id == CustomerReferral.affiliate_id, isouter=True
+            ReferringUser, ReferringUser.id == CustomerReferral.affiliate_id, isouter=True
         ).outerjoin(
-            Transaction, Transaction.user_id == User.id
+            Transaction, Transaction.user_id == ReferredUser.id
         ).filter(
-            User.referred_by_user_id.in_(
-                db.session.query(User.id).filter(User.referred_by_user_id == current_user.id)
+            ReferredUser.referred_by_user_id.in_(
+                db.session.query(ReferringUser.id).filter(ReferringUser.referred_by_user_id == current_user.id)
             )
         ).group_by(
-            User.id
+            ReferredUser.id
         ).order_by(
-            desc(User.created_at)
+            desc(ReferredUser.created_at)
         ).limit(5)
         
         sub_referrals = []
