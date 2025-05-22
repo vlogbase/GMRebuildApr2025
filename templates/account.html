@@ -2118,7 +2118,7 @@ document.addEventListener('DOMContentLoaded', function() {
         );
         
         // Sort data with multi-level sorting support
-        filteredData.sort((a, b) => {
+        filteredData.sort(function(a, b) {
             // Create a function to get values for any column
             function getColumnValues(item, colIndex) {
                 // Check for special cases
