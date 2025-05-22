@@ -73,9 +73,7 @@ except Exception as e:
 # as specified in the .replit configuration file
 if __name__ == "__main__":
     logger.info("Starting Flask application in development mode")
-    # Use PORT environment variable for Cloud Run compatibility
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
 else:
     # When running under Gunicorn, log the startup
     logger.info("Flask application loaded by Gunicorn")

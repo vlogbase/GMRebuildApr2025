@@ -1,14 +1,23 @@
 """
-Simple Flask server workflow for GloriaMundo
-This runs the main application with the fixed affiliate blueprint
+Application workflow for running the main Flask app
 """
+import os
+import sys
+import logging
+from app import app
 
-def run():
-    """Run the Flask application"""
-    from app import app
-    
-    # Run the app
-    app.run(host='0.0.0.0', port=5000, debug=True)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+
+logger = logging.getLogger(__name__)
 
 if __name__ == "__main__":
-    run()
+    logger.info("Starting Flask application")
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
