@@ -102,7 +102,7 @@
                                             <i class="fas fa-edit"></i> Edit
                                         </button>
                                     </div>
-                                    <form action="{{ url_for('simplified_affiliate.update_paypal_email') }}" method="post" id="paypalEmailForm" style="display: none;">
+                                    <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post" id="paypalEmailForm" style="display: none;">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <div class="input-group mb-3">
                                             <input type="email" class="form-control" id="paypal_email" name="paypal_email" placeholder="Enter your PayPal email" value="{{ current_user.paypal_email or '' }}" required>
