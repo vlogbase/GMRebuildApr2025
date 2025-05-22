@@ -949,6 +949,7 @@
                                                 </div>
                                                 <form id="paypalEmailForm" style="display: none; margin-top: 15px; width: 100%;">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" id="paypal_csrf_token">
+                                                    <input type="hidden" id="paypal_update_endpoint" value="{{ url_for('affiliate.update_paypal_email') }}">
                                                     <div class="mb-3">
                                                         <label for="paypal_email" class="form-label">PayPal Email Address</label>
                                                         <input type="email" class="form-control form-control-lg" id="paypal_email" name="paypal_email" 
@@ -1028,6 +1029,7 @@
 </div>
 
 <script src="{{ url_for('static', filename='js/advanced_chat_preferences.js') }}"></script>
+<script src="{{ url_for('static', filename='js/paypal_email_updater.js') }}"></script>
 <script>
 /* 
  * Simplified affiliate functions - specifically created to fix
@@ -2112,13 +2114,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const searchTerm = document.getElementById('modelSearch')?.value.toLowerCase() || '';
         
         // Filter data based on search term
-        const filteredData = pricingData.filter(function(model) {
-            return model.model_name.toLowerCase().includes(searchTerm) || 
-                   model.model_id.toLowerCase().includes(searchTerm);
-        });
+        const filteredData = pricingData.filter(model => 
+            model.model_name.toLowerCase().includes(searchTerm) || 
+            model.model_id.toLowerCase().includes(searchTerm)
+        );
         
         // Sort data with multi-level sorting support
-        filteredData.sort(function(a, b) {
+        filteredData.sort((a, b) => {
             // Create a function to get values for any column
             function getColumnValues(item, colIndex) {
                 // Check for special cases
@@ -2295,15 +2297,20 @@ document.addEventListener('DOMContentLoaded', function() {
             let contextDisplay = model.context_length;
             if (model.context_length !== 'N/A' && !isNaN(model.context_length)) {
                 const contextNum = parseInt(model.context_length);
-                contextDisplay = contextNum >= 1000000 
-                    ? `${(contextNum / 1000000).toFixed(1)}M` 
-                    : `${(contextNum / 1000).toFixed(0)}K`;
+                if (contextNum >= 1000000) {
+                    contextDisplay = `${(contextNum / 1000000).toFixed(1)}M`;
+                } else {
+                    contextDisplay = `${(contextNum / 1000).toFixed(0)}K`;
+                }
             }
             
             // Create multimodal badge/label for the dedicated column
-            const multimodalDisplay = model.multimodal === 'Yes' 
-                ? '<span class="badge bg-success">Yes</span>' 
-                : '<span class="badge bg-secondary">No</span>';
+            var multimodalDisplay = '';
+            if (model.multimodal === 'Yes') {
+                multimodalDisplay = '<span class="badge bg-success">Yes</span>';
+            } else {
+                multimodalDisplay = '<span class="badge bg-secondary">No</span>';
+            }
             
             return `
                 <tr>
@@ -2321,9 +2328,9 @@ document.addEventListener('DOMContentLoaded', function() {
                         ${multimodalDisplay}
                     </td>
                     <td class="text-center">
-                        ${model.pdfs === 'Yes' ? 
-                            '<span class="badge bg-success">Yes</span>' : 
-                            '<span class="badge bg-secondary">No</span>'}
+                        ${model.pdfs === 'Yes' 
+                            ? '<span class="badge bg-success">Yes</span>' 
+                            : '<span class="badge bg-secondary">No</span>'}
                     </td>
                     <td class="text-center">
                         ${costBand ? `<span class="cost-band-indicator ${costBandClass}">${costBand}</span>` : ''}

@@ -371,32 +371,60 @@ def update_paypal_email():
     
     # Check if user is logged in
     if 'user_id' not in session:
+        if request.is_json:
+            return jsonify({'success': False, 'error': 'Please login to update your PayPal email'}), 401
         flash('Please login to update your PayPal email', 'warning')
         return redirect(url_for('login'))
     
     user_id = session['user_id']
     
-    # Get form data
-    paypal_email = request.form.get('paypal_email')
+    # Get email data from either JSON or form data
+    if request.is_json:
+        data = request.get_json()
+        paypal_email = data.get('paypal_email', '')
+        logger.info(f"Received JSON PayPal email update request: {paypal_email}")
+    else:
+        paypal_email = request.form.get('paypal_email', '')
+        logger.info(f"Received form PayPal email update request: {paypal_email}")
     
     if not paypal_email:
+        if request.is_json:
+            return jsonify({'success': False, 'error': 'Please enter a valid PayPal email address'}), 400
         flash('Please enter a valid PayPal email address', 'error')
-        return redirect(url_for('billing.account_management'))
+        return redirect(url_for('billing.account_management') + '#tellFriend')
     
     # Update user's PayPal email
     try:
         user = User.query.get(user_id)
         if not user:
+            if request.is_json:
+                return jsonify({'success': False, 'error': 'User not found'}), 404
             flash('User not found', 'error')
-            return redirect(url_for('billing.account_management'))
+            return redirect(url_for('billing.account_management') + '#tellFriend')
         
+        # Store old email for response
+        old_email = user.paypal_email or 'Not set'
+        
+        # Update the email
         user.paypal_email = paypal_email
         db.session.commit()
-        logger.info(f"Updated PayPal email for user {user_id}")
+        logger.info(f"Updated PayPal email for user {user_id} from '{old_email}' to '{paypal_email}'")
+        
+        if request.is_json:
+            return jsonify({
+                'success': True, 
+                'message': 'Your PayPal email has been updated successfully',
+                'new_email': paypal_email
+            })
+        
         flash('Your PayPal email has been updated successfully', 'success')
     except Exception as e:
         db.session.rollback()
         logger.error(f"Error updating PayPal email: {str(e)}", exc_info=True)
+        
+        if request.is_json:
+            return jsonify({'success': False, 'error': str(e)}), 500
+        
         flash('There was a problem updating your PayPal email. Please try again.', 'error')
     
     return redirect(url_for('billing.account_management') + '#tellFriend')
