@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+
+{% block title %}Affiliate Terms & Conditions{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h1 class="card-title">Affiliate Terms & Conditions</h1>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <div class="d-flex">
+                            <div class="me-3">
+                                <i class="fas fa-info-circle fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="alert-heading">Important Notice</h5>
+                                <p class="mb-0">By using the GloriaMundo affiliate program, you automatically agree to the terms and conditions outlined on this page.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4>1. General Terms</h4>
+                    <p>These terms and conditions govern your participation in the GloriaMundo Affiliate Program (the "Program"). By participating in the Program, you agree to be bound by these terms.</p>
+
+                    <h4>2. Commission Structure</h4>
+                    <p>Affiliates will earn:</p>
+                    <ul>
+                        <li>20% commission on all purchases made by directly referred users (Tier 1)</li>
+                        <li>5% commission on purchases made by users referred by your direct referrals (Tier 2)</li>
+                    </ul>
+                    <p>Commissions are calculated based on the purchase amount before any taxes or fees.</p>
+
+                    <h4>3. Commission Payments</h4>
+                    <p>Commissions are subject to the following terms:</p>
+                    <ul>
+                        <li>Commissions will be held for 30 days to account for potential refunds or chargebacks</li>
+                        <li>Minimum payout threshold is $20 USD</li>
+                        <li>Payments are made monthly via PayPal to the email address provided in your account</li>
+                        <li>It is your responsibility to ensure your PayPal email address is correct</li>
+                    </ul>
+
+                    <h4>4. Referral Tracking</h4>
+                    <p>Referrals are tracked via unique referral links or codes provided to each affiliate. Users must click your referral link or use your referral code during signup to be attributed to your account.</p>
+
+                    <h4>5. Prohibited Activities</h4>
+                    <p>The following activities are strictly prohibited:</p>
+                    <ul>
+                        <li>Self-referrals or creating multiple accounts to generate commissions</li>
+                        <li>Spamming or any unsolicited mass promotion</li>
+                        <li>Misrepresenting GloriaMundo's services or making false promises</li>
+                        <li>Using trademark terms in paid advertising that may infringe on GloriaMundo's brand</li>
+                        <li>Any activities that violate laws or regulations in your jurisdiction</li>
+                    </ul>
+
+                    <h4>6. Termination</h4>
+                    <p>GloriaMundo reserves the right to terminate your participation in the Program at any time for any reason, including but not limited to violation of these terms. Upon termination:</p>
+                    <ul>
+                        <li>Any pending commissions may be forfeited if termination is due to terms violation</li>
+                        <li>Your referral links will no longer track new referrals</li>
+                    </ul>
+
+                    <h4>7. Modifications</h4>
+                    <p>GloriaMundo reserves the right to modify these terms at any time. Changes will be effective upon posting to the website. Your continued participation in the Program constitutes acceptance of any modifications.</p>
+
+                    <h4>8. Taxes</h4>
+                    <p>Affiliates are responsible for any taxes applicable to commissions earned through the Program. GloriaMundo is not responsible for withholding or paying any income taxes on your behalf.</p>
+
+                    <h4>9. Contact Information</h4>
+                    <p>If you have any questions regarding these terms or the Program, please contact us at <a href="mailto:affiliate@gloriamundo.com">affiliate@gloriamundo.com</a>.</p>
+
+                    <div class="mt-5 text-center">
+                        <a href="{{ url_for('billing.account_management') }}#tellFriend" class="btn btn-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Return to Affiliate Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
