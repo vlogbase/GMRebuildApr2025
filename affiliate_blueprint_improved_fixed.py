@@ -230,12 +230,13 @@ def commissions():
     from database import db
     from models import User, Commission
     
-    # Check if user is logged in
-    if 'user_id' not in session:
+    # Check if user is logged in - use user_identifier which is what's actually set in session
+    if 'user_identifier' not in session:
         flash('Please login to view your commissions', 'warning')
         return redirect(url_for('login'))
     
-    user_id = session['user_id']
+    user_identifier = session['user_identifier']
+    user_id = user_identifier  # user_identifier is the user's actual ID
     
     # Get user data
     user = User.query.get(user_id)
@@ -325,11 +326,12 @@ def commission_metrics():
     from database import db
     from models import User, Commission
     
-    # Check if user is logged in
-    if 'user_id' not in session:
+    # Check if user is logged in - use user_identifier which is what's actually set in session
+    if 'user_identifier' not in session:
         return jsonify({'success': False, 'error': 'Authentication required'}), 401
     
-    user_id = session['user_id']
+    user_identifier = session['user_identifier']
+    user_id = user_identifier  # user_identifier is the user's actual ID
     
     # Get commissions
     commissions = Commission.query.filter_by(user_id=user_id).all()
@@ -369,14 +371,25 @@ def update_paypal_email():
     from database import db
     from models import User
     
-    # Check if user is logged in
-    if 'user_id' not in session:
+    # Check if user is logged in - use user_identifier which is what's actually set in session
+    if 'user_identifier' not in session:
         if request.is_json:
             return jsonify({'success': False, 'error': 'Please login to update your PayPal email'}), 401
         flash('Please login to update your PayPal email', 'warning')
         return redirect(url_for('login'))
     
-    user_id = session['user_id']
+    user_identifier = session['user_identifier']
+    
+    # Convert user_identifier to user_id for database lookup
+    from models import User
+    user = User.query.filter_by(id=user_identifier).first()
+    if not user:
+        if request.is_json:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        flash('User not found', 'error')
+        return redirect(url_for('billing.account_management'))
+    
+    user_id = user.id
     
     # Get email data from either JSON or form data
     if request.is_json:
