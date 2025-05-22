@@ -937,7 +937,7 @@
                                         </div>
                                         <div class="card-body bg-dark">
                                             <div class="mb-4">
-                                                <div class="d-flex align-items-center mb-3" style="gap: 10px;">
+                                                <div class="d-flex align-items-center mb-3" style="gap: 10px;" id="current-paypal-email">
                                                     <!-- Current email display -->
                                                     <div class="border rounded p-3 bg-dark flex-grow-1" style="word-break: break-all;">
                                                         <i class="fab fa-paypal text-primary me-2"></i>
@@ -947,11 +947,16 @@
                                                         <i class="fas fa-edit"></i> Edit
                                                     </button>
                                                 </div>
-                                                <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post" id="paypalEmailForm" style="display: none;">
+                                                <form action="{{ url_for('affiliate.update_paypal_email') }}" method="post" id="paypalEmailForm" style="display: none; margin-top: 15px; width: 100%;">
                                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                                    <div class="input-group mb-3">
-                                                        <input type="email" class="form-control" id="paypal_email" name="paypal_email" placeholder="Enter your PayPal email" value="{{ current_user.paypal_email or '' }}" required>
-                                                        <button class="btn btn-primary" type="submit">Save</button>
+                                                    <div class="mb-3">
+                                                        <label for="paypal_email" class="form-label">PayPal Email Address</label>
+                                                        <input type="email" class="form-control form-control-lg" id="paypal_email" name="paypal_email" 
+                                                            placeholder="Enter your PayPal email" value="{{ current_user.paypal_email or '' }}" required
+                                                            style="min-width: 300px; width: 100%; font-size: 16px; padding: 10px;">
+                                                    </div>
+                                                    <div class="d-flex gap-2 mb-2">
+                                                        <button class="btn btn-primary" type="submit">Save Changes</button>
                                                         <button class="btn btn-outline-secondary" type="button" id="cancelEditBtn">Cancel</button>
                                                     </div>
                                                     <div class="form-text">We use this email to send your affiliate commission payments.</div>
@@ -1034,18 +1039,41 @@ function initializeSimplifiedAffiliateFunctions() {
     const editPaypalBtn = document.getElementById('editPaypalBtn');
     const cancelEditBtn = document.getElementById('cancelEditBtn');
     const paypalEmailForm = document.getElementById('paypalEmailForm');
+    const currentPaypalDisplay = document.getElementById('current-paypal-email');
     
     if (editPaypalBtn && paypalEmailForm) {
         editPaypalBtn.addEventListener('click', function() {
+            // Show form with a smooth transition
             paypalEmailForm.style.display = 'block';
+            
+            // Focus on the input field after a short delay to ensure it's visible
+            setTimeout(() => {
+                const emailInput = document.getElementById('paypal_email');
+                if (emailInput) {
+                    emailInput.focus();
+                    // Select all text to make it easy to replace
+                    emailInput.select();
+                }
+            }, 100);
+            
+            // Hide the display and edit button
             editPaypalBtn.style.display = 'none';
+            if (currentPaypalDisplay) {
+                currentPaypalDisplay.style.display = 'none';
+            }
         });
     }
     
     if (cancelEditBtn && paypalEmailForm && editPaypalBtn) {
         cancelEditBtn.addEventListener('click', function() {
+            // Hide form with a smooth transition
             paypalEmailForm.style.display = 'none';
+            
+            // Show the display and edit button again
             editPaypalBtn.style.display = 'inline-block';
+            if (currentPaypalDisplay) {
+                currentPaypalDisplay.style.display = 'flex';
+            }
         });
     }
     
