@@ -29,8 +29,8 @@ from reportlab.lib.units import inch, cm
 
 from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
-from models import CustomerReferral, Commission, CommissionStatus, AffiliateStatus
-# Note: Affiliate model has been deprecated - functionality moved to User model
+from models import CustomerReferral, Commission, CommissionStatus
+# AffiliateStatus is no longer needed since affiliate functionality is handled by User model
 from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature, retrieve_session
 
 # Configure logging
@@ -81,114 +81,116 @@ def account_management():
             .order_by(desc(Usage.created_at)).all()
         logger.debug(f"Found {len(recent_usage)} usage records in the last 24 hours")
         
-        # Get affiliate information
-        affiliate = Affiliate.query.filter_by(email=current_user.email).first()
-        
-        # If the user doesn't have an affiliate record, auto-create one
-        if not affiliate:
-            logger.info(f"No affiliate record found for user: {current_user.email}, attempting to create one")
+        # In the simplified affiliate system, every user is automatically an affiliate
+        # Just ensure they have a referral code
+        if not current_user.referral_code:
+            logger.info(f"No referral code found for user: {current_user.email}, generating one")
             try:
-                affiliate = Affiliate.auto_create_for_user(current_user)
-                logger.info(f"Successfully created affiliate record with ID: {affiliate.id if affiliate else 'None'}")
+                # Generate a unique referral code
+                current_user.generate_referral_code()
+                db.session.commit()
+                logger.info(f"Successfully generated referral code {current_user.referral_code} for user: {current_user.email}")
             except Exception as e:
-                logger.error(f"Error creating affiliate record: {e}")
-                affiliate = None
-        else:
-            logger.info(f"Found existing affiliate record with ID: {affiliate.id}, status: {affiliate.status}")
+                logger.error(f"Error generating referral code: {e}")
+                
+        # Log the user's affiliate status
+        logger.info(f"User affiliate status: id={current_user.id}, referral_code={current_user.referral_code}")
             
-        # Get commission statistics if affiliate exists and is active
+        # Get commission statistics for the user
         commission_stats = {}
         commissions = []
         referrals = []
         sub_referrals = []
         
-        if affiliate and affiliate.status == AffiliateStatus.ACTIVE.value:
-            # Get total earned commissions
-            earned_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
-                Commission.user_id == affiliate.id,
-                Commission.status.in_([CommissionStatus.APPROVED.value, CommissionStatus.PAID.value])
-            ).scalar() or 0
+        # All users are considered active affiliates in the simplified system
+        # Get total earned commissions
+        earned_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
+            Commission.user_id == current_user.id,
+            Commission.status.in_([CommissionStatus.APPROVED.value, CommissionStatus.PAID.value])
+        ).scalar() or 0
             
-            # Get pending commissions
-            pending_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
-                Commission.user_id == affiliate.id,
-                Commission.status == CommissionStatus.HELD.value
-            ).scalar() or 0
+        # Get pending commissions
+        pending_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
+            Commission.user_id == current_user.id,
+            Commission.status == CommissionStatus.HELD.value
+        ).scalar() or 0
+        
+        # Get referral count
+        referral_count = CustomerReferral.query.filter_by(referrer_id=current_user.id).count()
+        
+        # Calculate conversion rate - set as N/A since click tracking isn't implemented
+        commission_stats = {
+            'total_earned': f'{earned_commissions:.2f}',
+            'pending': f'{pending_commissions:.2f}',
+            'referrals': referral_count,
+            'conversion_rate': 'N/A'  # Use N/A until click tracking is implemented
+        }
+        
+        # Get recent commissions for dashboard view
+        commissions = Commission.query.filter_by(user_id=current_user.id) \
+            .order_by(desc(Commission.created_at)).limit(10).all()
+        
+        # Get referred users (direct referrals)
+        referral_query = db.session.query(
+            User, 
+            func.sum(Transaction.amount_usd).label('total_purchases')
+        ).join(
+            CustomerReferral, CustomerReferral.customer_user_id == User.id
+        ).outerjoin(
+            Transaction, Transaction.user_id == User.id
+        ).filter(
+            CustomerReferral.referrer_id == current_user.id
+        ).group_by(
+            User.id
+        ).order_by(
+            desc(User.created_at)
+        ).limit(10)
+        
+        referrals = []
+        for user, total_purchases in referral_query:
+            referrals.append({
+                'id': user.id,
+                'username': user.username,
+                'created_at': user.created_at,
+                'total_purchases': f'{total_purchases or 0:.2f}'
+            })
             
-            # Get referral count
-            referral_count = CustomerReferral.query.filter_by(user_id=affiliate.id).count()
-            
-            # Calculate conversion rate - set as N/A since click tracking isn't implemented
-            # Note: click_count attribute doesn't exist in the Affiliate model yet
-            commission_stats = {
-                'total_earned': f'{earned_commissions:.2f}',
-                'pending': f'{pending_commissions:.2f}',
-                'referrals': referral_count,
-                'conversion_rate': 'N/A'  # Use N/A until click tracking is implemented
-            }
-            
-            # Get recent commissions for dashboard view
-            commissions = Commission.query.filter_by(user_id=affiliate.id) \
-                .order_by(desc(Commission.created_at)).limit(10).all()
-            
-            # Get referred users (direct referrals)
-            referral_query = db.session.query(
-                User, 
-                func.sum(Transaction.amount_usd).label('total_purchases')
-            ).join(
-                CustomerReferral, CustomerReferral.customer_user_id == User.id
-            ).outerjoin(
-                Transaction, Transaction.user_id == User.id
-            ).filter(
-                CustomerReferral.user_id == affiliate.id
-            ).group_by(
-                User.id
-            ).order_by(
-                desc(User.created_at)
-            ).limit(10)
-            
-            referrals = []
-            for user, total_purchases in referral_query:
-                referrals.append({
-                    'id': user.id,
-                    'username': user.username,
-                    'created_at': user.created_at,
-                    'total_purchases': f'{total_purchases or 0:.2f}'
-                })
-            
-            # Get sub-affiliates (tier 2)
-            sub_affiliate_query = db.session.query(
-                Affiliate,
-                func.sum(Transaction.amount_usd).label('total_purchases')
-            ).join(
-                User, User.email == Affiliate.email
-            ).outerjoin(
-                Transaction, Transaction.user_id == User.id
-            ).filter(
-                Affiliate.referred_by_user_id == affiliate.id
-            ).group_by(
-                Affiliate.id
-            ).order_by(
-                desc(Affiliate.created_at)
-            ).limit(5)
-            
-            sub_referrals = []
-            for sub_affiliate, total_purchases in sub_affiliate_query:
-                sub_referrals.append({
-                    'id': sub_affiliate.id,
-                    'username': sub_affiliate.name,
-                    'created_at': sub_affiliate.created_at,
-                    'total_purchases': f'{total_purchases or 0:.2f}'
-                })
+        # Get sub-affiliates (tier 2) - users who were referred by users that current_user referred
+        sub_affiliate_query = db.session.query(
+            User,
+            func.sum(Transaction.amount_usd).label('total_purchases')
+        ).join(
+            CustomerReferral, CustomerReferral.customer_user_id == User.id
+        ).join(
+            User, User.id == CustomerReferral.referrer_id, isouter=True
+        ).outerjoin(
+            Transaction, Transaction.user_id == User.id
+        ).filter(
+            User.referred_by_user_id.in_(
+                db.session.query(User.id).filter(User.referred_by_user_id == current_user.id)
+            )
+        ).group_by(
+            User.id
+        ).order_by(
+            desc(User.created_at)
+        ).limit(5)
+        
+        sub_referrals = []
+        for sub_user, total_purchases in sub_affiliate_query:
+            sub_referrals.append({
+                'id': sub_user.id,
+                'username': sub_user.username,
+                'created_at': sub_user.created_at,
+                'total_purchases': f'{total_purchases or 0:.2f}'
+            })
         
         # Add detailed logging of values passed to template
-        if affiliate:
-            logger.info(f"Affiliate info: id={affiliate.id}, status={affiliate.status}, name={affiliate.name}")
-            if affiliate.status == AffiliateStatus.ACTIVE.value:
-                logger.info(f"Commission stats: {commission_stats}")
-                logger.info(f"Commissions count: {len(commissions)}")
-                logger.info(f"Referrals count: {len(referrals)}")
-                logger.info(f"Sub-referrals count: {len(sub_referrals)}")
+        # In our simplified system, all users are considered active affiliates
+        logger.info(f"User affiliate info: id={current_user.id}, email={current_user.email}, referral_code={current_user.referral_code}")
+        logger.info(f"Commission stats: {commission_stats}")
+        logger.info(f"Commissions count: {len(commissions)}")
+        logger.info(f"Referrals count: {len(referrals)}")
+        logger.info(f"Sub-referrals count: {len(sub_referrals)}")
         
         logger.info("Rendering account.html template")
         return render_template(
@@ -197,7 +199,8 @@ def account_management():
             packages=packages,
             recent_transactions=recent_transactions,
             recent_usage=recent_usage,
-            affiliate=affiliate,
+            # In the simplified system, the user is the affiliate
+            affiliate=current_user,  # For backward compatibility with templates
             commission_stats=commission_stats,
             commissions=commissions,
             referrals=referrals,
@@ -1013,12 +1016,12 @@ def process_affiliate_commission(user_id, transaction):
             logger.info(f"No referral found for user {user_id}")
             return False
         
-        # Get the Level 1 (L1) affiliate
-        l1_affiliate = Affiliate.query.get(customer_referral.user_id)
+        # Get the Level 1 (L1) referring user
+        l1_user = User.query.get(customer_referral.referrer_id)
         
-        if not l1_affiliate or l1_affiliate.status != 'active':
-            # L1 affiliate not found or not active
-            logger.info(f"L1 affiliate {customer_referral.user_id} not found or not active")
+        if not l1_user or not l1_user.referral_code:
+            # L1 referring user not found or doesn't have a referral code
+            logger.info(f"L1 referring user {customer_referral.referrer_id} not found or doesn't have a referral code")
             return False
         
         # Current time for commission dates
@@ -1051,7 +1054,7 @@ def process_affiliate_commission(user_id, transaction):
         
         # Create L1 commission record
         l1_commission = Commission(
-            user_id=l1_affiliate.id,
+            user_id=l1_user.id,
             triggering_transaction_id=transaction.stripe_payment_intent,
             stripe_payment_status='succeeded',
             purchase_amount_base=amount_gbp,
@@ -1064,21 +1067,21 @@ def process_affiliate_commission(user_id, transaction):
         )
         
         db.session.add(l1_commission)
-        logger.info(f"Created L1 commission of £{l1_commission_amount} for affiliate {l1_affiliate.id}")
+        logger.info(f"Created L1 commission of £{l1_commission_amount} for user {l1_user.id}")
         
         # Step 7: Check if there's a Level 2 (L2) affiliate
-        if l1_affiliate.referred_by_user_id:
-            # Get the L2 affiliate
-            l2_affiliate = Affiliate.query.get(l1_affiliate.referred_by_user_id)
+        if l1_user.referred_by_user_id:
+            # Get the L2 user (who referred the L1 user)
+            l2_user = User.query.get(l1_user.referred_by_user_id)
             
-            if l2_affiliate and l2_affiliate.status == 'active':
+            if l2_user and l2_user.referral_code:
                 # Calculate and create L2 commission (5%)
                 l2_commission_rate = 0.05  # 5%
                 l2_commission_amount = round(amount_gbp * l2_commission_rate, 2)
                 
                 # Create L2 commission record
                 l2_commission = Commission(
-                    user_id=l2_affiliate.id,
+                    user_id=l2_user.id,
                     triggering_transaction_id=transaction.stripe_payment_intent,
                     stripe_payment_status='succeeded',
                     purchase_amount_base=amount_gbp,
@@ -1091,7 +1094,7 @@ def process_affiliate_commission(user_id, transaction):
                 )
                 
                 db.session.add(l2_commission)
-                logger.info(f"Created L2 commission of £{l2_commission_amount} for affiliate {l2_affiliate.id}")
+                logger.info(f"Created L2 commission of £{l2_commission_amount} for user {l2_user.id}")
         
         # Commit all changes
         db.session.commit()

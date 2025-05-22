@@ -24,7 +24,7 @@ def dashboard():
     """Affiliate dashboard view"""
     # Import database models inside function to avoid circular imports
     from database import db
-    from models import User, Affiliate, Commission, CustomerReferral, Transaction
+    from models import User, Commission, CustomerReferral, Transaction
     
     # Check if user is logged in via session
     if 'user_id' not in session:
@@ -38,35 +38,19 @@ def dashboard():
         flash('User not found', 'error')
         return redirect(url_for('login'))
     
-    # Get user's affiliate info by matching user ID first
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
-    
-    # If not found by user_id, try by email as a fallback
-    if not affiliate:
-        affiliate = Affiliate.query.filter_by(email=user.email).first()
-    
-    # If no affiliate record exists, create one automatically with active status
-    if not affiliate:
-        logger.info(f"Creating affiliate record for user {user_id}")
-        referral_code = str(uuid.uuid4())[:8]
-        
-        affiliate = Affiliate(
-            user_id=user_id,
-            name=user.username,
-            email=user.email,
-            referral_code=referral_code,
-            status='active',
-            terms_agreed_at=datetime.now()
-        )
-        db.session.add(affiliate)
+    # In the simplified system, the user is already the affiliate
+    # Just make sure they have a referral code
+    if not user.referral_code:
+        logger.info(f"Generating referral code for user {user_id}")
+        user.referral_code = str(uuid.uuid4())[:8].upper()
         db.session.commit()
         
-        flash('Your affiliate account has been created! Start sharing your referral link to earn commissions.', 'success')
+        flash('Your referral code has been generated! Start sharing your referral link to earn commissions.', 'success')
     
     # Get affiliate commissions (limit to 50 to avoid memory issues)
-    commissions = Commission.query.filter_by(affiliate_id=affiliate.id).order_by(
+    commissions = Commission.query.filter_by(user_id=user.id).order_by(
         Commission.created_at.desc()
-    ).limit(50).all() if affiliate else []
+    ).limit(50).all()
     
     # Get direct referrals (limit to 100 to avoid memory issues)
     referrals = db.session.query(
@@ -136,7 +120,7 @@ def dashboard():
     # Render the dashboard template
     return render_template(
         'affiliate/dashboard.html',
-        affiliate=affiliate,
+        affiliate=user,  # In the simplified system, the user is the affiliate
         commissions=commissions,
         referrals=formatted_referrals,
         sub_referrals=formatted_sub_referrals,
@@ -151,7 +135,7 @@ def register():
     """
     # Import database models inside function to avoid circular imports
     from database import db
-    from models import User, Affiliate
+    from models import User
     
     # Check if user is logged in via session
     if 'user_id' not in session:
@@ -160,29 +144,22 @@ def register():
     
     user_id = session['user_id']
     
-    # Check if the user already has an affiliate account
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
-    
-    if not affiliate:
-        # Get user info
-        user = User.query.get(user_id)
-        if not user:
-            flash('User account not found', 'error')
-            return redirect(url_for('index'))
-            
-        # Create a new affiliate account automatically
-        referral_code = str(uuid.uuid4())[:8]
+    # Get user info
+    user = User.query.get(user_id)
+    if not user:
+        flash('User account not found', 'error')
+        return redirect(url_for('index'))
         
-        affiliate = Affiliate(
-            user_id=user_id,
-            name=user.username,
-            email=user.email,
-            paypal_email=user.email,  # Pre-fill with user email
-            referral_code=referral_code,
-            status='active',
-            terms_agreed_at=datetime.now()
-        )
-        db.session.add(affiliate)
+    # In our simplified system, all users are affiliates
+    # Just make sure they have a referral code
+    if not user.referral_code:
+        referral_code = str(uuid.uuid4())[:8].upper()
+        user.referral_code = referral_code
+        
+        # Also set paypal_email if not already set
+        if not user.paypal_email:
+            user.paypal_email = user.email
+            
         db.session.commit()
         
         flash('Your affiliate account has been created!', 'success')
@@ -195,7 +172,7 @@ def tell_a_friend():
     """Affiliate referral tools page"""
     # Import database models inside function to avoid circular imports
     from database import db
-    from models import User, Affiliate
+    from models import User
     
     # Check if user is logged in via session
     if 'user_id' not in session:
@@ -209,25 +186,18 @@ def tell_a_friend():
         flash('User not found', 'error')
         return redirect(url_for('login'))
     
-    # Get user's affiliate info by matching user ID
-    affiliate = Affiliate.query.filter_by(user_id=user_id).first()
+    # Make sure user has a referral code
+    if not user.referral_code:
+        return redirect(url_for('affiliate.register'))
     
-    # If not found by user_id, try by email
-    if not affiliate:
-        affiliate = Affiliate.query.filter_by(email=user.email).first()
-    
-    # If no affiliate record exists, redirect to dashboard to auto-create one
-    if not affiliate:
-        return redirect(url_for('affiliate.dashboard'))
-    
-    return render_template('affiliate/tell_friend_tab.html', affiliate=affiliate)
+    return render_template('affiliate/tell_friend_tab.html', affiliate=user)
 
 @affiliate_bp.route('/commissions')
 def commissions():
     """View affiliate commissions"""
     # Import database models inside function to avoid circular imports
     from database import db
-    from models import User, Affiliate, Commission
+    from models import User, Commission
     
     # Check if user is logged in via session
     if 'user_id' not in session:
