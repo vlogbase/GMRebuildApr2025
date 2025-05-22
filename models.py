@@ -89,6 +89,29 @@ class User(UserMixin, db.Model):
         """Get user's balance in USD format"""
         return self.credits / 100000.0  # Convert credits to dollars (1 credit = $0.00001)
     
+    def generate_referral_code(self):
+        """Generate a unique referral code for this user"""
+        if self.referral_code:
+            return self.referral_code
+            
+        # Generate a random code (6 characters)
+        chars = string.ascii_uppercase + string.digits
+        while True:
+            code = ''.join(secrets.choice(chars) for _ in range(6))
+            
+            # Check if this code is already used
+            existing = User.query.filter_by(referral_code=code).first()
+            if not existing:
+                self.referral_code = code
+                return code
+    
+    def update_paypal_email(self, email):
+        """Update the PayPal email for this user"""
+        if email and email.strip():
+            self.paypal_email = email.strip()
+            return True
+        return False
+                
     def __repr__(self):
         return f'<User {self.username}>'
 
@@ -348,21 +371,69 @@ class Affiliate(db.Model):
 
 
 class CustomerReferral(db.Model):
-    """Customer referral model to track which affiliate referred a customer"""
+    """Customer referral model to track which user referred another user"""
     id = db.Column(db.Integer, primary_key=True)
     customer_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliate.id'), nullable=False)
+    referrer_user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     signup_date = db.Column(db.DateTime, default=datetime.utcnow)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     first_commissioned_purchase_at = db.Column(db.DateTime, nullable=True)
     
     # Create a unique constraint for customer_user_id
     __table_args__ = (
-        db.UniqueConstraint('customer_user_id', name='customer_affiliate_unique'),
+        db.UniqueConstraint('customer_user_id', name='customer_referrer_unique'),
     )
     
     # Relationships
-    customer = db.relationship('User', backref=db.backref('referral_info', uselist=False))
+    customer = db.relationship('User', foreign_keys=[customer_user_id], backref=db.backref('referral_info', uselist=False))
+    referrer = db.relationship('User', foreign_keys=[referrer_user_id], backref=db.backref('referred_users'))
+    
+    @classmethod
+    def track_referral(cls, referral_code, user):
+        """
+        Track a user referral based on a referral code.
+        
+        Args:
+            referral_code (str): The referral code of the referring user.
+            user (User): The user who was referred.
+            
+        Returns:
+            CustomerReferral: The created customer referral record, or None if failed.
+        """
+        try:
+            # Find the referring user by their referral code
+            referring_user = User.query.filter_by(referral_code=referral_code).first()
+            
+            if not referring_user:
+                logging.warning(f"No user found with referral code: {referral_code}")
+                return None
+                
+            # Check if this user already has a referral record
+            existing_referral = cls.query.filter_by(customer_user_id=user.id).first()
+            if existing_referral:
+                logging.info(f"User {user.id} already has a referral record")
+                return existing_referral
+                
+            # Create a new customer referral record
+            customer_referral = cls(
+                customer_user_id=user.id,
+                referrer_user_id=referring_user.id
+            )
+            
+            # Update the user's referred_by_user_id field
+            user.referred_by_user_id = referring_user.id
+            
+            # Save to database
+            db.session.add(customer_referral)
+            db.session.commit()
+            
+            logging.info(f"Created customer referral: User {user.id} referred by User {referring_user.id}")
+            return customer_referral
+            
+        except Exception as e:
+            logging.error(f"Error tracking referral: {e}")
+            db.session.rollback()
+            return None
     
     def is_within_commission_window(self, transaction_date=None):
         """
@@ -390,7 +461,7 @@ class CustomerReferral(db.Model):
         return transaction_date <= eligibility_end_date
     
     def __repr__(self):
-        return f'<CustomerReferral {self.id}: User {self.customer_user_id} referred by Affiliate {self.affiliate_id}>'
+        return f'<CustomerReferral {self.id}: User {self.customer_user_id} referred by User {self.referrer_user_id}>'
 
 
 class OpenRouterModel(db.Model):
@@ -480,9 +551,9 @@ class OpenRouterModel(db.Model):
 
 
 class Commission(db.Model):
-    """Commission model for tracking affiliate commissions"""
+    """Commission model for tracking referral commissions"""
     id = db.Column(db.Integer, primary_key=True)
-    affiliate_id = db.Column(db.Integer, db.ForeignKey('affiliate.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     triggering_transaction_id = db.Column(db.String(128), nullable=False, index=True)  # Stripe payment intent ID
     stripe_payment_status = db.Column(db.String(32), nullable=False)
     purchase_amount_base = db.Column(db.Float(precision=4), nullable=False)  # Base amount in GBP
@@ -496,5 +567,8 @@ class Commission(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    # Relationship with User
+    user = db.relationship('User', backref=db.backref('commissions', lazy=True))
+    
     def __repr__(self):
-        return f'<Commission {self.id}: £{self.commission_amount} to Affiliate {self.affiliate_id} (Level {self.commission_level})>'
+        return f'<Commission {self.id}: £{self.commission_amount} to User {self.user_id} (Level {self.commission_level})>'

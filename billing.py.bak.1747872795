@@ -29,7 +29,7 @@ from reportlab.lib.units import inch, cm
 
 from app import db
 from models import User, Transaction, Usage, Package, PaymentStatus
-from models import CustomerReferral, Commission, CommissionStatus, AffiliateStatus
+from models import CustomerReferral, Affiliate, Commission, CommissionStatus, AffiliateStatus
 from stripe_config import initialize_stripe, create_checkout_session, verify_webhook_signature, retrieve_session
 
 # Configure logging

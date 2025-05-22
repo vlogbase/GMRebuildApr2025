@@ -1,28 +1,18 @@
-{
-  "workflows": {
-    "test_affiliate_workflow": {
-      "name": "Affiliate System Test",
-      "command": "python test_affiliate_workflow.py",
-      "restartOn": {
-        "files": [
-          "test_affiliate_workflow.py",
-          "app.py",
-          "affiliate_blueprint_fix.py",
-          "templates/affiliate/*.html"
-        ]
-      }
-    },
-    "app_workflow": {
-      "name": "Main Application",
-      "command": "python app_workflow.py",
-      "restartOn": {
-        "files": [
-          "app_workflow.py",
-          "app.py",
-          "affiliate_blueprint_fix.py",
-          "templates/**/*.html"
-        ]
-      }
-    }
-  }
-}
+run = ["python3", "affiliate_test_workflow.py"]
+hidden = ["venv", ".config", "**/__pycache__", "**/.mypy_cache", "**/*.pyc"]
+language = "python3"
+entrypoint = "affiliate_test_workflow.py"
+
+[nix]
+channel = "stable-23_11"
+
+[languages]
+
+[languages.python3]
+pattern = "**/*.py"
+
+[languages.python3.languageServer]
+start = "pylsp"
+
+[dev]
+sslAllowInsecureLocalhost = true

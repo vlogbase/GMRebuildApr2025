@@ -1085,20 +1085,39 @@ def direct_update_paypal_email():
         # Log the affiliate lookup
         logger.info(f"Looking for affiliate with email: {user_email}")
         
-        # In our simplified system, affiliate info is stored directly in the User model
-        logger.info(f"Updating PayPal email for user {user.id}")
+        # Find affiliated by email
+        affiliate = Affiliate.query.filter_by(email=user_email).first()
         
-        # Update the user's PayPal email
-        old_email = user.paypal_email or "None"
-        user.paypal_email = paypal_email
+        # Log what we found
+        if affiliate:
+            logger.info(f"Found affiliate: ID={affiliate.id}, current PayPal email={affiliate.paypal_email}")
+        else:
+            logger.info(f"No affiliate found for email {user_email}")
         
-        # Generate referral code if needed
-        if not user.referral_code:
-            user.generate_referral_code()
-            logger.info(f"Generated new referral code {user.referral_code} for user {user.id}")
+        if not affiliate:
+            # Create a new affiliate record
+            logger.info(f"Creating new affiliate record for {user_email}")
+            affiliate = Affiliate(
+                name=user.username or user_email,
+                email=user_email,
+                paypal_email=paypal_email,
+                referral_code=str(uuid.uuid4())[:8],
+                status='active',
+                terms_agreed_at=datetime.now()
+            )
+            db.session.add(affiliate)
+            
+            # Immediately commit to get ID
+            db.session.commit()
+            logger.info(f"Created new affiliate with ID {affiliate.id}")
+        
+        # Always update the PayPal email - this is the key fix!
+        old_email = affiliate.paypal_email
+        affiliate.paypal_email = paypal_email
+        affiliate.status = 'active'  # Always ensure active status
         
         # Log the change clearly
-        logger.info(f"CHANGING PayPal email for user ID {user.id} from '{old_email}' to '{paypal_email}'")
+        logger.info(f"CHANGING PayPal email for affiliate ID {affiliate.id} from '{old_email}' to '{paypal_email}'")
         
         # Commit changes
         db.session.commit()
@@ -1115,40 +1134,6 @@ def direct_update_paypal_email():
         db.session.rollback()
         logger.error(f"Error updating PayPal email: {str(e)}", exc_info=True)
         flash('An error occurred while updating your PayPal email. Please try again.', 'error')
-    
-    return redirect(url_for('billing.account_management', _anchor='tellFriend'))
-
-
-
-# Direct PayPal email update route
-@app.route("/update_paypal", methods=["POST"])
-def update_paypal_email_direct():
-    # Update PayPal email address for the current user
-    if not current_user.is_authenticated:
-        flash('Please login to update your PayPal email', 'warning')
-        return redirect(url_for('login'))
-    
-    try:
-        # Get form data
-        paypal_email = request.form.get('paypal_email', '').strip()
-        
-        if not paypal_email:
-            flash('Please provide a PayPal email address', 'error')
-            return redirect(url_for('billing.account_management', _anchor='tellFriend'))
-        
-        # Log the update attempt
-        logger.info(f"Updating PayPal email for user {current_user.id} from '{current_user.paypal_email or 'None'}' to '{paypal_email}'")
-        
-        # Update user record
-        current_user.paypal_email = paypal_email
-        db.session.commit()
-        
-        flash('PayPal email updated successfully!', 'success')
-        
-    except Exception as e:
-        logger.error(f"Error updating PayPal email: {e}", exc_info=True)
-        db.session.rollback()
-        flash('An error occurred updating your PayPal email. Please try again.', 'error')
     
     return redirect(url_for('billing.account_management', _anchor='tellFriend'))
 

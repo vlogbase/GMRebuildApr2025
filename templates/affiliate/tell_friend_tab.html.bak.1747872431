@@ -6,7 +6,7 @@
                 <h5 class="mb-0">Tell a Friend</h5>
             </div>
             <div class="card-body">
-                {% if current_user.is_authenticated %}
+                {% if affiliate and affiliate.status == 'active' %}
                     <!-- For active affiliates who have agreed to terms -->
                     <div class="row mb-4">
                         <div class="col-12"> <!-- Changed from col-md-8 to col-12 for full width -->
@@ -15,7 +15,7 @@
                                 <!-- Redesigned link display with copy button -->
                                 <div style="display: flex; width: 100%; margin-bottom: 10px;">
                                     <!-- Link display as text inside a styled div, not an input -->
-                                    <div class="form-control" id="referralLink" style="flex: 1; padding: 10px; background-color: #2c2f33; color: #e4e6eb; border-color: #3f4246; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text;">{{ request.host_url }}?ref={{ current_user.referral_code }}</div>
+                                    <div class="form-control" id="referralLink" style="flex: 1; padding: 10px; background-color: #2c2f33; color: #e4e6eb; border-color: #3f4246; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text;">{{ request.host_url }}?ref={{ affiliate.referral_code }}</div>
                                     <button class="btn btn-outline-primary" type="button" id="copyReferralLink" style="flex-shrink: 0; margin-left: 5px;">
                                         <i class="fas fa-copy"></i> Copy
                                     </button>
@@ -30,7 +30,7 @@
                                     </div>
                                     <div>
                                         <h5 class="alert-heading">Quick Tip</h5>
-                                        <p class="mb-0">Want to share a specific page or chat? Just add <code>?ref={{ current_user.referral_code }}</code> to the end of any GloriaMundo URL!</p>
+                                        <p class="mb-0">Want to share a specific page or chat? Just add <code>?ref={{ affiliate.referral_code }}</code> to the end of any GloriaMundo URL!</p>
                                     </div>
                                 </div>
                             </div>
@@ -43,7 +43,7 @@
                                     <h5 class="mb-0">Share via QR Code</h5>
                                 </div>
                                 <div class="card-body text-center">
-                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ request.host_url|urlencode }}?ref={{ current_user.referral_code }}" 
+                                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={{ request.host_url|urlencode }}?ref={{ affiliate.referral_code }}" 
                                          alt="Your Referral QR Code" class="img-fluid mb-2"
                                          style="max-width: 100%; height: auto;">
                                     <p class="mb-0 small">Scan with a smartphone camera to quickly share your link</p>
@@ -264,7 +264,7 @@
                             <!-- Current email display -->
                             <div class="border rounded p-3 bg-dark flex-grow-1" style="word-break: break-all;">
                                 <i class="fab fa-paypal text-primary me-2"></i>
-                                <span id="currentPaypalEmail">{{ current_user.paypal_email or 'Not set' }}</span>
+                                <span id="currentPaypalEmail">{{ affiliate.paypal_email or 'Not set' }}</span>
                             </div>
                             
                             <!-- Edit button -->
@@ -285,7 +285,7 @@
                             <i class="fas fa-check-circle me-2"></i> PayPal email updated successfully!
                         </div>
                         
-                        <form action="/update_paypal" method="post" class="border rounded p-3 mb-4 bg-dark">
+                        <form action="/update_paypal_email" method="post" class="border rounded p-3 mb-4 bg-dark">
                             <h5 class="mb-3">Update PayPal Email</h5>
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                             
@@ -293,7 +293,7 @@
                                 <label for="newPaypalEmail" class="form-label">New PayPal Email</label>
                                 <input type="email" id="newPaypalEmail" name="paypal_email" 
                                        class="form-control"
-                                       value="{{ current_user.paypal_email or '' }}" 
+                                       value="{{ affiliate.paypal_email or '' }}" 
                                        required>
                             </div>
                             
@@ -343,8 +343,8 @@
         </div>
         
     {% else %}
-        <!-- Login prompt for non-authenticated users -->
-        <div class="card mb-4">
+        <!-- For new affiliates who haven't agreed to terms yet -->
+        <div class="card mb-4 border-primary">
             <div class="card-body text-center py-5">
                 <i class="fas fa-users fa-3x text-primary mb-3"></i>
                 <h3 class="card-title mb-3">Welcome to the Affiliate Program!</h3>
@@ -355,44 +355,86 @@
                             <i class="fas fa-info-circle fa-2x"></i>
                         </div>
                         <div class="text-start">
-                            <h5 class="alert-heading">Ready to Get Started?</h5>
-                            <p class="mb-0">Please log in to see your referral link and start earning commissions!</p>
+                            <h5 class="alert-heading">Almost Ready!</h5>
+                            <p class="mb-0">Your referral code is ready, but you need to agree to our Terms &amp; Conditions first to activate it.</p>
                         </div>
                     </div>
                 </div>
-                
-                <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg mt-4">
-                    <i class="fas fa-sign-in-alt me-2"></i> Log In
-                </a>
             </div>
         </div>
         
-        <div class="card mb-4">
-            <div class="card-header bg-dark">
-                <h5 class="mb-0">How the Affiliate Program Works</h5>
+        <div class="row mb-4">
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-dark">
+                        <h5 class="mb-0">Referral Code Preview</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="input-group mb-3">
+                            <input type="text" class="form-control disabled" disabled
+                                   value="{{ affiliate.referral_code if affiliate else 'Your referral code will appear here' }}">
+                            <button class="btn btn-outline-secondary" type="button" disabled>
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        </div>
+                        <p class="form-text">This code will be activated after you agree to the Terms &amp; Conditions.</p>
+                        
+                        <div class="mt-4">
+                            <h6 class="fw-bold">How It Works</h6>
+                            <div class="card bg-dark">
+                                <ul class="list-group list-group-flush">
+                                    <li class="list-group-item bg-transparent text-light">
+                                        <i class="fas fa-check-circle text-success me-2"></i>Earn 10% on direct referrals
+                                    </li>
+                                    <li class="list-group-item bg-transparent text-light">
+                                        <i class="fas fa-check-circle text-success me-2"></i>Earn 5% from sub-affiliate referrals
+                                    </li>
+                                    <li class="list-group-item bg-transparent text-light">
+                                        <i class="fas fa-check-circle text-success me-2"></i>Get paid via PayPal monthly
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-4 mb-4">
-                        <div class="text-center">
-                            <i class="fas fa-link fa-3x text-primary mb-3"></i>
-                            <h5>Share Your Link</h5>
-                            <p>After logging in, you'll get a unique referral link to share with friends, on social media, or your website.</p>
-                        </div>
+            
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Activate Your Account</h5>
                     </div>
-                    <div class="col-md-4 mb-4">
-                        <div class="text-center">
-                            <i class="fas fa-user-plus fa-3x text-success mb-3"></i>
-                            <h5>Friends Sign Up</h5>
-                            <p>When someone clicks your link and creates an account, they're permanently tracked as your referral.</p>
+                    <div class="card-body">
+                        <!-- Information about affiliate program -->
+                        <div class="alert alert-info mb-4">
+                            <div class="d-flex">
+                                <div class="me-3">
+                                    <i class="fas fa-info-circle fa-2x"></i>
+                                </div>
+                                <div>
+                                    <h5 class="alert-heading">Your Affiliate Program is Active</h5>
+                                    <p class="mb-2">You're automatically enrolled in our affiliate program. Just share your referral link to start earning commissions on purchases.</p>
+                                    <p class="mb-0">Please review our <a href="{{ url_for('affiliate.terms') }}" target="_blank" class="alert-link">Affiliate Terms &amp; Conditions</a>. By using this program, you agree to these terms.</p>
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-4 mb-4">
-                        <div class="text-center">
-                            <i class="fas fa-money-bill-wave fa-3x text-warning mb-3"></i>
-                            <h5>Earn Commissions</h5>
-                            <p>Earn 20% on all purchases by your direct referrals and 5% on their referrals' purchases.</p>
-                        </div>
+                        
+                        <!-- Set up your PayPal email directly -->
+                        <form action="/update_paypal_email" method="post">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <div class="mb-4">
+                                <div class="form-floating">
+                                    <input type="email" class="form-control" id="paypal_email" name="paypal_email" 
+                                           placeholder="your-email@example.com">
+                                    <label for="paypal_email">PayPal Email for Commissions</label>
+                                </div>
+                                <div class="form-text">Add your PayPal email to receive commission payments.</div>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i> Save PayPal Email
+                            </button>
+                        </form>
                     </div>
                 </div>
             </div>
