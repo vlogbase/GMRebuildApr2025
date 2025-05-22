@@ -1299,14 +1299,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Enable/disable activation button based on checkbox
-    const agreeCheckbox = document.getElementById('agreeToTerms');
-    const activateButton = document.getElementById('activateReferralBtn');
-    
-    if (agreeCheckbox && activateButton) {
-        agreeCheckbox.addEventListener('change', function() {
-            activateButton.disabled = !this.checked;
-        });
-    }
+    // The old affiliate activation code has been removed since all users are now automatically affiliates
     
     // Copy referral link functionality
     const copyBtn = document.getElementById('copyReferralLink');

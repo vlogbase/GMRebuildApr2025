@@ -404,16 +404,7 @@
     function initializeTellFriendTab() {
         console.log('Initializing Tell a Friend tab functions');
     
-    // Enable/disable activation button based on checkbox
-    const agreeCheckbox = document.getElementById('agreeToTerms');
-    const activateButton = document.getElementById('activateReferralBtn');
-    
-    if (agreeCheckbox && activateButton) {
-        console.log('Found agree checkbox and activate button');
-        agreeCheckbox.addEventListener('change', function() {
-            activateButton.disabled = !this.checked;
-        });
-    }
+    // The old affiliate activation code has been removed since all users are now automatically affiliates
     
     // Copy referral link functionality for both the main link and dashboard link
     const copyButtons = [
