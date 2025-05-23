@@ -20,17 +20,22 @@ function calculateCostBand(inputPrice, outputPrice) {
         return 'Free';
     }
 
-    // Calculate average price for cost band
-    const avgPrice = (inputPrice + outputPrice) / 2;
+    // Convert to per-million-token pricing and find the max price
+    const inputPriceMillion = inputPrice * 1000000;
+    const outputPriceMillion = outputPrice * 1000000;
+    const maxPrice = Math.max(inputPriceMillion, outputPriceMillion);
 
-    if (avgPrice <= 0.001) {
-        return 'Very Low Cost';
-    } else if (avgPrice <= 0.01) {
-        return 'Low Cost';
-    } else if (avgPrice <= 0.1) {
-        return 'Medium Cost';
+    // Use the same thresholds as server-side logic
+    if (maxPrice >= 100.0) {
+        return 'High Cost';        // $$$$
+    } else if (maxPrice >= 10.0) {
+        return 'Medium Cost';      // $$$
+    } else if (maxPrice >= 1.0) {
+        return 'Low Cost';         // $$
+    } else if (maxPrice >= 0.01) {
+        return 'Very Low Cost';    // $
     } else {
-        return 'High Cost';
+        return 'Free';             // Free or nearly free
     }
 }
 
@@ -212,11 +217,11 @@ function renderPricingTable() {
 function getCostBadgeClass(costBand) {
     switch (costBand) {
         case 'Free':
-            return 'text-success-dull'; // Dull green for free
+            return 'text-success'; // Green for free
         case 'Very Low Cost':
-            return 'text-info-teal'; // Teal for $
+            return 'text-info'; // Teal for $
         case 'Low Cost':
-            return 'text-info-teal'; // Teal for $$
+            return 'text-info'; // Teal for $$
         case 'Medium Cost':
             return 'text-warning'; // Amber for $$$
         case 'High Cost':

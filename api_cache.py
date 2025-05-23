@@ -332,6 +332,22 @@ def cache_model_pricing(ttl: int = 3600):
 # Create a LocalProxy for the API cache for easy access in Flask
 api_cache = LocalProxy(get_api_cache)
 
+def get_redis_client():
+    """
+    Get Redis client from the API cache
+    
+    Returns:
+        Redis client instance or None if unavailable
+    """
+    try:
+        cache = get_api_cache()
+        if cache and cache.redis:
+            return cache.redis.redis_client
+        return None
+    except Exception as e:
+        logger.error(f"Error getting Redis client: {e}")
+        return None
+
 def init_api_cache(app: Flask, namespace: str = 'api_cache:', 
                   default_ttl: int = 3600,
                   model_ttl_map: Optional[Dict[str, int]] = None) -> ApiCache:
