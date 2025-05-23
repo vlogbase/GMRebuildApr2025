@@ -190,7 +190,8 @@ function renderPricingTable() {
 
     // Generate table rows with proper column structure
     const tableRows = pricingData.map(model => {
-        const costBadgeClass = getCostBadgeClass(model.cost_band);
+        const costBadgeClass = getCostBandClass(model.cost_band);
+        const costBandSymbol = getCostBandSymbol(model.cost_band);
         const multimodalBadge = model.multimodal === 'Yes' ? 
             '<span class="badge bg-success">Yes</span>' : 
             '<span class="badge bg-secondary">No</span>';
@@ -206,7 +207,7 @@ function renderPricingTable() {
                 <td class="text-light text-end">${model.context_length}</td>
                 <td class="text-center">${multimodalBadge}</td>
                 <td class="text-center">${pdfBadge}</td>
-                <td class="text-center"><span class="cost-band-indicator ${costBadgeClass} fw-bold">${model.cost_band}</span></td>
+                <td class="text-center"><span class="cost-band-indicator ${costBadgeClass} fw-bold">${costBandSymbol}</span></td>
             </tr>
         `;
     }).join('');
@@ -214,20 +215,37 @@ function renderPricingTable() {
     pricingTableBody.innerHTML = tableRows;
 }
 
-function getCostBadgeClass(costBand) {
+function getCostBandClass(costBand) {
     switch (costBand) {
         case 'Free':
-            return 'text-success'; // Green for free
+            return 'cost-band-free'; // Cyan for free
         case 'Very Low Cost':
-            return 'text-info'; // Teal for $
+            return 'cost-band-1'; // Cyan for $
         case 'Low Cost':
-            return 'text-info'; // Teal for $$
+            return 'cost-band-2'; // Cyan for $$
         case 'Medium Cost':
-            return 'text-warning'; // Amber for $$$
+            return 'cost-band-3-warn'; // Orange for $$$
         case 'High Cost':
-            return 'text-danger'; // Red for $$$$
+            return 'cost-band-4-danger'; // Red for $$$$
         default:
             return 'text-secondary';
+    }
+}
+
+function getCostBandSymbol(costBand) {
+    switch (costBand) {
+        case 'Free':
+            return 'Free';
+        case 'Very Low Cost':
+            return '$';
+        case 'Low Cost':
+            return '$$';
+        case 'Medium Cost':
+            return '$$$';
+        case 'High Cost':
+            return '$$$$';
+        default:
+            return costBand;
     }
 }
 
