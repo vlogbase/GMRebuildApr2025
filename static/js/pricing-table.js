@@ -91,10 +91,15 @@ function loadPricingData() {
                 const modelName = modelDetails.model_name ||
                                   modelId.split('/').pop().replace(/-/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
 
-                // Format prices with appropriate precision
+                // Format prices with appropriate precision, handle special display cases
                 let inputPriceStr, outputPriceStr;
 
-                if (modelDetails.input_price === 0) {
+                // Check for special display values first (for Auto Router)
+                if (modelDetails.display_input_price) {
+                    inputPriceStr = modelDetails.display_input_price;
+                } else if (modelDetails.input_price === null || modelDetails.input_price === undefined) {
+                    inputPriceStr = 'Dynamic*';
+                } else if (modelDetails.input_price === 0) {
                     inputPriceStr = '$0.00';
                 } else if (modelDetails.input_price < 0.01) {
                     inputPriceStr = `$${modelDetails.input_price.toFixed(4)}`;
@@ -102,7 +107,11 @@ function loadPricingData() {
                     inputPriceStr = `$${modelDetails.input_price.toFixed(2)}`;
                 }
 
-                if (modelDetails.output_price === 0) {
+                if (modelDetails.display_output_price) {
+                    outputPriceStr = modelDetails.display_output_price;
+                } else if (modelDetails.output_price === null || modelDetails.output_price === undefined) {
+                    outputPriceStr = 'Dynamic*';
+                } else if (modelDetails.output_price === 0) {
                     outputPriceStr = '$0.00';
                 } else if (modelDetails.output_price < 0.01) {
                     outputPriceStr = `$${modelDetails.output_price.toFixed(4)}`;
@@ -115,10 +124,14 @@ function loadPricingData() {
                     model_name: modelName,
                     input_price: inputPriceStr,
                     output_price: outputPriceStr,
-                    context_length: modelDetails.context_length || 'N/A',
+                    context_length: modelDetails.context_length_display || modelDetails.context_length || 'N/A',
                     multimodal: modelDetails.multimodal,
                     pdfs: modelDetails.pdfs,
-                    cost_band: modelDetails.cost_band || calculateCostBand(modelDetails.input_price, modelDetails.output_price)
+                    cost_band: modelDetails.cost_band || calculateCostBand(modelDetails.input_price, modelDetails.output_price),
+                    // Pass through special display properties for fallback use
+                    display_input_price: modelDetails.display_input_price,
+                    display_output_price: modelDetails.display_output_price,
+                    context_length_display: modelDetails.context_length_display
                 };
             });
 
@@ -322,8 +335,12 @@ function sortPricingTableBase(columnIndex, order = 'asc') {
 
         // Handle price columns (remove $ and convert to number)
         if (column === 'input_price' || column === 'output_price') {
-            aVal = parseFloat(aVal.replace('$', '')) || 0;
-            bVal = parseFloat(bVal.replace('$', '')) || 0;
+            // Handle special cases like "Dynamic*" for Auto Router
+            if (aVal === 'Dynamic*' || aVal === null) aVal = 999999; // Sort to end
+            else aVal = parseFloat(aVal.replace('$', '')) || 0;
+            
+            if (bVal === 'Dynamic*' || bVal === null) bVal = 999999; // Sort to end
+            else bVal = parseFloat(bVal.replace('$', '')) || 0;
         }
         // Handle context length
         else if (column === 'context_length') {

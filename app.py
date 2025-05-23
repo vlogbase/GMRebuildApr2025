@@ -3764,8 +3764,8 @@ def get_model_prices():
                     
                     # Handle special cases for AutoRouter
                     if model_id == "openrouter/auto":
-                        input_price_raw = 0  # Use 0 for sorting/calculations
-                        output_price_raw = 0
+                        input_price_raw = None  # Use None to indicate no fixed price
+                        output_price_raw = None
                         cost_band = "Auto"  # Special cost band for Auto Router
                     
                     # Create base pricing data
