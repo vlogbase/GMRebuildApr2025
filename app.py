@@ -3758,13 +3758,23 @@ def get_model_prices():
                         logger.info(f"Auto-generated cost band '{cost_band}' for model {model_id}")
                         models_with_missing_data.append(model_id)
                     
+                    # Format pricing for display (convert from per-million to readable format)
+                    input_price_display = f"${(db_model.input_price_usd_million or 0) * 1000000:.2f}" if (db_model.input_price_usd_million or 0) > 0 else "$0.00"
+                    output_price_display = f"${(db_model.output_price_usd_million or 0) * 1000000:.2f}" if (db_model.output_price_usd_million or 0) > 0 else "$0.00"
+                    
+                    # Handle special cases
+                    if model_id == "openrouter/auto":
+                        input_price_display = "Variable"
+                        output_price_display = "Variable"
+                    
                     prices[model_id] = {
-                        'input_price': db_model.input_price_usd_million or 0,
-                        'output_price': db_model.output_price_usd_million or 0,
-                        'context_length': db_model.context_length or 'N/A',
-                        'is_multimodal': db_model.is_multimodal or False,
-                        'supports_pdf': db_model.supports_pdf or False,
+                        'input_price': input_price_display,
+                        'output_price': output_price_display,
+                        'context_length': str(db_model.context_length) if db_model.context_length else 'N/A',
+                        'multimodal': "Yes" if db_model.is_multimodal else "No",
+                        'pdfs': "Yes" if db_model.supports_pdf else "No",
                         'model_name': db_model.name or model_id,
+                        'model_id': model_id,
                         'cost_band': cost_band,
                         'is_free': db_model.is_free or False,
                         'source': 'database'
@@ -3774,14 +3784,15 @@ def get_model_prices():
                     # Log but don't exclude models with processing issues
                     logger.warning(f"Issue processing model {db_model.model_id}: {e}")
                     
-                    # Include with minimal safe data
+                    # Include with minimal safe data using correct field names
                     prices[db_model.model_id] = {
-                        'input_price': 0,
-                        'output_price': 0,
+                        'input_price': '$0.00',
+                        'output_price': '$0.00',
                         'context_length': 'N/A',
-                        'is_multimodal': False,
-                        'supports_pdf': False,
+                        'multimodal': 'No',
+                        'pdfs': 'No',
                         'model_name': db_model.model_id,
+                        'model_id': db_model.model_id,
                         'cost_band': 'Unknown',
                         'is_free': True,
                         'source': 'database_fallback'
