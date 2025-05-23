@@ -3758,18 +3758,18 @@ def get_model_prices():
                         logger.info(f"Auto-generated cost band '{cost_band}' for model {model_id}")
                         models_with_missing_data.append(model_id)
                     
-                    # Format pricing for display (convert from per-million to readable format)
-                    input_price_display = f"${(db_model.input_price_usd_million or 0) * 1000000:.2f}" if (db_model.input_price_usd_million or 0) > 0 else "$0.00"
-                    output_price_display = f"${(db_model.output_price_usd_million or 0) * 1000000:.2f}" if (db_model.output_price_usd_million or 0) > 0 else "$0.00"
+                    # Get raw pricing values for JavaScript calculations
+                    input_price_raw = (db_model.input_price_usd_million or 0) * 1000000
+                    output_price_raw = (db_model.output_price_usd_million or 0) * 1000000
                     
-                    # Handle special cases
+                    # Handle special cases for AutoRouter
                     if model_id == "openrouter/auto":
-                        input_price_display = "Variable"
-                        output_price_display = "Variable"
+                        input_price_raw = 0  # Use 0 for sorting/calculations
+                        output_price_raw = 0
                     
                     prices[model_id] = {
-                        'input_price': input_price_display,
-                        'output_price': output_price_display,
+                        'input_price': input_price_raw,
+                        'output_price': output_price_raw,
                         'context_length': str(db_model.context_length) if db_model.context_length else 'N/A',
                         'multimodal': "Yes" if db_model.is_multimodal else "No",
                         'pdfs': "Yes" if db_model.supports_pdf else "No",
@@ -3786,8 +3786,8 @@ def get_model_prices():
                     
                     # Include with minimal safe data using correct field names
                     prices[db_model.model_id] = {
-                        'input_price': '$0.00',
-                        'output_price': '$0.00',
+                        'input_price': 0,
+                        'output_price': 0,
                         'context_length': 'N/A',
                         'multimodal': 'No',
                         'pdfs': 'No',
@@ -4342,21 +4342,54 @@ def get_preferences():
 
 @app.route('/api/model-counts', methods=['GET'])
 def get_model_counts():
-    """Get current model counts for display on info page"""
+    """Get current model counts for display on info page with Redis caching"""
     try:
+        # Try to get cached counts first for instant loading
+        try:
+            from api_cache import get_redis_client
+            redis_client = get_redis_client('cache')
+            
+            if redis_client:
+                cached_counts = redis_client.get('cache:model_counts')
+                if cached_counts:
+                    import json
+                    logger.debug("Serving model counts from Redis cache")
+                    return jsonify(json.loads(cached_counts))
+        except Exception as e:
+            logger.debug(f"Redis cache unavailable for model counts: {e}")
+        
+        # Get fresh counts from database
         from models import OpenRouterModel
         
-        # Get current counts from the database
         total_models = OpenRouterModel.query.filter_by(model_is_active=True).count()
         free_models = OpenRouterModel.query.filter_by(model_is_active=True, is_free=True).count()
         paid_models = OpenRouterModel.query.filter_by(model_is_active=True, is_free=False).count()
         
-        return jsonify({
+        response_data = {
             "success": True,
             "total_models": total_models,
             "free_models": free_models,
             "paid_models": paid_models
-        })
+        }
+        
+        # Cache the counts for fast future access
+        try:
+            from api_cache import get_redis_client
+            redis_client = get_redis_client('cache')
+            
+            if redis_client:
+                import json
+                redis_client.setex(
+                    'cache:model_counts',
+                    300,  # Cache for 5 minutes
+                    json.dumps(response_data)
+                )
+                logger.debug("Cached model counts in Redis")
+        except Exception as e:
+            logger.debug(f"Could not cache model counts: {e}")
+        
+        return jsonify(response_data)
+        
     except Exception as e:
         logger.exception("Error getting model counts")
         return jsonify({
