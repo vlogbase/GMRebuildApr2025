@@ -3758,9 +3758,9 @@ def get_model_prices():
                         logger.info(f"Auto-generated cost band '{cost_band}' for model {model_id}")
                         models_with_missing_data.append(model_id)
                     
-                    # Get raw pricing values for JavaScript calculations
-                    input_price_raw = (db_model.input_price_usd_million or 0) * 1000000
-                    output_price_raw = (db_model.output_price_usd_million or 0) * 1000000
+                    # Get raw pricing values for JavaScript calculations (already per-million in database)
+                    input_price_raw = db_model.input_price_usd_million or 0
+                    output_price_raw = db_model.output_price_usd_million or 0
                     
                     # Handle special cases for AutoRouter
                     if model_id == "openrouter/auto":
