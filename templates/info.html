@@ -1119,6 +1119,11 @@
         
         // Function to calculate cost band based on pricing
         function calculateCostBand(inputPrice, outputPrice) {
+            // Handle null values for Auto Router
+            if (inputPrice === null || outputPrice === null) {
+                return 'Auto';
+            }
+
             // Handle string price inputs (with $ symbol)
             if (typeof inputPrice === 'string') {
                 inputPrice = parseFloat(inputPrice.replace('$', '')) || 0;
@@ -1204,7 +1209,12 @@
                         // Format prices with appropriate precision
                         let inputPriceStr, outputPriceStr;
 
-                        if (modelDetails.input_price === 0) {
+                        // Check for special display values first (for Auto Router)
+                        if (modelDetails.display_input_price) {
+                            inputPriceStr = modelDetails.display_input_price;
+                        } else if (modelDetails.input_price === null || modelDetails.input_price === undefined) {
+                            inputPriceStr = 'Dynamic*';
+                        } else if (modelDetails.input_price === 0) {
                             inputPriceStr = '$0.00';
                         } else if (modelDetails.input_price < 0.01) {
                             inputPriceStr = `$${modelDetails.input_price.toFixed(4)}`;
@@ -1212,7 +1222,11 @@
                             inputPriceStr = `$${modelDetails.input_price.toFixed(2)}`;
                         }
 
-                        if (modelDetails.output_price === 0) {
+                        if (modelDetails.display_output_price) {
+                            outputPriceStr = modelDetails.display_output_price;
+                        } else if (modelDetails.output_price === null || modelDetails.output_price === undefined) {
+                            outputPriceStr = 'Dynamic*';
+                        } else if (modelDetails.output_price === 0) {
                             outputPriceStr = '$0.00';
                         } else if (modelDetails.output_price < 0.01) {
                             outputPriceStr = `$${modelDetails.output_price.toFixed(4)}`;
