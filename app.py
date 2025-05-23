@@ -1129,34 +1129,35 @@ def direct_update_paypal_email():
 # Direct PayPal email update route
 @app.route("/update_paypal", methods=["POST"])
 def update_paypal_email_direct():
-    # Update PayPal email address for the current user
+    # Update PayPal email address for the current user - returns JSON for JavaScript
     if not current_user.is_authenticated:
-        flash('Please login to update your PayPal email', 'warning')
-        return redirect(url_for('login'))
+        return jsonify({'success': False, 'message': 'Please login to update your PayPal email'})
     
     try:
         # Get form data
         paypal_email = request.form.get('paypal_email', '').strip()
         
         if not paypal_email:
-            flash('Please provide a PayPal email address', 'error')
-            return redirect(url_for('billing.account_management', _anchor='tellFriend'))
+            return jsonify({'success': False, 'message': 'Please provide a PayPal email address'})
         
         # Log the update attempt
-        logger.info(f"Updating PayPal email for user {current_user.id} from '{current_user.paypal_email or 'None'}' to '{paypal_email}'")
+        old_email = current_user.paypal_email or 'None'
+        logger.info(f"Updating PayPal email for user {current_user.id} from '{old_email}' to '{paypal_email}'")
         
         # Update user record
         current_user.paypal_email = paypal_email
         db.session.commit()
         
-        flash('PayPal email updated successfully!', 'success')
+        return jsonify({
+            'success': True, 
+            'message': f'PayPal email updated successfully to {paypal_email}!',
+            'new_email': paypal_email
+        })
         
     except Exception as e:
         logger.error(f"Error updating PayPal email: {e}", exc_info=True)
         db.session.rollback()
-        flash('An error occurred updating your PayPal email. Please try again.', 'error')
-    
-    return redirect(url_for('billing.account_management', _anchor='tellFriend'))
+        return jsonify({'success': False, 'message': 'An error occurred updating your PayPal email. Please try again.'})
 
 
 @app.route('/')
