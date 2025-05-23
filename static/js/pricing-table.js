@@ -226,7 +226,7 @@ function getCostBadgeClass(costBand) {
     }
 }
 
-function sortPricingTable(columnIndex, order = 'asc') {
+function sortPricingTableBase(columnIndex, order = 'asc') {
     if (!pricingData || pricingData.length === 0) {
         console.warn('No pricing data to sort');
         return;
@@ -307,8 +307,8 @@ function sortPricingTableWithState(columnIndex) {
     // Update sort icons
     updateSortIcons(columnIndex, currentSortOrder);
     
-    // Perform the sort
-    sortPricingTable(columnIndex, currentSortOrder);
+    // Perform the sort - call the base sorting function directly
+    sortPricingTableBase(columnIndex, currentSortOrder);
 }
 
 function updateSortIcons(activeColumn, order) {
