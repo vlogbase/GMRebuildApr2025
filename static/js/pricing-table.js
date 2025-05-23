@@ -212,15 +212,15 @@ function renderPricingTable() {
 function getCostBadgeClass(costBand) {
     switch (costBand) {
         case 'Free':
-            return 'text-success'; // Teal/green for free
+            return 'text-success-dull'; // Dull green for free
         case 'Very Low Cost':
-            return 'text-info'; // Light blue
+            return 'text-info-teal'; // Teal for $
         case 'Low Cost':
-            return 'text-warning'; // Amber for low cost
+            return 'text-info-teal'; // Teal for $$
         case 'Medium Cost':
-            return 'text-warning'; // Amber for medium cost
+            return 'text-warning'; // Amber for $$$
         case 'High Cost':
-            return 'text-danger'; // Red for high cost
+            return 'text-danger'; // Red for $$$$
         default:
             return 'text-secondary';
     }

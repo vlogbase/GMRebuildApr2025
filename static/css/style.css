@@ -69,6 +69,17 @@
 }
 /* === End Cost Band Indicators === */
 
+/* Custom pricing table text colors to match pricing buttons */
+.text-success-dull {
+    color: #28a745 !important; /* Dull green for free models */
+}
+
+.text-info-teal {
+    color: #17a2b8 !important; /* Teal for $ and $$ models */
+}
+
+/* === End Pricing Table Colors === */
+
 /* --- Previous CSS rules below this line --- */
 /* ... (rest of your style.css content) ... */
 

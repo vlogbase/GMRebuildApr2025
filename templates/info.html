@@ -1135,7 +1135,7 @@
             }
             
             // Fetch data from API (Using the endpoint from app.py)
-            fetch('/api/model-pricing')
+            fetch('/api/get_model_prices')
                 .then(response => {
                     if (!response.ok) {
                         // Try to get error message from response body
@@ -1154,62 +1154,49 @@
                         throw new Error('Invalid pricing data format from server.');
                     }
                     
-                    // Check if data is in the expected format with "data" property
-                    if (data.data && Array.isArray(data.data)) {
-                        // Store the prices array in pricingData
-                        pricingData = data.data; // Use the data array from the response
-                    } else if (Array.isArray(data)) {
-                        // Direct array format
-                        pricingData = data;
-                    } else if (data.data === null) {
-                        // Handle the case where data.data is null by using an empty array
-                        console.warn('API returned null data, using empty array instead');
-                        pricingData = [];
-                    } else {
-                        console.error('Unexpected data format:', data);
-                        throw new Error('Unexpected data format from server.');
+                    // Check the structure of the received data (same as account page)
+                    if (typeof data.prices !== 'object' || data.prices === null) {
+                        console.error('Invalid pricing data format received:', data);
+                        throw new Error('Invalid pricing data format from server.');
                     }
-                    
-                    // The data from /api/model-pricing is already in the correct format
-                    // Just add cost band based on pricing
-                    pricingData = pricingData.map(model => {
-                        // Extract numeric price values for cost band calculation
-                        let inputPrice = model.input_price;
-                        let outputPrice = model.output_price;
-                        
-                        // Remove $ and convert to number if it's a string
-                        if (typeof inputPrice === 'string') {
-                            inputPrice = parseFloat(inputPrice.replace('$', '')) || 0;
-                        }
-                        if (typeof outputPrice === 'string') {
-                            outputPrice = parseFloat(outputPrice.replace('$', '')) || 0;
-                        }
-                        
-                        // Calculate cost band
-                        let costBand = '';
-                        const maxPrice = Math.max(inputPrice, outputPrice);
-                        
-                        if (maxPrice === 0) {
-                            costBand = 'Free';
-                        } else if (maxPrice < 1.0) {
-                            costBand = 'Low';
-                        } else if (maxPrice < 10.0) {
-                            costBand = 'Medium';
-                        } else if (maxPrice < 50.0) {
-                            costBand = 'High';
+
+                    // Store the prices object in pricingData
+                    let rawPricingData = data.prices;
+
+                    // Convert the pricingData object into an array of model objects for table rendering
+                    pricingData = Object.entries(rawPricingData).map(([modelId, modelDetails]) => {
+                        // Format the model name
+                        const modelName = modelDetails.model_name ||
+                                          modelId.split('/').pop().replace(/-/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+
+                        // Format prices with appropriate precision
+                        let inputPriceStr, outputPriceStr;
+
+                        if (modelDetails.input_price === 0) {
+                            inputPriceStr = '$0.00';
+                        } else if (modelDetails.input_price < 0.01) {
+                            inputPriceStr = `$${modelDetails.input_price.toFixed(4)}`;
                         } else {
-                            costBand = 'Premium';
+                            inputPriceStr = `$${modelDetails.input_price.toFixed(2)}`;
                         }
-                        
+
+                        if (modelDetails.output_price === 0) {
+                            outputPriceStr = '$0.00';
+                        } else if (modelDetails.output_price < 0.01) {
+                            outputPriceStr = `$${modelDetails.output_price.toFixed(4)}`;
+                        } else {
+                            outputPriceStr = `$${modelDetails.output_price.toFixed(2)}`;
+                        }
+
                         return {
-                            model_id: model.model_id,
-                            model_name: model.model_name,
-                            input_price: model.input_price,
-                            output_price: model.output_price,
-                            context_length: model.context_length,
-                            multimodal: model.multimodal,
-                            pdfs: model.pdfs,
-                            cost_band: costBand
+                            model_id: modelId,
+                            model_name: modelName,
+                            input_price: inputPriceStr,
+                            output_price: outputPriceStr,
+                            context_length: modelDetails.context_length || 'N/A',
+                            multimodal: modelDetails.multimodal,
+                            pdfs: modelDetails.pdfs,
+                            cost_band: modelDetails.cost_band || calculateCostBand(modelDetails.input_price, modelDetails.output_price)
                         };
                     });
                     
