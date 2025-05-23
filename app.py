@@ -4325,6 +4325,31 @@ def get_model_counts():
         })
 
 
+@app.route('/api/check-model-changes', methods=['POST'])
+def check_model_changes():
+    """Check for changes in OpenRouter models and trigger update if needed"""
+    try:
+        from model_change_monitor import check_and_update_if_changed
+        
+        changed, message = check_and_update_if_changed()
+        
+        return jsonify({
+            "success": True,
+            "changes_detected": changed,
+            "message": message,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+    except Exception as e:
+        logger.exception("Error checking for model changes")
+        return jsonify({
+            "success": False,
+            "changes_detected": False,
+            "message": f"Error: {e}",
+            "timestamp": datetime.utcnow().isoformat()
+        })
+
+
 @app.route('/api/model-visibility-audit', methods=['GET'])
 def model_visibility_audit():
     """Audit model visibility to detect when models are stored but not displayed"""
