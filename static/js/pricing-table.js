@@ -111,8 +111,8 @@ function loadPricingData() {
                     input_price: inputPriceStr,
                     output_price: outputPriceStr,
                     context_length: modelDetails.context_length || 'N/A',
-                    multimodal: modelDetails.is_multimodal ? 'Yes' : 'No',
-                    pdfs: modelDetails.supports_pdf ? 'Yes' : 'No',
+                    multimodal: modelDetails.multimodal,
+                    pdfs: modelDetails.pdfs,
                     cost_band: modelDetails.cost_band || calculateCostBand(modelDetails.input_price, modelDetails.output_price)
                 };
             });
@@ -183,18 +183,25 @@ function renderPricingTable() {
         return;
     }
 
-    // Generate table rows
+    // Generate table rows with proper column structure
     const tableRows = pricingData.map(model => {
         const costBadgeClass = getCostBadgeClass(model.cost_band);
+        const multimodalBadge = model.multimodal === 'Yes' ? 
+            '<span class="badge bg-success">Yes</span>' : 
+            '<span class="badge bg-secondary">No</span>';
+        const pdfBadge = model.pdfs === 'Yes' ? 
+            '<span class="badge bg-success">Yes</span>' : 
+            '<span class="badge bg-secondary">No</span>';
         
         return `
             <tr>
                 <td class="text-light">${model.model_name}</td>
-                <td class="text-light">${model.input_price}</td>
-                <td class="text-light">${model.output_price}</td>
-                <td class="text-light">${model.context_length}</td>
-                <td class="text-light">${model.multimodal}</td>
-                <td><span class="badge ${costBadgeClass}">${model.cost_band}</span></td>
+                <td class="text-light text-end">${model.input_price}</td>
+                <td class="text-light text-end">${model.output_price}</td>
+                <td class="text-light text-end">${model.context_length}</td>
+                <td class="text-center">${multimodalBadge}</td>
+                <td class="text-center">${pdfBadge}</td>
+                <td class="text-center"><span class="badge ${costBadgeClass}">${model.cost_band}</span></td>
             </tr>
         `;
     }).join('');
@@ -219,9 +226,26 @@ function getCostBadgeClass(costBand) {
     }
 }
 
-function sortPricingTable(column, order = 'asc') {
+function sortPricingTable(columnIndex, order = 'asc') {
     if (!pricingData || pricingData.length === 0) {
         console.warn('No pricing data to sort');
+        return;
+    }
+
+    // Map column indices to data field names
+    const columnMapping = {
+        0: 'model_name',
+        1: 'input_price', 
+        2: 'output_price',
+        3: 'context_length',
+        4: 'multimodal',
+        5: 'pdfs',
+        6: 'cost_band'
+    };
+    
+    const column = columnMapping[columnIndex];
+    if (!column) {
+        console.warn('Invalid column index:', columnIndex);
         return;
     }
 
@@ -238,6 +262,17 @@ function sortPricingTable(column, order = 'asc') {
         else if (column === 'context_length') {
             aVal = aVal === 'N/A' ? 0 : parseInt(aVal) || 0;
             bVal = bVal === 'N/A' ? 0 : parseInt(bVal) || 0;
+        }
+        // Handle Yes/No columns
+        else if (column === 'multimodal' || column === 'pdfs') {
+            aVal = aVal === 'Yes' ? 1 : 0;
+            bVal = bVal === 'Yes' ? 1 : 0;
+        }
+        // Handle cost band with custom ordering
+        else if (column === 'cost_band') {
+            const costOrder = { 'Free': 0, 'Very Low Cost': 1, 'Low Cost': 2, 'Medium Cost': 3, 'High Cost': 4 };
+            aVal = costOrder[aVal] !== undefined ? costOrder[aVal] : 999;
+            bVal = costOrder[bVal] !== undefined ? costOrder[bVal] : 999;
         }
         // Handle string columns
         else {
