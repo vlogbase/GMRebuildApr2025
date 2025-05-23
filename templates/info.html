@@ -1489,31 +1489,74 @@
         }
         
         // Helper function to get appropriate CSS class for cost band
-        function getCostBandClass(band) {
-            if (!band) return 'cost-band-2';
-            
-            const lowerBand = band.toLowerCase();
-            if (lowerBand.includes('free')) return '';
-            if (lowerBand.includes('low')) return 'cost-band-1';
-            if (lowerBand.includes('medium')) return 'cost-band-2';
-            if (lowerBand.includes('high')) return 'cost-band-3-warn';
-            if (lowerBand.includes('premium') || lowerBand.includes('very-high')) return 'cost-band-4-danger';
-            
-            return 'cost-band-2';
+        function getCostBandClass(costBandInput) {
+            let symbol = costBandInput; // Assume it might already be a symbol or 'Free'
+
+            // First, normalize verbose inputs to their symbol equivalent if they are not already symbols
+            switch (costBandInput) {
+                case 'Very Low Cost':
+                    symbol = '$';
+                    break;
+                case 'Low Cost':
+                    symbol = '$$';
+                    break;
+                case 'Medium Cost':
+                    symbol = '$$$';
+                    break;
+                case 'High Cost':
+                    symbol = '$$$$';
+                    break;
+                // No default here, 'Free' and symbols pass through
+            }
+
+            // Now, map the (potentially normalized) symbol to the CSS class
+            switch (symbol) {
+                case 'Free':
+                    return 'cost-band-free';
+                case '$':
+                    return 'cost-band-1';
+                case '$$':
+                    return 'cost-band-2';
+                case '$$$':
+                    return 'cost-band-3-warn';
+                case '$$$$':
+                    return 'cost-band-4-danger';
+                default:
+                    console.warn(`Unknown cost band symbol for class mapping: ${symbol} (original input: ${costBandInput})`);
+                    return 'text-secondary';
+            }
         }
         
         // Helper function to get HTML for cost band display
-        function getCostBandDisplayHTML(band) {
-            if (!band) return '';
+        function getCostBandDisplayHTML(costBandInput) {
+            let symbol = costBandInput; // Assume it might already be a symbol or 'Free'
+
+            // First, normalize verbose inputs to their symbol equivalent
+            switch (costBandInput) {
+                case 'Very Low Cost':
+                    symbol = '$';
+                    break;
+                case 'Low Cost':
+                    symbol = '$$';
+                    break;
+                case 'Medium Cost':
+                    symbol = '$$$';
+                    break;
+                case 'High Cost':
+                    symbol = '$$$$';
+                    break;
+                // No default here, 'Free' and symbols pass through
+            }
+
+            // Get the appropriate CSS class
+            const cssClass = getCostBandClass(costBandInput);
             
-            const lowerBand = band.toLowerCase();
-            if (lowerBand.includes('free')) return '';
-            if (lowerBand.includes('low')) return '<span class="cost-band-indicator cost-band-1">$</span>';
-            if (lowerBand.includes('medium')) return '<span class="cost-band-indicator cost-band-2">$$</span>';
-            if (lowerBand.includes('high')) return '<span class="cost-band-indicator cost-band-3-warn">$$$</span>';
-            if (lowerBand.includes('premium') || lowerBand.includes('very-high')) return '<span class="cost-band-indicator cost-band-4-danger">$$$$</span>';
-            
-            return '<span class="cost-band-indicator cost-band-2">$$</span>';
+            // Return the HTML with the correct symbol and class
+            if (symbol === 'Free') {
+                return '<span class="cost-band-indicator cost-band-free">Free</span>';
+            } else {
+                return `<span class="cost-band-indicator ${cssClass}">${symbol}</span>`;
+            }
         }
         
         // Helper function to format context length in a human-readable way
