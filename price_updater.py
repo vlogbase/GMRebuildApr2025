@@ -268,12 +268,25 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
             architecture = model.get('architecture', {})
             is_multimodal = False
             supports_pdf = False
+            supports_reasoning = False
             
             if architecture:
                 input_modalities = architecture.get('input_modalities', [])
-                is_multimodal = len(input_modalities) > 1 or 'image' in input_modalities
-                # Check for PDF support (models that can handle files/PDFs directly)
+                output_modalities = architecture.get('output_modalities', [])
+                modality = architecture.get('modality', '')
+                
+                # Multimodal: supports images or multiple input types
+                is_multimodal = 'image' in input_modalities or len(input_modalities) > 1
+                
+                # PDF support: explicitly supports file input
                 supports_pdf = 'file' in input_modalities
+                
+                # Reasoning: check if the model description or capabilities indicate reasoning
+                # This is harder to detect automatically, so we'll be conservative
+                model_description = model.get('description', '').lower()
+                model_name_lower = model.get('name', '').lower()
+                supports_reasoning = any(keyword in model_description or keyword in model_name_lower 
+                                       for keyword in ['reasoning', 'advanced reasoning', 'complex reasoning', 'o1', 'o3'])
             
             # Apply our markup and store in the cache
             # Calculate per million tokens pricing for easier display/calculation
@@ -317,13 +330,12 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
             model_description = model.get('description', '').lower()
             model_id_lower = model_id.lower()
             
-            # Add the classification properties needed by app.py
+            # Add the classification properties needed by app.py using actual OpenRouter data
             model['is_free'] = ':free' in model_id_lower or input_price == 0.0
-            model['is_multimodal'] = is_multimodal or any(keyword in model_id_lower or keyword in model_name or keyword in model_description 
-                                    for keyword in ['vision', 'image', 'multi', 'gpt-4o', 'claude-opus', 'claude-sonnet', 'claude-haiku'])
+            model['is_multimodal'] = is_multimodal  # Use the architecture-based detection
             model['is_perplexity'] = 'perplexity/' in model_id_lower
-            model['is_reasoning'] = any(keyword in model_id_lower or keyword in model_name or keyword in model_description 
-                                    for keyword in ['reasoning', 'opus', 'o1', 'o3', 'claude-4', 'claude-opus-4', 'claude-sonnet-4'])
+            model['supports_pdf'] = supports_pdf  # Use the architecture-based detection
+            model['is_reasoning'] = supports_reasoning  # Use the description-based detection for now
             
             # Add to processed models for OPENROUTER_MODELS_INFO
             processed_models.append(model)
