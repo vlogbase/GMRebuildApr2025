@@ -206,7 +206,7 @@ function renderPricingTable() {
                 <td class="text-light text-end">${model.context_length}</td>
                 <td class="text-center">${multimodalBadge}</td>
                 <td class="text-center">${pdfBadge}</td>
-                <td class="text-center"><span class="${costBadgeClass} fw-bold">${model.cost_band}</span></td>
+                <td class="text-center"><span class="cost-band-indicator ${costBadgeClass} fw-bold">${model.cost_band}</span></td>
             </tr>
         `;
     }).join('');

@@ -70,12 +70,20 @@
 /* === End Cost Band Indicators === */
 
 /* Custom pricing table text colors to match pricing buttons */
-.text-success-dull {
-    color: #28a745 !important; /* Dull green for free models */
+.text-success {
+    color: #28a745 !important; /* Green for free models */
 }
 
-.text-info-teal {
+.text-info {
     color: #17a2b8 !important; /* Teal for $ and $$ models */
+}
+
+.text-warning {
+    color: #ffc107 !important; /* Amber for $$$ models */
+}
+
+.text-danger {
+    color: #dc3545 !important; /* Red for $$$$ models */
 }
 
 /* === End Pricing Table Colors === */
@@ -825,6 +833,23 @@ body.account-page .tab-pane {
     display: inline-block;
     min-width: 20px;
     text-align: center;
+}
+
+/* Cost band color overrides for pricing table */
+#pricingTable .cost-band-indicator.text-success {
+    color: #28a745 !important; /* Green for free models */
+}
+
+#pricingTable .cost-band-indicator.text-info {
+    color: #17a2b8 !important; /* Teal for $ and $$ models */
+}
+
+#pricingTable .cost-band-indicator.text-warning {
+    color: #ffc107 !important; /* Amber for $$$ models */
+}
+
+#pricingTable .cost-band-indicator.text-danger {
+    color: #dc3545 !important; /* Red for $$$$ models */
 }
 
 /* Ensure numeric columns are right-aligned */
