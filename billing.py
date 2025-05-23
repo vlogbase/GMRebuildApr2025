@@ -103,19 +103,19 @@ def account_management():
         sub_referrals = []
         
         # All users are considered active affiliates in the simplified system
-        # Get total earned commissions
+        # Get total earned commissions (affiliate_id now refers to user_id in our simplified system)
         earned_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
             Commission.affiliate_id == current_user.id,
             Commission.status.in_([CommissionStatus.APPROVED.value, CommissionStatus.PAID.value])
         ).scalar() or 0
             
-        # Get pending commissions
+        # Get pending commissions (affiliate_id now refers to user_id in our simplified system)
         pending_commissions = db.session.query(func.sum(Commission.commission_amount)).filter(
             Commission.affiliate_id == current_user.id,
             Commission.status == CommissionStatus.HELD.value
         ).scalar() or 0
         
-        # Get referral count
+        # Get referral count (affiliate_id now refers to user_id in our simplified system)
         referral_count = CustomerReferral.query.filter_by(affiliate_id=current_user.id).count()
         
         # Calculate conversion rate - set as N/A since click tracking isn't implemented
@@ -126,7 +126,7 @@ def account_management():
             'conversion_rate': 'N/A'  # Use N/A until click tracking is implemented
         }
         
-        # Get recent commissions for dashboard view
+        # Get recent commissions for dashboard view (affiliate_id now refers to user_id in our simplified system)
         commissions = Commission.query.filter_by(affiliate_id=current_user.id) \
             .order_by(desc(Commission.created_at)).limit(10).all()
         
