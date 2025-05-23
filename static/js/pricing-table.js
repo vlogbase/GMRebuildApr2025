@@ -201,7 +201,7 @@ function renderPricingTable() {
                 <td class="text-light text-end">${model.context_length}</td>
                 <td class="text-center">${multimodalBadge}</td>
                 <td class="text-center">${pdfBadge}</td>
-                <td class="text-center"><span class="badge ${costBadgeClass}">${model.cost_band}</span></td>
+                <td class="text-center"><span class="${costBadgeClass} fw-bold">${model.cost_band}</span></td>
             </tr>
         `;
     }).join('');
@@ -212,17 +212,17 @@ function renderPricingTable() {
 function getCostBadgeClass(costBand) {
     switch (costBand) {
         case 'Free':
-            return 'bg-success';
+            return 'text-success'; // Teal/green for free
         case 'Very Low Cost':
-            return 'bg-info';
+            return 'text-info'; // Light blue
         case 'Low Cost':
-            return 'bg-primary';
+            return 'text-warning'; // Amber for low cost
         case 'Medium Cost':
-            return 'bg-warning text-dark';
+            return 'text-warning'; // Amber for medium cost
         case 'High Cost':
-            return 'bg-danger';
+            return 'text-danger'; // Red for high cost
         default:
-            return 'bg-secondary';
+            return 'text-secondary';
     }
 }
 
@@ -290,7 +290,44 @@ function sortPricingTable(columnIndex, order = 'asc') {
     renderPricingTable();
 }
 
+// Sorting state management
+let currentSortColumn = -1;
+let currentSortOrder = 'asc';
+
+// Enhanced sorting function with state management
+function sortPricingTableWithState(columnIndex) {
+    // Toggle sort order if clicking the same column
+    if (currentSortColumn === columnIndex) {
+        currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortColumn = columnIndex;
+        currentSortOrder = 'asc';
+    }
+    
+    // Update sort icons
+    updateSortIcons(columnIndex, currentSortOrder);
+    
+    // Perform the sort
+    sortPricingTable(columnIndex, currentSortOrder);
+}
+
+function updateSortIcons(activeColumn, order) {
+    // Reset all icons
+    for (let i = 0; i <= 6; i++) {
+        const icon = document.getElementById(`sort-icon-${i}`);
+        if (icon) {
+            icon.className = 'fas fa-sort';
+        }
+    }
+    
+    // Set active column icon
+    const activeIcon = document.getElementById(`sort-icon-${activeColumn}`);
+    if (activeIcon) {
+        activeIcon.className = order === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+    }
+}
+
 // Export functions for global use
 window.loadPricingData = loadPricingData;
 window.renderPricingTable = renderPricingTable;
-window.sortPricingTable = sortPricingTable;
+window.sortPricingTable = sortPricingTableWithState;
