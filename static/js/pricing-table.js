@@ -215,19 +215,44 @@ function renderPricingTable() {
     pricingTableBody.innerHTML = tableRows;
 }
 
-function getCostBandClass(costBand) {
-    switch (costBand) {
-        case 'Free':
-            return 'cost-band-free'; // Cyan for free
+function getCostBandClass(costBandInput) {
+    let symbol = costBandInput; // Assume it might already be a symbol or 'Free'
+
+    // First, normalize verbose inputs to their symbol equivalent if they are not already symbols
+    // This ensures that if costBandInput is "Low Cost", symbol becomes "$$"
+    // If costBandInput is "$$", symbol remains "$$"
+    switch (costBandInput) {
         case 'Very Low Cost':
-            return 'cost-band-1'; // Cyan for $
+            symbol = '$';
+            break;
         case 'Low Cost':
-            return 'cost-band-2'; // Cyan for $$
+            symbol = '$$';
+            break;
         case 'Medium Cost':
-            return 'cost-band-3-warn'; // Orange for $$$
+            symbol = '$$$';
+            break;
         case 'High Cost':
-            return 'cost-band-4-danger'; // Red for $$$$
+            symbol = '$$$$';
+            break;
+        // No default here, 'Free' and symbols pass through
+    }
+
+    // Now, map the (potentially normalized) symbol to the CSS class
+    switch (symbol) {
+        case 'Free':
+            return 'cost-band-free';
+        case '$':
+            return 'cost-band-1';
+        case '$$':
+            return 'cost-band-2';
+        case '$$$':
+            return 'cost-band-3-warn';
+        case '$$$$':
+            return 'cost-band-4-danger';
         default:
+            // If after normalization, it's still not a recognized symbol or 'Free',
+            // then fallback. This handles unexpected original inputs too.
+            console.warn(`Unknown cost band symbol for class mapping: ${symbol} (original input: ${costBandInput})`);
             return 'text-secondary';
     }
 }
