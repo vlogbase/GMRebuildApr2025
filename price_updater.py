@@ -281,12 +281,10 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                 # PDF support: explicitly supports file input
                 supports_pdf = 'file' in input_modalities
                 
-                # Reasoning: check if the model description or capabilities indicate reasoning
-                # This is harder to detect automatically, so we'll be conservative
-                model_description = model.get('description', '').lower()
-                model_name_lower = model.get('name', '').lower()
-                supports_reasoning = any(keyword in model_description or keyword in model_name_lower 
-                                       for keyword in ['reasoning', 'advanced reasoning', 'complex reasoning', 'o1', 'o3'])
+                # Reasoning: check if the model supports reasoning parameters
+                # This is the most accurate way to detect reasoning models
+                supported_parameters = model.get('supported_parameters', [])
+                supports_reasoning = 'reasoning' in supported_parameters or 'include_reasoning' in supported_parameters
             
             # Apply our markup and store in the cache
             # Calculate per million tokens pricing for easier display/calculation
