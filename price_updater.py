@@ -320,10 +320,10 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
             # Add the classification properties needed by app.py
             model['is_free'] = ':free' in model_id_lower or input_price == 0.0
             model['is_multimodal'] = is_multimodal or any(keyword in model_id_lower or keyword in model_name or keyword in model_description 
-                                    for keyword in ['vision', 'image', 'multi', 'gpt-4o'])
+                                    for keyword in ['vision', 'image', 'multi', 'gpt-4o', 'claude-opus', 'claude-sonnet', 'claude-haiku'])
             model['is_perplexity'] = 'perplexity/' in model_id_lower
             model['is_reasoning'] = any(keyword in model_id_lower or keyword in model_name or keyword in model_description 
-                                    for keyword in ['reasoning', 'opus', 'o1', 'o3'])
+                                    for keyword in ['reasoning', 'opus', 'o1', 'o3', 'claude-4', 'claude-opus-4', 'claude-sonnet-4'])
             
             # Add to processed models for OPENROUTER_MODELS_INFO
             processed_models.append(model)
