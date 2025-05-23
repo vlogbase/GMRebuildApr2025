@@ -1136,17 +1136,32 @@ def update_paypal_email_direct():
     try:
         # Get form data
         paypal_email = request.form.get('paypal_email', '').strip()
+        logger.info(f"PayPal update request - User: {current_user.id}, Email: '{paypal_email}'")
         
         if not paypal_email:
+            logger.warning(f"Empty PayPal email provided for user {current_user.id}")
             return jsonify({'success': False, 'message': 'Please provide a PayPal email address'})
         
         # Log the update attempt
         old_email = current_user.paypal_email or 'None'
         logger.info(f"Updating PayPal email for user {current_user.id} from '{old_email}' to '{paypal_email}'")
         
+        # Check if user has the paypal_email attribute
+        if not hasattr(current_user, 'paypal_email'):
+            logger.error(f"User model missing paypal_email field for user {current_user.id}")
+            return jsonify({'success': False, 'message': 'Database error: missing field'})
+        
         # Update user record
         current_user.paypal_email = paypal_email
+        logger.info(f"Set paypal_email to '{paypal_email}', now committing to database...")
+        
         db.session.commit()
+        logger.info(f"Database commit successful for user {current_user.id}")
+        
+        # Verify the update
+        db.session.refresh(current_user)
+        final_email = current_user.paypal_email
+        logger.info(f"Final verification - PayPal email is now: '{final_email}'")
         
         return jsonify({
             'success': True, 
@@ -1155,9 +1170,9 @@ def update_paypal_email_direct():
         })
         
     except Exception as e:
-        logger.error(f"Error updating PayPal email: {e}", exc_info=True)
+        logger.error(f"Error updating PayPal email for user {current_user.id}: {e}", exc_info=True)
         db.session.rollback()
-        return jsonify({'success': False, 'message': 'An error occurred updating your PayPal email. Please try again.'})
+        return jsonify({'success': False, 'message': f'Database error: {str(e)}'})
 
 
 @app.route('/')
