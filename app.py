@@ -1134,8 +1134,11 @@ def update_paypal_email_direct():
         return jsonify({'success': False, 'message': 'Please login to update your PayPal email'})
     
     try:
-        # Get form data
-        paypal_email = request.form.get('paypal_email', '').strip()
+        # Get data from JSON body (JavaScript sends JSON, not form data)
+        if request.is_json:
+            paypal_email = request.json.get('paypal_email', '').strip()
+        else:
+            paypal_email = request.form.get('paypal_email', '').strip()
         logger.info(f"PayPal update request - User: {current_user.id}, Email: '{paypal_email}'")
         
         if not paypal_email:
