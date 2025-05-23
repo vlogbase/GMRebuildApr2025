@@ -36,26 +36,26 @@
 
 /* Specific band styles */
 .cost-band-free {
-    color: #28a745; /* Keep free models green, but no background */
+    color: #24b9bd; /* Cyan for free models */
     /* background-color: transparent; */ /* Removed background */
 }
 .cost-band-1 {
-    color: #888; /* Subtle grey for $ */
+    color: #24b9bd; /* Cyan for $ */
     font-weight: normal; /* Less emphasis for low cost */
     /* background-color: transparent; */ /* Removed background */
 }
 .cost-band-2 {
-    color: #666; /* Slightly darker grey for $$ */
+    color: #24b9bd; /* Cyan for $$ */
     font-weight: normal; /* Less emphasis for medium-low cost */
     /* background-color: transparent; */ /* Removed background */
 }
 .cost-band-3-warn {
-    color: orange; /* Orange text for $$$ */
+    color: #ff9800; /* Orange text for $$$ */
     /* background-color: transparent; */ /* Removed background */
     font-weight: bold; /* Keep bold */
 }
 .cost-band-4-danger {
-    color: red; /* Red text for $$$$ */
+    color: #e53935; /* Red text for $$$$ */
     /* background-color: transparent; */ /* Removed background */
     font-weight: bold; /* Keep bold */
 }
