@@ -426,6 +426,21 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                             supports_reasoning = any(keyword in model_id.lower() or keyword in model_name or keyword in model_description 
                                                 for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
                             
+                            # Ensure cost band is properly set - this prevents models from being filtered out
+                            cost_band = model_data['cost_band']
+                            if not cost_band or cost_band.strip() == '':
+                                # Auto-generate cost band based on pricing
+                                input_price = model_data['input_price']
+                                if is_free or input_price == 0:
+                                    cost_band = "Free"
+                                elif input_price < 1.0:
+                                    cost_band = "$"
+                                elif input_price < 5.0:
+                                    cost_band = "$$"
+                                else:
+                                    cost_band = "$$$"
+                                logger.info(f"Auto-generated cost band '{cost_band}' for new model {model_id}")
+                            
                             # Create a new model instance
                             new_model = OpenRouterModel()
                             new_model.model_id = model_id
@@ -438,7 +453,7 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                             new_model.supports_pdf = model_data['supports_pdf']
                             new_model.is_free = is_free
                             new_model.supports_reasoning = supports_reasoning
-                            new_model.cost_band = model_data['cost_band']
+                            new_model.cost_band = cost_band
                             new_model.model_is_active = True
                             new_model.created_at = datetime.utcnow()
                             new_model.updated_at = datetime.utcnow()

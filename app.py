@@ -3716,19 +3716,67 @@ def get_model_prices():
         db_models = OpenRouterModel.query.all()
         
         if db_models:
-            # Convert database models to the expected format
+            # Convert database models to the expected format with robust handling
             prices = {}
+            models_with_missing_data = []
+            
             for db_model in db_models:
-                prices[db_model.model_id] = {
-                    'input_price': db_model.input_price_usd_million,
-                    'output_price': db_model.output_price_usd_million,
-                    'context_length': db_model.context_length,
-                    'is_multimodal': db_model.is_multimodal,
-                    'supports_pdf': db_model.supports_pdf,
-                    'model_name': db_model.name,
-                    'cost_band': db_model.cost_band,
-                    'source': 'database'
-                }
+                try:
+                    # Only include active models
+                    if not db_model.model_is_active:
+                        continue
+                        
+                    model_id = db_model.model_id
+                    
+                    # Auto-generate missing cost band based on pricing
+                    cost_band = db_model.cost_band
+                    if not cost_band or cost_band.strip() == '':
+                        input_price = db_model.input_price_usd_million or 0
+                        if db_model.is_free or input_price == 0:
+                            cost_band = "Free"
+                        elif input_price < 1.0:
+                            cost_band = "$"
+                        elif input_price < 5.0:
+                            cost_band = "$$"
+                        else:
+                            cost_band = "$$$"
+                        
+                        # Log the auto-generation for monitoring
+                        logger.info(f"Auto-generated cost band '{cost_band}' for model {model_id}")
+                        models_with_missing_data.append(model_id)
+                    
+                    prices[model_id] = {
+                        'input_price': db_model.input_price_usd_million or 0,
+                        'output_price': db_model.output_price_usd_million or 0,
+                        'context_length': db_model.context_length or 'N/A',
+                        'is_multimodal': db_model.is_multimodal or False,
+                        'supports_pdf': db_model.supports_pdf or False,
+                        'model_name': db_model.name or model_id,
+                        'cost_band': cost_band,
+                        'is_free': db_model.is_free or False,
+                        'source': 'database'
+                    }
+                    
+                except Exception as e:
+                    # Log but don't exclude models with processing issues
+                    logger.warning(f"Issue processing model {db_model.model_id}: {e}")
+                    
+                    # Include with minimal safe data
+                    prices[db_model.model_id] = {
+                        'input_price': 0,
+                        'output_price': 0,
+                        'context_length': 'N/A',
+                        'is_multimodal': False,
+                        'supports_pdf': False,
+                        'model_name': db_model.model_id,
+                        'cost_band': 'Unknown',
+                        'is_free': True,
+                        'source': 'database_fallback'
+                    }
+            
+            # Log summary of data completeness issues
+            if models_with_missing_data:
+                logger.warning(f"Generated missing cost bands for {len(models_with_missing_data)} models: {models_with_missing_data[:5]}{'...' if len(models_with_missing_data) > 5 else ''}")
             
             # Use the timestamp of the most recently updated model
             latest_model = OpenRouterModel.query.order_by(OpenRouterModel.last_fetched_at.desc()).first()
@@ -4274,6 +4322,74 @@ def get_model_counts():
             "total_models": 0,
             "free_models": 0,
             "paid_models": 0
+        })
+
+
+@app.route('/api/model-visibility-audit', methods=['GET'])
+def model_visibility_audit():
+    """Audit model visibility to detect when models are stored but not displayed"""
+    try:
+        from models import OpenRouterModel
+        
+        # Get all active models from database
+        db_models = OpenRouterModel.query.filter_by(model_is_active=True).all()
+        db_model_ids = {model.model_id for model in db_models}
+        
+        # Get models that appear in pricing API
+        pricing_response = get_model_prices()
+        if isinstance(pricing_response, tuple):
+            pricing_data = pricing_response[0].get_json()
+        else:
+            pricing_data = pricing_response
+            
+        pricing_model_ids = set(pricing_data.get('prices', {}).keys())
+        
+        # Find discrepancies
+        missing_from_pricing = db_model_ids - pricing_model_ids
+        extra_in_pricing = pricing_model_ids - db_model_ids
+        
+        # Get details about missing models
+        missing_models_details = []
+        for model_id in missing_from_pricing:
+            model = OpenRouterModel.query.filter_by(model_id=model_id).first()
+            if model:
+                missing_models_details.append({
+                    'model_id': model_id,
+                    'name': model.name,
+                    'is_free': model.is_free,
+                    'cost_band': model.cost_band,
+                    'has_empty_cost_band': not model.cost_band or model.cost_band.strip() == '',
+                    'input_price': model.input_price_usd_million,
+                    'output_price': model.output_price_usd_million
+                })
+        
+        audit_result = {
+            "success": True,
+            "total_db_models": len(db_model_ids),
+            "total_pricing_models": len(pricing_model_ids),
+            "missing_from_pricing_count": len(missing_from_pricing),
+            "missing_from_pricing": list(missing_from_pricing),
+            "missing_models_details": missing_models_details,
+            "extra_in_pricing_count": len(extra_in_pricing),
+            "extra_in_pricing": list(extra_in_pricing),
+            "visibility_percentage": (len(pricing_model_ids) / len(db_model_ids)) * 100 if db_model_ids else 0
+        }
+        
+        # Log critical visibility issues
+        if missing_from_pricing:
+            logger.warning(f"Model visibility audit found {len(missing_from_pricing)} models missing from pricing display: {list(missing_from_pricing)[:5]}{'...' if len(missing_from_pricing) > 5 else ''}")
+        
+        return jsonify(audit_result)
+        
+    except Exception as e:
+        logger.exception("Error performing model visibility audit")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "total_db_models": 0,
+            "total_pricing_models": 0,
+            "missing_from_pricing_count": 0,
+            "visibility_percentage": 0
         })
 
 
