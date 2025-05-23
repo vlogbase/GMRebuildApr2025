@@ -199,15 +199,24 @@ function renderPricingTable() {
             '<span class="badge bg-success">Yes</span>' : 
             '<span class="badge bg-secondary">No</span>';
         
+        // Use special display properties for Auto Router if available
+        const inputPriceDisplay = model.display_input_price || model.input_price;
+        const outputPriceDisplay = model.display_output_price || model.output_price;
+        const contextDisplay = model.context_length_display || model.context_length;
+        
+        // Add tooltip for Auto Router
+        const costBandTooltip = (model.cost_band === 'Auto') ? 
+            'title="Cost varies based on the model selected by the router."' : '';
+        
         return `
             <tr>
                 <td class="text-light">${model.model_name}</td>
-                <td class="text-light text-end">${model.input_price}</td>
-                <td class="text-light text-end">${model.output_price}</td>
-                <td class="text-light text-end">${model.context_length}</td>
+                <td class="text-light text-end">${inputPriceDisplay}</td>
+                <td class="text-light text-end">${outputPriceDisplay}</td>
+                <td class="text-light text-end">${contextDisplay}</td>
                 <td class="text-center">${multimodalBadge}</td>
                 <td class="text-center">${pdfBadge}</td>
-                <td class="text-center"><span class="cost-band-indicator ${costBadgeClass} fw-bold">${costBandSymbol}</span></td>
+                <td class="text-center"><span class="cost-band-indicator ${costBadgeClass} fw-bold" ${costBandTooltip}>${costBandSymbol}</span></td>
             </tr>
         `;
     }).join('');
@@ -328,7 +337,7 @@ function sortPricingTableBase(columnIndex, order = 'asc') {
         }
         // Handle cost band with custom ordering
         else if (column === 'cost_band') {
-            const costOrder = { 'Free': 0, 'Very Low Cost': 1, 'Low Cost': 2, 'Medium Cost': 3, 'High Cost': 4 };
+            const costOrder = { 'Free': 0, 'Very Low Cost': 1, 'Low Cost': 2, 'Medium Cost': 3, 'High Cost': 4, 'Auto': 5 };
             aVal = costOrder[aVal] !== undefined ? costOrder[aVal] : 999;
             bVal = costOrder[bVal] !== undefined ? costOrder[bVal] : 999;
         }

@@ -62,6 +62,10 @@
 .cost-band-free {
     color: #24b9bd; /* Cyan for free models */
 }
+.cost-band-auto {
+    color: #90a4ae; /* Neutral blue-grey for Auto Router */
+    font-weight: bold;
+}
 .cost-band-1 {
     color: #24b9bd; /* Cyan for $ */
     font-weight: normal;

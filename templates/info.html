@@ -1506,7 +1506,11 @@
                 case 'High Cost':
                     symbol = '$$$$';
                     break;
-                // No default here, 'Free' and symbols pass through
+                case 'Router':
+                case 'Variable':
+                    symbol = 'Auto';
+                    break;
+                // No default here, 'Free', 'Auto' and symbols pass through
             }
 
             // Now, map the (potentially normalized) symbol to the CSS class
@@ -1521,6 +1525,8 @@
                     return 'cost-band-3-warn';
                 case '$$$$':
                     return 'cost-band-4-danger';
+                case 'Auto':
+                    return 'cost-band-auto';
                 default:
                     console.warn(`Unknown cost band symbol for class mapping: ${symbol} (original input: ${costBandInput})`);
                     return 'text-secondary';
@@ -1545,15 +1551,21 @@
                 case 'High Cost':
                     symbol = '$$$$';
                     break;
-                // No default here, 'Free' and symbols pass through
+                case 'Router':
+                case 'Variable':
+                    symbol = 'Auto';
+                    break;
+                // No default here, 'Free', 'Auto' and symbols pass through
             }
 
             // Get the appropriate CSS class
             const cssClass = getCostBandClass(costBandInput);
             
-            // Return the HTML with the correct symbol and class
+            // Return the HTML with the correct symbol and class, including tooltip for Auto
             if (symbol === 'Free') {
                 return '<span class="cost-band-indicator cost-band-free">Free</span>';
+            } else if (symbol === 'Auto') {
+                return `<span class="cost-band-indicator ${cssClass}" title="Cost varies based on the model selected by the router.">Auto</span>`;
             } else {
                 return `<span class="cost-band-indicator ${cssClass}">${symbol}</span>`;
             }
