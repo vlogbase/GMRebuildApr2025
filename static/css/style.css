@@ -34,30 +34,46 @@
     background-color: transparent !important; /* Ensure no background */
 }
 
-/* Specific band styles */
+/* Specific band styles with high specificity for pricing table */
+#pricingTable .cost-band-indicator.cost-band-free {
+    color: #24b9bd !important; /* Cyan for free models */
+}
+#pricingTable .cost-band-indicator.cost-band-1 {
+    color: #24b9bd !important; /* Cyan for $ */
+    font-weight: normal; /* Less emphasis for low cost */
+}
+#pricingTable .cost-band-indicator.cost-band-2 {
+    color: #24b9bd !important; /* Cyan for $$ */
+    font-weight: normal; /* Less emphasis for medium-low cost */
+}
+#pricingTable .cost-band-indicator.cost-band-3-warn {
+    color: #ff9800 !important; /* Orange text for $$$ */
+    font-weight: bold; /* Keep bold */
+}
+#pricingTable .cost-band-indicator.cost-band-4-danger {
+    color: #e53935 !important; /* Red text for $$$$ */
+    font-weight: bold; /* Keep bold */
+}
+
+/* General cost band styles for other parts of the app */
 .cost-band-free {
     color: #24b9bd; /* Cyan for free models */
-    /* background-color: transparent; */ /* Removed background */
 }
 .cost-band-1 {
     color: #24b9bd; /* Cyan for $ */
-    font-weight: normal; /* Less emphasis for low cost */
-    /* background-color: transparent; */ /* Removed background */
+    font-weight: normal;
 }
 .cost-band-2 {
     color: #24b9bd; /* Cyan for $$ */
-    font-weight: normal; /* Less emphasis for medium-low cost */
-    /* background-color: transparent; */ /* Removed background */
+    font-weight: normal;
 }
 .cost-band-3-warn {
     color: #ff9800; /* Orange text for $$$ */
-    /* background-color: transparent; */ /* Removed background */
-    font-weight: bold; /* Keep bold */
+    font-weight: bold;
 }
 .cost-band-4-danger {
     color: #e53935; /* Red text for $$$$ */
-    /* background-color: transparent; */ /* Removed background */
-    font-weight: bold; /* Keep bold */
+    font-weight: bold;
 }
 
 /* Style for the header indicator span (inherits color/weight from above) */
@@ -69,22 +85,7 @@
 }
 /* === End Cost Band Indicators === */
 
-/* Custom pricing table text colors to match pricing buttons */
-.text-success {
-    color: #28a745 !important; /* Green for free models */
-}
-
-.text-info {
-    color: #17a2b8 !important; /* Teal for $ and $$ models */
-}
-
-.text-warning {
-    color: #ffc107 !important; /* Amber for $$$ models */
-}
-
-.text-danger {
-    color: #dc3545 !important; /* Red for $$$$ models */
-}
+/* Removed conflicting pricing table text colors - using specific cost-band classes instead */
 
 /* === End Pricing Table Colors === */
 
