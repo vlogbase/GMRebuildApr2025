@@ -1114,6 +1114,35 @@
             }
         });
         
+        // Function to calculate cost band based on pricing
+        function calculateCostBand(inputPrice, outputPrice) {
+            // Handle string price inputs (with $ symbol)
+            if (typeof inputPrice === 'string') {
+                inputPrice = parseFloat(inputPrice.replace('$', '')) || 0;
+            }
+            if (typeof outputPrice === 'string') {
+                outputPrice = parseFloat(outputPrice.replace('$', '')) || 0;
+            }
+
+            // Determine if this is a free model
+            if (inputPrice === 0 && outputPrice === 0) {
+                return 'Free';
+            }
+
+            // Calculate average price for cost band
+            const avgPrice = (inputPrice + outputPrice) / 2;
+
+            if (avgPrice <= 0.001) {
+                return 'Very Low Cost';
+            } else if (avgPrice <= 0.01) {
+                return 'Low Cost';
+            } else if (avgPrice <= 0.1) {
+                return 'Medium Cost';
+            } else {
+                return 'High Cost';
+            }
+        }
+        
         // Function to load pricing data from API
         function loadPricingData() {
             const pricingTableBody = document.getElementById('pricingTableBody');
