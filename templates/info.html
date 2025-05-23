@@ -836,7 +836,7 @@
                     <div class="feature-icon">
                         <i class="fa-solid fa-robot"></i>
                     </div>
-                    <h3>Multiple AI Models</h3>
+                    <h3 id="model-count-title">Multiple AI Models</h3>
                     <p>Access dozens of models, many of them free. Pay only for what you use with no subscriptions.</p>
                 </div>
                 
@@ -1515,5 +1515,25 @@
                 return numTokens.toString();
             }
         }
+
+        // Function to update model count display
+        function updateModelCountTitle() {
+            fetch('/api/model-counts')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        const title = document.getElementById('model-count-title');
+                        if (title) {
+                            title.textContent = `${data.free_models} Free and ${data.paid_models} Paid AI Models`;
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.log('Could not load model counts, using default text');
+                });
+        }
+
+        // Update model counts when page loads
+        document.addEventListener('DOMContentLoaded', updateModelCountTitle);
     </script>
 {% endblock %}

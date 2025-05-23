@@ -4249,6 +4249,34 @@ def get_preferences():
         abort(500, description=str(e))
 
 
+@app.route('/api/model-counts', methods=['GET'])
+def get_model_counts():
+    """Get current model counts for display on info page"""
+    try:
+        from models import OpenRouterModel
+        
+        # Get current counts from the database
+        total_models = OpenRouterModel.query.filter_by(model_is_active=True).count()
+        free_models = OpenRouterModel.query.filter_by(model_is_active=True, is_free=True).count()
+        paid_models = OpenRouterModel.query.filter_by(model_is_active=True, is_free=False).count()
+        
+        return jsonify({
+            "success": True,
+            "total_models": total_models,
+            "free_models": free_models,
+            "paid_models": paid_models
+        })
+    except Exception as e:
+        logger.exception("Error getting model counts")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "total_models": 0,
+            "free_models": 0,
+            "paid_models": 0
+        })
+
+
 @app.route('/reset_preferences', methods=['POST'])
 def reset_preferences():
     """ Reset user model preferences to defaults """
