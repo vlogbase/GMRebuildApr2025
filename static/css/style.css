@@ -48,11 +48,14 @@
 }
 #pricingTable .cost-band-indicator.cost-band-3-warn {
     color: #ff9800 !important; /* Orange text for $$$ */
-    font-weight: bold; /* Keep bold */
 }
 #pricingTable .cost-band-indicator.cost-band-4-danger {
     color: #e53935 !important; /* Red text for $$$$ */
-    font-weight: bold; /* Keep bold */
+    font-weight: bold !important;
+}
+#pricingTable .cost-band-indicator.cost-band-auto {
+    color: #90a4ae !important; /* Neutral blue-grey for Auto Router */
+    font-weight: bold !important;
 }
 
 /* General cost band styles for other parts of the app */

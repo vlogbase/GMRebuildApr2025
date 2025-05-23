@@ -234,7 +234,11 @@ function getCostBandClass(costBandInput) {
         case 'High Cost':
             symbol = '$$$$';
             break;
-        // No default here, 'Free' and symbols pass through
+        case 'Router':
+        case 'Variable':
+            symbol = 'Auto';
+            break;
+        // No default here, 'Free', 'Auto' and symbols pass through
     }
 
     // Now, map the (potentially normalized) symbol to the CSS class
@@ -249,6 +253,8 @@ function getCostBandClass(costBandInput) {
             return 'cost-band-3-warn';
         case '$$$$':
             return 'cost-band-4-danger';
+        case 'Auto':
+            return 'cost-band-auto';
         default:
             // If after normalization, it's still not a recognized symbol or 'Free',
             // then fallback. This handles unexpected original inputs too.
@@ -269,6 +275,10 @@ function getCostBandSymbol(costBand) {
             return '$$$';
         case 'High Cost':
             return '$$$$';
+        case 'Auto':
+        case 'Router':
+        case 'Variable':
+            return 'Auto';
         default:
             return costBand;
     }

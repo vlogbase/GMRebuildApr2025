@@ -3766,8 +3766,10 @@ def get_model_prices():
                     if model_id == "openrouter/auto":
                         input_price_raw = 0  # Use 0 for sorting/calculations
                         output_price_raw = 0
+                        cost_band = "Auto"  # Special cost band for Auto Router
                     
-                    prices[model_id] = {
+                    # Create base pricing data
+                    pricing_data = {
                         'input_price': input_price_raw,
                         'output_price': output_price_raw,
                         'context_length': str(db_model.context_length) if db_model.context_length else 'N/A',
@@ -3779,6 +3781,18 @@ def get_model_prices():
                         'is_free': db_model.is_free or False,
                         'source': 'database'
                     }
+                    
+                    # Add special display properties for Auto Router
+                    if model_id == "openrouter/auto":
+                        pricing_data.update({
+                            'display_input_price': 'Dynamic*',
+                            'display_output_price': 'Dynamic*',
+                            'context_length_display': 'Variable',
+                            'cost_band_symbol': 'Auto',
+                            'cost_band_class': 'cost-band-auto'
+                        })
+                    
+                    prices[model_id] = pricing_data
                     
                 except Exception as e:
                     # Log but don't exclude models with processing issues
