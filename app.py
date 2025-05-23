@@ -474,6 +474,8 @@ MULTIMODAL_MODELS = {
     "anthropic/claude-3-haiku-20240307",
     "anthropic/claude-3.5-sonnet-20240620",
     "anthropic/claude-3.7-sonnet-20240910",
+    "anthropic/claude-opus-4",
+    "anthropic/claude-sonnet-4",
     "openai/gpt-4-vision-preview",
     "openai/gpt-4o-2024-05-13",
     "mistralai/mistral-large-latest"
@@ -493,6 +495,8 @@ DOCUMENT_MODELS = {
     "anthropic/claude-3-haiku-20240307",
     "anthropic/claude-3.5-sonnet-20240620",
     "anthropic/claude-3.7-sonnet-20240910",
+    "anthropic/claude-opus-4",
+    "anthropic/claude-sonnet-4",
     
     # OpenAI models with document support
     "openai/gpt-4-turbo",
