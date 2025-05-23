@@ -3705,11 +3705,24 @@ def _fetch_openrouter_models(force_refresh=False):
 @app.route('/api/get_model_prices', methods=['GET'])
 def get_model_prices():
     """ 
-    Get the current model prices from the database
-    This is an updated implementation that uses the database as the primary source
+    Get the current model prices from the database with Redis caching for instant loading
     """
     try:
-        # First try to get the model prices from the database
+        # Try to get cached pricing data first for instant loading
+        try:
+            from api_cache import get_redis_client
+            redis_client = get_redis_client('cache')
+            
+            if redis_client:
+                cached_data = redis_client.get('cache:pricing_table_data')
+                if cached_data:
+                    import json
+                    logger.info("Serving pricing data from Redis cache for instant loading")
+                    return jsonify(json.loads(cached_data))
+        except Exception as e:
+            logger.debug(f"Redis cache unavailable, proceeding with database: {e}")
+        
+        # Get fresh data from database
         from models import OpenRouterModel
         
         # Query all models from the database
@@ -3784,12 +3797,31 @@ def get_model_prices():
             
             logger.info(f"Retrieved prices for {len(prices)} models from database")
             
-            # Return the model prices from the database
-            return jsonify({
+            # Create response data
+            response_data = {
                 'success': True,
                 'prices': prices,
                 'last_updated': last_updated
-            })
+            }
+            
+            # Cache the response for instant future loading
+            try:
+                from api_cache import get_redis_client
+                redis_client = get_redis_client('cache')
+                
+                if redis_client:
+                    import json
+                    redis_client.setex(
+                        'cache:pricing_table_data',
+                        300,  # Cache for 5 minutes
+                        json.dumps(response_data)
+                    )
+                    logger.info("Cached pricing data in Redis for instant future loading")
+            except Exception as e:
+                logger.debug(f"Could not cache pricing data: {e}")
+            
+            # Return the model prices from the database
+            return jsonify(response_data)
             
         else:
             # If no models in the database, try to fetch them
