@@ -464,19 +464,27 @@
         }
         
         .pricing-search-input {
-            border: none;
-            outline: none;
-            font-size: 1rem;
-            width: 200px;
-            background-color: white !important; /* Explicitly set background to white */
-            color: #333 !important;           /* Explicitly set text color to dark */
-            padding: 0; /* Remove any padding if it causes issues with the parent's padding */
+            border: 1px solid #ddd !important;
+            outline: none !important;
+            font-size: 1rem !important;
+            width: 200px !important;
+            background-color: #ffffff !important; /* Force white background */
+            color: #333333 !important;           /* Force dark text */
+            padding: 8px 12px !important;        /* Add proper padding */
+            border-radius: 6px !important;       /* Rounded corners */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important; /* Subtle shadow */
+            transition: border-color 0.3s ease !important;
+        }
+        
+        .pricing-search-input:focus {
+            border-color: #2c3e50 !important;
+            box-shadow: 0 2px 8px rgba(44,62,80,0.2) !important;
         }
         
         /* Ensure placeholder text is also legible */
         .pricing-search-input::placeholder {
-            color: #777 !important; /* A medium grey for placeholder */
-            opacity: 1; /* Ensure it's fully opaque */
+            color: #777777 !important; /* Medium grey for placeholder */
+            opacity: 1 !important; /* Ensure it's fully opaque */
         }
         
         .pricing-note {
