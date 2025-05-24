@@ -781,8 +781,8 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // For non-authenticated users, lock premium features regardless
-    if (!isAuthenticated) {
+    // For non-authenticated users or users with no credits, lock premium features
+    if (!isAuthenticated || userCreditBalance <= 0) {
         lockPremiumFeatures();
     }
     
@@ -867,15 +867,22 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 } else if (userCreditBalance <= 0) {
                     // User is logged in but has no credits - show payment requirement
-                    btn.classList.add('disabled', 'disabled-payment');
+                    btn.classList.add('disabled', 'disabled-payment', 'premium-locked');
                     
-                    // Keep the selector functionality separate
+                    // Make the entire button clickable to redirect to billing
+                    btn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Redirect to billing page to buy credits
+                        window.location.href = '/billing?source=premium_model&preset=' + presetId;
+                    });
+                    
+                    // Keep the selector functionality separate - also redirect to billing
                     if (newSelectorContainer) {
-                        // Preserve the selector container click functionality
                         newSelectorContainer.addEventListener('click', (e) => {
                             e.stopPropagation(); // Prevent button click
-                            // Show a message about insufficient credits instead of redirecting
-                            alert('Insufficient credits. Please add credits to use premium models.');
+                            // Redirect to billing page to buy credits
+                            window.location.href = '/billing?source=premium_model&preset=' + presetId;
                         });
                     }
                     
@@ -883,8 +890,8 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (newButtonOverlay) {
                         newButtonOverlay.addEventListener('click', (e) => {
                             e.stopPropagation();
-                            // Show a message about insufficient credits instead of redirecting
-                            alert('Insufficient credits. Please add credits to use premium models.');
+                            // Redirect to billing page to buy credits
+                            window.location.href = '/billing?source=premium_model&preset=' + presetId;
                         });
                     }
                     
