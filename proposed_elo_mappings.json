@@ -1,0 +1,4672 @@
+[
+  {
+    "openrouter_model_id": "ai21/jamba-1.6-large",
+    "openrouter_model_name": "AI21: Jamba 1.6 Large",
+    "proposed_lmsys_model_name": "Jamba-1.5-Large",
+    "proposed_lmsys_elo_score": 1218,
+    "match_confidence_score": 78.57,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 78.57,
+    "name_similarity": 78.57
+  },
+  {
+    "openrouter_model_id": "ai21/jamba-1.6-mini",
+    "openrouter_model_name": "AI21: Jamba Mini 1.6",
+    "proposed_lmsys_model_name": "Jamba-1.5-Mini",
+    "proposed_lmsys_elo_score": 1173,
+    "match_confidence_score": 76.92,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 76.92,
+    "name_similarity": 69.23
+  },
+  {
+    "openrouter_model_id": "allenai/olmo-7b-instruct",
+    "openrouter_model_name": "OLMo 7B Instruct",
+    "proposed_lmsys_model_name": "OLMo-7B-instruct",
+    "proposed_lmsys_elo_score": 1012,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 80.0,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "allenai/olmo-7b-instruct",
+    "openrouter_model_name": "OLMo 7B Instruct",
+    "proposed_lmsys_model_name": "SmolLM2-1.7B-Instruct",
+    "proposed_lmsys_elo_score": 1043,
+    "match_confidence_score": 81.25,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 66.67,
+    "name_similarity": 81.25
+  },
+  {
+    "openrouter_model_id": "amazon/nova-lite-v1",
+    "openrouter_model_name": "Amazon: Nova Lite 1.0",
+    "proposed_lmsys_model_name": "Amazon Nova Lite 1.0",
+    "proposed_lmsys_elo_score": 1213,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 93.75,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "amazon/nova-micro-v1",
+    "openrouter_model_name": "Amazon: Nova Micro 1.0",
+    "proposed_lmsys_model_name": "Amazon Nova Micro 1.0",
+    "proposed_lmsys_elo_score": 1194,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 94.12,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "amazon/nova-micro-v1",
+    "openrouter_model_name": "Amazon: Nova Micro 1.0",
+    "proposed_lmsys_model_name": "Amazon Nova Pro 1.0",
+    "proposed_lmsys_elo_score": 1241,
+    "match_confidence_score": 87.5,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 81.25,
+    "name_similarity": 87.5
+  },
+  {
+    "openrouter_model_id": "amazon/nova-pro-v1",
+    "openrouter_model_name": "Amazon: Nova Pro 1.0",
+    "proposed_lmsys_model_name": "Amazon Nova Pro 1.0",
+    "proposed_lmsys_elo_score": 1241,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 93.33,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "amazon/nova-pro-v1",
+    "openrouter_model_name": "Amazon: Nova Pro 1.0",
+    "proposed_lmsys_model_name": "Amazon Nova Micro 1.0",
+    "proposed_lmsys_elo_score": 1194,
+    "match_confidence_score": 87.5,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 81.25,
+    "name_similarity": 87.5
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3-haiku",
+    "openrouter_model_name": "Anthropic: Claude 3 Haiku",
+    "proposed_lmsys_model_name": "Claude 3 Haiku",
+    "proposed_lmsys_elo_score": 1176,
+    "match_confidence_score": 72.73,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.73,
+    "name_similarity": 72.73
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3-opus",
+    "openrouter_model_name": "Anthropic: Claude 3 Opus",
+    "proposed_lmsys_model_name": "Claude 3 Opus",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 70.97,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.97,
+    "name_similarity": 70.97
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3-sonnet",
+    "openrouter_model_name": "Anthropic: Claude 3 Sonnet",
+    "proposed_lmsys_model_name": "Claude 3 Sonnet",
+    "proposed_lmsys_elo_score": 1198,
+    "match_confidence_score": 74.29,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.29,
+    "name_similarity": 74.29
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3-sonnet",
+    "openrouter_model_name": "Anthropic: Claude 3 Sonnet",
+    "proposed_lmsys_model_name": "Claude 3.7 Sonnet",
+    "proposed_lmsys_elo_score": 1287,
+    "match_confidence_score": 72.22,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.22,
+    "name_similarity": 72.22
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.5-haiku",
+    "openrouter_model_name": "Anthropic: Claude 3.5 Haiku",
+    "proposed_lmsys_model_name": "Claude 3 Haiku",
+    "proposed_lmsys_elo_score": 1176,
+    "match_confidence_score": 70.59,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.59,
+    "name_similarity": 70.59
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.5-haiku-20241022",
+    "openrouter_model_name": "Anthropic: Claude 3.5 Haiku (2024-10-22)",
+    "proposed_lmsys_model_name": "Claude 3.5 Haiku (20241022)",
+    "proposed_lmsys_elo_score": 1234,
+    "match_confidence_score": 82.35,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 82.35,
+    "name_similarity": 82.35
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.5-haiku-20241022:beta",
+    "openrouter_model_name": "Anthropic: Claude 3.5 Haiku (2024-10-22) (self-moderated)",
+    "proposed_lmsys_model_name": "Claude 3.5 Haiku (20241022)",
+    "proposed_lmsys_elo_score": 1234,
+    "match_confidence_score": 76.36,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 76.36,
+    "name_similarity": 65.62
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.5-sonnet",
+    "openrouter_model_name": "Anthropic: Claude 3.5 Sonnet",
+    "proposed_lmsys_model_name": "Claude 3 Sonnet",
+    "proposed_lmsys_elo_score": 1198,
+    "match_confidence_score": 72.22,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.22,
+    "name_similarity": 72.22
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.5-sonnet",
+    "openrouter_model_name": "Anthropic: Claude 3.5 Sonnet",
+    "proposed_lmsys_model_name": "Claude 3.7 Sonnet",
+    "proposed_lmsys_elo_score": 1287,
+    "match_confidence_score": 70.27,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.27,
+    "name_similarity": 70.27
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.5-sonnet-20240620",
+    "openrouter_model_name": "Anthropic: Claude 3.5 Sonnet (2024-06-20)",
+    "proposed_lmsys_model_name": "Claude 3.5 Sonnet (20240620)",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 83.02,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 83.02,
+    "name_similarity": 83.02
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.5-sonnet-20240620:beta",
+    "openrouter_model_name": "Anthropic: Claude 3.5 Sonnet (2024-06-20) (self-moderated)",
+    "proposed_lmsys_model_name": "Claude 3.5 Sonnet (20240620)",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 77.19,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 77.19,
+    "name_similarity": 66.67
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.5-sonnet-20240620:beta",
+    "openrouter_model_name": "Anthropic: Claude 3.5 Sonnet (2024-06-20) (self-moderated)",
+    "proposed_lmsys_model_name": "Claude 3.5 Sonnet (20241022)",
+    "proposed_lmsys_elo_score": 1280,
+    "match_confidence_score": 70.18,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.18,
+    "name_similarity": 60.61
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.7-sonnet",
+    "openrouter_model_name": "Anthropic: Claude 3.7 Sonnet",
+    "proposed_lmsys_model_name": "Claude 3.7 Sonnet",
+    "proposed_lmsys_elo_score": 1287,
+    "match_confidence_score": 75.68,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.68,
+    "name_similarity": 75.68
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.7-sonnet",
+    "openrouter_model_name": "Anthropic: Claude 3.7 Sonnet",
+    "proposed_lmsys_model_name": "Claude 3 Sonnet",
+    "proposed_lmsys_elo_score": 1198,
+    "match_confidence_score": 72.22,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.22,
+    "name_similarity": 72.22
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.7-sonnet:thinking",
+    "openrouter_model_name": "Anthropic: Claude 3.7 Sonnet (thinking)",
+    "proposed_lmsys_model_name": "Claude 3.7 Sonnet (thinking-32k)",
+    "proposed_lmsys_elo_score": 1296,
+    "match_confidence_score": 78.57,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 78.57,
+    "name_similarity": 78.57
+  },
+  {
+    "openrouter_model_id": "cognitivecomputations/dolphin-mixtral-8x22b",
+    "openrouter_model_name": "Dolphin 2.9.2 Mixtral 8x22B 🐬",
+    "proposed_lmsys_model_name": "Dolphin-2.2.1-Mistral-7B",
+    "proposed_lmsys_elo_score": 1059,
+    "match_confidence_score": 76.19,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 47.46,
+    "name_similarity": 76.19
+  },
+  {
+    "openrouter_model_id": "cognitivecomputations/dolphin3.0-mistral-24b:free",
+    "openrouter_model_name": "Dolphin3.0 Mistral 24B (free)",
+    "proposed_lmsys_model_name": "Dolphin-2.2.1-Mistral-7B",
+    "proposed_lmsys_elo_score": 1059,
+    "match_confidence_score": 71.43,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 47.62,
+    "name_similarity": 71.43
+  },
+  {
+    "openrouter_model_id": "cognitivecomputations/dolphin3.0-r1-mistral-24b:free",
+    "openrouter_model_name": "Dolphin3.0 R1 Mistral 24B (free)",
+    "proposed_lmsys_model_name": "Dolphin-2.2.1-Mistral-7B",
+    "proposed_lmsys_elo_score": 1059,
+    "match_confidence_score": 72.73,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 49.23,
+    "name_similarity": 72.73
+  },
+  {
+    "openrouter_model_id": "cohere/command-r-03-2024",
+    "openrouter_model_name": "Cohere: Command R (03-2024)",
+    "proposed_lmsys_model_name": "Command R (08-2024)",
+    "proposed_lmsys_elo_score": 1176,
+    "match_confidence_score": 76.47,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 76.47,
+    "name_similarity": 76.47
+  },
+  {
+    "openrouter_model_id": "cohere/command-r-03-2024",
+    "openrouter_model_name": "Cohere: Command R (03-2024)",
+    "proposed_lmsys_model_name": "Command R (04-2024)",
+    "proposed_lmsys_elo_score": 1145,
+    "match_confidence_score": 76.47,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 76.47,
+    "name_similarity": 76.47
+  },
+  {
+    "openrouter_model_id": "cohere/command-r-03-2024",
+    "openrouter_model_name": "Cohere: Command R (03-2024)",
+    "proposed_lmsys_model_name": "Command R+ (08-2024)",
+    "proposed_lmsys_elo_score": 1212,
+    "match_confidence_score": 74.29,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.29,
+    "name_similarity": 74.29
+  },
+  {
+    "openrouter_model_id": "cohere/command-r-08-2024",
+    "openrouter_model_name": "Cohere: Command R (08-2024)",
+    "proposed_lmsys_model_name": "Command R (08-2024)",
+    "proposed_lmsys_elo_score": 1176,
+    "match_confidence_score": 82.35,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 82.35,
+    "name_similarity": 82.35
+  },
+  {
+    "openrouter_model_id": "cohere/command-r-08-2024",
+    "openrouter_model_name": "Cohere: Command R (08-2024)",
+    "proposed_lmsys_model_name": "Command R+ (08-2024)",
+    "proposed_lmsys_elo_score": 1212,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 80.0,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "cohere/command-r-plus-04-2024",
+    "openrouter_model_name": "Cohere: Command R+ (04-2024)",
+    "proposed_lmsys_model_name": "Command R+ (04-2024)",
+    "proposed_lmsys_elo_score": 1186,
+    "match_confidence_score": 83.33,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.79,
+    "name_similarity": 83.33
+  },
+  {
+    "openrouter_model_id": "cohere/command-r-plus-04-2024",
+    "openrouter_model_name": "Cohere: Command R+ (04-2024)",
+    "proposed_lmsys_model_name": "Command R (04-2024)",
+    "proposed_lmsys_elo_score": 1145,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.68,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "cohere/command-r-plus-08-2024",
+    "openrouter_model_name": "Cohere: Command R+ (08-2024)",
+    "proposed_lmsys_model_name": "Command R+ (08-2024)",
+    "proposed_lmsys_elo_score": 1212,
+    "match_confidence_score": 83.33,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.79,
+    "name_similarity": 83.33
+  },
+  {
+    "openrouter_model_id": "cohere/command-r-plus-08-2024",
+    "openrouter_model_name": "Cohere: Command R+ (08-2024)",
+    "proposed_lmsys_model_name": "Command R (08-2024)",
+    "proposed_lmsys_elo_score": 1176,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.68,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-chat",
+    "openrouter_model_name": "DeepSeek: DeepSeek V3",
+    "proposed_lmsys_model_name": "DeepSeek-V3",
+    "proposed_lmsys_elo_score": 1315,
+    "match_confidence_score": 71.43,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 53.33,
+    "name_similarity": 71.43
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-chat-v3-0324",
+    "openrouter_model_name": "DeepSeek: DeepSeek V3 0324",
+    "proposed_lmsys_model_name": "DeepSeek-V3-0324",
+    "proposed_lmsys_elo_score": 1368,
+    "match_confidence_score": 77.78,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.0,
+    "name_similarity": 77.78
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-chat-v3-0324:free",
+    "openrouter_model_name": "DeepSeek: DeepSeek V3 0324 (free)",
+    "proposed_lmsys_model_name": "DeepSeek-V3-0324",
+    "proposed_lmsys_elo_score": 1368,
+    "match_confidence_score": 70.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 63.64,
+    "name_similarity": 70.0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-coder",
+    "openrouter_model_name": "DeepSeek-Coder-V2",
+    "proposed_lmsys_model_name": "DeepSeek-Coder-V2-Instruct",
+    "proposed_lmsys_elo_score": 1175,
+    "match_confidence_score": 78.95,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 59.09,
+    "name_similarity": 78.95
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-coder",
+    "openrouter_model_name": "DeepSeek-Coder-V2",
+    "proposed_lmsys_model_name": "Deepseek-v2.5",
+    "proposed_lmsys_elo_score": 1255,
+    "match_confidence_score": 76.92,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 50.0,
+    "name_similarity": 76.92
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-coder",
+    "openrouter_model_name": "DeepSeek-Coder-V2",
+    "proposed_lmsys_model_name": "DeepSeek-R1",
+    "proposed_lmsys_elo_score": 1354,
+    "match_confidence_score": 72.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 58.06,
+    "name_similarity": 72.0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1",
+    "openrouter_model_name": "DeepSeek: R1",
+    "proposed_lmsys_model_name": "DeepSeek-R1",
+    "proposed_lmsys_elo_score": 1354,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 71.43,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1",
+    "openrouter_model_name": "DeepSeek: R1",
+    "proposed_lmsys_model_name": "DeepSeek-V3",
+    "proposed_lmsys_elo_score": 1315,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 57.14,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1:free",
+    "openrouter_model_name": "DeepSeek: R1 (free)",
+    "proposed_lmsys_model_name": "DeepSeek-R1",
+    "proposed_lmsys_elo_score": 1354,
+    "match_confidence_score": 83.33,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 62.5,
+    "name_similarity": 83.33
+  },
+  {
+    "openrouter_model_id": "eva-unit-01/eva-qwen-2.5-32b",
+    "openrouter_model_name": "EVA Qwen2.5 32B",
+    "proposed_lmsys_model_name": "Qwen3-32B",
+    "proposed_lmsys_elo_score": 1324,
+    "match_confidence_score": 70.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 48.28,
+    "name_similarity": 70.0
+  },
+  {
+    "openrouter_model_id": "google/gemini-2.0-flash-001",
+    "openrouter_model_name": "Google: Gemini 2.0 Flash",
+    "proposed_lmsys_model_name": "Gemini-2.0-Flash-001",
+    "proposed_lmsys_elo_score": 1351,
+    "match_confidence_score": 84.21,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 84.21,
+    "name_similarity": 74.29
+  },
+  {
+    "openrouter_model_id": "google/gemini-2.0-flash-lite-001",
+    "openrouter_model_name": "Google: Gemini 2.0 Flash Lite",
+    "proposed_lmsys_model_name": "Gemini-2.0-Flash-Lite",
+    "proposed_lmsys_elo_score": 1309,
+    "match_confidence_score": 85.0,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 79.07,
+    "name_similarity": 85.0
+  },
+  {
+    "openrouter_model_id": "google/gemini-2.5-flash-preview",
+    "openrouter_model_name": "Google: Gemini 2.5 Flash Preview 04-17",
+    "proposed_lmsys_model_name": "Gemini-2.5-Flash-Preview-04-17",
+    "proposed_lmsys_elo_score": 1387,
+    "match_confidence_score": 88.89,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 80.0,
+    "name_similarity": 88.89
+  },
+  {
+    "openrouter_model_id": "google/gemini-2.5-flash-preview",
+    "openrouter_model_name": "Google: Gemini 2.5 Flash Preview 04-17",
+    "proposed_lmsys_model_name": "Gemini-2.5-Flash-Preview-05-20",
+    "proposed_lmsys_elo_score": 1418,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 80.0,
+    "name_similarity": 77.78
+  },
+  {
+    "openrouter_model_id": "google/gemini-2.5-flash-preview-05-20",
+    "openrouter_model_name": "Google: Gemini 2.5 Flash Preview 05-20",
+    "proposed_lmsys_model_name": "Gemini-2.5-Flash-Preview-05-20",
+    "proposed_lmsys_elo_score": 1418,
+    "match_confidence_score": 88.89,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 88.89,
+    "name_similarity": 88.89
+  },
+  {
+    "openrouter_model_id": "google/gemini-2.5-flash-preview-05-20:thinking",
+    "openrouter_model_name": "Google: Gemini 2.5 Flash Preview 05-20 (thinking)",
+    "proposed_lmsys_model_name": "Gemini-2.5-Flash-Preview-05-20",
+    "proposed_lmsys_elo_score": 1418,
+    "match_confidence_score": 77.42,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 77.42,
+    "name_similarity": 77.42
+  },
+  {
+    "openrouter_model_id": "google/gemini-2.5-flash-preview:thinking",
+    "openrouter_model_name": "Google: Gemini 2.5 Flash Preview 04-17 (thinking)",
+    "proposed_lmsys_model_name": "Gemini-2.5-Flash-Preview-04-17",
+    "proposed_lmsys_elo_score": 1387,
+    "match_confidence_score": 77.42,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 68.97,
+    "name_similarity": 77.42
+  },
+  {
+    "openrouter_model_id": "google/gemini-2.5-pro-preview",
+    "openrouter_model_name": "Google: Gemini 2.5 Pro Preview",
+    "proposed_lmsys_model_name": "Gemini-2.5-Pro-Preview-05-06",
+    "proposed_lmsys_elo_score": 1446,
+    "match_confidence_score": 78.26,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 78.26,
+    "name_similarity": 78.26
+  },
+  {
+    "openrouter_model_id": "google/gemini-flash-1.5",
+    "openrouter_model_name": "Google: Gemini 1.5 Flash ",
+    "proposed_lmsys_model_name": "Gemini-1.5-Flash-002",
+    "proposed_lmsys_elo_score": 1268,
+    "match_confidence_score": 74.29,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 62.86,
+    "name_similarity": 74.29
+  },
+  {
+    "openrouter_model_id": "google/gemini-flash-1.5",
+    "openrouter_model_name": "Google: Gemini 1.5 Flash ",
+    "proposed_lmsys_model_name": "Gemini-1.5-Flash-001",
+    "proposed_lmsys_elo_score": 1223,
+    "match_confidence_score": 74.29,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 68.57,
+    "name_similarity": 74.29
+  },
+  {
+    "openrouter_model_id": "google/gemini-flash-1.5",
+    "openrouter_model_name": "Google: Gemini 1.5 Flash ",
+    "proposed_lmsys_model_name": "Gemini-1.5-Flash-8B-001",
+    "proposed_lmsys_elo_score": 1209,
+    "match_confidence_score": 70.27,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 64.86,
+    "name_similarity": 70.27
+  },
+  {
+    "openrouter_model_id": "google/gemini-flash-1.5-8b",
+    "openrouter_model_name": "Google: Gemini 1.5 Flash 8B",
+    "proposed_lmsys_model_name": "Gemini-1.5-Flash-8B-001",
+    "proposed_lmsys_elo_score": 1209,
+    "match_confidence_score": 76.92,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 66.67,
+    "name_similarity": 76.92
+  },
+  {
+    "openrouter_model_id": "google/gemini-flash-1.5-8b",
+    "openrouter_model_name": "Google: Gemini 1.5 Flash 8B",
+    "proposed_lmsys_model_name": "Gemini-1.5-Flash-002",
+    "proposed_lmsys_elo_score": 1268,
+    "match_confidence_score": 70.27,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 59.46,
+    "name_similarity": 70.27
+  },
+  {
+    "openrouter_model_id": "google/gemini-flash-1.5-8b",
+    "openrouter_model_name": "Google: Gemini 1.5 Flash 8B",
+    "proposed_lmsys_model_name": "Gemini-1.5-Flash-001",
+    "proposed_lmsys_elo_score": 1223,
+    "match_confidence_score": 70.27,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 64.86,
+    "name_similarity": 70.27
+  },
+  {
+    "openrouter_model_id": "google/gemini-pro-1.5",
+    "openrouter_model_name": "Google: Gemini 1.5 Pro",
+    "proposed_lmsys_model_name": "Gemini-1.5-Pro-002",
+    "proposed_lmsys_elo_score": 1299,
+    "match_confidence_score": 70.97,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 58.06,
+    "name_similarity": 70.97
+  },
+  {
+    "openrouter_model_id": "google/gemini-pro-1.5",
+    "openrouter_model_name": "Google: Gemini 1.5 Pro",
+    "proposed_lmsys_model_name": "Gemini-1.5-Pro-001",
+    "proposed_lmsys_elo_score": 1256,
+    "match_confidence_score": 70.97,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 64.52,
+    "name_similarity": 70.97
+  },
+  {
+    "openrouter_model_id": "google/gemma-2-27b-it",
+    "openrouter_model_name": "Google: Gemma 2 27B",
+    "proposed_lmsys_model_name": "Gemma-2-27B-it",
+    "proposed_lmsys_elo_score": 1216,
+    "match_confidence_score": 78.57,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 78.57,
+    "name_similarity": 69.23
+  },
+  {
+    "openrouter_model_id": "google/gemma-2-27b-it",
+    "openrouter_model_name": "Google: Gemma 2 27B",
+    "proposed_lmsys_model_name": "Gemma-2-2b-it",
+    "proposed_lmsys_elo_score": 1140,
+    "match_confidence_score": 74.07,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.07,
+    "name_similarity": 64.0
+  },
+  {
+    "openrouter_model_id": "google/gemma-2-27b-it",
+    "openrouter_model_name": "Google: Gemma 2 27B",
+    "proposed_lmsys_model_name": "Gemma-3-27B-it",
+    "proposed_lmsys_elo_score": 1339,
+    "match_confidence_score": 71.43,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.43,
+    "name_similarity": 61.54
+  },
+  {
+    "openrouter_model_id": "google/gemma-2-9b-it",
+    "openrouter_model_name": "Google: Gemma 2 9B",
+    "proposed_lmsys_model_name": "Gemma-2-9B-it",
+    "proposed_lmsys_elo_score": 1189,
+    "match_confidence_score": 76.92,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 76.92,
+    "name_similarity": 66.67
+  },
+  {
+    "openrouter_model_id": "google/gemma-2-9b-it",
+    "openrouter_model_name": "Google: Gemma 2 9B",
+    "proposed_lmsys_model_name": "Gemma-2B-it",
+    "proposed_lmsys_elo_score": 986,
+    "match_confidence_score": 72.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.0,
+    "name_similarity": 60.87
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-12b-it",
+    "openrouter_model_name": "Google: Gemma 3 12B",
+    "proposed_lmsys_model_name": "Gemma-3-12B-it",
+    "proposed_lmsys_elo_score": 1317,
+    "match_confidence_score": 78.57,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 78.57,
+    "name_similarity": 69.23
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-12b-it",
+    "openrouter_model_name": "Google: Gemma 3 12B",
+    "proposed_lmsys_model_name": "Gemma-3-27B-it",
+    "proposed_lmsys_elo_score": 1339,
+    "match_confidence_score": 71.43,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.43,
+    "name_similarity": 61.54
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-12b-it",
+    "openrouter_model_name": "Google: Gemma 3 12B",
+    "proposed_lmsys_model_name": "Gemma-1.1-2b-it",
+    "proposed_lmsys_elo_score": 1017,
+    "match_confidence_score": 71.43,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.43,
+    "name_similarity": 61.54
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-27b-it",
+    "openrouter_model_name": "Google: Gemma 3 27B",
+    "proposed_lmsys_model_name": "Gemma-3-27B-it",
+    "proposed_lmsys_elo_score": 1339,
+    "match_confidence_score": 78.57,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 78.57,
+    "name_similarity": 69.23
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-27b-it",
+    "openrouter_model_name": "Google: Gemma 3 27B",
+    "proposed_lmsys_model_name": "Gemma-3-12B-it",
+    "proposed_lmsys_elo_score": 1317,
+    "match_confidence_score": 71.43,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.43,
+    "name_similarity": 61.54
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-27b-it",
+    "openrouter_model_name": "Google: Gemma 3 27B",
+    "proposed_lmsys_model_name": "Gemma-2-27B-it",
+    "proposed_lmsys_elo_score": 1216,
+    "match_confidence_score": 71.43,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.43,
+    "name_similarity": 61.54
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-4b-it",
+    "openrouter_model_name": "Google: Gemma 3 4B",
+    "proposed_lmsys_model_name": "Gemma-3-4B-it",
+    "proposed_lmsys_elo_score": 1272,
+    "match_confidence_score": 76.92,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 76.92,
+    "name_similarity": 66.67
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-4b-it",
+    "openrouter_model_name": "Google: Gemma 3 4B",
+    "proposed_lmsys_model_name": "Gemma-3n-e4b-it",
+    "proposed_lmsys_elo_score": 1286,
+    "match_confidence_score": 71.43,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.43,
+    "name_similarity": 61.54
+  },
+  {
+    "openrouter_model_id": "google/gemma-3n-e4b-it:free",
+    "openrouter_model_name": "Google: Gemma 3n 4B (free)",
+    "proposed_lmsys_model_name": "Gemma-3n-e4b-it",
+    "proposed_lmsys_elo_score": 1286,
+    "match_confidence_score": 70.59,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.59,
+    "name_similarity": 58.06
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-2-70b-chat",
+    "openrouter_model_name": "Meta: Llama 2 70B Chat",
+    "proposed_lmsys_model_name": "Llama-2-70B-chat",
+    "proposed_lmsys_elo_score": 1089,
+    "match_confidence_score": 86.67,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 74.29,
+    "name_similarity": 86.67
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-2-70b-chat",
+    "openrouter_model_name": "Meta: Llama 2 70B Chat",
+    "proposed_lmsys_model_name": "Llama-2-7B-chat",
+    "proposed_lmsys_elo_score": 1033,
+    "match_confidence_score": 82.76,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.59,
+    "name_similarity": 82.76
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 97.67,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 87.5,
+    "name_similarity": 97.67
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 90.48,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 80.85,
+    "name_similarity": 90.48
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 90.48,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 80.85,
+    "name_similarity": 90.48
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 90.48,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 80.85,
+    "name_similarity": 90.48
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 70B Instruct",
+    "proposed_lmsys_model_name": "Llama-3-70B-Instruct",
+    "proposed_lmsys_elo_score": 1203,
+    "match_confidence_score": 89.47,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 79.07,
+    "name_similarity": 89.47
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 70B Instruct",
+    "proposed_lmsys_model_name": "Llama-3.3-70B-Instruct",
+    "proposed_lmsys_elo_score": 1253,
+    "match_confidence_score": 87.18,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 77.27,
+    "name_similarity": 87.18
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 85.11,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 76.92,
+    "name_similarity": 85.11
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-bf16",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 83.33,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.47,
+    "name_similarity": 83.33
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 70B Instruct",
+    "proposed_lmsys_model_name": "CodeLlama-70B-instruct",
+    "proposed_lmsys_elo_score": 1038,
+    "match_confidence_score": 82.93,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.91,
+    "name_similarity": 82.93
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 70B Instruct",
+    "proposed_lmsys_model_name": "Llama-3-8B-Instruct",
+    "proposed_lmsys_elo_score": 1148,
+    "match_confidence_score": 81.08,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.43,
+    "name_similarity": 81.08
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 97.56,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 86.96,
+    "name_similarity": 97.56
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 92.68,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 82.61,
+    "name_similarity": 92.68
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 92.68,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 82.61,
+    "name_similarity": 92.68
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 90.48,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 80.85,
+    "name_similarity": 90.48
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 8B Instruct",
+    "proposed_lmsys_model_name": "Llama-3-8B-Instruct",
+    "proposed_lmsys_elo_score": 1148,
+    "match_confidence_score": 88.89,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 78.05,
+    "name_similarity": 88.89
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 82.61,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.51,
+    "name_similarity": 82.61
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 8B Instruct",
+    "proposed_lmsys_model_name": "Llama-3-70B-Instruct",
+    "proposed_lmsys_elo_score": 1203,
+    "match_confidence_score": 81.08,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.43,
+    "name_similarity": 81.08
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-bf16",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 80.85,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.08,
+    "name_similarity": 80.85
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3 8B Instruct",
+    "proposed_lmsys_model_name": "CodeLlama-34B-instruct",
+    "proposed_lmsys_elo_score": 1039,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.11,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-405b",
+    "openrouter_model_name": "Meta: Llama 3.1 405B (base)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 71.11,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 65.22,
+    "name_similarity": 71.11
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-405b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 405B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 93.88,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 85.19,
+    "name_similarity": 93.88
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-405b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 405B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 93.33,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 84.0,
+    "name_similarity": 93.33
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-405b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 405B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-bf16",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 92.0,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 83.64,
+    "name_similarity": 92.0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-405b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 405B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 90.91,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 81.63,
+    "name_similarity": 90.91
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-405b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 405B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 90.91,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 81.63,
+    "name_similarity": 90.91
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-405b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 405B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 86.36,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 77.55,
+    "name_similarity": 86.36
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-405b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 405B Instruct",
+    "proposed_lmsys_model_name": "Llama-3-70B-Instruct",
+    "proposed_lmsys_elo_score": 1203,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.11,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 89.8,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 93.02,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 83.33,
+    "name_similarity": 93.02
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 93.02,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 83.33,
+    "name_similarity": 93.02
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 88.37,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 79.17,
+    "name_similarity": 88.37
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 87.5,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 79.25,
+    "name_similarity": 87.5
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 70B Instruct",
+    "proposed_lmsys_model_name": "Llama-3-70B-Instruct",
+    "proposed_lmsys_elo_score": 1203,
+    "match_confidence_score": 87.18,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 77.27,
+    "name_similarity": 87.18
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-bf16",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 85.71,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 77.78,
+    "name_similarity": 85.71
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 70B Instruct",
+    "proposed_lmsys_model_name": "Llama-3.3-70B-Instruct",
+    "proposed_lmsys_elo_score": 1253,
+    "match_confidence_score": 85.0,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 75.56,
+    "name_similarity": 85.0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 70B Instruct",
+    "proposed_lmsys_model_name": "CodeLlama-70B-instruct",
+    "proposed_lmsys_elo_score": 1038,
+    "match_confidence_score": 80.95,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.34,
+    "name_similarity": 80.95
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 89.36,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 95.24,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 85.11,
+    "name_similarity": 95.24
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 93.02,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 83.33,
+    "name_similarity": 93.02
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 90.48,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 80.85,
+    "name_similarity": 90.48
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct",
+    "proposed_lmsys_model_name": "Llama-3-8B-Instruct",
+    "proposed_lmsys_elo_score": 1148,
+    "match_confidence_score": 86.49,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 76.19,
+    "name_similarity": 86.49
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 85.11,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 76.92,
+    "name_similarity": 85.11
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-bf16",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 83.33,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.47,
+    "name_similarity": 83.33
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 91.3,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 82.35,
+    "name_similarity": 91.3
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 86.96,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 78.43,
+    "name_similarity": 86.96
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 85.11,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 76.92,
+    "name_similarity": 85.11
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 82.61,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.51,
+    "name_similarity": 82.61
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 82.35,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.0,
+    "name_similarity": 82.35
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-8b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.1 8B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-bf16",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 80.77,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.68,
+    "name_similarity": 80.77
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-11b-vision-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 11B Vision Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 85.71,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 77.78,
+    "name_similarity": 85.71
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-11b-vision-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 11B Vision Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 81.63,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.07,
+    "name_similarity": 81.63
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-11b-vision-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 11B Vision Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 81.63,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.07,
+    "name_similarity": 81.63
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-11b-vision-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 11B Vision Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.73,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 11B Vision Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 79.25,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.41,
+    "name_similarity": 79.25
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 11B Vision Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 75.47,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 68.97,
+    "name_similarity": 75.47
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-11b-vision-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 11B Vision Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 75.47,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 68.97,
+    "name_similarity": 75.47
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 89.36,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 95.24,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 85.11,
+    "name_similarity": 95.24
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 95.24,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 85.11,
+    "name_similarity": 95.24
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 93.02,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 83.33,
+    "name_similarity": 93.02
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 85.11,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 76.92,
+    "name_similarity": 85.11
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-bf16",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 83.33,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.47,
+    "name_similarity": 83.33
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct",
+    "proposed_lmsys_model_name": "Llama-3-8B-Instruct",
+    "proposed_lmsys_elo_score": 1148,
+    "match_confidence_score": 81.08,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.43,
+    "name_similarity": 81.08
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 91.3,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 82.35,
+    "name_similarity": 91.3
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 86.96,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 78.43,
+    "name_similarity": 86.96
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 86.96,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 78.43,
+    "name_similarity": 86.96
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 85.11,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 76.92,
+    "name_similarity": 85.11
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 82.35,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.0,
+    "name_similarity": 82.35
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-1b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 1B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-bf16",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 80.77,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.68,
+    "name_similarity": 80.77
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-3b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 3B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 89.36,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-3b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 3B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 95.24,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 85.11,
+    "name_similarity": 95.24
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-3b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 3B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 90.48,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 80.85,
+    "name_similarity": 90.48
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-3b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 3B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 88.37,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 79.17,
+    "name_similarity": 88.37
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-3b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 3B Instruct",
+    "proposed_lmsys_model_name": "Llama-3.3-70B-Instruct",
+    "proposed_lmsys_elo_score": 1253,
+    "match_confidence_score": 82.05,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.73,
+    "name_similarity": 82.05
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-3b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 3B Instruct",
+    "proposed_lmsys_model_name": "Llama-3-8B-Instruct",
+    "proposed_lmsys_elo_score": 1148,
+    "match_confidence_score": 81.08,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.43,
+    "name_similarity": 81.08
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-3b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 3B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 80.85,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.08,
+    "name_similarity": 80.85
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-3b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 3B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 91.3,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 82.35,
+    "name_similarity": 91.3
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-3b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 3B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 86.96,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 78.43,
+    "name_similarity": 86.96
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-3b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 3B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 82.61,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.51,
+    "name_similarity": 82.61
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-3b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.2 3B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 80.85,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.08,
+    "name_similarity": 80.85
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-90b-vision-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 90B Vision Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 81.63,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.07,
+    "name_similarity": 81.63
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-90b-vision-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 90B Vision Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 81.63,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.07,
+    "name_similarity": 81.63
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.2-90b-vision-instruct",
+    "openrouter_model_name": "Meta: Llama 3.2 90B Vision Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.73,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 95.45,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 85.71,
+    "name_similarity": 95.45
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 93.02,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 83.33,
+    "name_similarity": 93.02
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct",
+    "proposed_lmsys_model_name": "Llama-3.3-70B-Instruct",
+    "proposed_lmsys_elo_score": 1253,
+    "match_confidence_score": 90.0,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 80.0,
+    "name_similarity": 90.0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 88.37,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 79.17,
+    "name_similarity": 88.37
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 88.37,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 79.17,
+    "name_similarity": 88.37
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct",
+    "proposed_lmsys_model_name": "Llama-3-70B-Instruct",
+    "proposed_lmsys_elo_score": 1203,
+    "match_confidence_score": 87.18,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 77.27,
+    "name_similarity": 87.18
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 83.33,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.47,
+    "name_similarity": 83.33
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-bf16",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 81.63,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.07,
+    "name_similarity": 81.63
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct",
+    "proposed_lmsys_model_name": "CodeLlama-70B-instruct",
+    "proposed_lmsys_elo_score": 1038,
+    "match_confidence_score": 80.95,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.34,
+    "name_similarity": 80.95
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 87.5,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 79.25,
+    "name_similarity": 87.5
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 85.11,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 76.92,
+    "name_similarity": 85.11
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct (free)",
+    "proposed_lmsys_model_name": "Llama-3.3-70B-Instruct",
+    "proposed_lmsys_elo_score": 1253,
+    "match_confidence_score": 81.82,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.47,
+    "name_similarity": 81.82
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 80.85,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.08,
+    "name_similarity": 80.85
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 80.85,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.08,
+    "name_similarity": 80.85
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-70b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.3 70B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+    "proposed_lmsys_elo_score": 1264,
+    "match_confidence_score": 80.77,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.68,
+    "name_similarity": 80.77
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-8b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.3 8B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-8B-Instruct",
+    "proposed_lmsys_elo_score": 1172,
+    "match_confidence_score": 86.96,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 78.43,
+    "name_similarity": 86.96
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-8b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.3 8B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-3B-Instruct",
+    "proposed_lmsys_elo_score": 1099,
+    "match_confidence_score": 86.96,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 78.43,
+    "name_similarity": 86.96
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-8b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.3 8B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.2-1B-Instruct",
+    "proposed_lmsys_elo_score": 1050,
+    "match_confidence_score": 82.61,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.51,
+    "name_similarity": 82.61
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.3-8b-instruct:free",
+    "openrouter_model_name": "Meta: Llama 3.3 8B Instruct (free)",
+    "proposed_lmsys_model_name": "Meta-Llama-3.1-70B-Instruct",
+    "proposed_lmsys_elo_score": 1244,
+    "match_confidence_score": 80.85,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.08,
+    "name_similarity": 80.85
+  },
+  {
+    "openrouter_model_id": "microsoft/phi-3-medium-128k-instruct",
+    "openrouter_model_name": "Microsoft: Phi-3 Medium 128K Instruct",
+    "proposed_lmsys_model_name": "Phi-3-Medium-4k-Instruct",
+    "proposed_lmsys_elo_score": 1119,
+    "match_confidence_score": 74.51,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.51,
+    "name_similarity": 74.51
+  },
+  {
+    "openrouter_model_id": "microsoft/phi-3-medium-128k-instruct",
+    "openrouter_model_name": "Microsoft: Phi-3 Medium 128K Instruct",
+    "proposed_lmsys_model_name": "Phi-3-Mini-128k-Instruct",
+    "proposed_lmsys_elo_score": 1033,
+    "match_confidence_score": 70.59,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.59,
+    "name_similarity": 70.59
+  },
+  {
+    "openrouter_model_id": "microsoft/phi-3-mini-128k-instruct",
+    "openrouter_model_name": "Microsoft: Phi-3 Mini 128K Instruct",
+    "proposed_lmsys_model_name": "Phi-3-Mini-128k-Instruct",
+    "proposed_lmsys_elo_score": 1033,
+    "match_confidence_score": 81.63,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 81.63,
+    "name_similarity": 81.63
+  },
+  {
+    "openrouter_model_id": "microsoft/phi-3.5-mini-128k-instruct",
+    "openrouter_model_name": "Microsoft: Phi-3.5 Mini 128K Instruct",
+    "proposed_lmsys_model_name": "Phi-3-Mini-128k-Instruct",
+    "proposed_lmsys_elo_score": 1033,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 80.0,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-7b-instruct",
+    "openrouter_model_name": "Mistral: Mistral 7B Instruct",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.2",
+    "proposed_lmsys_elo_score": 1069,
+    "match_confidence_score": 77.27,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.91,
+    "name_similarity": 77.27
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-7b-instruct",
+    "openrouter_model_name": "Mistral: Mistral 7B Instruct",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.1",
+    "proposed_lmsys_elo_score": 1004,
+    "match_confidence_score": 77.27,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.91,
+    "name_similarity": 77.27
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-7b-instruct",
+    "openrouter_model_name": "Mistral: Mistral 7B Instruct",
+    "proposed_lmsys_model_name": "Mistral-Small-24B-Instruct-2501",
+    "proposed_lmsys_elo_score": 1214,
+    "match_confidence_score": 74.51,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.7,
+    "name_similarity": 74.51
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-7b-instruct-v0.1",
+    "openrouter_model_name": "Mistral: Mistral 7B Instruct v0.1",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.1",
+    "proposed_lmsys_elo_score": 1004,
+    "match_confidence_score": 85.11,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 81.63,
+    "name_similarity": 85.11
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-7b-instruct-v0.1",
+    "openrouter_model_name": "Mistral: Mistral 7B Instruct v0.1",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.2",
+    "proposed_lmsys_elo_score": 1069,
+    "match_confidence_score": 80.85,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 77.55,
+    "name_similarity": 80.85
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-7b-instruct-v0.2",
+    "openrouter_model_name": "Mistral: Mistral 7B Instruct v0.2",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.2",
+    "proposed_lmsys_elo_score": 1069,
+    "match_confidence_score": 85.11,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 81.63,
+    "name_similarity": 85.11
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-7b-instruct-v0.2",
+    "openrouter_model_name": "Mistral: Mistral 7B Instruct v0.2",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.1",
+    "proposed_lmsys_elo_score": 1004,
+    "match_confidence_score": 80.85,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 77.55,
+    "name_similarity": 80.85
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-7b-instruct-v0.3",
+    "openrouter_model_name": "Mistral: Mistral 7B Instruct v0.3",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.2",
+    "proposed_lmsys_elo_score": 1069,
+    "match_confidence_score": 80.85,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 77.55,
+    "name_similarity": 80.85
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-7b-instruct-v0.3",
+    "openrouter_model_name": "Mistral: Mistral 7B Instruct v0.3",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.1",
+    "proposed_lmsys_elo_score": 1004,
+    "match_confidence_score": 80.85,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 77.55,
+    "name_similarity": 80.85
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-7b-instruct:free",
+    "openrouter_model_name": "Mistral: Mistral 7B Instruct (free)",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.2",
+    "proposed_lmsys_elo_score": 1069,
+    "match_confidence_score": 70.83,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 68.0,
+    "name_similarity": 70.83
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-7b-instruct:free",
+    "openrouter_model_name": "Mistral: Mistral 7B Instruct (free)",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.1",
+    "proposed_lmsys_elo_score": 1004,
+    "match_confidence_score": 70.83,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 68.0,
+    "name_similarity": 70.83
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-large",
+    "openrouter_model_name": "Mistral Large",
+    "proposed_lmsys_model_name": "Mistral-Large-2407",
+    "proposed_lmsys_elo_score": 1248,
+    "match_confidence_score": 85.71,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 64.86,
+    "name_similarity": 85.71
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-large",
+    "openrouter_model_name": "Mistral Large",
+    "proposed_lmsys_model_name": "Mistral-Large-2411",
+    "proposed_lmsys_elo_score": 1245,
+    "match_confidence_score": 85.71,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 64.86,
+    "name_similarity": 85.71
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-large",
+    "openrouter_model_name": "Mistral Large",
+    "proposed_lmsys_model_name": "Mistral-Large-2402",
+    "proposed_lmsys_elo_score": 1154,
+    "match_confidence_score": 85.71,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 64.86,
+    "name_similarity": 85.71
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-large-2407",
+    "openrouter_model_name": "Mistral Large 2407",
+    "proposed_lmsys_model_name": "Mistral-Large-2407",
+    "proposed_lmsys_elo_score": 1248,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 78.05,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-large-2407",
+    "openrouter_model_name": "Mistral Large 2407",
+    "proposed_lmsys_model_name": "Mistral-Large-2402",
+    "proposed_lmsys_elo_score": 1154,
+    "match_confidence_score": 93.75,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 73.17,
+    "name_similarity": 93.75
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-large-2407",
+    "openrouter_model_name": "Mistral Large 2407",
+    "proposed_lmsys_model_name": "Mistral-Large-2411",
+    "proposed_lmsys_elo_score": 1245,
+    "match_confidence_score": 87.5,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 68.29,
+    "name_similarity": 87.5
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-large-2411",
+    "openrouter_model_name": "Mistral Large 2411",
+    "proposed_lmsys_model_name": "Mistral-Large-2411",
+    "proposed_lmsys_elo_score": 1245,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 78.05,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-large-2411",
+    "openrouter_model_name": "Mistral Large 2411",
+    "proposed_lmsys_model_name": "Mistral-Large-2407",
+    "proposed_lmsys_elo_score": 1248,
+    "match_confidence_score": 87.5,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 68.29,
+    "name_similarity": 87.5
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-large-2411",
+    "openrouter_model_name": "Mistral Large 2411",
+    "proposed_lmsys_model_name": "Mistral-Large-2402",
+    "proposed_lmsys_elo_score": 1154,
+    "match_confidence_score": 87.5,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 68.29,
+    "name_similarity": 87.5
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-medium",
+    "openrouter_model_name": "Mistral Medium",
+    "proposed_lmsys_model_name": "Mistral Medium",
+    "proposed_lmsys_elo_score": 1144,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 74.29,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-medium",
+    "openrouter_model_name": "Mistral Medium",
+    "proposed_lmsys_model_name": "Mistral Medium 3",
+    "proposed_lmsys_elo_score": 1343,
+    "match_confidence_score": 96.3,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 72.22,
+    "name_similarity": 96.3
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-medium-3",
+    "openrouter_model_name": "Mistral: Mistral Medium 3",
+    "proposed_lmsys_model_name": "Mistral Medium 3",
+    "proposed_lmsys_elo_score": 1343,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.68,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-small-24b-instruct-2501",
+    "openrouter_model_name": "Mistral: Mistral Small 3",
+    "proposed_lmsys_model_name": "Mistral-Small-24B-Instruct-2501",
+    "proposed_lmsys_elo_score": 1214,
+    "match_confidence_score": 85.71,
+    "notes_or_reasoning": "High ID similarity",
+    "id_similarity": 85.71,
+    "name_similarity": 51.06
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-small-24b-instruct-2501",
+    "openrouter_model_name": "Mistral: Mistral Small 3",
+    "proposed_lmsys_model_name": "Mistral-Small-3.1-24B-Instruct-2503",
+    "proposed_lmsys_elo_score": 1246,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 80.0,
+    "name_similarity": 53.06
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-small-24b-instruct-2501:free",
+    "openrouter_model_name": "Mistral: Mistral Small 3 (free)",
+    "proposed_lmsys_model_name": "Mistral-Small-24B-Instruct-2501",
+    "proposed_lmsys_elo_score": 1214,
+    "match_confidence_score": 80.6,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 80.6,
+    "name_similarity": 50.98
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-small-3.1-24b-instruct",
+    "openrouter_model_name": "Mistral: Mistral Small 3.1 24B",
+    "proposed_lmsys_model_name": "Mistral-Small-3.1-24B-Instruct-2503",
+    "proposed_lmsys_elo_score": 1246,
+    "match_confidence_score": 79.37,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 79.37,
+    "name_similarity": 64.15
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-small-3.1-24b-instruct",
+    "openrouter_model_name": "Mistral: Mistral Small 3.1 24B",
+    "proposed_lmsys_model_name": "Mistral-Small-24B-Instruct-2501",
+    "proposed_lmsys_elo_score": 1214,
+    "match_confidence_score": 75.41,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.41,
+    "name_similarity": 58.82
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-small-3.1-24b-instruct:free",
+    "openrouter_model_name": "Mistral: Mistral Small 3.1 24B (free)",
+    "proposed_lmsys_model_name": "Mistral-Small-3.1-24B-Instruct-2503",
+    "proposed_lmsys_elo_score": 1246,
+    "match_confidence_score": 74.63,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.63,
+    "name_similarity": 63.16
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-small-3.1-24b-instruct:free",
+    "openrouter_model_name": "Mistral: Mistral Small 3.1 24B (free)",
+    "proposed_lmsys_model_name": "Mistral-Small-24B-Instruct-2501",
+    "proposed_lmsys_elo_score": 1214,
+    "match_confidence_score": 70.77,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.77,
+    "name_similarity": 58.18
+  },
+  {
+    "openrouter_model_id": "mistralai/mixtral-8x22b-instruct",
+    "openrouter_model_name": "Mistral: Mixtral 8x22B Instruct",
+    "proposed_lmsys_model_name": "Mixtral-8x22b-Instruct-v0.1",
+    "proposed_lmsys_elo_score": 1144,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 76.92,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "mistralai/mixtral-8x7b-instruct",
+    "openrouter_model_name": "Mistral: Mixtral 8x7B Instruct",
+    "proposed_lmsys_model_name": "Mixtral-8x7B-Instruct-v0.1",
+    "proposed_lmsys_elo_score": 1111,
+    "match_confidence_score": 79.17,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 76.0,
+    "name_similarity": 79.17
+  },
+  {
+    "openrouter_model_id": "mistralai/mixtral-8x7b-instruct",
+    "openrouter_model_name": "Mistral: Mixtral 8x7B Instruct",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.2",
+    "proposed_lmsys_elo_score": 1069,
+    "match_confidence_score": 73.91,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.83,
+    "name_similarity": 73.91
+  },
+  {
+    "openrouter_model_id": "mistralai/mixtral-8x7b-instruct",
+    "openrouter_model_name": "Mistral: Mixtral 8x7B Instruct",
+    "proposed_lmsys_model_name": "Mistral-7B-Instruct-v0.1",
+    "proposed_lmsys_elo_score": 1004,
+    "match_confidence_score": 73.91,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.83,
+    "name_similarity": 73.91
+  },
+  {
+    "openrouter_model_id": "mistralai/pixtral-large-2411",
+    "openrouter_model_name": "Mistral: Pixtral Large 2411",
+    "proposed_lmsys_model_name": "Mistral-Large-2411",
+    "proposed_lmsys_elo_score": 1245,
+    "match_confidence_score": 82.05,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 78.05,
+    "name_similarity": 82.05
+  },
+  {
+    "openrouter_model_id": "nousresearch/nous-hermes-2-mixtral-8x7b-dpo",
+    "openrouter_model_name": "Nous: Hermes 2 Mixtral 8x7B DPO",
+    "proposed_lmsys_model_name": "Nous-Hermes-2-Mixtral-8x7B-DPO",
+    "proposed_lmsys_elo_score": 1081,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 80.65,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "nvidia/llama-3.1-nemotron-70b-instruct",
+    "openrouter_model_name": "NVIDIA: Llama 3.1 Nemotron 70B Instruct",
+    "proposed_lmsys_model_name": "Llama-3.1-Nemotron-70B-Instruct",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 89.66,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 89.66,
+    "name_similarity": 89.66
+  },
+  {
+    "openrouter_model_id": "nvidia/llama-3.1-nemotron-70b-instruct",
+    "openrouter_model_name": "NVIDIA: Llama 3.1 Nemotron 70B Instruct",
+    "proposed_lmsys_model_name": "Llama-3.1-Nemotron-51B-Instruct",
+    "proposed_lmsys_elo_score": 1208,
+    "match_confidence_score": 82.76,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 82.76,
+    "name_similarity": 82.76
+  },
+  {
+    "openrouter_model_id": "nvidia/llama-3.1-nemotron-ultra-253b-v1:free",
+    "openrouter_model_name": "NVIDIA: Llama 3.1 Nemotron Ultra 253B v1 (free)",
+    "proposed_lmsys_model_name": "Llama-3.1-Nemotron-Ultra-253B-v1",
+    "proposed_lmsys_elo_score": 1300,
+    "match_confidence_score": 83.87,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 83.87,
+    "name_similarity": 83.87
+  },
+  {
+    "openrouter_model_id": "nvidia/llama-3.3-nemotron-super-49b-v1",
+    "openrouter_model_name": "NVIDIA: Llama 3.3 Nemotron Super 49B v1",
+    "proposed_lmsys_model_name": "Llama-3.3-Nemotron-Super-49B-v1",
+    "proposed_lmsys_elo_score": 1293,
+    "match_confidence_score": 89.29,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 89.29,
+    "name_similarity": 89.29
+  },
+  {
+    "openrouter_model_id": "nvidia/llama-3.3-nemotron-super-49b-v1:free",
+    "openrouter_model_name": "NVIDIA: Llama 3.3 Nemotron Super 49B v1 (free)",
+    "proposed_lmsys_model_name": "Llama-3.3-Nemotron-Super-49B-v1",
+    "proposed_lmsys_elo_score": 1293,
+    "match_confidence_score": 83.33,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 83.33,
+    "name_similarity": 83.33
+  },
+  {
+    "openrouter_model_id": "openai/gpt-3.5-turbo-0125",
+    "openrouter_model_name": "OpenAI: GPT-3.5 Turbo 16k",
+    "proposed_lmsys_model_name": "GPT-3.5-Turbo-0125",
+    "proposed_lmsys_elo_score": 1102,
+    "match_confidence_score": 82.35,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 82.35,
+    "name_similarity": 66.67
+  },
+  {
+    "openrouter_model_id": "openai/gpt-3.5-turbo-0613",
+    "openrouter_model_name": "OpenAI: GPT-3.5 Turbo (older v0613)",
+    "proposed_lmsys_model_name": "GPT-3.5-Turbo-0125",
+    "proposed_lmsys_elo_score": 1102,
+    "match_confidence_score": 70.59,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.59,
+    "name_similarity": 60.0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-3.5-turbo-0613",
+    "openrouter_model_name": "OpenAI: GPT-3.5 Turbo (older v0613)",
+    "proposed_lmsys_model_name": "GPT-3.5-Turbo-1106",
+    "proposed_lmsys_elo_score": 1064,
+    "match_confidence_score": 70.59,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.59,
+    "name_similarity": 60.0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-3.5-turbo-1106",
+    "openrouter_model_name": "OpenAI: GPT-3.5 Turbo 16k (older v1106)",
+    "proposed_lmsys_model_name": "GPT-3.5-Turbo-1106",
+    "proposed_lmsys_elo_score": 1064,
+    "match_confidence_score": 82.35,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 82.35,
+    "name_similarity": 65.12
+  },
+  {
+    "openrouter_model_id": "openai/gpt-3.5-turbo-16k",
+    "openrouter_model_name": "OpenAI: GPT-3.5 Turbo 16k",
+    "proposed_lmsys_model_name": "GPT-3.5-Turbo-1106",
+    "proposed_lmsys_elo_score": 1064,
+    "match_confidence_score": 72.73,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.73,
+    "name_similarity": 72.73
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4-0314",
+    "openrouter_model_name": "OpenAI: GPT-4 (older v0314)",
+    "proposed_lmsys_model_name": "GPT-4-0314",
+    "proposed_lmsys_elo_score": 1183,
+    "match_confidence_score": 72.73,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.73,
+    "name_similarity": 57.14
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4-1106-preview",
+    "openrouter_model_name": "OpenAI: GPT-4 Turbo (older v1106)",
+    "proposed_lmsys_model_name": "GPT-4-1106-preview",
+    "proposed_lmsys_elo_score": 1246,
+    "match_confidence_score": 83.33,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 83.33,
+    "name_similarity": 40.0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4.5-preview",
+    "openrouter_model_name": "OpenAI: GPT-4.5 (Preview)",
+    "proposed_lmsys_model_name": "GPT-4.5-Preview",
+    "proposed_lmsys_elo_score": 1394,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 80.0,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4o-2024-05-13",
+    "openrouter_model_name": "OpenAI: GPT-4o (2024-05-13)",
+    "proposed_lmsys_model_name": "GPT-4o-2024-05-13",
+    "proposed_lmsys_elo_score": 1281,
+    "match_confidence_score": 81.25,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 81.25,
+    "name_similarity": 81.25
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4o-2024-08-06",
+    "openrouter_model_name": "OpenAI: GPT-4o (2024-08-06)",
+    "proposed_lmsys_model_name": "GPT-4o-2024-08-06",
+    "proposed_lmsys_elo_score": 1262,
+    "match_confidence_score": 81.25,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 81.25,
+    "name_similarity": 81.25
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4o-mini-2024-07-18",
+    "openrouter_model_name": "OpenAI: GPT-4o-mini (2024-07-18)",
+    "proposed_lmsys_model_name": "GPT-4o-mini-2024-07-18",
+    "proposed_lmsys_elo_score": 1269,
+    "match_confidence_score": 85.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 85.0,
+    "name_similarity": 85.0
+  },
+  {
+    "openrouter_model_id": "openai/o1-preview",
+    "openrouter_model_name": "OpenAI: o1-preview",
+    "proposed_lmsys_model_name": "o1-preview",
+    "proposed_lmsys_elo_score": 1331,
+    "match_confidence_score": 75.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.0,
+    "name_similarity": 75.0
+  },
+  {
+    "openrouter_model_id": "openai/o3-mini-high",
+    "openrouter_model_name": "OpenAI: o3 Mini High",
+    "proposed_lmsys_model_name": "o3-mini-high",
+    "proposed_lmsys_elo_score": 1321,
+    "match_confidence_score": 76.92,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 76.92,
+    "name_similarity": 76.92
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2-72b-instruct",
+    "openrouter_model_name": "Qwen 2 72B Instruct",
+    "proposed_lmsys_model_name": "Qwen2-72B-Instruct",
+    "proposed_lmsys_elo_score": 1184,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 88.89,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2-72b-instruct",
+    "openrouter_model_name": "Qwen 2 72B Instruct",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 96.97,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 86.49,
+    "name_similarity": 96.97
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-72b-instruct",
+    "openrouter_model_name": "Qwen2.5 72B Instruct",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 89.47,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-72b-instruct",
+    "openrouter_model_name": "Qwen2.5 72B Instruct",
+    "proposed_lmsys_model_name": "Qwen2-72B-Instruct",
+    "proposed_lmsys_elo_score": 1184,
+    "match_confidence_score": 96.97,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 86.49,
+    "name_similarity": 96.97
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-72b-instruct",
+    "openrouter_model_name": "Qwen2.5 72B Instruct",
+    "proposed_lmsys_model_name": "Qwen2.5-Coder-32B-Instruct",
+    "proposed_lmsys_elo_score": 1214,
+    "match_confidence_score": 82.05,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.42,
+    "name_similarity": 82.05
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-72b-instruct:free",
+    "openrouter_model_name": "Qwen2.5 72B Instruct (free)",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 89.47,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 80.95,
+    "name_similarity": 89.47
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-72b-instruct:free",
+    "openrouter_model_name": "Qwen2.5 72B Instruct (free)",
+    "proposed_lmsys_model_name": "Qwen2-72B-Instruct",
+    "proposed_lmsys_elo_score": 1184,
+    "match_confidence_score": 86.49,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 78.05,
+    "name_similarity": 86.49
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-7b-instruct",
+    "openrouter_model_name": "Qwen2.5 7B Instruct",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 96.97,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 86.49,
+    "name_similarity": 96.97
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-7b-instruct",
+    "openrouter_model_name": "Qwen2.5 7B Instruct",
+    "proposed_lmsys_model_name": "Qwen2-72B-Instruct",
+    "proposed_lmsys_elo_score": 1184,
+    "match_confidence_score": 93.75,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 83.33,
+    "name_similarity": 93.75
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-7b-instruct:free",
+    "openrouter_model_name": "Qwen2.5 7B Instruct (free)",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 86.49,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 78.05,
+    "name_similarity": 86.49
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-7b-instruct:free",
+    "openrouter_model_name": "Qwen2.5 7B Instruct (free)",
+    "proposed_lmsys_model_name": "Qwen2-72B-Instruct",
+    "proposed_lmsys_elo_score": 1184,
+    "match_confidence_score": 83.33,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.0,
+    "name_similarity": 83.33
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-coder-32b-instruct",
+    "openrouter_model_name": "Qwen2.5 Coder 32B Instruct",
+    "proposed_lmsys_model_name": "Qwen2.5-Coder-32B-Instruct",
+    "proposed_lmsys_elo_score": 1214,
+    "match_confidence_score": 100.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 91.67,
+    "name_similarity": 100.0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-coder-32b-instruct",
+    "openrouter_model_name": "Qwen2.5 Coder 32B Instruct",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 82.05,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.42,
+    "name_similarity": 82.05
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-coder-32b-instruct:free",
+    "openrouter_model_name": "Qwen2.5 Coder 32B Instruct (free)",
+    "proposed_lmsys_model_name": "Qwen2.5-Coder-32B-Instruct",
+    "proposed_lmsys_elo_score": 1214,
+    "match_confidence_score": 91.67,
+    "notes_or_reasoning": "High name similarity",
+    "id_similarity": 84.62,
+    "name_similarity": 91.67
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-vl-7b-instruct",
+    "openrouter_model_name": "Qwen: Qwen2.5-VL 7B Instruct",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 82.05,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 82.05,
+    "name_similarity": 82.05
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-vl-7b-instruct:free",
+    "openrouter_model_name": "Qwen: Qwen2.5-VL 7B Instruct (free)",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 74.42,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.42,
+    "name_similarity": 74.42
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-2.5-vl-7b-instruct:free",
+    "openrouter_model_name": "Qwen: Qwen2.5-VL 7B Instruct (free)",
+    "proposed_lmsys_model_name": "Qwen2-72B-Instruct",
+    "proposed_lmsys_elo_score": 1184,
+    "match_confidence_score": 71.43,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 71.43,
+    "name_similarity": 71.43
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-max",
+    "openrouter_model_name": "Qwen: Qwen-Max ",
+    "proposed_lmsys_model_name": "Qwen2.5-Max",
+    "proposed_lmsys_elo_score": 1337,
+    "match_confidence_score": 70.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 70.0,
+    "name_similarity": 70.0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen2.5-coder-7b-instruct",
+    "openrouter_model_name": "Qwen: Qwen2.5 Coder 7B Instruct",
+    "proposed_lmsys_model_name": "Qwen2.5-Coder-32B-Instruct",
+    "proposed_lmsys_elo_score": 1214,
+    "match_confidence_score": 85.11,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 85.11,
+    "name_similarity": 85.11
+  },
+  {
+    "openrouter_model_id": "qwen/qwen2.5-vl-32b-instruct",
+    "openrouter_model_name": "Qwen: Qwen2.5 VL 32B Instruct",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 80.0,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen2.5-vl-32b-instruct:free",
+    "openrouter_model_name": "Qwen: Qwen2.5 VL 32B Instruct (free)",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 72.73,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.73,
+    "name_similarity": 72.73
+  },
+  {
+    "openrouter_model_id": "qwen/qwen2.5-vl-72b-instruct",
+    "openrouter_model_name": "Qwen: Qwen2.5 VL 72B Instruct",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 85.0,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 85.0,
+    "name_similarity": 85.0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen2.5-vl-72b-instruct",
+    "openrouter_model_name": "Qwen: Qwen2.5 VL 72B Instruct",
+    "proposed_lmsys_model_name": "Qwen2-72B-Instruct",
+    "proposed_lmsys_elo_score": 1184,
+    "match_confidence_score": 82.05,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 82.05,
+    "name_similarity": 82.05
+  },
+  {
+    "openrouter_model_id": "qwen/qwen2.5-vl-72b-instruct:free",
+    "openrouter_model_name": "Qwen: Qwen2.5 VL 72B Instruct (free)",
+    "proposed_lmsys_model_name": "Qwen2.5-72B-Instruct",
+    "proposed_lmsys_elo_score": 1254,
+    "match_confidence_score": 77.27,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 77.27,
+    "name_similarity": 77.27
+  },
+  {
+    "openrouter_model_id": "qwen/qwen2.5-vl-72b-instruct:free",
+    "openrouter_model_name": "Qwen: Qwen2.5 VL 72B Instruct (free)",
+    "proposed_lmsys_model_name": "Qwen2-72B-Instruct",
+    "proposed_lmsys_elo_score": 1184,
+    "match_confidence_score": 74.42,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 74.42,
+    "name_similarity": 74.42
+  },
+  {
+    "openrouter_model_id": "qwen/qwen3-235b-a22b",
+    "openrouter_model_name": "Qwen: Qwen3 235B A22B",
+    "proposed_lmsys_model_name": "Qwen3-235B-A22B",
+    "proposed_lmsys_elo_score": 1337,
+    "match_confidence_score": 86.67,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 86.67,
+    "name_similarity": 86.67
+  },
+  {
+    "openrouter_model_id": "qwen/qwen3-235b-a22b:free",
+    "openrouter_model_name": "Qwen: Qwen3 235B A22B (free)",
+    "proposed_lmsys_model_name": "Qwen3-235B-A22B",
+    "proposed_lmsys_elo_score": 1337,
+    "match_confidence_score": 76.47,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 76.47,
+    "name_similarity": 76.47
+  },
+  {
+    "openrouter_model_id": "qwen/qwen3-30b-a3b",
+    "openrouter_model_name": "Qwen: Qwen3 30B A3B",
+    "proposed_lmsys_model_name": "Qwen3-30B-A3B",
+    "proposed_lmsys_elo_score": 1286,
+    "match_confidence_score": 84.62,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 84.62,
+    "name_similarity": 84.62
+  },
+  {
+    "openrouter_model_id": "qwen/qwen3-30b-a3b:free",
+    "openrouter_model_name": "Qwen: Qwen3 30B A3B (free)",
+    "proposed_lmsys_model_name": "Qwen3-30B-A3B",
+    "proposed_lmsys_elo_score": 1286,
+    "match_confidence_score": 73.33,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 73.33,
+    "name_similarity": 73.33
+  },
+  {
+    "openrouter_model_id": "qwen/qwen3-32b",
+    "openrouter_model_name": "Qwen: Qwen3 32B",
+    "proposed_lmsys_model_name": "Qwen3-32B",
+    "proposed_lmsys_elo_score": 1324,
+    "match_confidence_score": 80.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 80.0,
+    "name_similarity": 80.0
+  },
+  {
+    "openrouter_model_id": "qwen/qwq-32b",
+    "openrouter_model_name": "Qwen: QwQ 32B",
+    "proposed_lmsys_model_name": "Qwen3-32B",
+    "proposed_lmsys_elo_score": 1324,
+    "match_confidence_score": 77.78,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 77.78,
+    "name_similarity": 77.78
+  },
+  {
+    "openrouter_model_id": "qwen/qwq-32b",
+    "openrouter_model_name": "Qwen: QwQ 32B",
+    "proposed_lmsys_model_name": "QwQ-32B",
+    "proposed_lmsys_elo_score": 1310,
+    "match_confidence_score": 75.0,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 75.0,
+    "name_similarity": 75.0
+  },
+  {
+    "openrouter_model_id": "qwen/qwq-32b-preview",
+    "openrouter_model_name": "Qwen: QwQ 32B Preview",
+    "proposed_lmsys_model_name": "QwQ-32B-Preview",
+    "proposed_lmsys_elo_score": 1149,
+    "match_confidence_score": 86.67,
+    "notes_or_reasoning": "High ID similarity; High name similarity",
+    "id_similarity": 86.67,
+    "name_similarity": 86.67
+  },
+  {
+    "openrouter_model_id": "scb10x/llama3.1-typhoon2-70b-instruct",
+    "openrouter_model_name": "Typhoon2 70B Instruct",
+    "proposed_lmsys_model_name": "OLMo-7B-instruct",
+    "proposed_lmsys_elo_score": 1012,
+    "match_confidence_score": 72.73,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 56.52,
+    "name_similarity": 72.73
+  },
+  {
+    "openrouter_model_id": "scb10x/llama3.1-typhoon2-70b-instruct",
+    "openrouter_model_name": "Typhoon2 70B Instruct",
+    "proposed_lmsys_model_name": "Llama-3.1-Nemotron-70B-Instruct",
+    "proposed_lmsys_elo_score": 1265,
+    "match_confidence_score": 72.41,
+    "notes_or_reasoning": "Moderate similarity match",
+    "id_similarity": 72.41,
+    "name_similarity": 62.22
+  },
+  {
+    "openrouter_model_id": "01-ai/yi-large",
+    "openrouter_model_name": "01.AI: Yi Large",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "aetherwiing/mn-starcannon-12b",
+    "openrouter_model_name": "Aetherwiing: Starcannon 12B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "agentica-org/deepcoder-14b-preview:free",
+    "openrouter_model_name": "Agentica: Deepcoder 14B Preview (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "aion-labs/aion-1.0",
+    "openrouter_model_name": "AionLabs: Aion-1.0",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "aion-labs/aion-1.0-mini",
+    "openrouter_model_name": "AionLabs: Aion-1.0-Mini",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "aion-labs/aion-rp-llama-3.1-8b",
+    "openrouter_model_name": "AionLabs: Aion-RP 1.0 (8B)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "alfredpros/codellama-7b-instruct-solidity",
+    "openrouter_model_name": "AlfredPros: CodeLLaMa 7B Instruct Solidity",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "all-hands/openhands-lm-32b-v0.1",
+    "openrouter_model_name": "OpenHands LM 32B V0.1",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "alpindale/goliath-120b",
+    "openrouter_model_name": "Goliath 120B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "alpindale/magnum-72b",
+    "openrouter_model_name": "Magnum 72B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthracite-org/magnum-v2-72b",
+    "openrouter_model_name": "Magnum v2 72B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthracite-org/magnum-v4-72b",
+    "openrouter_model_name": "Magnum v4 72B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-2",
+    "openrouter_model_name": "Anthropic: Claude v2",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-2.0",
+    "openrouter_model_name": "Anthropic: Claude v2.0",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-2.0:beta",
+    "openrouter_model_name": "Anthropic: Claude v2.0 (self-moderated)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-2.1",
+    "openrouter_model_name": "Anthropic: Claude v2.1",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-2.1:beta",
+    "openrouter_model_name": "Anthropic: Claude v2.1 (self-moderated)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-2:beta",
+    "openrouter_model_name": "Anthropic: Claude v2 (self-moderated)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3-haiku:beta",
+    "openrouter_model_name": "Anthropic: Claude 3 Haiku (self-moderated)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3-opus:beta",
+    "openrouter_model_name": "Anthropic: Claude 3 Opus (self-moderated)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3-sonnet:beta",
+    "openrouter_model_name": "Anthropic: Claude 3 Sonnet (self-moderated)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.5-haiku:beta",
+    "openrouter_model_name": "Anthropic: Claude 3.5 Haiku (self-moderated)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.5-sonnet:beta",
+    "openrouter_model_name": "Anthropic: Claude 3.5 Sonnet (self-moderated)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-3.7-sonnet:beta",
+    "openrouter_model_name": "Anthropic: Claude 3.7 Sonnet (self-moderated)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-opus-4",
+    "openrouter_model_name": "Anthropic: Claude Opus 4",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "anthropic/claude-sonnet-4",
+    "openrouter_model_name": "Anthropic: Claude Sonnet 4",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "arcee-ai/arcee-blitz",
+    "openrouter_model_name": "Arcee AI: Arcee Blitz",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "arcee-ai/caller-large",
+    "openrouter_model_name": "Arcee AI: Caller Large",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "arcee-ai/coder-large",
+    "openrouter_model_name": "Arcee AI: Coder Large",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "arcee-ai/maestro-reasoning",
+    "openrouter_model_name": "Arcee AI: Maestro Reasoning",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "arcee-ai/spotlight",
+    "openrouter_model_name": "Arcee AI: Spotlight",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "arcee-ai/virtuoso-large",
+    "openrouter_model_name": "Arcee AI: Virtuoso Large",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "arcee-ai/virtuoso-medium-v2",
+    "openrouter_model_name": "Arcee AI: Virtuoso Medium V2",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "arliai/qwq-32b-arliai-rpr-v1:free",
+    "openrouter_model_name": "ArliAI: QwQ 32B RpR v1 (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "cohere/command",
+    "openrouter_model_name": "Cohere: Command",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "cohere/command-a",
+    "openrouter_model_name": "Cohere: Command A",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "cohere/command-r",
+    "openrouter_model_name": "Cohere: Command R",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "cohere/command-r-plus",
+    "openrouter_model_name": "Cohere: Command R+",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "cohere/command-r7b-12-2024",
+    "openrouter_model_name": "Cohere: Command R7B (12-2024)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-chat:free",
+    "openrouter_model_name": "DeepSeek: DeepSeek V3 (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-prover-v2",
+    "openrouter_model_name": "DeepSeek: DeepSeek Prover V2",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-prover-v2:free",
+    "openrouter_model_name": "DeepSeek: DeepSeek Prover V2 (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1-distill-llama-70b",
+    "openrouter_model_name": "DeepSeek: R1 Distill Llama 70B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1-distill-llama-70b:free",
+    "openrouter_model_name": "DeepSeek: R1 Distill Llama 70B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1-distill-llama-8b",
+    "openrouter_model_name": "DeepSeek: R1 Distill Llama 8B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1-distill-qwen-1.5b",
+    "openrouter_model_name": "DeepSeek: R1 Distill Qwen 1.5B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1-distill-qwen-14b",
+    "openrouter_model_name": "DeepSeek: R1 Distill Qwen 14B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1-distill-qwen-14b:free",
+    "openrouter_model_name": "DeepSeek: R1 Distill Qwen 14B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1-distill-qwen-32b",
+    "openrouter_model_name": "DeepSeek: R1 Distill Qwen 32B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1-distill-qwen-32b:free",
+    "openrouter_model_name": "DeepSeek: R1 Distill Qwen 32B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-r1-zero:free",
+    "openrouter_model_name": "DeepSeek: DeepSeek R1 Zero (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "deepseek/deepseek-v3-base:free",
+    "openrouter_model_name": "DeepSeek: DeepSeek V3 Base (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "eleutherai/llemma_7b",
+    "openrouter_model_name": "EleutherAI: Llemma 7b",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "eva-unit-01/eva-llama-3.33-70b",
+    "openrouter_model_name": "EVA Llama 3.33 70B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "eva-unit-01/eva-qwen-2.5-72b",
+    "openrouter_model_name": "EVA Qwen2.5 72B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "featherless/qwerky-72b:free",
+    "openrouter_model_name": "Qwerky 72B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "google/gemini-2.0-flash-exp:free",
+    "openrouter_model_name": "Google: Gemini 2.0 Flash Experimental (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "google/gemini-2.5-pro-exp-03-25",
+    "openrouter_model_name": "Google: Gemini 2.5 Pro Experimental",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "google/gemma-2-9b-it:free",
+    "openrouter_model_name": "Google: Gemma 2 9B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-12b-it:free",
+    "openrouter_model_name": "Google: Gemma 3 12B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-1b-it:free",
+    "openrouter_model_name": "Google: Gemma 3 1B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-27b-it:free",
+    "openrouter_model_name": "Google: Gemma 3 27B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "google/gemma-3-4b-it:free",
+    "openrouter_model_name": "Google: Gemma 3 4B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "gryphe/mythomax-l2-13b",
+    "openrouter_model_name": "MythoMax 13B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "inception/mercury-coder-small-beta",
+    "openrouter_model_name": "Inception: Mercury Coder Small Beta",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "infermatic/mn-inferor-12b",
+    "openrouter_model_name": "Infermatic: Mistral Nemo Inferor 12B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "inflection/inflection-3-pi",
+    "openrouter_model_name": "Inflection: Inflection 3 Pi",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "inflection/inflection-3-productivity",
+    "openrouter_model_name": "Inflection: Inflection 3 Productivity",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "liquid/lfm-3b",
+    "openrouter_model_name": "Liquid: LFM 3B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "liquid/lfm-40b",
+    "openrouter_model_name": "Liquid: LFM 40B MoE",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "liquid/lfm-7b",
+    "openrouter_model_name": "Liquid: LFM 7B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mancer/weaver",
+    "openrouter_model_name": "Mancer: Weaver (alpha)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-3.1-405b:free",
+    "openrouter_model_name": "Meta: Llama 3.1 405B (base) (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-4-maverick",
+    "openrouter_model_name": "Meta: Llama 4 Maverick",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-4-maverick:free",
+    "openrouter_model_name": "Meta: Llama 4 Maverick (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-4-scout",
+    "openrouter_model_name": "Meta: Llama 4 Scout",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-4-scout:free",
+    "openrouter_model_name": "Meta: Llama 4 Scout (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-guard-2-8b",
+    "openrouter_model_name": "Meta: LlamaGuard 2 8B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-guard-3-8b",
+    "openrouter_model_name": "Llama Guard 3 8B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "meta-llama/llama-guard-4-12b",
+    "openrouter_model_name": "Meta: Llama Guard 4 12B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "microsoft/mai-ds-r1:free",
+    "openrouter_model_name": "Microsoft: MAI DS R1 (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "microsoft/phi-4",
+    "openrouter_model_name": "Microsoft: Phi 4",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "microsoft/phi-4-multimodal-instruct",
+    "openrouter_model_name": "Microsoft: Phi 4 Multimodal Instruct",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "microsoft/phi-4-reasoning-plus",
+    "openrouter_model_name": "Microsoft: Phi 4 Reasoning Plus",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "microsoft/phi-4-reasoning-plus:free",
+    "openrouter_model_name": "Microsoft: Phi 4 Reasoning Plus (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "microsoft/phi-4-reasoning:free",
+    "openrouter_model_name": "Microsoft: Phi 4 Reasoning (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "microsoft/wizardlm-2-8x22b",
+    "openrouter_model_name": "WizardLM-2 8x22B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "minimax/minimax-01",
+    "openrouter_model_name": "MiniMax: MiniMax-01",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/codestral-2501",
+    "openrouter_model_name": "Mistral: Codestral 2501",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/codestral-mamba",
+    "openrouter_model_name": "Mistral: Codestral Mamba",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/devstral-small",
+    "openrouter_model_name": "Mistral: Devstral Small",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/devstral-small:free",
+    "openrouter_model_name": "Mistral: Devstral Small (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/ministral-3b",
+    "openrouter_model_name": "Mistral: Ministral 3B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/ministral-8b",
+    "openrouter_model_name": "Mistral: Ministral 8B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-nemo",
+    "openrouter_model_name": "Mistral: Mistral Nemo",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-nemo:free",
+    "openrouter_model_name": "Mistral: Mistral Nemo (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-saba",
+    "openrouter_model_name": "Mistral: Saba",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-small",
+    "openrouter_model_name": "Mistral Small",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/mistral-tiny",
+    "openrouter_model_name": "Mistral Tiny",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "mistralai/pixtral-12b",
+    "openrouter_model_name": "Mistral: Pixtral 12B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "moonshotai/kimi-vl-a3b-thinking:free",
+    "openrouter_model_name": "Moonshot AI: Kimi VL A3B Thinking (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "moonshotai/moonlight-16b-a3b-instruct:free",
+    "openrouter_model_name": "Moonshot AI: Moonlight 16B A3B Instruct (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "neversleep/llama-3-lumimaid-70b",
+    "openrouter_model_name": "NeverSleep: Llama 3 Lumimaid 70B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "neversleep/llama-3-lumimaid-8b",
+    "openrouter_model_name": "NeverSleep: Llama 3 Lumimaid 8B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "neversleep/llama-3-lumimaid-8b:extended",
+    "openrouter_model_name": "NeverSleep: Llama 3 Lumimaid 8B (extended)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "neversleep/llama-3.1-lumimaid-70b",
+    "openrouter_model_name": "NeverSleep: Lumimaid v0.2 70B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "neversleep/llama-3.1-lumimaid-8b",
+    "openrouter_model_name": "NeverSleep: Lumimaid v0.2 8B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "neversleep/noromaid-20b",
+    "openrouter_model_name": "Noromaid 20B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "nothingiisreal/mn-celeste-12b",
+    "openrouter_model_name": "Mistral Nemo 12B Celeste",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "nousresearch/deephermes-3-llama-3-8b-preview:free",
+    "openrouter_model_name": "Nous: DeepHermes 3 Llama 3 8B Preview (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "nousresearch/deephermes-3-mistral-24b-preview:free",
+    "openrouter_model_name": "Nous: DeepHermes 3 Mistral 24B Preview (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "nousresearch/hermes-2-pro-llama-3-8b",
+    "openrouter_model_name": "NousResearch: Hermes 2 Pro - Llama-3 8B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "nousresearch/hermes-3-llama-3.1-405b",
+    "openrouter_model_name": "Nous: Hermes 3 405B Instruct",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "nousresearch/hermes-3-llama-3.1-70b",
+    "openrouter_model_name": "Nous: Hermes 3 70B Instruct",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "open-r1/olympiccoder-32b:free",
+    "openrouter_model_name": "OlympicCoder 32B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/chatgpt-4o-latest",
+    "openrouter_model_name": "OpenAI: ChatGPT-4o",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/codex-mini",
+    "openrouter_model_name": "OpenAI: Codex Mini",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-3.5-turbo",
+    "openrouter_model_name": "OpenAI: GPT-3.5 Turbo",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-3.5-turbo-instruct",
+    "openrouter_model_name": "OpenAI: GPT-3.5 Turbo Instruct",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4",
+    "openrouter_model_name": "OpenAI: GPT-4",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4-32k",
+    "openrouter_model_name": "OpenAI: GPT-4 32k",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4-32k-0314",
+    "openrouter_model_name": "OpenAI: GPT-4 32k (older v0314)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4-turbo",
+    "openrouter_model_name": "OpenAI: GPT-4 Turbo",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4-turbo-preview",
+    "openrouter_model_name": "OpenAI: GPT-4 Turbo Preview",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4.1",
+    "openrouter_model_name": "OpenAI: GPT-4.1",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4.1-mini",
+    "openrouter_model_name": "OpenAI: GPT-4.1 Mini",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4.1-nano",
+    "openrouter_model_name": "OpenAI: GPT-4.1 Nano",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4o",
+    "openrouter_model_name": "OpenAI: GPT-4o",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4o-2024-11-20",
+    "openrouter_model_name": "OpenAI: GPT-4o (2024-11-20)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4o-mini",
+    "openrouter_model_name": "OpenAI: GPT-4o-mini",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4o-mini-search-preview",
+    "openrouter_model_name": "OpenAI: GPT-4o-mini Search Preview",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4o-search-preview",
+    "openrouter_model_name": "OpenAI: GPT-4o Search Preview",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/gpt-4o:extended",
+    "openrouter_model_name": "OpenAI: GPT-4o (extended)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/o1",
+    "openrouter_model_name": "OpenAI: o1",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/o1-mini",
+    "openrouter_model_name": "OpenAI: o1-mini",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/o1-mini-2024-09-12",
+    "openrouter_model_name": "OpenAI: o1-mini (2024-09-12)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/o1-preview-2024-09-12",
+    "openrouter_model_name": "OpenAI: o1-preview (2024-09-12)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/o1-pro",
+    "openrouter_model_name": "OpenAI: o1-pro",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/o3",
+    "openrouter_model_name": "OpenAI: o3",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/o3-mini",
+    "openrouter_model_name": "OpenAI: o3 Mini",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/o4-mini",
+    "openrouter_model_name": "OpenAI: o4 Mini",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openai/o4-mini-high",
+    "openrouter_model_name": "OpenAI: o4 Mini High",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "opengvlab/internvl3-14b:free",
+    "openrouter_model_name": "OpenGVLab: InternVL3 14B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "opengvlab/internvl3-2b:free",
+    "openrouter_model_name": "OpenGVLab: InternVL3 2B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "openrouter/auto",
+    "openrouter_model_name": "Auto Router",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "perplexity/llama-3.1-sonar-large-128k-online",
+    "openrouter_model_name": "Perplexity: Llama 3.1 Sonar 70B Online",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "perplexity/llama-3.1-sonar-small-128k-online",
+    "openrouter_model_name": "Perplexity: Llama 3.1 Sonar 8B Online",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "perplexity/r1-1776",
+    "openrouter_model_name": "Perplexity: R1 1776",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "perplexity/sonar",
+    "openrouter_model_name": "Perplexity: Sonar",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "perplexity/sonar-deep-research",
+    "openrouter_model_name": "Perplexity: Sonar Deep Research",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "perplexity/sonar-pro",
+    "openrouter_model_name": "Perplexity: Sonar Pro",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "perplexity/sonar-reasoning",
+    "openrouter_model_name": "Perplexity: Sonar Reasoning",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "perplexity/sonar-reasoning-pro",
+    "openrouter_model_name": "Perplexity: Sonar Reasoning Pro",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "pygmalionai/mythalion-13b",
+    "openrouter_model_name": "Pygmalion: Mythalion 13B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-plus",
+    "openrouter_model_name": "Qwen: Qwen-Plus",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-turbo",
+    "openrouter_model_name": "Qwen: Qwen-Turbo",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-vl-max",
+    "openrouter_model_name": "Qwen: Qwen VL Max",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen-vl-plus",
+    "openrouter_model_name": "Qwen: Qwen VL Plus",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen2.5-vl-3b-instruct:free",
+    "openrouter_model_name": "Qwen: Qwen2.5 VL 3B Instruct (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen3-14b",
+    "openrouter_model_name": "Qwen: Qwen3 14B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen3-14b:free",
+    "openrouter_model_name": "Qwen: Qwen3 14B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen3-32b:free",
+    "openrouter_model_name": "Qwen: Qwen3 32B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen3-8b",
+    "openrouter_model_name": "Qwen: Qwen3 8B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "qwen/qwen3-8b:free",
+    "openrouter_model_name": "Qwen: Qwen3 8B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "qwen/qwq-32b:free",
+    "openrouter_model_name": "Qwen: QwQ 32B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "raifle/sorcererlm-8x22b",
+    "openrouter_model_name": "SorcererLM 8x22B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "rekaai/reka-flash-3:free",
+    "openrouter_model_name": "Reka: Flash 3 (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "sao10k/fimbulvetr-11b-v2",
+    "openrouter_model_name": "Fimbulvetr 11B v2",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "sao10k/l3-euryale-70b",
+    "openrouter_model_name": "Sao10k: Llama 3 Euryale 70B v2.1",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "sao10k/l3-lunaris-8b",
+    "openrouter_model_name": "Sao10K: Llama 3 8B Lunaris",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "sao10k/l3.1-euryale-70b",
+    "openrouter_model_name": "Sao10K: Llama 3.1 Euryale 70B v2.2",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "sao10k/l3.3-euryale-70b",
+    "openrouter_model_name": "Sao10K: Llama 3.3 Euryale 70B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "scb10x/llama3.1-typhoon2-8b-instruct",
+    "openrouter_model_name": "Typhoon2 8B Instruct",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "shisa-ai/shisa-v2-llama3.3-70b:free",
+    "openrouter_model_name": "Shisa AI: Shisa V2 Llama 3.3 70B  (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "sophosympatheia/midnight-rose-70b",
+    "openrouter_model_name": "Midnight Rose 70B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "thedrummer/anubis-pro-105b-v1",
+    "openrouter_model_name": "TheDrummer: Anubis Pro 105B V1",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "thedrummer/rocinante-12b",
+    "openrouter_model_name": "Rocinante 12B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "thedrummer/skyfall-36b-v2",
+    "openrouter_model_name": "TheDrummer: Skyfall 36B V2",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "thedrummer/unslopnemo-12b",
+    "openrouter_model_name": "Unslopnemo 12B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "thedrummer/valkyrie-49b-v1",
+    "openrouter_model_name": "TheDrummer: Valkyrie 49B V1",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "thudm/glm-4-32b",
+    "openrouter_model_name": "THUDM: GLM 4 32B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "thudm/glm-4-32b:free",
+    "openrouter_model_name": "THUDM: GLM 4 32B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "thudm/glm-z1-32b",
+    "openrouter_model_name": "THUDM: GLM Z1 32B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "thudm/glm-z1-32b:free",
+    "openrouter_model_name": "THUDM: GLM Z1 32B (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "thudm/glm-z1-rumination-32b",
+    "openrouter_model_name": "THUDM: GLM Z1 Rumination 32B ",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "tngtech/deepseek-r1t-chimera:free",
+    "openrouter_model_name": "TNG: DeepSeek R1T Chimera (free)",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "undi95/remm-slerp-l2-13b",
+    "openrouter_model_name": "ReMM SLERP 13B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "undi95/toppy-m-7b",
+    "openrouter_model_name": "Toppy M 7B",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "x-ai/grok-2-1212",
+    "openrouter_model_name": "xAI: Grok 2 1212",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "x-ai/grok-2-vision-1212",
+    "openrouter_model_name": "xAI: Grok 2 Vision 1212",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "x-ai/grok-3-beta",
+    "openrouter_model_name": "xAI: Grok 3 Beta",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "x-ai/grok-3-mini-beta",
+    "openrouter_model_name": "xAI: Grok 3 Mini Beta",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "x-ai/grok-beta",
+    "openrouter_model_name": "xAI: Grok Beta",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  },
+  {
+    "openrouter_model_id": "x-ai/grok-vision-beta",
+    "openrouter_model_name": "xAI: Grok Vision Beta",
+    "proposed_lmsys_model_name": "NO_MATCH_FOUND",
+    "proposed_lmsys_elo_score": null,
+    "match_confidence_score": 0,
+    "notes_or_reasoning": "No similar LMSYS model found (similarity < 70%)",
+    "id_similarity": 0,
+    "name_similarity": 0
+  }
+]

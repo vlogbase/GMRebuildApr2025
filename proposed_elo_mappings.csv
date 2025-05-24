@@ -1,0 +1,468 @@
+openrouter_model_id,openrouter_model_name,proposed_lmsys_model_name,proposed_lmsys_elo_score,match_confidence_score,notes_or_reasoning,id_similarity,name_similarity
+ai21/jamba-1.6-large,AI21: Jamba 1.6 Large,Jamba-1.5-Large,1218,78.57,Moderate similarity match,78.57,78.57
+ai21/jamba-1.6-mini,AI21: Jamba Mini 1.6,Jamba-1.5-Mini,1173,76.92,Moderate similarity match,76.92,69.23
+allenai/olmo-7b-instruct,OLMo 7B Instruct,OLMo-7B-instruct,1012,100.0,High name similarity,80.0,100.0
+allenai/olmo-7b-instruct,OLMo 7B Instruct,SmolLM2-1.7B-Instruct,1043,81.25,Moderate similarity match,66.67,81.25
+amazon/nova-lite-v1,Amazon: Nova Lite 1.0,Amazon Nova Lite 1.0,1213,100.0,High ID similarity; High name similarity,93.75,100.0
+amazon/nova-micro-v1,Amazon: Nova Micro 1.0,Amazon Nova Micro 1.0,1194,100.0,High ID similarity; High name similarity,94.12,100.0
+amazon/nova-micro-v1,Amazon: Nova Micro 1.0,Amazon Nova Pro 1.0,1241,87.5,High name similarity,81.25,87.5
+amazon/nova-pro-v1,Amazon: Nova Pro 1.0,Amazon Nova Pro 1.0,1241,100.0,High ID similarity; High name similarity,93.33,100.0
+amazon/nova-pro-v1,Amazon: Nova Pro 1.0,Amazon Nova Micro 1.0,1194,87.5,High name similarity,81.25,87.5
+anthropic/claude-3-haiku,Anthropic: Claude 3 Haiku,Claude 3 Haiku,1176,72.73,Moderate similarity match,72.73,72.73
+anthropic/claude-3-opus,Anthropic: Claude 3 Opus,Claude 3 Opus,1244,70.97,Moderate similarity match,70.97,70.97
+anthropic/claude-3-sonnet,Anthropic: Claude 3 Sonnet,Claude 3 Sonnet,1198,74.29,Moderate similarity match,74.29,74.29
+anthropic/claude-3-sonnet,Anthropic: Claude 3 Sonnet,Claude 3.7 Sonnet,1287,72.22,Moderate similarity match,72.22,72.22
+anthropic/claude-3.5-haiku,Anthropic: Claude 3.5 Haiku,Claude 3 Haiku,1176,70.59,Moderate similarity match,70.59,70.59
+anthropic/claude-3.5-haiku-20241022,Anthropic: Claude 3.5 Haiku (2024-10-22),Claude 3.5 Haiku (20241022),1234,82.35,Moderate similarity match,82.35,82.35
+anthropic/claude-3.5-haiku-20241022:beta,Anthropic: Claude 3.5 Haiku (2024-10-22) (self-moderated),Claude 3.5 Haiku (20241022),1234,76.36,Moderate similarity match,76.36,65.62
+anthropic/claude-3.5-sonnet,Anthropic: Claude 3.5 Sonnet,Claude 3 Sonnet,1198,72.22,Moderate similarity match,72.22,72.22
+anthropic/claude-3.5-sonnet,Anthropic: Claude 3.5 Sonnet,Claude 3.7 Sonnet,1287,70.27,Moderate similarity match,70.27,70.27
+anthropic/claude-3.5-sonnet-20240620,Anthropic: Claude 3.5 Sonnet (2024-06-20),Claude 3.5 Sonnet (20240620),1265,83.02,Moderate similarity match,83.02,83.02
+anthropic/claude-3.5-sonnet-20240620:beta,Anthropic: Claude 3.5 Sonnet (2024-06-20) (self-moderated),Claude 3.5 Sonnet (20240620),1265,77.19,Moderate similarity match,77.19,66.67
+anthropic/claude-3.5-sonnet-20240620:beta,Anthropic: Claude 3.5 Sonnet (2024-06-20) (self-moderated),Claude 3.5 Sonnet (20241022),1280,70.18,Moderate similarity match,70.18,60.61
+anthropic/claude-3.7-sonnet,Anthropic: Claude 3.7 Sonnet,Claude 3.7 Sonnet,1287,75.68,Moderate similarity match,75.68,75.68
+anthropic/claude-3.7-sonnet,Anthropic: Claude 3.7 Sonnet,Claude 3 Sonnet,1198,72.22,Moderate similarity match,72.22,72.22
+anthropic/claude-3.7-sonnet:thinking,Anthropic: Claude 3.7 Sonnet (thinking),Claude 3.7 Sonnet (thinking-32k),1296,78.57,Moderate similarity match,78.57,78.57
+cognitivecomputations/dolphin-mixtral-8x22b,Dolphin 2.9.2 Mixtral 8x22B 🐬,Dolphin-2.2.1-Mistral-7B,1059,76.19,Moderate similarity match,47.46,76.19
+cognitivecomputations/dolphin3.0-mistral-24b:free,Dolphin3.0 Mistral 24B (free),Dolphin-2.2.1-Mistral-7B,1059,71.43,Moderate similarity match,47.62,71.43
+cognitivecomputations/dolphin3.0-r1-mistral-24b:free,Dolphin3.0 R1 Mistral 24B (free),Dolphin-2.2.1-Mistral-7B,1059,72.73,Moderate similarity match,49.23,72.73
+cohere/command-r-03-2024,Cohere: Command R (03-2024),Command R (08-2024),1176,76.47,Moderate similarity match,76.47,76.47
+cohere/command-r-03-2024,Cohere: Command R (03-2024),Command R (04-2024),1145,76.47,Moderate similarity match,76.47,76.47
+cohere/command-r-03-2024,Cohere: Command R (03-2024),Command R+ (08-2024),1212,74.29,Moderate similarity match,74.29,74.29
+cohere/command-r-08-2024,Cohere: Command R (08-2024),Command R (08-2024),1176,82.35,Moderate similarity match,82.35,82.35
+cohere/command-r-08-2024,Cohere: Command R (08-2024),Command R+ (08-2024),1212,80.0,Moderate similarity match,80.0,80.0
+cohere/command-r-plus-04-2024,Cohere: Command R+ (04-2024),Command R+ (04-2024),1186,83.33,Moderate similarity match,71.79,83.33
+cohere/command-r-plus-04-2024,Cohere: Command R+ (04-2024),Command R (04-2024),1145,80.0,Moderate similarity match,73.68,80.0
+cohere/command-r-plus-08-2024,Cohere: Command R+ (08-2024),Command R+ (08-2024),1212,83.33,Moderate similarity match,71.79,83.33
+cohere/command-r-plus-08-2024,Cohere: Command R+ (08-2024),Command R (08-2024),1176,80.0,Moderate similarity match,73.68,80.0
+deepseek/deepseek-chat,DeepSeek: DeepSeek V3,DeepSeek-V3,1315,71.43,Moderate similarity match,53.33,71.43
+deepseek/deepseek-chat-v3-0324,DeepSeek: DeepSeek V3 0324,DeepSeek-V3-0324,1368,77.78,Moderate similarity match,70.0,77.78
+deepseek/deepseek-chat-v3-0324:free,DeepSeek: DeepSeek V3 0324 (free),DeepSeek-V3-0324,1368,70.0,Moderate similarity match,63.64,70.0
+deepseek/deepseek-coder,DeepSeek-Coder-V2,DeepSeek-Coder-V2-Instruct,1175,78.95,Moderate similarity match,59.09,78.95
+deepseek/deepseek-coder,DeepSeek-Coder-V2,Deepseek-v2.5,1255,76.92,Moderate similarity match,50.0,76.92
+deepseek/deepseek-coder,DeepSeek-Coder-V2,DeepSeek-R1,1354,72.0,Moderate similarity match,58.06,72.0
+deepseek/deepseek-r1,DeepSeek: R1,DeepSeek-R1,1354,100.0,High name similarity,71.43,100.0
+deepseek/deepseek-r1,DeepSeek: R1,DeepSeek-V3,1315,80.0,Moderate similarity match,57.14,80.0
+deepseek/deepseek-r1:free,DeepSeek: R1 (free),DeepSeek-R1,1354,83.33,Moderate similarity match,62.5,83.33
+eva-unit-01/eva-qwen-2.5-32b,EVA Qwen2.5 32B,Qwen3-32B,1324,70.0,Moderate similarity match,48.28,70.0
+google/gemini-2.0-flash-001,Google: Gemini 2.0 Flash,Gemini-2.0-Flash-001,1351,84.21,Moderate similarity match,84.21,74.29
+google/gemini-2.0-flash-lite-001,Google: Gemini 2.0 Flash Lite,Gemini-2.0-Flash-Lite,1309,85.0,High name similarity,79.07,85.0
+google/gemini-2.5-flash-preview,Google: Gemini 2.5 Flash Preview 04-17,Gemini-2.5-Flash-Preview-04-17,1387,88.89,High name similarity,80.0,88.89
+google/gemini-2.5-flash-preview,Google: Gemini 2.5 Flash Preview 04-17,Gemini-2.5-Flash-Preview-05-20,1418,80.0,Moderate similarity match,80.0,77.78
+google/gemini-2.5-flash-preview-05-20,Google: Gemini 2.5 Flash Preview 05-20,Gemini-2.5-Flash-Preview-05-20,1418,88.89,High ID similarity; High name similarity,88.89,88.89
+google/gemini-2.5-flash-preview-05-20:thinking,Google: Gemini 2.5 Flash Preview 05-20 (thinking),Gemini-2.5-Flash-Preview-05-20,1418,77.42,Moderate similarity match,77.42,77.42
+google/gemini-2.5-flash-preview:thinking,Google: Gemini 2.5 Flash Preview 04-17 (thinking),Gemini-2.5-Flash-Preview-04-17,1387,77.42,Moderate similarity match,68.97,77.42
+google/gemini-2.5-pro-preview,Google: Gemini 2.5 Pro Preview,Gemini-2.5-Pro-Preview-05-06,1446,78.26,Moderate similarity match,78.26,78.26
+google/gemini-flash-1.5,Google: Gemini 1.5 Flash ,Gemini-1.5-Flash-002,1268,74.29,Moderate similarity match,62.86,74.29
+google/gemini-flash-1.5,Google: Gemini 1.5 Flash ,Gemini-1.5-Flash-001,1223,74.29,Moderate similarity match,68.57,74.29
+google/gemini-flash-1.5,Google: Gemini 1.5 Flash ,Gemini-1.5-Flash-8B-001,1209,70.27,Moderate similarity match,64.86,70.27
+google/gemini-flash-1.5-8b,Google: Gemini 1.5 Flash 8B,Gemini-1.5-Flash-8B-001,1209,76.92,Moderate similarity match,66.67,76.92
+google/gemini-flash-1.5-8b,Google: Gemini 1.5 Flash 8B,Gemini-1.5-Flash-002,1268,70.27,Moderate similarity match,59.46,70.27
+google/gemini-flash-1.5-8b,Google: Gemini 1.5 Flash 8B,Gemini-1.5-Flash-001,1223,70.27,Moderate similarity match,64.86,70.27
+google/gemini-pro-1.5,Google: Gemini 1.5 Pro,Gemini-1.5-Pro-002,1299,70.97,Moderate similarity match,58.06,70.97
+google/gemini-pro-1.5,Google: Gemini 1.5 Pro,Gemini-1.5-Pro-001,1256,70.97,Moderate similarity match,64.52,70.97
+google/gemma-2-27b-it,Google: Gemma 2 27B,Gemma-2-27B-it,1216,78.57,Moderate similarity match,78.57,69.23
+google/gemma-2-27b-it,Google: Gemma 2 27B,Gemma-2-2b-it,1140,74.07,Moderate similarity match,74.07,64.0
+google/gemma-2-27b-it,Google: Gemma 2 27B,Gemma-3-27B-it,1339,71.43,Moderate similarity match,71.43,61.54
+google/gemma-2-9b-it,Google: Gemma 2 9B,Gemma-2-9B-it,1189,76.92,Moderate similarity match,76.92,66.67
+google/gemma-2-9b-it,Google: Gemma 2 9B,Gemma-2B-it,986,72.0,Moderate similarity match,72.0,60.87
+google/gemma-3-12b-it,Google: Gemma 3 12B,Gemma-3-12B-it,1317,78.57,Moderate similarity match,78.57,69.23
+google/gemma-3-12b-it,Google: Gemma 3 12B,Gemma-3-27B-it,1339,71.43,Moderate similarity match,71.43,61.54
+google/gemma-3-12b-it,Google: Gemma 3 12B,Gemma-1.1-2b-it,1017,71.43,Moderate similarity match,71.43,61.54
+google/gemma-3-27b-it,Google: Gemma 3 27B,Gemma-3-27B-it,1339,78.57,Moderate similarity match,78.57,69.23
+google/gemma-3-27b-it,Google: Gemma 3 27B,Gemma-3-12B-it,1317,71.43,Moderate similarity match,71.43,61.54
+google/gemma-3-27b-it,Google: Gemma 3 27B,Gemma-2-27B-it,1216,71.43,Moderate similarity match,71.43,61.54
+google/gemma-3-4b-it,Google: Gemma 3 4B,Gemma-3-4B-it,1272,76.92,Moderate similarity match,76.92,66.67
+google/gemma-3-4b-it,Google: Gemma 3 4B,Gemma-3n-e4b-it,1286,71.43,Moderate similarity match,71.43,61.54
+google/gemma-3n-e4b-it:free,Google: Gemma 3n 4B (free),Gemma-3n-e4b-it,1286,70.59,Moderate similarity match,70.59,58.06
+meta-llama/llama-2-70b-chat,Meta: Llama 2 70B Chat,Llama-2-70B-chat,1089,86.67,High name similarity,74.29,86.67
+meta-llama/llama-2-70b-chat,Meta: Llama 2 70B Chat,Llama-2-7B-chat,1033,82.76,Moderate similarity match,70.59,82.76
+meta-llama/llama-3-70b-instruct,Meta: Llama 3 70B Instruct,Meta-Llama-3.1-70B-Instruct,1244,97.67,High ID similarity; High name similarity,87.5,97.67
+meta-llama/llama-3-70b-instruct,Meta: Llama 3 70B Instruct,Meta-Llama-3.1-8B-Instruct,1172,90.48,High name similarity,80.85,90.48
+meta-llama/llama-3-70b-instruct,Meta: Llama 3 70B Instruct,Meta-Llama-3.2-3B-Instruct,1099,90.48,High name similarity,80.85,90.48
+meta-llama/llama-3-70b-instruct,Meta: Llama 3 70B Instruct,Meta-Llama-3.2-1B-Instruct,1050,90.48,High name similarity,80.85,90.48
+meta-llama/llama-3-70b-instruct,Meta: Llama 3 70B Instruct,Llama-3-70B-Instruct,1203,89.47,High name similarity,79.07,89.47
+meta-llama/llama-3-70b-instruct,Meta: Llama 3 70B Instruct,Llama-3.3-70B-Instruct,1253,87.18,High name similarity,77.27,87.18
+meta-llama/llama-3-70b-instruct,Meta: Llama 3 70B Instruct,Meta-Llama-3.1-405B-Instruct-fp8,1264,85.11,High name similarity,76.92,85.11
+meta-llama/llama-3-70b-instruct,Meta: Llama 3 70B Instruct,Meta-Llama-3.1-405B-Instruct-bf16,1265,83.33,Moderate similarity match,75.47,83.33
+meta-llama/llama-3-70b-instruct,Meta: Llama 3 70B Instruct,CodeLlama-70B-instruct,1038,82.93,Moderate similarity match,73.91,82.93
+meta-llama/llama-3-70b-instruct,Meta: Llama 3 70B Instruct,Llama-3-8B-Instruct,1148,81.08,Moderate similarity match,71.43,81.08
+meta-llama/llama-3-8b-instruct,Meta: Llama 3 8B Instruct,Meta-Llama-3.1-8B-Instruct,1172,97.56,High ID similarity; High name similarity,86.96,97.56
+meta-llama/llama-3-8b-instruct,Meta: Llama 3 8B Instruct,Meta-Llama-3.2-3B-Instruct,1099,92.68,High name similarity,82.61,92.68
+meta-llama/llama-3-8b-instruct,Meta: Llama 3 8B Instruct,Meta-Llama-3.2-1B-Instruct,1050,92.68,High name similarity,82.61,92.68
+meta-llama/llama-3-8b-instruct,Meta: Llama 3 8B Instruct,Meta-Llama-3.1-70B-Instruct,1244,90.48,High name similarity,80.85,90.48
+meta-llama/llama-3-8b-instruct,Meta: Llama 3 8B Instruct,Llama-3-8B-Instruct,1148,88.89,High name similarity,78.05,88.89
+meta-llama/llama-3-8b-instruct,Meta: Llama 3 8B Instruct,Meta-Llama-3.1-405B-Instruct-fp8,1264,82.61,Moderate similarity match,74.51,82.61
+meta-llama/llama-3-8b-instruct,Meta: Llama 3 8B Instruct,Llama-3-70B-Instruct,1203,81.08,Moderate similarity match,71.43,81.08
+meta-llama/llama-3-8b-instruct,Meta: Llama 3 8B Instruct,Meta-Llama-3.1-405B-Instruct-bf16,1265,80.85,Moderate similarity match,73.08,80.85
+meta-llama/llama-3-8b-instruct,Meta: Llama 3 8B Instruct,CodeLlama-34B-instruct,1039,80.0,Moderate similarity match,71.11,80.0
+meta-llama/llama-3.1-405b,Meta: Llama 3.1 405B (base),Meta-Llama-3.1-405B-Instruct-fp8,1264,71.11,Moderate similarity match,65.22,71.11
+meta-llama/llama-3.1-405b-instruct,Meta: Llama 3.1 405B Instruct,Meta-Llama-3.1-405B-Instruct-fp8,1264,93.88,High ID similarity; High name similarity,85.19,93.88
+meta-llama/llama-3.1-405b-instruct,Meta: Llama 3.1 405B Instruct,Meta-Llama-3.1-70B-Instruct,1244,93.33,High name similarity,84.0,93.33
+meta-llama/llama-3.1-405b-instruct,Meta: Llama 3.1 405B Instruct,Meta-Llama-3.1-405B-Instruct-bf16,1265,92.0,High name similarity,83.64,92.0
+meta-llama/llama-3.1-405b-instruct,Meta: Llama 3.1 405B Instruct,Meta-Llama-3.1-8B-Instruct,1172,90.91,High name similarity,81.63,90.91
+meta-llama/llama-3.1-405b-instruct,Meta: Llama 3.1 405B Instruct,Meta-Llama-3.2-1B-Instruct,1050,90.91,High name similarity,81.63,90.91
+meta-llama/llama-3.1-405b-instruct,Meta: Llama 3.1 405B Instruct,Meta-Llama-3.2-3B-Instruct,1099,86.36,High name similarity,77.55,86.36
+meta-llama/llama-3.1-405b-instruct,Meta: Llama 3.1 405B Instruct,Llama-3-70B-Instruct,1203,80.0,Moderate similarity match,71.11,80.0
+meta-llama/llama-3.1-70b-instruct,Meta: Llama 3.1 70B Instruct,Meta-Llama-3.1-70B-Instruct,1244,100.0,High ID similarity; High name similarity,89.8,100.0
+meta-llama/llama-3.1-70b-instruct,Meta: Llama 3.1 70B Instruct,Meta-Llama-3.1-8B-Instruct,1172,93.02,High name similarity,83.33,93.02
+meta-llama/llama-3.1-70b-instruct,Meta: Llama 3.1 70B Instruct,Meta-Llama-3.2-1B-Instruct,1050,93.02,High name similarity,83.33,93.02
+meta-llama/llama-3.1-70b-instruct,Meta: Llama 3.1 70B Instruct,Meta-Llama-3.2-3B-Instruct,1099,88.37,High name similarity,79.17,88.37
+meta-llama/llama-3.1-70b-instruct,Meta: Llama 3.1 70B Instruct,Meta-Llama-3.1-405B-Instruct-fp8,1264,87.5,High name similarity,79.25,87.5
+meta-llama/llama-3.1-70b-instruct,Meta: Llama 3.1 70B Instruct,Llama-3-70B-Instruct,1203,87.18,High name similarity,77.27,87.18
+meta-llama/llama-3.1-70b-instruct,Meta: Llama 3.1 70B Instruct,Meta-Llama-3.1-405B-Instruct-bf16,1265,85.71,High name similarity,77.78,85.71
+meta-llama/llama-3.1-70b-instruct,Meta: Llama 3.1 70B Instruct,Llama-3.3-70B-Instruct,1253,85.0,High name similarity,75.56,85.0
+meta-llama/llama-3.1-70b-instruct,Meta: Llama 3.1 70B Instruct,CodeLlama-70B-instruct,1038,80.95,Moderate similarity match,72.34,80.95
+meta-llama/llama-3.1-8b-instruct,Meta: Llama 3.1 8B Instruct,Meta-Llama-3.1-8B-Instruct,1172,100.0,High ID similarity; High name similarity,89.36,100.0
+meta-llama/llama-3.1-8b-instruct,Meta: Llama 3.1 8B Instruct,Meta-Llama-3.2-1B-Instruct,1050,95.24,High ID similarity; High name similarity,85.11,95.24
+meta-llama/llama-3.1-8b-instruct,Meta: Llama 3.1 8B Instruct,Meta-Llama-3.1-70B-Instruct,1244,93.02,High name similarity,83.33,93.02
+meta-llama/llama-3.1-8b-instruct,Meta: Llama 3.1 8B Instruct,Meta-Llama-3.2-3B-Instruct,1099,90.48,High name similarity,80.85,90.48
+meta-llama/llama-3.1-8b-instruct,Meta: Llama 3.1 8B Instruct,Llama-3-8B-Instruct,1148,86.49,High name similarity,76.19,86.49
+meta-llama/llama-3.1-8b-instruct,Meta: Llama 3.1 8B Instruct,Meta-Llama-3.1-405B-Instruct-fp8,1264,85.11,High name similarity,76.92,85.11
+meta-llama/llama-3.1-8b-instruct,Meta: Llama 3.1 8B Instruct,Meta-Llama-3.1-405B-Instruct-bf16,1265,83.33,Moderate similarity match,75.47,83.33
+meta-llama/llama-3.1-8b-instruct:free,Meta: Llama 3.1 8B Instruct (free),Meta-Llama-3.1-8B-Instruct,1172,91.3,High name similarity,82.35,91.3
+meta-llama/llama-3.1-8b-instruct:free,Meta: Llama 3.1 8B Instruct (free),Meta-Llama-3.2-1B-Instruct,1050,86.96,High name similarity,78.43,86.96
+meta-llama/llama-3.1-8b-instruct:free,Meta: Llama 3.1 8B Instruct (free),Meta-Llama-3.1-70B-Instruct,1244,85.11,High name similarity,76.92,85.11
+meta-llama/llama-3.1-8b-instruct:free,Meta: Llama 3.1 8B Instruct (free),Meta-Llama-3.2-3B-Instruct,1099,82.61,Moderate similarity match,74.51,82.61
+meta-llama/llama-3.1-8b-instruct:free,Meta: Llama 3.1 8B Instruct (free),Meta-Llama-3.1-405B-Instruct-fp8,1264,82.35,Moderate similarity match,75.0,82.35
+meta-llama/llama-3.1-8b-instruct:free,Meta: Llama 3.1 8B Instruct (free),Meta-Llama-3.1-405B-Instruct-bf16,1265,80.77,Moderate similarity match,73.68,80.77
+meta-llama/llama-3.2-11b-vision-instruct,Meta: Llama 3.2 11B Vision Instruct,Meta-Llama-3.2-1B-Instruct,1050,85.71,High name similarity,77.78,85.71
+meta-llama/llama-3.2-11b-vision-instruct,Meta: Llama 3.2 11B Vision Instruct,Meta-Llama-3.1-8B-Instruct,1172,81.63,Moderate similarity match,74.07,81.63
+meta-llama/llama-3.2-11b-vision-instruct,Meta: Llama 3.2 11B Vision Instruct,Meta-Llama-3.2-3B-Instruct,1099,81.63,Moderate similarity match,74.07,81.63
+meta-llama/llama-3.2-11b-vision-instruct,Meta: Llama 3.2 11B Vision Instruct,Meta-Llama-3.1-70B-Instruct,1244,80.0,Moderate similarity match,72.73,80.0
+meta-llama/llama-3.2-11b-vision-instruct:free,Meta: Llama 3.2 11B Vision Instruct (free),Meta-Llama-3.2-1B-Instruct,1050,79.25,Moderate similarity match,72.41,79.25
+meta-llama/llama-3.2-11b-vision-instruct:free,Meta: Llama 3.2 11B Vision Instruct (free),Meta-Llama-3.1-8B-Instruct,1172,75.47,Moderate similarity match,68.97,75.47
+meta-llama/llama-3.2-11b-vision-instruct:free,Meta: Llama 3.2 11B Vision Instruct (free),Meta-Llama-3.2-3B-Instruct,1099,75.47,Moderate similarity match,68.97,75.47
+meta-llama/llama-3.2-1b-instruct,Meta: Llama 3.2 1B Instruct,Meta-Llama-3.2-1B-Instruct,1050,100.0,High ID similarity; High name similarity,89.36,100.0
+meta-llama/llama-3.2-1b-instruct,Meta: Llama 3.2 1B Instruct,Meta-Llama-3.1-8B-Instruct,1172,95.24,High ID similarity; High name similarity,85.11,95.24
+meta-llama/llama-3.2-1b-instruct,Meta: Llama 3.2 1B Instruct,Meta-Llama-3.2-3B-Instruct,1099,95.24,High ID similarity; High name similarity,85.11,95.24
+meta-llama/llama-3.2-1b-instruct,Meta: Llama 3.2 1B Instruct,Meta-Llama-3.1-70B-Instruct,1244,93.02,High name similarity,83.33,93.02
+meta-llama/llama-3.2-1b-instruct,Meta: Llama 3.2 1B Instruct,Meta-Llama-3.1-405B-Instruct-fp8,1264,85.11,High name similarity,76.92,85.11
+meta-llama/llama-3.2-1b-instruct,Meta: Llama 3.2 1B Instruct,Meta-Llama-3.1-405B-Instruct-bf16,1265,83.33,Moderate similarity match,75.47,83.33
+meta-llama/llama-3.2-1b-instruct,Meta: Llama 3.2 1B Instruct,Llama-3-8B-Instruct,1148,81.08,Moderate similarity match,71.43,81.08
+meta-llama/llama-3.2-1b-instruct:free,Meta: Llama 3.2 1B Instruct (free),Meta-Llama-3.2-1B-Instruct,1050,91.3,High name similarity,82.35,91.3
+meta-llama/llama-3.2-1b-instruct:free,Meta: Llama 3.2 1B Instruct (free),Meta-Llama-3.1-8B-Instruct,1172,86.96,High name similarity,78.43,86.96
+meta-llama/llama-3.2-1b-instruct:free,Meta: Llama 3.2 1B Instruct (free),Meta-Llama-3.2-3B-Instruct,1099,86.96,High name similarity,78.43,86.96
+meta-llama/llama-3.2-1b-instruct:free,Meta: Llama 3.2 1B Instruct (free),Meta-Llama-3.1-70B-Instruct,1244,85.11,High name similarity,76.92,85.11
+meta-llama/llama-3.2-1b-instruct:free,Meta: Llama 3.2 1B Instruct (free),Meta-Llama-3.1-405B-Instruct-fp8,1264,82.35,Moderate similarity match,75.0,82.35
+meta-llama/llama-3.2-1b-instruct:free,Meta: Llama 3.2 1B Instruct (free),Meta-Llama-3.1-405B-Instruct-bf16,1265,80.77,Moderate similarity match,73.68,80.77
+meta-llama/llama-3.2-3b-instruct,Meta: Llama 3.2 3B Instruct,Meta-Llama-3.2-3B-Instruct,1099,100.0,High ID similarity; High name similarity,89.36,100.0
+meta-llama/llama-3.2-3b-instruct,Meta: Llama 3.2 3B Instruct,Meta-Llama-3.2-1B-Instruct,1050,95.24,High ID similarity; High name similarity,85.11,95.24
+meta-llama/llama-3.2-3b-instruct,Meta: Llama 3.2 3B Instruct,Meta-Llama-3.1-8B-Instruct,1172,90.48,High name similarity,80.85,90.48
+meta-llama/llama-3.2-3b-instruct,Meta: Llama 3.2 3B Instruct,Meta-Llama-3.1-70B-Instruct,1244,88.37,High name similarity,79.17,88.37
+meta-llama/llama-3.2-3b-instruct,Meta: Llama 3.2 3B Instruct,Llama-3.3-70B-Instruct,1253,82.05,Moderate similarity match,72.73,82.05
+meta-llama/llama-3.2-3b-instruct,Meta: Llama 3.2 3B Instruct,Llama-3-8B-Instruct,1148,81.08,Moderate similarity match,71.43,81.08
+meta-llama/llama-3.2-3b-instruct,Meta: Llama 3.2 3B Instruct,Meta-Llama-3.1-405B-Instruct-fp8,1264,80.85,Moderate similarity match,73.08,80.85
+meta-llama/llama-3.2-3b-instruct:free,Meta: Llama 3.2 3B Instruct (free),Meta-Llama-3.2-3B-Instruct,1099,91.3,High name similarity,82.35,91.3
+meta-llama/llama-3.2-3b-instruct:free,Meta: Llama 3.2 3B Instruct (free),Meta-Llama-3.2-1B-Instruct,1050,86.96,High name similarity,78.43,86.96
+meta-llama/llama-3.2-3b-instruct:free,Meta: Llama 3.2 3B Instruct (free),Meta-Llama-3.1-8B-Instruct,1172,82.61,Moderate similarity match,74.51,82.61
+meta-llama/llama-3.2-3b-instruct:free,Meta: Llama 3.2 3B Instruct (free),Meta-Llama-3.1-70B-Instruct,1244,80.85,Moderate similarity match,73.08,80.85
+meta-llama/llama-3.2-90b-vision-instruct,Meta: Llama 3.2 90B Vision Instruct,Meta-Llama-3.2-3B-Instruct,1099,81.63,Moderate similarity match,74.07,81.63
+meta-llama/llama-3.2-90b-vision-instruct,Meta: Llama 3.2 90B Vision Instruct,Meta-Llama-3.2-1B-Instruct,1050,81.63,Moderate similarity match,74.07,81.63
+meta-llama/llama-3.2-90b-vision-instruct,Meta: Llama 3.2 90B Vision Instruct,Meta-Llama-3.1-70B-Instruct,1244,80.0,Moderate similarity match,72.73,80.0
+meta-llama/llama-3.3-70b-instruct,Meta: Llama 3.3 70B Instruct,Meta-Llama-3.1-70B-Instruct,1244,95.45,High ID similarity; High name similarity,85.71,95.45
+meta-llama/llama-3.3-70b-instruct,Meta: Llama 3.3 70B Instruct,Meta-Llama-3.2-3B-Instruct,1099,93.02,High name similarity,83.33,93.02
+meta-llama/llama-3.3-70b-instruct,Meta: Llama 3.3 70B Instruct,Llama-3.3-70B-Instruct,1253,90.0,High name similarity,80.0,90.0
+meta-llama/llama-3.3-70b-instruct,Meta: Llama 3.3 70B Instruct,Meta-Llama-3.1-8B-Instruct,1172,88.37,High name similarity,79.17,88.37
+meta-llama/llama-3.3-70b-instruct,Meta: Llama 3.3 70B Instruct,Meta-Llama-3.2-1B-Instruct,1050,88.37,High name similarity,79.17,88.37
+meta-llama/llama-3.3-70b-instruct,Meta: Llama 3.3 70B Instruct,Llama-3-70B-Instruct,1203,87.18,High name similarity,77.27,87.18
+meta-llama/llama-3.3-70b-instruct,Meta: Llama 3.3 70B Instruct,Meta-Llama-3.1-405B-Instruct-fp8,1264,83.33,Moderate similarity match,75.47,83.33
+meta-llama/llama-3.3-70b-instruct,Meta: Llama 3.3 70B Instruct,Meta-Llama-3.1-405B-Instruct-bf16,1265,81.63,Moderate similarity match,74.07,81.63
+meta-llama/llama-3.3-70b-instruct,Meta: Llama 3.3 70B Instruct,CodeLlama-70B-instruct,1038,80.95,Moderate similarity match,72.34,80.95
+meta-llama/llama-3.3-70b-instruct:free,Meta: Llama 3.3 70B Instruct (free),Meta-Llama-3.1-70B-Instruct,1244,87.5,High name similarity,79.25,87.5
+meta-llama/llama-3.3-70b-instruct:free,Meta: Llama 3.3 70B Instruct (free),Meta-Llama-3.2-3B-Instruct,1099,85.11,High name similarity,76.92,85.11
+meta-llama/llama-3.3-70b-instruct:free,Meta: Llama 3.3 70B Instruct (free),Llama-3.3-70B-Instruct,1253,81.82,Moderate similarity match,73.47,81.82
+meta-llama/llama-3.3-70b-instruct:free,Meta: Llama 3.3 70B Instruct (free),Meta-Llama-3.1-8B-Instruct,1172,80.85,Moderate similarity match,73.08,80.85
+meta-llama/llama-3.3-70b-instruct:free,Meta: Llama 3.3 70B Instruct (free),Meta-Llama-3.2-1B-Instruct,1050,80.85,Moderate similarity match,73.08,80.85
+meta-llama/llama-3.3-70b-instruct:free,Meta: Llama 3.3 70B Instruct (free),Meta-Llama-3.1-405B-Instruct-fp8,1264,80.77,Moderate similarity match,73.68,80.77
+meta-llama/llama-3.3-8b-instruct:free,Meta: Llama 3.3 8B Instruct (free),Meta-Llama-3.1-8B-Instruct,1172,86.96,High name similarity,78.43,86.96
+meta-llama/llama-3.3-8b-instruct:free,Meta: Llama 3.3 8B Instruct (free),Meta-Llama-3.2-3B-Instruct,1099,86.96,High name similarity,78.43,86.96
+meta-llama/llama-3.3-8b-instruct:free,Meta: Llama 3.3 8B Instruct (free),Meta-Llama-3.2-1B-Instruct,1050,82.61,Moderate similarity match,74.51,82.61
+meta-llama/llama-3.3-8b-instruct:free,Meta: Llama 3.3 8B Instruct (free),Meta-Llama-3.1-70B-Instruct,1244,80.85,Moderate similarity match,73.08,80.85
+microsoft/phi-3-medium-128k-instruct,Microsoft: Phi-3 Medium 128K Instruct,Phi-3-Medium-4k-Instruct,1119,74.51,Moderate similarity match,74.51,74.51
+microsoft/phi-3-medium-128k-instruct,Microsoft: Phi-3 Medium 128K Instruct,Phi-3-Mini-128k-Instruct,1033,70.59,Moderate similarity match,70.59,70.59
+microsoft/phi-3-mini-128k-instruct,Microsoft: Phi-3 Mini 128K Instruct,Phi-3-Mini-128k-Instruct,1033,81.63,Moderate similarity match,81.63,81.63
+microsoft/phi-3.5-mini-128k-instruct,Microsoft: Phi-3.5 Mini 128K Instruct,Phi-3-Mini-128k-Instruct,1033,80.0,Moderate similarity match,80.0,80.0
+mistralai/mistral-7b-instruct,Mistral: Mistral 7B Instruct,Mistral-7B-Instruct-v0.2,1069,77.27,Moderate similarity match,73.91,77.27
+mistralai/mistral-7b-instruct,Mistral: Mistral 7B Instruct,Mistral-7B-Instruct-v0.1,1004,77.27,Moderate similarity match,73.91,77.27
+mistralai/mistral-7b-instruct,Mistral: Mistral 7B Instruct,Mistral-Small-24B-Instruct-2501,1214,74.51,Moderate similarity match,71.7,74.51
+mistralai/mistral-7b-instruct-v0.1,Mistral: Mistral 7B Instruct v0.1,Mistral-7B-Instruct-v0.1,1004,85.11,High name similarity,81.63,85.11
+mistralai/mistral-7b-instruct-v0.1,Mistral: Mistral 7B Instruct v0.1,Mistral-7B-Instruct-v0.2,1069,80.85,Moderate similarity match,77.55,80.85
+mistralai/mistral-7b-instruct-v0.2,Mistral: Mistral 7B Instruct v0.2,Mistral-7B-Instruct-v0.2,1069,85.11,High name similarity,81.63,85.11
+mistralai/mistral-7b-instruct-v0.2,Mistral: Mistral 7B Instruct v0.2,Mistral-7B-Instruct-v0.1,1004,80.85,Moderate similarity match,77.55,80.85
+mistralai/mistral-7b-instruct-v0.3,Mistral: Mistral 7B Instruct v0.3,Mistral-7B-Instruct-v0.2,1069,80.85,Moderate similarity match,77.55,80.85
+mistralai/mistral-7b-instruct-v0.3,Mistral: Mistral 7B Instruct v0.3,Mistral-7B-Instruct-v0.1,1004,80.85,Moderate similarity match,77.55,80.85
+mistralai/mistral-7b-instruct:free,Mistral: Mistral 7B Instruct (free),Mistral-7B-Instruct-v0.2,1069,70.83,Moderate similarity match,68.0,70.83
+mistralai/mistral-7b-instruct:free,Mistral: Mistral 7B Instruct (free),Mistral-7B-Instruct-v0.1,1004,70.83,Moderate similarity match,68.0,70.83
+mistralai/mistral-large,Mistral Large,Mistral-Large-2407,1248,85.71,High name similarity,64.86,85.71
+mistralai/mistral-large,Mistral Large,Mistral-Large-2411,1245,85.71,High name similarity,64.86,85.71
+mistralai/mistral-large,Mistral Large,Mistral-Large-2402,1154,85.71,High name similarity,64.86,85.71
+mistralai/mistral-large-2407,Mistral Large 2407,Mistral-Large-2407,1248,100.0,High name similarity,78.05,100.0
+mistralai/mistral-large-2407,Mistral Large 2407,Mistral-Large-2402,1154,93.75,High name similarity,73.17,93.75
+mistralai/mistral-large-2407,Mistral Large 2407,Mistral-Large-2411,1245,87.5,High name similarity,68.29,87.5
+mistralai/mistral-large-2411,Mistral Large 2411,Mistral-Large-2411,1245,100.0,High name similarity,78.05,100.0
+mistralai/mistral-large-2411,Mistral Large 2411,Mistral-Large-2407,1248,87.5,High name similarity,68.29,87.5
+mistralai/mistral-large-2411,Mistral Large 2411,Mistral-Large-2402,1154,87.5,High name similarity,68.29,87.5
+mistralai/mistral-medium,Mistral Medium,Mistral Medium,1144,100.0,High name similarity,74.29,100.0
+mistralai/mistral-medium,Mistral Medium,Mistral Medium 3,1343,96.3,High name similarity,72.22,96.3
+mistralai/mistral-medium-3,Mistral: Mistral Medium 3,Mistral Medium 3,1343,80.0,Moderate similarity match,75.68,80.0
+mistralai/mistral-small-24b-instruct-2501,Mistral: Mistral Small 3,Mistral-Small-24B-Instruct-2501,1214,85.71,High ID similarity,85.71,51.06
+mistralai/mistral-small-24b-instruct-2501,Mistral: Mistral Small 3,Mistral-Small-3.1-24B-Instruct-2503,1246,80.0,Moderate similarity match,80.0,53.06
+mistralai/mistral-small-24b-instruct-2501:free,Mistral: Mistral Small 3 (free),Mistral-Small-24B-Instruct-2501,1214,80.6,Moderate similarity match,80.6,50.98
+mistralai/mistral-small-3.1-24b-instruct,Mistral: Mistral Small 3.1 24B,Mistral-Small-3.1-24B-Instruct-2503,1246,79.37,Moderate similarity match,79.37,64.15
+mistralai/mistral-small-3.1-24b-instruct,Mistral: Mistral Small 3.1 24B,Mistral-Small-24B-Instruct-2501,1214,75.41,Moderate similarity match,75.41,58.82
+mistralai/mistral-small-3.1-24b-instruct:free,Mistral: Mistral Small 3.1 24B (free),Mistral-Small-3.1-24B-Instruct-2503,1246,74.63,Moderate similarity match,74.63,63.16
+mistralai/mistral-small-3.1-24b-instruct:free,Mistral: Mistral Small 3.1 24B (free),Mistral-Small-24B-Instruct-2501,1214,70.77,Moderate similarity match,70.77,58.18
+mistralai/mixtral-8x22b-instruct,Mistral: Mixtral 8x22B Instruct,Mixtral-8x22b-Instruct-v0.1,1144,80.0,Moderate similarity match,76.92,80.0
+mistralai/mixtral-8x7b-instruct,Mistral: Mixtral 8x7B Instruct,Mixtral-8x7B-Instruct-v0.1,1111,79.17,Moderate similarity match,76.0,79.17
+mistralai/mixtral-8x7b-instruct,Mistral: Mixtral 8x7B Instruct,Mistral-7B-Instruct-v0.2,1069,73.91,Moderate similarity match,70.83,73.91
+mistralai/mixtral-8x7b-instruct,Mistral: Mixtral 8x7B Instruct,Mistral-7B-Instruct-v0.1,1004,73.91,Moderate similarity match,70.83,73.91
+mistralai/pixtral-large-2411,Mistral: Pixtral Large 2411,Mistral-Large-2411,1245,82.05,Moderate similarity match,78.05,82.05
+nousresearch/nous-hermes-2-mixtral-8x7b-dpo,Nous: Hermes 2 Mixtral 8x7B DPO,Nous-Hermes-2-Mixtral-8x7B-DPO,1081,100.0,High name similarity,80.65,100.0
+nvidia/llama-3.1-nemotron-70b-instruct,NVIDIA: Llama 3.1 Nemotron 70B Instruct,Llama-3.1-Nemotron-70B-Instruct,1265,89.66,High ID similarity; High name similarity,89.66,89.66
+nvidia/llama-3.1-nemotron-70b-instruct,NVIDIA: Llama 3.1 Nemotron 70B Instruct,Llama-3.1-Nemotron-51B-Instruct,1208,82.76,Moderate similarity match,82.76,82.76
+nvidia/llama-3.1-nemotron-ultra-253b-v1:free,NVIDIA: Llama 3.1 Nemotron Ultra 253B v1 (free),Llama-3.1-Nemotron-Ultra-253B-v1,1300,83.87,Moderate similarity match,83.87,83.87
+nvidia/llama-3.3-nemotron-super-49b-v1,NVIDIA: Llama 3.3 Nemotron Super 49B v1,Llama-3.3-Nemotron-Super-49B-v1,1293,89.29,High ID similarity; High name similarity,89.29,89.29
+nvidia/llama-3.3-nemotron-super-49b-v1:free,NVIDIA: Llama 3.3 Nemotron Super 49B v1 (free),Llama-3.3-Nemotron-Super-49B-v1,1293,83.33,Moderate similarity match,83.33,83.33
+openai/gpt-3.5-turbo-0125,OpenAI: GPT-3.5 Turbo 16k,GPT-3.5-Turbo-0125,1102,82.35,Moderate similarity match,82.35,66.67
+openai/gpt-3.5-turbo-0613,OpenAI: GPT-3.5 Turbo (older v0613),GPT-3.5-Turbo-0125,1102,70.59,Moderate similarity match,70.59,60.0
+openai/gpt-3.5-turbo-0613,OpenAI: GPT-3.5 Turbo (older v0613),GPT-3.5-Turbo-1106,1064,70.59,Moderate similarity match,70.59,60.0
+openai/gpt-3.5-turbo-1106,OpenAI: GPT-3.5 Turbo 16k (older v1106),GPT-3.5-Turbo-1106,1064,82.35,Moderate similarity match,82.35,65.12
+openai/gpt-3.5-turbo-16k,OpenAI: GPT-3.5 Turbo 16k,GPT-3.5-Turbo-1106,1064,72.73,Moderate similarity match,72.73,72.73
+openai/gpt-4-0314,OpenAI: GPT-4 (older v0314),GPT-4-0314,1183,72.73,Moderate similarity match,72.73,57.14
+openai/gpt-4-1106-preview,OpenAI: GPT-4 Turbo (older v1106),GPT-4-1106-preview,1246,83.33,Moderate similarity match,83.33,40.0
+openai/gpt-4.5-preview,OpenAI: GPT-4.5 (Preview),GPT-4.5-Preview,1394,80.0,Moderate similarity match,80.0,80.0
+openai/gpt-4o-2024-05-13,OpenAI: GPT-4o (2024-05-13),GPT-4o-2024-05-13,1281,81.25,Moderate similarity match,81.25,81.25
+openai/gpt-4o-2024-08-06,OpenAI: GPT-4o (2024-08-06),GPT-4o-2024-08-06,1262,81.25,Moderate similarity match,81.25,81.25
+openai/gpt-4o-mini-2024-07-18,OpenAI: GPT-4o-mini (2024-07-18),GPT-4o-mini-2024-07-18,1269,85.0,High ID similarity; High name similarity,85.0,85.0
+openai/o1-preview,OpenAI: o1-preview,o1-preview,1331,75.0,Moderate similarity match,75.0,75.0
+openai/o3-mini-high,OpenAI: o3 Mini High,o3-mini-high,1321,76.92,Moderate similarity match,76.92,76.92
+qwen/qwen-2-72b-instruct,Qwen 2 72B Instruct,Qwen2-72B-Instruct,1184,100.0,High ID similarity; High name similarity,88.89,100.0
+qwen/qwen-2-72b-instruct,Qwen 2 72B Instruct,Qwen2.5-72B-Instruct,1254,96.97,High ID similarity; High name similarity,86.49,96.97
+qwen/qwen-2.5-72b-instruct,Qwen2.5 72B Instruct,Qwen2.5-72B-Instruct,1254,100.0,High ID similarity; High name similarity,89.47,100.0
+qwen/qwen-2.5-72b-instruct,Qwen2.5 72B Instruct,Qwen2-72B-Instruct,1184,96.97,High ID similarity; High name similarity,86.49,96.97
+qwen/qwen-2.5-72b-instruct,Qwen2.5 72B Instruct,Qwen2.5-Coder-32B-Instruct,1214,82.05,Moderate similarity match,74.42,82.05
+qwen/qwen-2.5-72b-instruct:free,Qwen2.5 72B Instruct (free),Qwen2.5-72B-Instruct,1254,89.47,High name similarity,80.95,89.47
+qwen/qwen-2.5-72b-instruct:free,Qwen2.5 72B Instruct (free),Qwen2-72B-Instruct,1184,86.49,High name similarity,78.05,86.49
+qwen/qwen-2.5-7b-instruct,Qwen2.5 7B Instruct,Qwen2.5-72B-Instruct,1254,96.97,High ID similarity; High name similarity,86.49,96.97
+qwen/qwen-2.5-7b-instruct,Qwen2.5 7B Instruct,Qwen2-72B-Instruct,1184,93.75,High name similarity,83.33,93.75
+qwen/qwen-2.5-7b-instruct:free,Qwen2.5 7B Instruct (free),Qwen2.5-72B-Instruct,1254,86.49,High name similarity,78.05,86.49
+qwen/qwen-2.5-7b-instruct:free,Qwen2.5 7B Instruct (free),Qwen2-72B-Instruct,1184,83.33,Moderate similarity match,75.0,83.33
+qwen/qwen-2.5-coder-32b-instruct,Qwen2.5 Coder 32B Instruct,Qwen2.5-Coder-32B-Instruct,1214,100.0,High ID similarity; High name similarity,91.67,100.0
+qwen/qwen-2.5-coder-32b-instruct,Qwen2.5 Coder 32B Instruct,Qwen2.5-72B-Instruct,1254,82.05,Moderate similarity match,74.42,82.05
+qwen/qwen-2.5-coder-32b-instruct:free,Qwen2.5 Coder 32B Instruct (free),Qwen2.5-Coder-32B-Instruct,1214,91.67,High name similarity,84.62,91.67
+qwen/qwen-2.5-vl-7b-instruct,Qwen: Qwen2.5-VL 7B Instruct,Qwen2.5-72B-Instruct,1254,82.05,Moderate similarity match,82.05,82.05
+qwen/qwen-2.5-vl-7b-instruct:free,Qwen: Qwen2.5-VL 7B Instruct (free),Qwen2.5-72B-Instruct,1254,74.42,Moderate similarity match,74.42,74.42
+qwen/qwen-2.5-vl-7b-instruct:free,Qwen: Qwen2.5-VL 7B Instruct (free),Qwen2-72B-Instruct,1184,71.43,Moderate similarity match,71.43,71.43
+qwen/qwen-max,Qwen: Qwen-Max ,Qwen2.5-Max,1337,70.0,Moderate similarity match,70.0,70.0
+qwen/qwen2.5-coder-7b-instruct,Qwen: Qwen2.5 Coder 7B Instruct,Qwen2.5-Coder-32B-Instruct,1214,85.11,High ID similarity; High name similarity,85.11,85.11
+qwen/qwen2.5-vl-32b-instruct,Qwen: Qwen2.5 VL 32B Instruct,Qwen2.5-72B-Instruct,1254,80.0,Moderate similarity match,80.0,80.0
+qwen/qwen2.5-vl-32b-instruct:free,Qwen: Qwen2.5 VL 32B Instruct (free),Qwen2.5-72B-Instruct,1254,72.73,Moderate similarity match,72.73,72.73
+qwen/qwen2.5-vl-72b-instruct,Qwen: Qwen2.5 VL 72B Instruct,Qwen2.5-72B-Instruct,1254,85.0,High ID similarity; High name similarity,85.0,85.0
+qwen/qwen2.5-vl-72b-instruct,Qwen: Qwen2.5 VL 72B Instruct,Qwen2-72B-Instruct,1184,82.05,Moderate similarity match,82.05,82.05
+qwen/qwen2.5-vl-72b-instruct:free,Qwen: Qwen2.5 VL 72B Instruct (free),Qwen2.5-72B-Instruct,1254,77.27,Moderate similarity match,77.27,77.27
+qwen/qwen2.5-vl-72b-instruct:free,Qwen: Qwen2.5 VL 72B Instruct (free),Qwen2-72B-Instruct,1184,74.42,Moderate similarity match,74.42,74.42
+qwen/qwen3-235b-a22b,Qwen: Qwen3 235B A22B,Qwen3-235B-A22B,1337,86.67,High ID similarity; High name similarity,86.67,86.67
+qwen/qwen3-235b-a22b:free,Qwen: Qwen3 235B A22B (free),Qwen3-235B-A22B,1337,76.47,Moderate similarity match,76.47,76.47
+qwen/qwen3-30b-a3b,Qwen: Qwen3 30B A3B,Qwen3-30B-A3B,1286,84.62,Moderate similarity match,84.62,84.62
+qwen/qwen3-30b-a3b:free,Qwen: Qwen3 30B A3B (free),Qwen3-30B-A3B,1286,73.33,Moderate similarity match,73.33,73.33
+qwen/qwen3-32b,Qwen: Qwen3 32B,Qwen3-32B,1324,80.0,Moderate similarity match,80.0,80.0
+qwen/qwq-32b,Qwen: QwQ 32B,Qwen3-32B,1324,77.78,Moderate similarity match,77.78,77.78
+qwen/qwq-32b,Qwen: QwQ 32B,QwQ-32B,1310,75.0,Moderate similarity match,75.0,75.0
+qwen/qwq-32b-preview,Qwen: QwQ 32B Preview,QwQ-32B-Preview,1149,86.67,High ID similarity; High name similarity,86.67,86.67
+scb10x/llama3.1-typhoon2-70b-instruct,Typhoon2 70B Instruct,OLMo-7B-instruct,1012,72.73,Moderate similarity match,56.52,72.73
+scb10x/llama3.1-typhoon2-70b-instruct,Typhoon2 70B Instruct,Llama-3.1-Nemotron-70B-Instruct,1265,72.41,Moderate similarity match,72.41,62.22
+01-ai/yi-large,01.AI: Yi Large,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+aetherwiing/mn-starcannon-12b,Aetherwiing: Starcannon 12B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+agentica-org/deepcoder-14b-preview:free,Agentica: Deepcoder 14B Preview (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+aion-labs/aion-1.0,AionLabs: Aion-1.0,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+aion-labs/aion-1.0-mini,AionLabs: Aion-1.0-Mini,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+aion-labs/aion-rp-llama-3.1-8b,AionLabs: Aion-RP 1.0 (8B),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+alfredpros/codellama-7b-instruct-solidity,AlfredPros: CodeLLaMa 7B Instruct Solidity,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+all-hands/openhands-lm-32b-v0.1,OpenHands LM 32B V0.1,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+alpindale/goliath-120b,Goliath 120B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+alpindale/magnum-72b,Magnum 72B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthracite-org/magnum-v2-72b,Magnum v2 72B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthracite-org/magnum-v4-72b,Magnum v4 72B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-2,Anthropic: Claude v2,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-2.0,Anthropic: Claude v2.0,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-2.0:beta,Anthropic: Claude v2.0 (self-moderated),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-2.1,Anthropic: Claude v2.1,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-2.1:beta,Anthropic: Claude v2.1 (self-moderated),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-2:beta,Anthropic: Claude v2 (self-moderated),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-3-haiku:beta,Anthropic: Claude 3 Haiku (self-moderated),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-3-opus:beta,Anthropic: Claude 3 Opus (self-moderated),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-3-sonnet:beta,Anthropic: Claude 3 Sonnet (self-moderated),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-3.5-haiku:beta,Anthropic: Claude 3.5 Haiku (self-moderated),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-3.5-sonnet:beta,Anthropic: Claude 3.5 Sonnet (self-moderated),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-3.7-sonnet:beta,Anthropic: Claude 3.7 Sonnet (self-moderated),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-opus-4,Anthropic: Claude Opus 4,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+anthropic/claude-sonnet-4,Anthropic: Claude Sonnet 4,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+arcee-ai/arcee-blitz,Arcee AI: Arcee Blitz,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+arcee-ai/caller-large,Arcee AI: Caller Large,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+arcee-ai/coder-large,Arcee AI: Coder Large,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+arcee-ai/maestro-reasoning,Arcee AI: Maestro Reasoning,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+arcee-ai/spotlight,Arcee AI: Spotlight,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+arcee-ai/virtuoso-large,Arcee AI: Virtuoso Large,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+arcee-ai/virtuoso-medium-v2,Arcee AI: Virtuoso Medium V2,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+arliai/qwq-32b-arliai-rpr-v1:free,ArliAI: QwQ 32B RpR v1 (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+cohere/command,Cohere: Command,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+cohere/command-a,Cohere: Command A,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+cohere/command-r,Cohere: Command R,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+cohere/command-r-plus,Cohere: Command R+,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+cohere/command-r7b-12-2024,Cohere: Command R7B (12-2024),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-chat:free,DeepSeek: DeepSeek V3 (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-prover-v2,DeepSeek: DeepSeek Prover V2,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-prover-v2:free,DeepSeek: DeepSeek Prover V2 (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-r1-distill-llama-70b,DeepSeek: R1 Distill Llama 70B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-r1-distill-llama-70b:free,DeepSeek: R1 Distill Llama 70B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-r1-distill-llama-8b,DeepSeek: R1 Distill Llama 8B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-r1-distill-qwen-1.5b,DeepSeek: R1 Distill Qwen 1.5B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-r1-distill-qwen-14b,DeepSeek: R1 Distill Qwen 14B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-r1-distill-qwen-14b:free,DeepSeek: R1 Distill Qwen 14B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-r1-distill-qwen-32b,DeepSeek: R1 Distill Qwen 32B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-r1-distill-qwen-32b:free,DeepSeek: R1 Distill Qwen 32B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-r1-zero:free,DeepSeek: DeepSeek R1 Zero (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+deepseek/deepseek-v3-base:free,DeepSeek: DeepSeek V3 Base (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+eleutherai/llemma_7b,EleutherAI: Llemma 7b,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+eva-unit-01/eva-llama-3.33-70b,EVA Llama 3.33 70B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+eva-unit-01/eva-qwen-2.5-72b,EVA Qwen2.5 72B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+featherless/qwerky-72b:free,Qwerky 72B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+google/gemini-2.0-flash-exp:free,Google: Gemini 2.0 Flash Experimental (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+google/gemini-2.5-pro-exp-03-25,Google: Gemini 2.5 Pro Experimental,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+google/gemma-2-9b-it:free,Google: Gemma 2 9B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+google/gemma-3-12b-it:free,Google: Gemma 3 12B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+google/gemma-3-1b-it:free,Google: Gemma 3 1B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+google/gemma-3-27b-it:free,Google: Gemma 3 27B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+google/gemma-3-4b-it:free,Google: Gemma 3 4B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+gryphe/mythomax-l2-13b,MythoMax 13B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+inception/mercury-coder-small-beta,Inception: Mercury Coder Small Beta,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+infermatic/mn-inferor-12b,Infermatic: Mistral Nemo Inferor 12B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+inflection/inflection-3-pi,Inflection: Inflection 3 Pi,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+inflection/inflection-3-productivity,Inflection: Inflection 3 Productivity,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+liquid/lfm-3b,Liquid: LFM 3B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+liquid/lfm-40b,Liquid: LFM 40B MoE,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+liquid/lfm-7b,Liquid: LFM 7B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mancer/weaver,Mancer: Weaver (alpha),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+meta-llama/llama-3.1-405b:free,Meta: Llama 3.1 405B (base) (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+meta-llama/llama-4-maverick,Meta: Llama 4 Maverick,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+meta-llama/llama-4-maverick:free,Meta: Llama 4 Maverick (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+meta-llama/llama-4-scout,Meta: Llama 4 Scout,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+meta-llama/llama-4-scout:free,Meta: Llama 4 Scout (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+meta-llama/llama-guard-2-8b,Meta: LlamaGuard 2 8B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+meta-llama/llama-guard-3-8b,Llama Guard 3 8B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+meta-llama/llama-guard-4-12b,Meta: Llama Guard 4 12B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+microsoft/mai-ds-r1:free,Microsoft: MAI DS R1 (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+microsoft/phi-4,Microsoft: Phi 4,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+microsoft/phi-4-multimodal-instruct,Microsoft: Phi 4 Multimodal Instruct,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+microsoft/phi-4-reasoning-plus,Microsoft: Phi 4 Reasoning Plus,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+microsoft/phi-4-reasoning-plus:free,Microsoft: Phi 4 Reasoning Plus (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+microsoft/phi-4-reasoning:free,Microsoft: Phi 4 Reasoning (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+microsoft/wizardlm-2-8x22b,WizardLM-2 8x22B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+minimax/minimax-01,MiniMax: MiniMax-01,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/codestral-2501,Mistral: Codestral 2501,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/codestral-mamba,Mistral: Codestral Mamba,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/devstral-small,Mistral: Devstral Small,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/devstral-small:free,Mistral: Devstral Small (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/ministral-3b,Mistral: Ministral 3B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/ministral-8b,Mistral: Ministral 8B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/mistral-nemo,Mistral: Mistral Nemo,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/mistral-nemo:free,Mistral: Mistral Nemo (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/mistral-saba,Mistral: Saba,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/mistral-small,Mistral Small,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/mistral-tiny,Mistral Tiny,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+mistralai/pixtral-12b,Mistral: Pixtral 12B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+moonshotai/kimi-vl-a3b-thinking:free,Moonshot AI: Kimi VL A3B Thinking (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+moonshotai/moonlight-16b-a3b-instruct:free,Moonshot AI: Moonlight 16B A3B Instruct (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+neversleep/llama-3-lumimaid-70b,NeverSleep: Llama 3 Lumimaid 70B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+neversleep/llama-3-lumimaid-8b,NeverSleep: Llama 3 Lumimaid 8B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+neversleep/llama-3-lumimaid-8b:extended,NeverSleep: Llama 3 Lumimaid 8B (extended),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+neversleep/llama-3.1-lumimaid-70b,NeverSleep: Lumimaid v0.2 70B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+neversleep/llama-3.1-lumimaid-8b,NeverSleep: Lumimaid v0.2 8B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+neversleep/noromaid-20b,Noromaid 20B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+nothingiisreal/mn-celeste-12b,Mistral Nemo 12B Celeste,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+nousresearch/deephermes-3-llama-3-8b-preview:free,Nous: DeepHermes 3 Llama 3 8B Preview (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+nousresearch/deephermes-3-mistral-24b-preview:free,Nous: DeepHermes 3 Mistral 24B Preview (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+nousresearch/hermes-2-pro-llama-3-8b,NousResearch: Hermes 2 Pro - Llama-3 8B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+nousresearch/hermes-3-llama-3.1-405b,Nous: Hermes 3 405B Instruct,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+nousresearch/hermes-3-llama-3.1-70b,Nous: Hermes 3 70B Instruct,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+open-r1/olympiccoder-32b:free,OlympicCoder 32B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/chatgpt-4o-latest,OpenAI: ChatGPT-4o,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/codex-mini,OpenAI: Codex Mini,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-3.5-turbo,OpenAI: GPT-3.5 Turbo,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-3.5-turbo-instruct,OpenAI: GPT-3.5 Turbo Instruct,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4,OpenAI: GPT-4,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4-32k,OpenAI: GPT-4 32k,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4-32k-0314,OpenAI: GPT-4 32k (older v0314),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4-turbo,OpenAI: GPT-4 Turbo,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4-turbo-preview,OpenAI: GPT-4 Turbo Preview,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4.1,OpenAI: GPT-4.1,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4.1-mini,OpenAI: GPT-4.1 Mini,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4.1-nano,OpenAI: GPT-4.1 Nano,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4o,OpenAI: GPT-4o,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4o-2024-11-20,OpenAI: GPT-4o (2024-11-20),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4o-mini,OpenAI: GPT-4o-mini,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4o-mini-search-preview,OpenAI: GPT-4o-mini Search Preview,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4o-search-preview,OpenAI: GPT-4o Search Preview,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/gpt-4o:extended,OpenAI: GPT-4o (extended),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/o1,OpenAI: o1,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/o1-mini,OpenAI: o1-mini,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/o1-mini-2024-09-12,OpenAI: o1-mini (2024-09-12),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/o1-preview-2024-09-12,OpenAI: o1-preview (2024-09-12),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/o1-pro,OpenAI: o1-pro,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/o3,OpenAI: o3,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/o3-mini,OpenAI: o3 Mini,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/o4-mini,OpenAI: o4 Mini,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openai/o4-mini-high,OpenAI: o4 Mini High,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+opengvlab/internvl3-14b:free,OpenGVLab: InternVL3 14B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+opengvlab/internvl3-2b:free,OpenGVLab: InternVL3 2B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+openrouter/auto,Auto Router,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+perplexity/llama-3.1-sonar-large-128k-online,Perplexity: Llama 3.1 Sonar 70B Online,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+perplexity/llama-3.1-sonar-small-128k-online,Perplexity: Llama 3.1 Sonar 8B Online,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+perplexity/r1-1776,Perplexity: R1 1776,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+perplexity/sonar,Perplexity: Sonar,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+perplexity/sonar-deep-research,Perplexity: Sonar Deep Research,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+perplexity/sonar-pro,Perplexity: Sonar Pro,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+perplexity/sonar-reasoning,Perplexity: Sonar Reasoning,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+perplexity/sonar-reasoning-pro,Perplexity: Sonar Reasoning Pro,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+pygmalionai/mythalion-13b,Pygmalion: Mythalion 13B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+qwen/qwen-plus,Qwen: Qwen-Plus,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+qwen/qwen-turbo,Qwen: Qwen-Turbo,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+qwen/qwen-vl-max,Qwen: Qwen VL Max,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+qwen/qwen-vl-plus,Qwen: Qwen VL Plus,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+qwen/qwen2.5-vl-3b-instruct:free,Qwen: Qwen2.5 VL 3B Instruct (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+qwen/qwen3-14b,Qwen: Qwen3 14B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+qwen/qwen3-14b:free,Qwen: Qwen3 14B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+qwen/qwen3-32b:free,Qwen: Qwen3 32B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+qwen/qwen3-8b,Qwen: Qwen3 8B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+qwen/qwen3-8b:free,Qwen: Qwen3 8B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+qwen/qwq-32b:free,Qwen: QwQ 32B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+raifle/sorcererlm-8x22b,SorcererLM 8x22B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+rekaai/reka-flash-3:free,Reka: Flash 3 (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+sao10k/fimbulvetr-11b-v2,Fimbulvetr 11B v2,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+sao10k/l3-euryale-70b,Sao10k: Llama 3 Euryale 70B v2.1,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+sao10k/l3-lunaris-8b,Sao10K: Llama 3 8B Lunaris,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+sao10k/l3.1-euryale-70b,Sao10K: Llama 3.1 Euryale 70B v2.2,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+sao10k/l3.3-euryale-70b,Sao10K: Llama 3.3 Euryale 70B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+scb10x/llama3.1-typhoon2-8b-instruct,Typhoon2 8B Instruct,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+shisa-ai/shisa-v2-llama3.3-70b:free,Shisa AI: Shisa V2 Llama 3.3 70B  (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+sophosympatheia/midnight-rose-70b,Midnight Rose 70B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+thedrummer/anubis-pro-105b-v1,TheDrummer: Anubis Pro 105B V1,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+thedrummer/rocinante-12b,Rocinante 12B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+thedrummer/skyfall-36b-v2,TheDrummer: Skyfall 36B V2,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+thedrummer/unslopnemo-12b,Unslopnemo 12B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+thedrummer/valkyrie-49b-v1,TheDrummer: Valkyrie 49B V1,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+thudm/glm-4-32b,THUDM: GLM 4 32B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+thudm/glm-4-32b:free,THUDM: GLM 4 32B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+thudm/glm-z1-32b,THUDM: GLM Z1 32B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+thudm/glm-z1-32b:free,THUDM: GLM Z1 32B (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+thudm/glm-z1-rumination-32b,THUDM: GLM Z1 Rumination 32B ,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+tngtech/deepseek-r1t-chimera:free,TNG: DeepSeek R1T Chimera (free),NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+undi95/remm-slerp-l2-13b,ReMM SLERP 13B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+undi95/toppy-m-7b,Toppy M 7B,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+x-ai/grok-2-1212,xAI: Grok 2 1212,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+x-ai/grok-2-vision-1212,xAI: Grok 2 Vision 1212,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+x-ai/grok-3-beta,xAI: Grok 3 Beta,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+x-ai/grok-3-mini-beta,xAI: Grok 3 Mini Beta,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+x-ai/grok-beta,xAI: Grok Beta,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
+x-ai/grok-vision-beta,xAI: Grok Vision Beta,NO_MATCH_FOUND,,0,No similar LMSYS model found (similarity < 70%),0,0
