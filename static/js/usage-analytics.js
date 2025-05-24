@@ -145,11 +145,11 @@ function updateSummaryTab(data) {
         <div class="row" id="modelBreakdownContainer">
     `;
 
-    // Initial render sorted by requests (default)
-    renderModelBreakdown(modelUsage, totalCost, 'requests');
-
     summaryHtml += '</div>';
     summaryTab.innerHTML = summaryHtml;
+
+    // Initial render sorted by requests (default) - after HTML is inserted
+    renderModelBreakdown(modelUsage, totalCost, 'requests');
 
     // Add event listeners for sorting options
     const sortByRequestsBtn = document.getElementById('sortByRequests');
