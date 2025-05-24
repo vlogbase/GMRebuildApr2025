@@ -3046,35 +3046,57 @@ document.addEventListener('DOMContentLoaded', function() {
         const filteredModels = allModels
             .filter(filterFn)
             .sort((a, b) => {
-                // Special handling for preset 4 (vision models)
-                if (presetId === '4') {
-                    // Always put GPT-4o at the top
-                    if (a.id === 'openai/gpt-4o') return -1;
-                    if (b.id === 'openai/gpt-4o') return 1;
+                // Preset 2 ONLY: Sort by context length first (for context-focused models)
+                if (presetId === '2') {
+                    // Primary sort: Context Length (descending)
+                    const aContext = parseInt(a.context_length) || 0;
+                    const bContext = parseInt(b.context_length) || 0;
+                    if (aContext !== bContext) {
+                        return bContext - aContext;
+                    }
                     
-                    // Put Claude vision models next
-                    const aIsClaudeVision = a.id.includes('claude') && a.is_multimodal;
-                    const bIsClaudeVision = b.id.includes('claude') && b.is_multimodal;
+                    // Secondary sort: Input Price (ascending)
+                    const aPrice = a.pricing?.prompt || 0;
+                    const bPrice = b.pricing?.prompt || 0;
+                    if (aPrice !== bPrice) {
+                        return aPrice - bPrice;
+                    }
                     
-                    if (aIsClaudeVision && !bIsClaudeVision) return -1;
-                    if (!aIsClaudeVision && bIsClaudeVision) return 1;
-                    
-                    // Put Gemini vision models next
-                    const aIsGeminiVision = a.id.includes('gemini') && a.is_multimodal;
-                    const bIsGeminiVision = b.id.includes('gemini') && b.is_multimodal;
-                    
-                    if (aIsGeminiVision && !bIsGeminiVision) return -1;
-                    if (!aIsGeminiVision && bIsGeminiVision) return 1;
+                    // Tertiary sort: Model Name (alphabetical)
+                    return a.name.localeCompare(b.name);
                 }
                 
-                // Free models at the bottom
-                if (a.is_free && !b.is_free) return 1;
-                if (!a.is_free && b.is_free) return -1;
+                // For Presets 1, 3, 4, 5, and 6: ELO-based sorting
                 
-                // Sort by pricing (cheapest first)
+                // Primary sort: ELO Score (descending, higher is better)
+                const aElo = a.elo_score || 0;
+                const bElo = b.elo_score || 0;
+                
+                // Models with ELO scores come before models without ELO scores
+                if (aElo > 0 && bElo === 0) return -1;
+                if (aElo === 0 && bElo > 0) return 1;
+                
+                // Both have ELO scores - sort by ELO (descending)
+                if (aElo !== bElo) {
+                    return bElo - aElo;
+                }
+                
+                // Secondary sort: Context Length (descending)
+                const aContext = parseInt(a.context_length) || 0;
+                const bContext = parseInt(b.context_length) || 0;
+                if (aContext !== bContext) {
+                    return bContext - aContext;
+                }
+                
+                // Tertiary sort: Input Price (ascending)
                 const aPrice = a.pricing?.prompt || 0;
                 const bPrice = b.pricing?.prompt || 0;
-                return aPrice - bPrice;
+                if (aPrice !== bPrice) {
+                    return aPrice - bPrice;
+                }
+                
+                // Quaternary sort: Model Name (alphabetical)
+                return a.name.localeCompare(b.name);
             });
         
         // Log 6: After filtering

@@ -674,6 +674,61 @@ document.addEventListener('DOMContentLoaded', function() {
                               
         console.log(`Mobile: Filtered to ${filteredModels.length} models for preset ${presetId} (excluding free models for presets 1-5)`);
         
+        // Sort models using the same ELO-enhanced logic as desktop
+        filteredModels.sort((a, b) => {
+            // Preset 2 ONLY: Sort by context length first (for context-focused models)
+            if (presetId === '2') {
+                // Primary sort: Context Length (descending)
+                const aContext = parseInt(a.context_length) || 0;
+                const bContext = parseInt(b.context_length) || 0;
+                if (aContext !== bContext) {
+                    return bContext - aContext;
+                }
+                
+                // Secondary sort: Input Price (ascending)
+                const aPrice = a.pricing?.prompt || 0;
+                const bPrice = b.pricing?.prompt || 0;
+                if (aPrice !== bPrice) {
+                    return aPrice - bPrice;
+                }
+                
+                // Tertiary sort: Model Name (alphabetical)
+                return a.name.localeCompare(b.name);
+            }
+            
+            // For Presets 1, 3, 4, 5, and 6: ELO-based sorting
+            
+            // Primary sort: ELO Score (descending, higher is better)
+            const aElo = a.elo_score || 0;
+            const bElo = b.elo_score || 0;
+            
+            // Models with ELO scores come before models without ELO scores
+            if (aElo > 0 && bElo === 0) return -1;
+            if (aElo === 0 && bElo > 0) return 1;
+            
+            // Both have ELO scores - sort by ELO (descending)
+            if (aElo !== bElo) {
+                return bElo - aElo;
+            }
+            
+            // Secondary sort: Context Length (descending)
+            const aContext = parseInt(a.context_length) || 0;
+            const bContext = parseInt(b.context_length) || 0;
+            if (aContext !== bContext) {
+                return bContext - aContext;
+            }
+            
+            // Tertiary sort: Input Price (ascending)
+            const aPrice = a.pricing?.prompt || 0;
+            const bPrice = b.pricing?.prompt || 0;
+            if (aPrice !== bPrice) {
+                return aPrice - bPrice;
+            }
+            
+            // Quaternary sort: Model Name (alphabetical)
+            return a.name.localeCompare(b.name);
+        });
+        
         // Get current selected model for this preset
         const currentModel = window.userPreferences?.[presetId] || window.defaultModels?.[presetId];
         

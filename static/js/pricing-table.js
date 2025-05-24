@@ -128,6 +128,7 @@ function loadPricingData() {
                     multimodal: modelDetails.multimodal,
                     pdfs: modelDetails.pdfs,
                     cost_band: modelDetails.cost_band || calculateCostBand(modelDetails.input_price, modelDetails.output_price),
+                    elo_score: modelDetails.elo_score || null,
                     // Pass through special display properties for fallback use
                     display_input_price: modelDetails.display_input_price,
                     display_output_price: modelDetails.display_output_price,
@@ -191,7 +192,7 @@ function renderPricingTable() {
     if (!pricingData || pricingData.length === 0) {
         pricingTableBody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-5">
+                <td colspan="8" class="text-center py-5">
                     <div class="alert alert-info" role="alert">
                         No pricing data available.
                     </div>
@@ -221,6 +222,11 @@ function renderPricingTable() {
         const costBandTooltip = (model.cost_band === 'Auto') ? 
             'title="Cost varies based on the model selected by the router."' : '';
         
+        // Format ELO score display with appropriate styling
+        const eloDisplay = model.elo_score ? 
+            `<span class="badge bg-primary">${model.elo_score}</span>` : 
+            '<span class="text-muted">-</span>';
+        
         return `
             <tr>
                 <td class="text-light">${model.model_name}</td>
@@ -230,6 +236,7 @@ function renderPricingTable() {
                 <td class="text-center">${multimodalBadge}</td>
                 <td class="text-center">${pdfBadge}</td>
                 <td class="text-center"><span class="cost-band-indicator ${costBadgeClass} fw-bold" ${costBandTooltip}>${costBandSymbol}</span></td>
+                <td class="text-center">${eloDisplay}</td>
             </tr>
         `;
     }).join('');

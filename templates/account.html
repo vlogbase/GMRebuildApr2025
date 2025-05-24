@@ -1136,11 +1136,32 @@ block body_class %}account-page{% endblock %} {% block styles %} {{ super() }}
                                         ></i>
                                     </div>
                                 </th>
+                                <th
+                                    onclick="sortPricingTable(7)"
+                                    style="
+                                        cursor: pointer;
+                                        position: sticky;
+                                        top: 0;
+                                        z-index: 10;
+                                        background-color: #212529;
+                                    "
+                                    class="border-bottom text-center py-3"
+                                >
+                                    <div
+                                        class="d-flex justify-content-center align-items-center"
+                                    >
+                                        ELO
+                                        <i
+                                            id="sort-icon-7"
+                                            class="fas fa-sort"
+                                        ></i>
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
                         <tbody id="pricingTableBody">
                             <tr>
-                                <td colspan="7" class="text-center py-5">
+                                <td colspan="8" class="text-center py-5">
                                     <div
                                         class="d-flex flex-column align-items-center"
                                     >
