@@ -2116,13 +2116,9 @@ body.account-page .tab-pane {
 
 /* Shared disabled styles */
 .model-preset-btn.disabled {
-    cursor: not-allowed;
-    filter: blur(1.5px);
-    pointer-events: none; /* Make the button non-interactive */
-    opacity: 0.95; /* Slightly reduce opacity */
+    cursor: pointer; /* Keep cursor as pointer since buttons should be clickable */
     position: relative; /* Ensure position for overlay */
-    box-shadow: none; /* Remove any box shadow */
-    transition: filter 0.3s ease, opacity 0.3s ease;
+    transition: opacity 0.3s ease;
 }
 
 /* Show the overlay when disabled */
@@ -2154,16 +2150,17 @@ body.account-page .tab-pane {
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); /* Text shadow for better visibility */
 }
 
-.premium-locked::after {
+/* Position padlock icon where price indicator would go */
+.model-preset-btn.premium-locked::after {
     content: '\f023';
     font-family: 'Font Awesome 6 Free';
     font-weight: 900;
     position: absolute;
-    right: 8px;
+    right: 32px; /* Position where price would normally be, to the left of dropdown */
     top: 50%;
     transform: translateY(-50%);
     color: rgba(255, 255, 255, 0.9);
-    font-size: 14px;
+    font-size: 12px;
     z-index: 5;
     pointer-events: none;
 }

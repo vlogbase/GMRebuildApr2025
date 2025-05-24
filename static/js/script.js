@@ -867,14 +867,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                 } else if (userCreditBalance <= 0) {
                     // User is logged in but has no credits - show payment requirement
-                    btn.classList.add('disabled', 'disabled-payment', 'premium-locked');
+                    btn.classList.add('premium-locked');
                     
                     // Make the entire button clickable to redirect to billing
                     btn.addEventListener('click', (e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         // Redirect to billing page to buy credits
-                        window.location.href = '/billing?source=premium_model&preset=' + presetId;
+                        window.location.href = '/billing/account?source=premium_model&preset=' + presetId;
                     });
                     
                     // Keep the selector functionality separate - also redirect to billing
@@ -882,7 +882,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         newSelectorContainer.addEventListener('click', (e) => {
                             e.stopPropagation(); // Prevent button click
                             // Redirect to billing page to buy credits
-                            window.location.href = '/billing?source=premium_model&preset=' + presetId;
+                            window.location.href = '/billing/account?source=premium_model&preset=' + presetId;
                         });
                     }
                     
@@ -891,7 +891,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         newButtonOverlay.addEventListener('click', (e) => {
                             e.stopPropagation();
                             // Redirect to billing page to buy credits
-                            window.location.href = '/billing?source=premium_model&preset=' + presetId;
+                            window.location.href = '/billing/account?source=premium_model&preset=' + presetId;
                         });
                     }
                     
