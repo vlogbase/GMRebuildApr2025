@@ -786,6 +786,14 @@ document.addEventListener('DOMContentLoaded', function() {
         lockPremiumFeatures();
     }
     
+    // Also handle browser back/forward navigation
+    window.addEventListener('pageshow', function(event) {
+        // Re-apply locks when user navigates back from billing page
+        if (!isAuthenticated || userCreditBalance <= 0) {
+            lockPremiumFeatures();
+        }
+    });
+    
     // Function to lock premium features for non-authenticated users or those with zero balance
     function lockPremiumFeatures() {
         // Process all model preset buttons
