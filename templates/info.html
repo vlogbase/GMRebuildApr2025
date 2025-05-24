@@ -463,7 +463,10 @@
             margin-right: 0.5rem;
         }
         
-        .pricing-search-input {
+        /* More specific selector to override the global input styling */
+        .pricing-search input[type="text"].pricing-search-input,
+        #modelSearch.pricing-search-input,
+        input.pricing-search-input[type="text"] {
             border: 1px solid #ddd !important;
             outline: none !important;
             font-size: 1rem !important;
@@ -476,7 +479,9 @@
             transition: border-color 0.3s ease !important;
         }
         
-        .pricing-search-input:focus {
+        .pricing-search input[type="text"].pricing-search-input:focus,
+        #modelSearch.pricing-search-input:focus,
+        input.pricing-search-input[type="text"]:focus {
             border-color: #2c3e50 !important;
             box-shadow: 0 2px 8px rgba(44,62,80,0.2) !important;
         }
