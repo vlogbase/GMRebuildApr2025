@@ -130,15 +130,68 @@ function updateSummaryTab(data) {
     // Create summary HTML
     let summaryHtml = createStatsBoxes(data);
 
-    // Add model breakdown
+    // Add model breakdown with sorting options
     summaryHtml += `
-        <h5 class="mb-3">Model Usage Breakdown</h5>
-        <div class="row">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Model Usage Breakdown</h5>
+            <div class="btn-group btn-group-sm" role="group">
+                <input type="radio" class="btn-check" name="sortOption" id="sortByRequests" checked>
+                <label class="btn btn-outline-secondary" for="sortByRequests">Sort by Requests</label>
+                
+                <input type="radio" class="btn-check" name="sortOption" id="sortByCost">
+                <label class="btn btn-outline-secondary" for="sortByCost">Sort by Cost</label>
+            </div>
+        </div>
+        <div class="row" id="modelBreakdownContainer">
     `;
 
-    Object.entries(modelUsage).forEach(([modelName, stats]) => {
+    // Initial render sorted by requests (default)
+    renderModelBreakdown(modelUsage, totalCost, 'requests');
+
+    summaryHtml += '</div>';
+    summaryTab.innerHTML = summaryHtml;
+
+    // Add event listeners for sorting options
+    const sortByRequestsBtn = document.getElementById('sortByRequests');
+    const sortByCostBtn = document.getElementById('sortByCost');
+
+    if (sortByRequestsBtn) {
+        sortByRequestsBtn.addEventListener('change', function() {
+            if (this.checked) {
+                renderModelBreakdown(modelUsage, totalCost, 'requests');
+            }
+        });
+    }
+
+    if (sortByCostBtn) {
+        sortByCostBtn.addEventListener('change', function() {
+            if (this.checked) {
+                renderModelBreakdown(modelUsage, totalCost, 'cost');
+            }
+        });
+    }
+}
+
+// Function to render model breakdown cards with sorting
+function renderModelBreakdown(modelUsage, totalCost, sortBy) {
+    const container = document.getElementById('modelBreakdownContainer');
+    if (!container) return;
+
+    // Convert to array and sort
+    const modelEntries = Object.entries(modelUsage);
+    
+    if (sortBy === 'cost') {
+        modelEntries.sort((a, b) => b[1].cost - a[1].cost);
+    } else {
+        // Default sort by requests
+        modelEntries.sort((a, b) => b[1].requests - a[1].requests);
+    }
+
+    // Generate HTML for sorted models
+    let breakdownHtml = '';
+    modelEntries.forEach(([modelName, stats]) => {
         const percentage = totalCost > 0 ? (stats.cost / totalCost * 100).toFixed(1) : 0;
-        summaryHtml += `
+        breakdownHtml += `
             <div class="col-md-6 mb-3">
                 <div class="card bg-dark">
                     <div class="card-body">
@@ -161,8 +214,7 @@ function updateSummaryTab(data) {
         `;
     });
 
-    summaryHtml += '</div>';
-    summaryTab.innerHTML = summaryHtml;
+    container.innerHTML = breakdownHtml;
 }
 
 // Function to update detailed tab
