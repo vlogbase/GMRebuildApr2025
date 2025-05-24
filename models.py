@@ -479,6 +479,7 @@ class OpenRouterModel(db.Model):
     supports_reasoning = db.Column(db.Boolean, default=False)  # Models with strong reasoning capabilities
     supports_pdf = db.Column(db.Boolean, default=False)  # Whether model supports PDF files
     cost_band = db.Column(db.String(8), nullable=True)  # '$', '$$', '$$$', '$$$$' band
+    elo_score = db.Column(db.Integer, nullable=True)  # LMSYS Chatbot Arena ELO rating
     model_is_active = db.Column(db.Boolean, default=True)  # Whether model is still available from OpenRouter
     created_at = db.Column(db.DateTime, default=datetime.utcnow)  # When this model record was created
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)  # Last model data update

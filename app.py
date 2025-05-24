@@ -570,6 +570,24 @@ def init_scheduler():
             max_instances=1
         )
         
+        # Add LMSYS ELO data fetching job - runs every 3 hours
+        try:
+            from lmsys_updater import fetch_and_cache_lmsys_elo_data
+            scheduler.add_job(
+                func=fetch_and_cache_lmsys_elo_data,
+                trigger='interval',
+                hours=3,  # Update ELO scores every 3 hours
+                id='fetch_lmsys_elo_job',
+                replace_existing=True,
+                max_instances=1,
+                jitter=300  # Add 5-minute jitter to avoid conflicts
+            )
+            logger.info("LMSYS ELO data fetching job scheduled to run every 3 hours")
+        except ImportError as e:
+            logger.warning(f"Could not schedule LMSYS ELO job: {e}")
+        except Exception as e:
+            logger.error(f"Error scheduling LMSYS ELO job: {e}")
+        
         # Add scheduler event listeners to better track job execution
         def job_executed_event(event):
             job_id = event.job_id
@@ -3780,6 +3798,7 @@ def get_model_prices():
                         'cost_band': cost_band,
                         'is_free': db_model.is_free or False,
                         'is_reasoning': db_model.supports_reasoning or False,
+                        'elo_score': db_model.elo_score,  # Add LMSYS ELO score
                         'source': 'database'
                     }
                     
