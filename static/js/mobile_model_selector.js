@@ -659,7 +659,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const nonFreeModels = presetId === '6' ? allModels : allModels.filter(model => !model.is_free && !model.id.includes(':free'));
         
         // Then apply specific filters based on preset
-        const filteredModels = presetId === '4' ? nonFreeModels.filter(model => {
+        const filteredModels = presetId === '3' ? nonFreeModels.filter(model => model.is_reasoning === true) :
+                              presetId === '4' ? nonFreeModels.filter(model => {
             const passes = model.is_multimodal === true;
             // Debug logging for multimodal filter
             if (model.id === 'qwen/qwen-vl-max' || model.id === 'x-ai/grok-2-vision-1212' || model.id === 'openai/gpt-4o') {

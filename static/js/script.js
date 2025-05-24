@@ -581,10 +581,15 @@ document.addEventListener('DOMContentLoaded', function() {
         '1': (model) => !model.is_free, // All non-free models
         '2': (model) => !model.is_free, // All non-free models
         '3': (model) => {
-            // Check if model has reasoning capability
-            // Add fallback check for missing property
-            const hasReasoning = model.is_reasoning === true || model.id.includes('o4') || model.id.includes('claude');
-            return hasReasoning && !model.is_free;
+            // Use accurate reasoning detection from OpenRouter API
+            const passes = model.is_reasoning === true && !model.is_free;
+            
+            // Debug logging for first few reasoning models to verify the fix
+            if (model.id.includes('o1') || model.id.includes('claude-3') || model.id.includes('reasoning')) {
+                console.log(`[Preset 3 Debug] ${model.id}: is_reasoning=${model.is_reasoning}, is_free=${model.is_free}, passes=${passes}`);
+            }
+            
+            return passes;
         },
         '4': (model) => {
             // For preset 4, prioritize true vision models
@@ -2623,8 +2628,8 @@ document.addEventListener('DOMContentLoaded', function() {
                             is_free: modelData.is_free === true || (modelData.input_price === 0 && modelData.output_price === 0),
                             // Get multimodal status from pricing data - check both boolean and string formats
                             is_multimodal: modelData.is_multimodal === true || modelData.multimodal === "Yes",
-                            // Add reasoning flag if available or detect from model ID
-                            is_reasoning: modelData.is_reasoning || modelId.includes('o4') || modelId.includes('claude'),
+                            // Use accurate reasoning flag from API response
+                            is_reasoning: modelData.is_reasoning === true,
                             // Add perplexity flag based on model ID
                             is_perplexity: modelId.includes('perplexity'),
                             // Add PDF support flag from pricing data

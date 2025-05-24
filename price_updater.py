@@ -387,11 +387,10 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                             # Check for free models based on price or special tags
                             db_model.is_free = model_data['input_price'] < 0.01 or ':free' in model_id.lower()
                             
-                            # Check for reasoning support based on model ID and description
-                            model_name = original_model.get('name', '').lower()
-                            model_description = original_model.get('description', '').lower()
-                            db_model.supports_reasoning = any(keyword in model_id.lower() or keyword in model_name or keyword in model_description 
-                                                        for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
+                            # Use accurate reasoning support from OpenRouter API supported_parameters
+                            original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
+                            supported_parameters = original_model.get('supported_parameters', [])
+                            db_model.supports_reasoning = 'reasoning' in supported_parameters or 'include_reasoning' in supported_parameters
                             
                             # Since we found this model in the API response, mark it as active
                             db_model.model_is_active = True
@@ -420,11 +419,10 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                             # Check for free models based on price or special tags
                             is_free = model_data['input_price'] < 0.01 or ':free' in model_id.lower()
                             
-                            # Check for reasoning support based on model ID and description
-                            model_name = original_model.get('name', '').lower()
-                            model_description = original_model.get('description', '').lower()
-                            supports_reasoning = any(keyword in model_id.lower() or keyword in model_name or keyword in model_description 
-                                                for keyword in ['reasoning', 'opus', 'o1', 'o3', 'gpt-4', 'claude-3'])
+                            # Use accurate reasoning support from OpenRouter API supported_parameters
+                            original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
+                            supported_parameters = original_model.get('supported_parameters', [])
+                            supports_reasoning = 'reasoning' in supported_parameters or 'include_reasoning' in supported_parameters
                             
                             # Ensure cost band is properly set - this prevents models from being filtered out
                             cost_band = model_data['cost_band']

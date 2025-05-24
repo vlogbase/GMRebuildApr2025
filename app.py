@@ -3779,6 +3779,7 @@ def get_model_prices():
                         'model_id': model_id,
                         'cost_band': cost_band,
                         'is_free': db_model.is_free or False,
+                        'is_reasoning': db_model.supports_reasoning or False,
                         'source': 'database'
                     }
                     
