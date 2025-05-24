@@ -695,8 +695,8 @@ def export_usage_csv():
             input_tokens = usage.prompt_tokens or 0
             output_tokens = usage.completion_tokens or 0
             credits_used = usage.credits_used or 0
-            # Convert credits to USD (assuming 1 credit = $0.01)
-            total_cost = credits_used / 100
+            # Convert credits to USD (100,000 credits = $1)
+            total_cost = credits_used / 100000
             # Estimate input/output costs (this is an approximation)
             input_cost = total_cost * 0.6  # Roughly 60% for input
             output_cost = total_cost * 0.4  # Roughly 40% for output
