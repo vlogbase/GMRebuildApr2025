@@ -589,7 +589,16 @@ document.addEventListener('DOMContentLoaded', function() {
         '4': (model) => {
             // For preset 4, prioritize true vision models
             // OpenAI GPT-4o is the primary choice for this preset
-            return model.is_multimodal === true && !model.is_free;
+            const isMultimodal = model.is_multimodal === true;
+            const isFree = model.is_free === true;
+            const passes = isMultimodal && !isFree;
+            
+            // Debug logging for first few models to identify the issue
+            if (model.id === 'qwen/qwen-vl-max' || model.id === 'x-ai/grok-2-vision-1212' || model.id === 'openai/gpt-4o') {
+                console.log(`[Preset 4 Debug] ${model.id}: is_multimodal=${model.is_multimodal}, is_free=${model.is_free}, passes=${passes}`);
+            }
+            
+            return passes;
         },
         '5': (model) => {
             // Check for Perplexity models by ID
@@ -2610,10 +2619,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             id: modelId,
                             // Use name from pricing data, fallback to parsing ID
                             name: modelData.model_name || formatModelName(modelId),
-                            // Determine if free based on pricing
-                            is_free: (modelData.input_price === 0 && modelData.output_price === 0),
-                            // Get multimodal status from pricing data
-                            is_multimodal: modelData.is_multimodal || false,
+                            // Determine if free based on pricing or explicit flag
+                            is_free: modelData.is_free === true || (modelData.input_price === 0 && modelData.output_price === 0),
+                            // Get multimodal status from pricing data - check both boolean and string formats
+                            is_multimodal: modelData.is_multimodal === true || modelData.multimodal === "Yes",
                             // Add reasoning flag if available or detect from model ID
                             is_reasoning: modelData.is_reasoning || modelId.includes('o4') || modelId.includes('claude'),
                             // Add perplexity flag based on model ID

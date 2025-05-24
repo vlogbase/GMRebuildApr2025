@@ -659,7 +659,14 @@ document.addEventListener('DOMContentLoaded', function() {
         const nonFreeModels = presetId === '6' ? allModels : allModels.filter(model => !model.is_free && !model.id.includes(':free'));
         
         // Then apply specific filters based on preset
-        const filteredModels = presetId === '4' ? nonFreeModels.filter(model => model.is_multimodal) :
+        const filteredModels = presetId === '4' ? nonFreeModels.filter(model => {
+            const passes = model.is_multimodal === true;
+            // Debug logging for multimodal filter
+            if (model.id === 'qwen/qwen-vl-max' || model.id === 'x-ai/grok-2-vision-1212' || model.id === 'openai/gpt-4o') {
+                console.log(`[Mobile Preset 4 Debug] ${model.id}: is_multimodal=${model.is_multimodal}, is_free=${model.is_free}, passes=${passes}`);
+            }
+            return passes;
+        }) :
                               presetId === '5' ? nonFreeModels.filter(model => model.id.includes('perplexity')) :
                               presetId === '6' ? allModels.filter(model => model.is_free === true || model.id.includes(':free')) :
                               nonFreeModels; // For presets 1-5, we already filtered out free models above
