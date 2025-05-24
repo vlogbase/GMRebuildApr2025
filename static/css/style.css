@@ -2089,7 +2089,6 @@ body.account-page .tab-pane {
 /* Locked premium features */
 .premium-locked {
     position: relative;
-    filter: blur(1px);
     cursor: pointer;
 }
 
@@ -2174,12 +2173,10 @@ body.account-page .tab-pane {
 
 /* Style for disabled upload buttons */
 .upload-documents-btn.disabled {
-    cursor: not-allowed;
+    cursor: pointer;
     position: relative;
-    filter: blur(1.5px);
     opacity: 0.95;
-    pointer-events: none;
-    transition: filter 0.3s ease, opacity 0.3s ease;
+    transition: opacity 0.3s ease;
     box-shadow: none;
 }
 
@@ -2239,8 +2236,7 @@ body.account-page .tab-pane {
 /* Enhance tooltip visibility on hover for better UX */
 .model-preset-btn.disabled:hover,
 .upload-documents-btn.disabled:hover {
-    filter: blur(0.5px); /* Reduce blur on hover for better readability */
-    transition: filter 0.2s ease;
+    transition: opacity 0.2s ease;
 }
 
 .model-preset-btn.disabled:hover .button-overlay,
