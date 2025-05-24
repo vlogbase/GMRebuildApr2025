@@ -241,5 +241,50 @@ function updateDetailedTab(data) {
     detailedTab.innerHTML = detailedHtml;
 }
 
+// Function to handle tab switching
+function switchUsageTab(tabName) {
+    const summaryTab = document.getElementById('usage-summary-tab');
+    const detailedTab = document.getElementById('usage-detailed-tab');
+    const summaryBtn = document.getElementById('summaryViewBtn');
+    const detailedBtn = document.getElementById('detailedViewBtn');
+
+    if (tabName === 'summary') {
+        // Show summary tab
+        if (summaryTab) summaryTab.classList.add('show', 'active');
+        if (detailedTab) detailedTab.classList.remove('show', 'active');
+        
+        // Update button states
+        if (summaryBtn) summaryBtn.classList.add('active');
+        if (detailedBtn) detailedBtn.classList.remove('active');
+    } else if (tabName === 'detailed') {
+        // Show detailed tab
+        if (detailedTab) detailedTab.classList.add('show', 'active');
+        if (summaryTab) summaryTab.classList.remove('show', 'active');
+        
+        // Update button states
+        if (detailedBtn) detailedBtn.classList.add('active');
+        if (summaryBtn) summaryBtn.classList.remove('active');
+    }
+}
+
+// Initialize event listeners when DOM is loaded
+document.addEventListener('DOMContentLoaded', function() {
+    const summaryBtn = document.getElementById('summaryViewBtn');
+    const detailedBtn = document.getElementById('detailedViewBtn');
+
+    if (summaryBtn) {
+        summaryBtn.addEventListener('click', function() {
+            switchUsageTab('summary');
+        });
+    }
+
+    if (detailedBtn) {
+        detailedBtn.addEventListener('click', function() {
+            switchUsageTab('detailed');
+        });
+    }
+});
+
 // Export functions for global use
 window.updateUsageData = updateUsageData;
+window.switchUsageTab = switchUsageTab;
