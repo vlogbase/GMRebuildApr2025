@@ -1,0 +1,1422 @@
+{
+  "last_updated": "2025-05-24T16:27:35.152747",
+  "total_models": 202,
+  "successful_parses": 202,
+  "data_source": "mathewhe/chatbot-arena-elo",
+  "elo_mapping": {
+    "gemini25propreview0506": {
+      "elo_score": 1446,
+      "original_lmsys_name": "Gemini-2.5-Pro-Preview-05-06",
+      "normalized_name": "gemini25propreview0506",
+      "rank": "1",
+      "organization": "Google"
+    },
+    "gemini25flashpreview0520": {
+      "elo_score": 1418,
+      "original_lmsys_name": "Gemini-2.5-Flash-Preview-05-20",
+      "normalized_name": "gemini25flashpreview0520",
+      "rank": "2",
+      "organization": "Google"
+    },
+    "o320250416": {
+      "elo_score": 1409,
+      "original_lmsys_name": "o3-2025-04-16",
+      "normalized_name": "o320250416",
+      "rank": "2",
+      "organization": "OpenAI"
+    },
+    "gpt4olatest20250326": {
+      "elo_score": 1405,
+      "original_lmsys_name": "ChatGPT-4o-latest (2025-03-26)",
+      "normalized_name": "gpt4olatest20250326",
+      "rank": "2",
+      "organization": "OpenAI"
+    },
+    "grok3preview0224": {
+      "elo_score": 1399,
+      "original_lmsys_name": "Grok-3-Preview-02-24",
+      "normalized_name": "grok3preview0224",
+      "rank": "3",
+      "organization": "xAI"
+    },
+    "gpt45preview": {
+      "elo_score": 1394,
+      "original_lmsys_name": "GPT-4.5-Preview",
+      "normalized_name": "gpt45preview",
+      "rank": "4",
+      "organization": "OpenAI"
+    },
+    "gemini25flashpreview0417": {
+      "elo_score": 1387,
+      "original_lmsys_name": "Gemini-2.5-Flash-Preview-04-17",
+      "normalized_name": "gemini25flashpreview0417",
+      "rank": "6",
+      "organization": "Google"
+    },
+    "deepseekv30324": {
+      "elo_score": 1368,
+      "original_lmsys_name": "DeepSeek-V3-0324",
+      "normalized_name": "deepseekv30324",
+      "rank": "8",
+      "organization": "DeepSeek"
+    },
+    "gpt4120250414": {
+      "elo_score": 1365,
+      "original_lmsys_name": "GPT-4.1-2025-04-14",
+      "normalized_name": "gpt4120250414",
+      "rank": "8",
+      "organization": "OpenAI"
+    },
+    "hunyuanturbos20250416": {
+      "elo_score": 1356,
+      "original_lmsys_name": "Hunyuan-Turbos-20250416",
+      "normalized_name": "hunyuanturbos20250416",
+      "rank": "8",
+      "organization": "Tencent"
+    },
+    "deepseekr1": {
+      "elo_score": 1354,
+      "original_lmsys_name": "DeepSeek-R1",
+      "normalized_name": "deepseekr1",
+      "rank": "9",
+      "organization": "DeepSeek"
+    },
+    "gemini20flash001": {
+      "elo_score": 1351,
+      "original_lmsys_name": "Gemini-2.0-Flash-001",
+      "normalized_name": "gemini20flash001",
+      "rank": "10",
+      "organization": "Google"
+    },
+    "mistralmedium3": {
+      "elo_score": 1343,
+      "original_lmsys_name": "Mistral Medium 3",
+      "normalized_name": "mistralmedium3",
+      "rank": "10",
+      "organization": "Mistral"
+    },
+    "o4mini20250416": {
+      "elo_score": 1343,
+      "original_lmsys_name": "o4-mini-2025-04-16",
+      "normalized_name": "o4mini20250416",
+      "rank": "10",
+      "organization": "OpenAI"
+    },
+    "o120241217": {
+      "elo_score": 1346,
+      "original_lmsys_name": "o1-2024-12-17",
+      "normalized_name": "o120241217",
+      "rank": "11",
+      "organization": "OpenAI"
+    },
+    "gemma327bit": {
+      "elo_score": 1339,
+      "original_lmsys_name": "Gemma-3-27B-it",
+      "normalized_name": "gemma327bit",
+      "rank": "13",
+      "organization": "Google"
+    },
+    "qwen3235ba22b": {
+      "elo_score": 1337,
+      "original_lmsys_name": "Qwen3-235B-A22B",
+      "normalized_name": "qwen3235ba22b",
+      "rank": "13",
+      "organization": "Alibaba"
+    },
+    "qwen25max": {
+      "elo_score": 1337,
+      "original_lmsys_name": "Qwen2.5-Max",
+      "normalized_name": "qwen25max",
+      "rank": "14",
+      "organization": "Alibaba"
+    },
+    "o1preview": {
+      "elo_score": 1331,
+      "original_lmsys_name": "o1-preview",
+      "normalized_name": "o1preview",
+      "rank": "14",
+      "organization": "OpenAI"
+    },
+    "qwen332b": {
+      "elo_score": 1324,
+      "original_lmsys_name": "Qwen3-32B",
+      "normalized_name": "qwen332b",
+      "rank": "18",
+      "organization": "Alibaba"
+    },
+    "o3minihigh": {
+      "elo_score": 1321,
+      "original_lmsys_name": "o3-mini-high",
+      "normalized_name": "o3minihigh",
+      "rank": "20",
+      "organization": "OpenAI"
+    },
+    "gpt41mini20250414": {
+      "elo_score": 1319,
+      "original_lmsys_name": "GPT-4.1-mini-2025-04-14",
+      "normalized_name": "gpt41mini20250414",
+      "rank": "20",
+      "organization": "OpenAI"
+    },
+    "gemma312bit": {
+      "elo_score": 1317,
+      "original_lmsys_name": "Gemma-3-12B-it",
+      "normalized_name": "gemma312bit",
+      "rank": "20",
+      "organization": "Google"
+    },
+    "deepseekv3": {
+      "elo_score": 1315,
+      "original_lmsys_name": "DeepSeek-V3",
+      "normalized_name": "deepseekv3",
+      "rank": "20",
+      "organization": "DeepSeek"
+    },
+    "qwq32b": {
+      "elo_score": 1310,
+      "original_lmsys_name": "QwQ-32B",
+      "normalized_name": "qwq32b",
+      "rank": "21",
+      "organization": "Alibaba"
+    },
+    "glm4plus0111": {
+      "elo_score": 1307,
+      "original_lmsys_name": "GLM-4-Plus-0111",
+      "normalized_name": "glm4plus0111",
+      "rank": "21",
+      "organization": "Zhipu"
+    },
+    "qwenplus0125": {
+      "elo_score": 1307,
+      "original_lmsys_name": "Qwen-Plus-0125",
+      "normalized_name": "qwenplus0125",
+      "rank": "21",
+      "organization": "Alibaba"
+    },
+    "gemini20flashlite": {
+      "elo_score": 1309,
+      "original_lmsys_name": "Gemini-2.0-Flash-Lite",
+      "normalized_name": "gemini20flashlite",
+      "rank": "23",
+      "organization": "Google"
+    },
+    "llama31nemotronultra253bv1": {
+      "elo_score": 1300,
+      "original_lmsys_name": "Llama-3.1-Nemotron-Ultra-253B-v1",
+      "normalized_name": "llama31nemotronultra253bv1",
+      "rank": "23",
+      "organization": "Nvidia"
+    },
+    "hunyuanturbos20250226": {
+      "elo_score": 1299,
+      "original_lmsys_name": "Hunyuan-TurboS-20250226",
+      "normalized_name": "hunyuanturbos20250226",
+      "rank": "23",
+      "organization": "Tencent"
+    },
+    "commanda032025": {
+      "elo_score": 1303,
+      "original_lmsys_name": "Command A (03-2025)",
+      "normalized_name": "commanda032025",
+      "rank": "24",
+      "organization": "Cohere"
+    },
+    "step216kexp": {
+      "elo_score": 1301,
+      "original_lmsys_name": "Step-2-16K-Exp",
+      "normalized_name": "step216kexp",
+      "rank": "24",
+      "organization": "StepFun"
+    },
+    "o3mini": {
+      "elo_score": 1302,
+      "original_lmsys_name": "o3-mini",
+      "normalized_name": "o3mini",
+      "rank": "26",
+      "organization": "OpenAI"
+    },
+    "o1mini": {
+      "elo_score": 1300,
+      "original_lmsys_name": "o1-mini",
+      "normalized_name": "o1mini",
+      "rank": "27",
+      "organization": "OpenAI"
+    },
+    "gemini15pro002": {
+      "elo_score": 1299,
+      "original_lmsys_name": "Gemini-1.5-Pro-002",
+      "normalized_name": "gemini15pro002",
+      "rank": "27",
+      "organization": "Google"
+    },
+    "claude37sonnetthinking32k": {
+      "elo_score": 1296,
+      "original_lmsys_name": "Claude 3.7 Sonnet (thinking-32k)",
+      "normalized_name": "claude37sonnetthinking32k",
+      "rank": "27",
+      "organization": "Anthropic"
+    },
+    "llama33nemotronsuper49bv1": {
+      "elo_score": 1293,
+      "original_lmsys_name": "Llama-3.3-Nemotron-Super-49B-v1",
+      "normalized_name": "llama33nemotronsuper49bv1",
+      "rank": "27",
+      "organization": "Nvidia"
+    },
+    "hunyuanturbo0110": {
+      "elo_score": 1293,
+      "original_lmsys_name": "Hunyuan-Turbo-0110",
+      "normalized_name": "hunyuanturbo0110",
+      "rank": "27",
+      "organization": "Tencent"
+    },
+    "gemma3ne4bit": {
+      "elo_score": 1286,
+      "original_lmsys_name": "Gemma-3n-e4b-it",
+      "normalized_name": "gemma3ne4bit",
+      "rank": "33",
+      "organization": "Google"
+    },
+    "claude37sonnet": {
+      "elo_score": 1287,
+      "original_lmsys_name": "Claude 3.7 Sonnet",
+      "normalized_name": "claude37sonnet",
+      "rank": "34",
+      "organization": "Anthropic"
+    },
+    "qwen330ba3b": {
+      "elo_score": 1286,
+      "original_lmsys_name": "Qwen3-30B-A3B",
+      "normalized_name": "qwen330ba3b",
+      "rank": "34",
+      "organization": "Alibaba"
+    },
+    "grok20813": {
+      "elo_score": 1284,
+      "original_lmsys_name": "Grok-2-08-13",
+      "normalized_name": "grok20813",
+      "rank": "37",
+      "organization": "xAI"
+    },
+    "yilightning": {
+      "elo_score": 1284,
+      "original_lmsys_name": "Yi-Lightning",
+      "normalized_name": "yilightning",
+      "rank": "37",
+      "organization": "01 AI"
+    },
+    "qwen25plus1127": {
+      "elo_score": 1279,
+      "original_lmsys_name": "Qwen2.5-plus-1127",
+      "normalized_name": "qwen25plus1127",
+      "rank": "37",
+      "organization": "Alibaba"
+    },
+    "gpt4o20240513": {
+      "elo_score": 1281,
+      "original_lmsys_name": "GPT-4o-2024-05-13",
+      "normalized_name": "gpt4o20240513",
+      "rank": "38",
+      "organization": "OpenAI"
+    },
+    "claude35sonnet20241022": {
+      "elo_score": 1280,
+      "original_lmsys_name": "Claude 3.5 Sonnet (20241022)",
+      "normalized_name": "claude35sonnet20241022",
+      "rank": "41",
+      "organization": "Anthropic"
+    },
+    "deepseekv251210": {
+      "elo_score": 1276,
+      "original_lmsys_name": "Deepseek-v2.5-1210",
+      "normalized_name": "deepseekv251210",
+      "rank": "41",
+      "organization": "DeepSeek"
+    },
+    "gemma34bit": {
+      "elo_score": 1272,
+      "original_lmsys_name": "Gemma-3-4B-it",
+      "normalized_name": "gemma34bit",
+      "rank": "41",
+      "organization": "Google"
+    },
+    "hunyuanlarge20250210": {
+      "elo_score": 1268,
+      "original_lmsys_name": "Hunyuan-Large-2025-02-10",
+      "normalized_name": "hunyuanlarge20250210",
+      "rank": "44",
+      "organization": "Tencent"
+    },
+    "athenev2chat72b": {
+      "elo_score": 1272,
+      "original_lmsys_name": "Athene-v2-Chat-72B",
+      "normalized_name": "athenev2chat72b",
+      "rank": "45",
+      "organization": "NexusFlow"
+    },
+    "gpt41nano20250414": {
+      "elo_score": 1269,
+      "original_lmsys_name": "GPT-4.1-nano-2025-04-14",
+      "normalized_name": "gpt41nano20250414",
+      "rank": "45",
+      "organization": "OpenAI"
+    },
+    "glm4plus": {
+      "elo_score": 1270,
+      "original_lmsys_name": "GLM-4-Plus",
+      "normalized_name": "glm4plus",
+      "rank": "47",
+      "organization": "Zhipu AI"
+    },
+    "gpt4omini20240718": {
+      "elo_score": 1269,
+      "original_lmsys_name": "GPT-4o-mini-2024-07-18",
+      "normalized_name": "gpt4omini20240718",
+      "rank": "47",
+      "organization": "OpenAI"
+    },
+    "gemini15flash002": {
+      "elo_score": 1268,
+      "original_lmsys_name": "Gemini-1.5-Flash-002",
+      "normalized_name": "gemini15flash002",
+      "rank": "47",
+      "organization": "Google"
+    },
+    "llama4maverick17b128einstruct": {
+      "elo_score": 1266,
+      "original_lmsys_name": "Llama-4-Maverick-17B-128E-Instruct",
+      "normalized_name": "llama4maverick17b128einstruct",
+      "rank": "47",
+      "organization": "Meta"
+    },
+    "llama31nemotron70binstruct": {
+      "elo_score": 1265,
+      "original_lmsys_name": "Llama-3.1-Nemotron-70B-Instruct",
+      "normalized_name": "llama31nemotron70binstruct",
+      "rank": "47",
+      "organization": "Nvidia"
+    },
+    "metallama31405binstructbf16": {
+      "elo_score": 1265,
+      "original_lmsys_name": "Meta-Llama-3.1-405B-Instruct-bf16",
+      "normalized_name": "metallama31405binstructbf16",
+      "rank": "49",
+      "organization": "Meta"
+    },
+    "claude35sonnet20240620": {
+      "elo_score": 1265,
+      "original_lmsys_name": "Claude 3.5 Sonnet (20240620)",
+      "normalized_name": "claude35sonnet20240620",
+      "rank": "50",
+      "organization": "Anthropic"
+    },
+    "hunyuanstandard20250210": {
+      "elo_score": 1257,
+      "original_lmsys_name": "Hunyuan-Standard-2025-02-10",
+      "normalized_name": "hunyuanstandard20250210",
+      "rank": "50",
+      "organization": "Tencent"
+    },
+    "metallama31405binstructfp8": {
+      "elo_score": 1264,
+      "original_lmsys_name": "Meta-Llama-3.1-405B-Instruct-fp8",
+      "normalized_name": "metallama31405binstructfp8",
+      "rank": "51",
+      "organization": "Meta"
+    },
+    "geminiadvancedapp20240514": {
+      "elo_score": 1263,
+      "original_lmsys_name": "Gemini Advanced App (2024-05-14)",
+      "normalized_name": "geminiadvancedapp20240514",
+      "rank": "51",
+      "organization": "Google"
+    },
+    "grok2mini0813": {
+      "elo_score": 1263,
+      "original_lmsys_name": "Grok-2-Mini-08-13",
+      "normalized_name": "grok2mini0813",
+      "rank": "51",
+      "organization": "xAI"
+    },
+    "gpt4o20240806": {
+      "elo_score": 1262,
+      "original_lmsys_name": "GPT-4o-2024-08-06",
+      "normalized_name": "gpt4o20240806",
+      "rank": "52",
+      "organization": "OpenAI"
+    },
+    "qwenmax0919": {
+      "elo_score": 1260,
+      "original_lmsys_name": "Qwen-Max-0919",
+      "normalized_name": "qwenmax0919",
+      "rank": "52",
+      "organization": "Alibaba"
+    },
+    "gemini15pro001": {
+      "elo_score": 1256,
+      "original_lmsys_name": "Gemini-1.5-Pro-001",
+      "normalized_name": "gemini15pro001",
+      "rank": "62",
+      "organization": "Google"
+    },
+    "deepseekv25": {
+      "elo_score": 1255,
+      "original_lmsys_name": "Deepseek-v2.5",
+      "normalized_name": "deepseekv25",
+      "rank": "62",
+      "organization": "DeepSeek"
+    },
+    "mistralsmall3124binstruct2503": {
+      "elo_score": 1246,
+      "original_lmsys_name": "Mistral-Small-3.1-24B-Instruct-2503",
+      "normalized_name": "mistralsmall3124binstruct2503",
+      "rank": "62",
+      "organization": "Mistral"
+    },
+    "qwen2572binstruct": {
+      "elo_score": 1254,
+      "original_lmsys_name": "Qwen2.5-72B-Instruct",
+      "normalized_name": "qwen2572binstruct",
+      "rank": "64",
+      "organization": "Alibaba"
+    },
+    "llama3370binstruct": {
+      "elo_score": 1253,
+      "original_lmsys_name": "Llama-3.3-70B-Instruct",
+      "normalized_name": "llama3370binstruct",
+      "rank": "64",
+      "organization": "Meta"
+    },
+    "gpt4turbo20240409": {
+      "elo_score": 1253,
+      "original_lmsys_name": "GPT-4-Turbo-2024-04-09",
+      "normalized_name": "gpt4turbo20240409",
+      "rank": "64",
+      "organization": "OpenAI"
+    },
+    "mistrallarge2407": {
+      "elo_score": 1248,
+      "original_lmsys_name": "Mistral-Large-2407",
+      "normalized_name": "mistrallarge2407",
+      "rank": "68",
+      "organization": "Mistral"
+    },
+    "athene70b": {
+      "elo_score": 1247,
+      "original_lmsys_name": "Athene-70B",
+      "normalized_name": "athene70b",
+      "rank": "70",
+      "organization": "NexusFlow"
+    },
+    "gpt41106preview": {
+      "elo_score": 1246,
+      "original_lmsys_name": "GPT-4-1106-preview",
+      "normalized_name": "gpt41106preview",
+      "rank": "70",
+      "organization": "OpenAI"
+    },
+    "mistrallarge2411": {
+      "elo_score": 1245,
+      "original_lmsys_name": "Mistral-Large-2411",
+      "normalized_name": "mistrallarge2411",
+      "rank": "70",
+      "organization": "Mistral"
+    },
+    "metallama3170binstruct": {
+      "elo_score": 1244,
+      "original_lmsys_name": "Meta-Llama-3.1-70B-Instruct",
+      "normalized_name": "metallama3170binstruct",
+      "rank": "70",
+      "organization": "Meta"
+    },
+    "llama31tulu370b": {
+      "elo_score": 1240,
+      "original_lmsys_name": "Llama-3.1-Tulu-3-70B",
+      "normalized_name": "llama31tulu370b",
+      "rank": "70",
+      "organization": "Ai2"
+    },
+    "llama4scout17b16einstruct": {
+      "elo_score": 1239,
+      "original_lmsys_name": "Llama-4-Scout-17B-16E-Instruct",
+      "normalized_name": "llama4scout17b16einstruct",
+      "rank": "70",
+      "organization": "Meta"
+    },
+    "claude3opus": {
+      "elo_score": 1244,
+      "original_lmsys_name": "Claude 3 Opus",
+      "normalized_name": "claude3opus",
+      "rank": "71",
+      "organization": "Anthropic"
+    },
+    "amazonnovapro10": {
+      "elo_score": 1241,
+      "original_lmsys_name": "Amazon Nova Pro 1.0",
+      "normalized_name": "amazonnovapro10",
+      "rank": "71",
+      "organization": "Amazon"
+    },
+    "gpt40125preview": {
+      "elo_score": 1241,
+      "original_lmsys_name": "GPT-4-0125-preview",
+      "normalized_name": "gpt40125preview",
+      "rank": "72",
+      "organization": "OpenAI"
+    },
+    "claude35haiku20241022": {
+      "elo_score": 1234,
+      "original_lmsys_name": "Claude 3.5 Haiku (20241022)",
+      "normalized_name": "claude35haiku20241022",
+      "rank": "79",
+      "organization": "Anthropic"
+    },
+    "rekacore20240904": {
+      "elo_score": 1232,
+      "original_lmsys_name": "Reka-Core-20240904",
+      "normalized_name": "rekacore20240904",
+      "rank": "79",
+      "organization": "Reka AI"
+    },
+    "gemini15flash001": {
+      "elo_score": 1223,
+      "original_lmsys_name": "Gemini-1.5-Flash-001",
+      "normalized_name": "gemini15flash001",
+      "rank": "83",
+      "organization": "Google"
+    },
+    "jamba15large": {
+      "elo_score": 1218,
+      "original_lmsys_name": "Jamba-1.5-Large",
+      "normalized_name": "jamba15large",
+      "rank": "83",
+      "organization": "AI21 Labs"
+    },
+    "gemma227bit": {
+      "elo_score": 1216,
+      "original_lmsys_name": "Gemma-2-27B-it",
+      "normalized_name": "gemma227bit",
+      "rank": "84",
+      "organization": "Google"
+    },
+    "mistralsmall24binstruct2501": {
+      "elo_score": 1214,
+      "original_lmsys_name": "Mistral-Small-24B-Instruct-2501",
+      "normalized_name": "mistralsmall24binstruct2501",
+      "rank": "84",
+      "organization": "Mistral"
+    },
+    "qwen25coder32binstruct": {
+      "elo_score": 1214,
+      "original_lmsys_name": "Qwen2.5-Coder-32B-Instruct",
+      "normalized_name": "qwen25coder32binstruct",
+      "rank": "84",
+      "organization": "Alibaba"
+    },
+    "amazonnovalite10": {
+      "elo_score": 1213,
+      "original_lmsys_name": "Amazon Nova Lite 1.0",
+      "normalized_name": "amazonnovalite10",
+      "rank": "84",
+      "organization": "Amazon"
+    },
+    "gemma29bitsimpo": {
+      "elo_score": 1213,
+      "original_lmsys_name": "Gemma-2-9B-it-SimPO",
+      "normalized_name": "gemma29bitsimpo",
+      "rank": "84",
+      "organization": "Princeton"
+    },
+    "commandr+082024": {
+      "elo_score": 1212,
+      "original_lmsys_name": "Command R+ (08-2024)",
+      "normalized_name": "commandr+082024",
+      "rank": "84",
+      "organization": "Cohere"
+    },
+    "llama31nemotron51binstruct": {
+      "elo_score": 1208,
+      "original_lmsys_name": "Llama-3.1-Nemotron-51B-Instruct",
+      "normalized_name": "llama31nemotron51binstruct",
+      "rank": "84",
+      "organization": "Nvidia"
+    },
+    "gemini15flash8b001": {
+      "elo_score": 1209,
+      "original_lmsys_name": "Gemini-1.5-Flash-8B-001",
+      "normalized_name": "gemini15flash8b001",
+      "rank": "86",
+      "organization": "Google"
+    },
+    "olmo2032532binstruct": {
+      "elo_score": 1202,
+      "original_lmsys_name": "OLMo-2-0325-32B-Instruct",
+      "normalized_name": "olmo2032532binstruct",
+      "rank": "86",
+      "organization": "Allen AI"
+    },
+    "ayaexpanse32b": {
+      "elo_score": 1206,
+      "original_lmsys_name": "Aya-Expanse-32B",
+      "normalized_name": "ayaexpanse32b",
+      "rank": "88",
+      "organization": "Cohere"
+    },
+    "nemotron4340binstruct": {
+      "elo_score": 1206,
+      "original_lmsys_name": "Nemotron-4-340B-Instruct",
+      "normalized_name": "nemotron4340binstruct",
+      "rank": "88",
+      "organization": "Nvidia"
+    },
+    "glm40520": {
+      "elo_score": 1203,
+      "original_lmsys_name": "GLM-4-0520",
+      "normalized_name": "glm40520",
+      "rank": "88",
+      "organization": "Zhipu AI"
+    },
+    "rekaflash20240904": {
+      "elo_score": 1202,
+      "original_lmsys_name": "Reka-Flash-20240904",
+      "normalized_name": "rekaflash20240904",
+      "rank": "88",
+      "organization": "Reka AI"
+    },
+    "llama370binstruct": {
+      "elo_score": 1203,
+      "original_lmsys_name": "Llama-3-70B-Instruct",
+      "normalized_name": "llama370binstruct",
+      "rank": "92",
+      "organization": "Meta"
+    },
+    "phi4": {
+      "elo_score": 1202,
+      "original_lmsys_name": "Phi-4",
+      "normalized_name": "phi4",
+      "rank": "92",
+      "organization": "Microsoft"
+    },
+    "claude3sonnet": {
+      "elo_score": 1198,
+      "original_lmsys_name": "Claude 3 Sonnet",
+      "normalized_name": "claude3sonnet",
+      "rank": "96",
+      "organization": "Anthropic"
+    },
+    "amazonnovamicro10": {
+      "elo_score": 1194,
+      "original_lmsys_name": "Amazon Nova Micro 1.0",
+      "normalized_name": "amazonnovamicro10",
+      "rank": "96",
+      "organization": "Amazon"
+    },
+    "hunyuanstandard256k": {
+      "elo_score": 1185,
+      "original_lmsys_name": "Hunyuan-Standard-256K",
+      "normalized_name": "hunyuanstandard256k",
+      "rank": "97",
+      "organization": "Tencent"
+    },
+    "llama31tulu38b": {
+      "elo_score": 1182,
+      "original_lmsys_name": "Llama-3.1-Tulu-3-8B",
+      "normalized_name": "llama31tulu38b",
+      "rank": "101",
+      "organization": "Ai2"
+    },
+    "gemma29bit": {
+      "elo_score": 1189,
+      "original_lmsys_name": "Gemma-2-9B-it",
+      "normalized_name": "gemma29bit",
+      "rank": "102",
+      "organization": "Google"
+    },
+    "commandr+042024": {
+      "elo_score": 1186,
+      "original_lmsys_name": "Command R+ (04-2024)",
+      "normalized_name": "commandr+042024",
+      "rank": "102",
+      "organization": "Cohere"
+    },
+    "qwen272binstruct": {
+      "elo_score": 1184,
+      "original_lmsys_name": "Qwen2-72B-Instruct",
+      "normalized_name": "qwen272binstruct",
+      "rank": "103",
+      "organization": "Alibaba"
+    },
+    "gpt40314": {
+      "elo_score": 1183,
+      "original_lmsys_name": "GPT-4-0314",
+      "normalized_name": "gpt40314",
+      "rank": "103",
+      "organization": "OpenAI"
+    },
+    "ministral8b2410": {
+      "elo_score": 1179,
+      "original_lmsys_name": "Ministral-8B-2410",
+      "normalized_name": "ministral8b2410",
+      "rank": "103",
+      "organization": "Mistral"
+    },
+    "ayaexpanse8b": {
+      "elo_score": 1176,
+      "original_lmsys_name": "Aya-Expanse-8B",
+      "normalized_name": "ayaexpanse8b",
+      "rank": "105",
+      "organization": "Cohere"
+    },
+    "commandr082024": {
+      "elo_score": 1176,
+      "original_lmsys_name": "Command R (08-2024)",
+      "normalized_name": "commandr082024",
+      "rank": "106",
+      "organization": "Cohere"
+    },
+    "claude3haiku": {
+      "elo_score": 1176,
+      "original_lmsys_name": "Claude 3 Haiku",
+      "normalized_name": "claude3haiku",
+      "rank": "106",
+      "organization": "Anthropic"
+    },
+    "deepseekcoderv2instruct": {
+      "elo_score": 1175,
+      "original_lmsys_name": "DeepSeek-Coder-V2-Instruct",
+      "normalized_name": "deepseekcoderv2instruct",
+      "rank": "106",
+      "organization": "DeepSeek AI"
+    },
+    "jamba15mini": {
+      "elo_score": 1173,
+      "original_lmsys_name": "Jamba-1.5-Mini",
+      "normalized_name": "jamba15mini",
+      "rank": "106",
+      "organization": "AI21 Labs"
+    },
+    "metallama318binstruct": {
+      "elo_score": 1172,
+      "original_lmsys_name": "Meta-Llama-3.1-8B-Instruct",
+      "normalized_name": "metallama318binstruct",
+      "rank": "107",
+      "organization": "Meta"
+    },
+    "gpt40613": {
+      "elo_score": 1160,
+      "original_lmsys_name": "GPT-4-0613",
+      "normalized_name": "gpt40613",
+      "rank": "115",
+      "organization": "OpenAI"
+    },
+    "qwen15110bchat": {
+      "elo_score": 1158,
+      "original_lmsys_name": "Qwen1.5-110B-Chat",
+      "normalized_name": "qwen15110bchat",
+      "rank": "115",
+      "organization": "Alibaba"
+    },
+    "qwq32bpreview": {
+      "elo_score": 1149,
+      "original_lmsys_name": "QwQ-32B-Preview",
+      "normalized_name": "qwq32bpreview",
+      "rank": "115",
+      "organization": "Alibaba"
+    },
+    "yi1534bchat": {
+      "elo_score": 1154,
+      "original_lmsys_name": "Yi-1.5-34B-Chat",
+      "normalized_name": "yi1534bchat",
+      "rank": "116",
+      "organization": "01 AI"
+    },
+    "mistrallarge2402": {
+      "elo_score": 1154,
+      "original_lmsys_name": "Mistral-Large-2402",
+      "normalized_name": "mistrallarge2402",
+      "rank": "116",
+      "organization": "Mistral"
+    },
+    "rekaflash21bonline": {
+      "elo_score": 1152,
+      "original_lmsys_name": "Reka-Flash-21B-online",
+      "normalized_name": "rekaflash21bonline",
+      "rank": "116",
+      "organization": "Reka AI"
+    },
+    "llama38binstruct": {
+      "elo_score": 1148,
+      "original_lmsys_name": "Llama-3-8B-Instruct",
+      "normalized_name": "llama38binstruct",
+      "rank": "119",
+      "organization": "Meta"
+    },
+    "internlm2520bchat": {
+      "elo_score": 1146,
+      "original_lmsys_name": "InternLM2.5-20B-chat",
+      "normalized_name": "internlm2520bchat",
+      "rank": "119",
+      "organization": "InternLM"
+    },
+    "granite318binstruct": {
+      "elo_score": 1139,
+      "original_lmsys_name": "Granite-3.1-8B-Instruct",
+      "normalized_name": "granite318binstruct",
+      "rank": "119",
+      "organization": "IBM"
+    },
+    "commandr042024": {
+      "elo_score": 1145,
+      "original_lmsys_name": "Command R (04-2024)",
+      "normalized_name": "commandr042024",
+      "rank": "120",
+      "organization": "Cohere"
+    },
+    "mistralmedium": {
+      "elo_score": 1144,
+      "original_lmsys_name": "Mistral Medium",
+      "normalized_name": "mistralmedium",
+      "rank": "120",
+      "organization": "Mistral"
+    },
+    "mixtral8x22binstructv01": {
+      "elo_score": 1144,
+      "original_lmsys_name": "Mixtral-8x22b-Instruct-v0.1",
+      "normalized_name": "mixtral8x22binstructv01",
+      "rank": "121",
+      "organization": "Mistral"
+    },
+    "rekaflash21b": {
+      "elo_score": 1144,
+      "original_lmsys_name": "Reka-Flash-21B",
+      "normalized_name": "rekaflash21b",
+      "rank": "121",
+      "organization": "Reka AI"
+    },
+    "qwen1572bchat": {
+      "elo_score": 1144,
+      "original_lmsys_name": "Qwen1.5-72B-Chat",
+      "normalized_name": "qwen1572bchat",
+      "rank": "121",
+      "organization": "Alibaba"
+    },
+    "gemma22bit": {
+      "elo_score": 1140,
+      "original_lmsys_name": "Gemma-2-2b-it",
+      "normalized_name": "gemma22bit",
+      "rank": "121",
+      "organization": "Google"
+    },
+    "gemini10pro001": {
+      "elo_score": 1128,
+      "original_lmsys_name": "Gemini-1.0-Pro-001",
+      "normalized_name": "gemini10pro001",
+      "rank": "129",
+      "organization": "Google"
+    },
+    "zephyrorpo141ba35bv01": {
+      "elo_score": 1124,
+      "original_lmsys_name": "Zephyr-ORPO-141b-A35b-v0.1",
+      "normalized_name": "zephyrorpo141ba35bv01",
+      "rank": "129",
+      "organization": "HuggingFace"
+    },
+    "qwen1532bchat": {
+      "elo_score": 1122,
+      "original_lmsys_name": "Qwen1.5-32B-Chat",
+      "normalized_name": "qwen1532bchat",
+      "rank": "130",
+      "organization": "Alibaba"
+    },
+    "granite312binstruct": {
+      "elo_score": 1116,
+      "original_lmsys_name": "Granite-3.1-2B-Instruct",
+      "normalized_name": "granite312binstruct",
+      "rank": "130",
+      "organization": "IBM"
+    },
+    "phi3medium4kinstruct": {
+      "elo_score": 1119,
+      "original_lmsys_name": "Phi-3-Medium-4k-Instruct",
+      "normalized_name": "phi3medium4kinstruct",
+      "rank": "131",
+      "organization": "Microsoft"
+    },
+    "starlinglm7bbeta": {
+      "elo_score": 1115,
+      "original_lmsys_name": "Starling-LM-7B-beta",
+      "normalized_name": "starlinglm7bbeta",
+      "rank": "131",
+      "organization": "Nexusflow"
+    },
+    "mixtral8x7binstructv01": {
+      "elo_score": 1111,
+      "original_lmsys_name": "Mixtral-8x7B-Instruct-v0.1",
+      "normalized_name": "mixtral8x7binstructv01",
+      "rank": "134",
+      "organization": "Mistral"
+    },
+    "yi34bchat": {
+      "elo_score": 1108,
+      "original_lmsys_name": "Yi-34B-Chat",
+      "normalized_name": "yi34bchat",
+      "rank": "134",
+      "organization": "01 AI"
+    },
+    "geminipro": {
+      "elo_score": 1107,
+      "original_lmsys_name": "Gemini Pro",
+      "normalized_name": "geminipro",
+      "rank": "134",
+      "organization": "Google"
+    },
+    "qwen1514bchat": {
+      "elo_score": 1105,
+      "original_lmsys_name": "Qwen1.5-14B-Chat",
+      "normalized_name": "qwen1514bchat",
+      "rank": "135",
+      "organization": "Alibaba"
+    },
+    "wizardlm70bv10": {
+      "elo_score": 1103,
+      "original_lmsys_name": "WizardLM-70B-v1.0",
+      "normalized_name": "wizardlm70bv10",
+      "rank": "135",
+      "organization": "Microsoft"
+    },
+    "gpt35turbo0125": {
+      "elo_score": 1102,
+      "original_lmsys_name": "GPT-3.5-Turbo-0125",
+      "normalized_name": "gpt35turbo0125",
+      "rank": "137",
+      "organization": "OpenAI"
+    },
+    "metallama323binstruct": {
+      "elo_score": 1099,
+      "original_lmsys_name": "Meta-Llama-3.2-3B-Instruct",
+      "normalized_name": "metallama323binstruct",
+      "rank": "137",
+      "organization": "Meta"
+    },
+    "dbrxinstructpreview": {
+      "elo_score": 1100,
+      "original_lmsys_name": "DBRX-Instruct-Preview",
+      "normalized_name": "dbrxinstructpreview",
+      "rank": "138",
+      "organization": "Databricks"
+    },
+    "phi3small8kinstruct": {
+      "elo_score": 1098,
+      "original_lmsys_name": "Phi-3-Small-8k-Instruct",
+      "normalized_name": "phi3small8kinstruct",
+      "rank": "138",
+      "organization": "Microsoft"
+    },
+    "tulu2dpo70b": {
+      "elo_score": 1096,
+      "original_lmsys_name": "Tulu-2-DPO-70B",
+      "normalized_name": "tulu2dpo70b",
+      "rank": "138",
+      "organization": "AllenAI/UW"
+    },
+    "granite308binstruct": {
+      "elo_score": 1090,
+      "original_lmsys_name": "Granite-3.0-8B-Instruct",
+      "normalized_name": "granite308binstruct",
+      "rank": "141",
+      "organization": "IBM"
+    },
+    "llama270bchat": {
+      "elo_score": 1089,
+      "original_lmsys_name": "Llama-2-70B-chat",
+      "normalized_name": "llama270bchat",
+      "rank": "145",
+      "organization": "Meta"
+    },
+    "openchat350106": {
+      "elo_score": 1088,
+      "original_lmsys_name": "OpenChat-3.5-0106",
+      "normalized_name": "openchat350106",
+      "rank": "145",
+      "organization": "OpenChat"
+    },
+    "vicuna33b": {
+      "elo_score": 1087,
+      "original_lmsys_name": "Vicuna-33B",
+      "normalized_name": "vicuna33b",
+      "rank": "145",
+      "organization": "LMSYS"
+    },
+    "snowflakearcticinstruct": {
+      "elo_score": 1086,
+      "original_lmsys_name": "Snowflake Arctic Instruct",
+      "normalized_name": "snowflakearcticinstruct",
+      "rank": "145",
+      "organization": "Snowflake"
+    },
+    "starlinglm7balpha": {
+      "elo_score": 1085,
+      "original_lmsys_name": "Starling-LM-7B-alpha",
+      "normalized_name": "starlinglm7balpha",
+      "rank": "145",
+      "organization": "UC Berkeley"
+    },
+    "noushermes2mixtral8x7bdpo": {
+      "elo_score": 1081,
+      "original_lmsys_name": "Nous-Hermes-2-Mixtral-8x7B-DPO",
+      "normalized_name": "noushermes2mixtral8x7bdpo",
+      "rank": "145",
+      "organization": "NousResearch"
+    },
+    "gemma117bit": {
+      "elo_score": 1080,
+      "original_lmsys_name": "Gemma-1.1-7B-it",
+      "normalized_name": "gemma117bit",
+      "rank": "147",
+      "organization": "Google"
+    },
+    "nvllama270bsteerlmchat": {
+      "elo_score": 1077,
+      "original_lmsys_name": "NV-Llama2-70B-SteerLM-Chat",
+      "normalized_name": "nvllama270bsteerlmchat",
+      "rank": "147",
+      "organization": "Nvidia"
+    },
+    "deepseekllm67bchat": {
+      "elo_score": 1073,
+      "original_lmsys_name": "DeepSeek-LLM-67B-Chat",
+      "normalized_name": "deepseekllm67bchat",
+      "rank": "151",
+      "organization": "DeepSeek AI"
+    },
+    "openchat35": {
+      "elo_score": 1073,
+      "original_lmsys_name": "OpenChat-3.5",
+      "normalized_name": "openchat35",
+      "rank": "152",
+      "organization": "OpenChat"
+    },
+    "openhermes25mistral7b": {
+      "elo_score": 1071,
+      "original_lmsys_name": "OpenHermes-2.5-Mistral-7B",
+      "normalized_name": "openhermes25mistral7b",
+      "rank": "152",
+      "organization": "NousResearch"
+    },
+    "granite302binstruct": {
+      "elo_score": 1070,
+      "original_lmsys_name": "Granite-3.0-2B-Instruct",
+      "normalized_name": "granite302binstruct",
+      "rank": "152",
+      "organization": "IBM"
+    },
+    "mistral7binstructv02": {
+      "elo_score": 1069,
+      "original_lmsys_name": "Mistral-7B-Instruct-v0.2",
+      "normalized_name": "mistral7binstructv02",
+      "rank": "153",
+      "organization": "Mistral"
+    },
+    "phi3mini4kinstructjune24": {
+      "elo_score": 1067,
+      "original_lmsys_name": "Phi-3-Mini-4K-Instruct-June-24",
+      "normalized_name": "phi3mini4kinstructjune24",
+      "rank": "153",
+      "organization": "Microsoft"
+    },
+    "qwen157bchat": {
+      "elo_score": 1066,
+      "original_lmsys_name": "Qwen1.5-7B-Chat",
+      "normalized_name": "qwen157bchat",
+      "rank": "153",
+      "organization": "Alibaba"
+    },
+    "dolphin221mistral7b": {
+      "elo_score": 1059,
+      "original_lmsys_name": "Dolphin-2.2.1-Mistral-7B",
+      "normalized_name": "dolphin221mistral7b",
+      "rank": "153",
+      "organization": "Cognitive Computations"
+    },
+    "gpt35turbo1106": {
+      "elo_score": 1064,
+      "original_lmsys_name": "GPT-3.5-Turbo-1106",
+      "normalized_name": "gpt35turbo1106",
+      "rank": "154",
+      "organization": "OpenAI"
+    },
+    "solar107binstructv10": {
+      "elo_score": 1059,
+      "original_lmsys_name": "SOLAR-10.7B-Instruct-v1.0",
+      "normalized_name": "solar107binstructv10",
+      "rank": "154",
+      "organization": "Upstage AI"
+    },
+    "phi3mini4kinstruct": {
+      "elo_score": 1063,
+      "original_lmsys_name": "Phi-3-Mini-4k-Instruct",
+      "normalized_name": "phi3mini4kinstruct",
+      "rank": "155",
+      "organization": "Microsoft"
+    },
+    "llama213bchat": {
+      "elo_score": 1060,
+      "original_lmsys_name": "Llama-2-13b-chat",
+      "normalized_name": "llama213bchat",
+      "rank": "159",
+      "organization": "Meta"
+    },
+    "wizardlm13bv12": {
+      "elo_score": 1055,
+      "original_lmsys_name": "WizardLM-13b-v1.2",
+      "normalized_name": "wizardlm13bv12",
+      "rank": "161",
+      "organization": "Microsoft"
+    },
+    "smollm217binstruct": {
+      "elo_score": 1043,
+      "original_lmsys_name": "SmolLM2-1.7B-Instruct",
+      "normalized_name": "smollm217binstruct",
+      "rank": "164",
+      "organization": "HuggingFace"
+    },
+    "metallama321binstruct": {
+      "elo_score": 1050,
+      "original_lmsys_name": "Meta-Llama-3.2-1B-Instruct",
+      "normalized_name": "metallama321binstruct",
+      "rank": "165",
+      "organization": "Meta"
+    },
+    "zephyr7bbeta": {
+      "elo_score": 1050,
+      "original_lmsys_name": "Zephyr-7B-beta",
+      "normalized_name": "zephyr7bbeta",
+      "rank": "165",
+      "organization": "HuggingFace"
+    },
+    "mpt30bchat": {
+      "elo_score": 1042,
+      "original_lmsys_name": "MPT-30B-chat",
+      "normalized_name": "mpt30bchat",
+      "rank": "165",
+      "organization": "MosaicML"
+    },
+    "codellama70binstruct": {
+      "elo_score": 1038,
+      "original_lmsys_name": "CodeLlama-70B-instruct",
+      "normalized_name": "codellama70binstruct",
+      "rank": "165",
+      "organization": "Meta"
+    },
+    "zephyr7balpha": {
+      "elo_score": 1037,
+      "original_lmsys_name": "Zephyr-7B-alpha",
+      "normalized_name": "zephyr7balpha",
+      "rank": "165",
+      "organization": "HuggingFace"
+    },
+    "falcon180bchat": {
+      "elo_score": 1031,
+      "original_lmsys_name": "falcon-180b-chat",
+      "normalized_name": "falcon180bchat",
+      "rank": "165",
+      "organization": "TII"
+    },
+    "codellama34binstruct": {
+      "elo_score": 1039,
+      "original_lmsys_name": "CodeLlama-34B-instruct",
+      "normalized_name": "codellama34binstruct",
+      "rank": "168",
+      "organization": "Meta"
+    },
+    "vicuna13b": {
+      "elo_score": 1039,
+      "original_lmsys_name": "Vicuna-13B",
+      "normalized_name": "vicuna13b",
+      "rank": "170",
+      "organization": "LMSYS"
+    },
+    "gemma7bit": {
+      "elo_score": 1034,
+      "original_lmsys_name": "Gemma-7B-it",
+      "normalized_name": "gemma7bit",
+      "rank": "170",
+      "organization": "Google"
+    },
+    "phi3mini128kinstruct": {
+      "elo_score": 1033,
+      "original_lmsys_name": "Phi-3-Mini-128k-Instruct",
+      "normalized_name": "phi3mini128kinstruct",
+      "rank": "170",
+      "organization": "Microsoft"
+    },
+    "llama27bchat": {
+      "elo_score": 1033,
+      "original_lmsys_name": "Llama-2-7B-chat",
+      "normalized_name": "llama27bchat",
+      "rank": "170",
+      "organization": "Meta"
+    },
+    "qwen14bchat": {
+      "elo_score": 1031,
+      "original_lmsys_name": "Qwen-14B-Chat",
+      "normalized_name": "qwen14bchat",
+      "rank": "170",
+      "organization": "Alibaba"
+    },
+    "guanaco33b": {
+      "elo_score": 1029,
+      "original_lmsys_name": "Guanaco-33B",
+      "normalized_name": "guanaco33b",
+      "rank": "170",
+      "organization": "UW"
+    },
+    "gemma112bit": {
+      "elo_score": 1017,
+      "original_lmsys_name": "Gemma-1.1-2b-it",
+      "normalized_name": "gemma112bit",
+      "rank": "179",
+      "organization": "Google"
+    },
+    "stripedhyenanous7b": {
+      "elo_score": 1014,
+      "original_lmsys_name": "StripedHyena-Nous-7B",
+      "normalized_name": "stripedhyenanous7b",
+      "rank": "180",
+      "organization": "Together AI"
+    },
+    "olmo7binstruct": {
+      "elo_score": 1012,
+      "original_lmsys_name": "OLMo-7B-instruct",
+      "normalized_name": "olmo7binstruct",
+      "rank": "181",
+      "organization": "Allen AI"
+    },
+    "mistral7binstructv01": {
+      "elo_score": 1004,
+      "original_lmsys_name": "Mistral-7B-Instruct-v0.1",
+      "normalized_name": "mistral7binstructv01",
+      "rank": "183",
+      "organization": "Mistral"
+    },
+    "vicuna7b": {
+      "elo_score": 1001,
+      "original_lmsys_name": "Vicuna-7B",
+      "normalized_name": "vicuna7b",
+      "rank": "183",
+      "organization": "LMSYS"
+    },
+    "palmchatbison001": {
+      "elo_score": 1000,
+      "original_lmsys_name": "PaLM-Chat-Bison-001",
+      "normalized_name": "palmchatbison001",
+      "rank": "183",
+      "organization": "Google"
+    },
+    "gemma2bit": {
+      "elo_score": 986,
+      "original_lmsys_name": "Gemma-2B-it",
+      "normalized_name": "gemma2bit",
+      "rank": "188",
+      "organization": "Google"
+    },
+    "qwen154bchat": {
+      "elo_score": 985,
+      "original_lmsys_name": "Qwen1.5-4B-Chat",
+      "normalized_name": "qwen154bchat",
+      "rank": "188",
+      "organization": "Alibaba"
+    },
+    "koala13b": {
+      "elo_score": 961,
+      "original_lmsys_name": "Koala-13B",
+      "normalized_name": "koala13b",
+      "rank": "190",
+      "organization": "UC Berkeley"
+    },
+    "chatglm36b": {
+      "elo_score": 951,
+      "original_lmsys_name": "ChatGLM3-6B",
+      "normalized_name": "chatglm36b",
+      "rank": "190",
+      "organization": "Tsinghua"
+    },
+    "gpt4all13bsnoozy": {
+      "elo_score": 929,
+      "original_lmsys_name": "GPT4All-13B-Snoozy",
+      "normalized_name": "gpt4all13bsnoozy",
+      "rank": "192",
+      "organization": "Nomic AI"
+    },
+    "mpt7bchat": {
+      "elo_score": 925,
+      "original_lmsys_name": "MPT-7B-Chat",
+      "normalized_name": "mpt7bchat",
+      "rank": "192",
+      "organization": "MosaicML"
+    },
+    "chatglm26b": {
+      "elo_score": 921,
+      "original_lmsys_name": "ChatGLM2-6B",
+      "normalized_name": "chatglm26b",
+      "rank": "192",
+      "organization": "Tsinghua"
+    },
+    "rwkv4raven14b": {
+      "elo_score": 918,
+      "original_lmsys_name": "RWKV-4-Raven-14B",
+      "normalized_name": "rwkv4raven14b",
+      "rank": "192",
+      "organization": "RWKV"
+    },
+    "alpaca13b": {
+      "elo_score": 898,
+      "original_lmsys_name": "Alpaca-13B",
+      "normalized_name": "alpaca13b",
+      "rank": "196",
+      "organization": "Stanford"
+    },
+    "openassistantpythia12b": {
+      "elo_score": 890,
+      "original_lmsys_name": "OpenAssistant-Pythia-12B",
+      "normalized_name": "openassistantpythia12b",
+      "rank": "196",
+      "organization": "OpenAssistant"
+    },
+    "chatglm6b": {
+      "elo_score": 876,
+      "original_lmsys_name": "ChatGLM-6B",
+      "normalized_name": "chatglm6b",
+      "rank": "197",
+      "organization": "Tsinghua"
+    },
+    "fastchatt53b": {
+      "elo_score": 864,
+      "original_lmsys_name": "FastChat-T5-3B",
+      "normalized_name": "fastchatt53b",
+      "rank": "198",
+      "organization": "LMSYS"
+    },
+    "stablelmtunedalpha7b": {
+      "elo_score": 837,
+      "original_lmsys_name": "StableLM-Tuned-Alpha-7B",
+      "normalized_name": "stablelmtunedalpha7b",
+      "rank": "200",
+      "organization": "Stability AI"
+    },
+    "dollyv212b": {
+      "elo_score": 819,
+      "original_lmsys_name": "Dolly-V2-12B",
+      "normalized_name": "dollyv212b",
+      "rank": "200",
+      "organization": "Databricks"
+    },
+    "llama13b": {
+      "elo_score": 796,
+      "original_lmsys_name": "LLaMA-13B",
+      "normalized_name": "llama13b",
+      "rank": "201",
+      "organization": "Meta"
+    }
+  }
+}
