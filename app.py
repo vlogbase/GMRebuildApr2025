@@ -3930,7 +3930,7 @@ def refresh_model_prices():
         if success:
             # Get prices from the database, which is our new primary source
             from models import OpenRouterModel
-            db_models = OpenRouterModel.query.all()
+            db_models = OpenRouterModel.query.filter_by(model_is_active=True).all()
             
             if db_models:
                 # Convert database models to the expected format
