@@ -267,10 +267,24 @@ function switchUsageTab(tabName) {
     }
 }
 
+// Function to export usage data as CSV
+function exportUsageCSV() {
+    // Get the currently selected date range
+    const activeDateBtn = document.querySelector('.btn-group .btn.active[data-range]');
+    const dateRange = activeDateBtn ? activeDateBtn.getAttribute('data-range') : '1';
+    
+    // Create download URL with the selected date range
+    const exportUrl = `/billing/export-usage?range=${dateRange}`;
+    
+    // Trigger download by creating a temporary link
+    window.open(exportUrl, '_blank');
+}
+
 // Initialize event listeners when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     const summaryBtn = document.getElementById('summaryViewBtn');
     const detailedBtn = document.getElementById('detailedViewBtn');
+    const exportBtn = document.getElementById('exportCsvBtn');
 
     if (summaryBtn) {
         summaryBtn.addEventListener('click', function() {
@@ -281,6 +295,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (detailedBtn) {
         detailedBtn.addEventListener('click', function() {
             switchUsageTab('detailed');
+        });
+    }
+
+    if (exportBtn) {
+        exportBtn.addEventListener('click', function() {
+            exportUsageCSV();
         });
     }
 });

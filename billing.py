@@ -645,6 +645,80 @@ def export_transactions_csv():
         flash(f"An error occurred while exporting transactions: {str(e)}", "error")
         return redirect(url_for('billing.account_management'))
 
+@billing_bp.route('/export-usage', methods=['GET'])
+@login_required
+def export_usage_csv():
+    """
+    Export usage analytics as a CSV file.
+    """
+    try:
+        # Get date range param or default to 'all'
+        date_range = request.args.get('range', 'all')
+        
+        # Create base query
+        query = Usage.query.filter_by(user_id=current_user.id)
+        
+        # Apply date filtering based on selected range
+        now = datetime.utcnow()
+        if date_range == '1':  # Last 24 hours
+            start_date = now - timedelta(days=1)
+            query = query.filter(Usage.created_at >= start_date)
+        elif date_range == '7':  # Last 7 days
+            start_date = now - timedelta(days=7)
+            query = query.filter(Usage.created_at >= start_date)
+        elif date_range == '30':  # Last 30 days
+            start_date = now - timedelta(days=30)
+            query = query.filter(Usage.created_at >= start_date)
+        elif date_range == 'month':  # This month
+            start_date = datetime(now.year, now.month, 1)
+            query = query.filter(Usage.created_at >= start_date)
+        
+        # Get all filtered usage records
+        usage_list = query.order_by(desc(Usage.created_at)).all()
+        
+        if not usage_list:
+            flash("No usage data to export for the selected date range", "info")
+            return redirect(url_for('billing.account_management'))
+        
+        # Create CSV content
+        csv_content = io.StringIO()
+        csv_content.write("Date,Time,Type,Model,Input Tokens,Input Cost,Output Tokens,Output Cost,Total Cost\n")
+        
+        for usage in usage_list:
+            # Format date and time
+            date_str = usage.created_at.strftime('%Y-%m-%d')
+            time_str = usage.created_at.strftime('%H:%M:%S')
+            
+            # Get usage data
+            usage_type = usage.usage_type or 'Unknown'
+            model_name = usage.model_id.split('/')[-1] if usage.model_id else 'Unknown'
+            input_tokens = usage.input_tokens or 0
+            output_tokens = usage.output_tokens or 0
+            input_cost = (usage.input_cost or 0) / 100000  # Convert from micro-dollars
+            output_cost = (usage.output_cost or 0) / 100000
+            total_cost = (usage.total_cost or 0) / 100000
+            
+            # Format row
+            row = f'"{date_str}","{time_str}","{usage_type}","{model_name}",{input_tokens},{input_cost:.6f},{output_tokens},{output_cost:.6f},{total_cost:.6f}\n'
+            csv_content.write(row)
+        
+        # Prepare response
+        csv_content.seek(0)
+        timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M%S')
+        range_suffix = f"_{date_range}days" if date_range.isdigit() else f"_{date_range}"
+        filename = f"usage_analytics{range_suffix}_{timestamp}.csv"
+        
+        return Response(
+            csv_content.getvalue(),
+            mimetype="text/csv",
+            headers={"Content-Disposition": f"attachment;filename={filename}"}
+        )
+    
+    except Exception as e:
+        logger.error(f"Error exporting usage data: {e}")
+        flash(f"An error occurred while exporting usage data: {str(e)}", "error")
+        return redirect(url_for('billing.account_management'))
+
 @billing_bp.route('/receipt/<int:transaction_id>', methods=['GET'])
 @login_required
 def generate_receipt(transaction_id):
