@@ -1048,11 +1048,16 @@
                                     Cost Band <i id="sort-icon-6" class="fas fa-sort"></i>
                                 </div>
                             </th>
+                            <th onclick="sortPricingTable(7)" class="pricing-sort-header text-center">
+                                <div class="pricing-header-content pricing-center">
+                                    ELO <i id="sort-icon-7" class="fas fa-sort"></i>
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody id="pricingTableBody">
                         <tr>
-                            <td colspan="7" class="pricing-loading-cell">
+                            <td colspan="8" class="pricing-loading-cell">
                                 <div class="pricing-loading">
                                     <div class="pricing-spinner"></div>
                                     <p>Loading pricing data from OpenRouter...</p>
@@ -1255,7 +1260,8 @@
                             context_length: modelDetails.context_length || 'N/A',
                             multimodal: modelDetails.multimodal,
                             pdfs: modelDetails.pdfs,
-                            cost_band: modelDetails.cost_band || calculateCostBand(modelDetails.input_price, modelDetails.output_price)
+                            cost_band: modelDetails.cost_band || calculateCostBand(modelDetails.input_price, modelDetails.output_price),
+                            elo_score: modelDetails.elo_score || null
                         };
                     });
                     
@@ -1327,7 +1333,7 @@
             if (pricingTableBody) {
                 pricingTableBody.innerHTML = `
                     <tr>
-                        <td colspan="7" class="text-center py-5">
+                        <td colspan="8" class="text-center py-5">
                             <div class="alert alert-danger mb-0">
                                 <i class="fas fa-exclamation-triangle me-2"></i>
                                 Error loading pricing data. Please try again later.
@@ -1382,6 +1388,11 @@
                         <td class="text-center py-3">
                             ${getCostBandDisplayHTML(model.cost_band)}
                         </td>
+                        <td class="text-center py-3">
+                            ${model.elo_score ? 
+                                `<span class="badge bg-primary">${model.elo_score}</span>` : 
+                                '<span class="text-muted">-</span>'}
+                        </td>
                     </tr>
                 `;
             });
@@ -1389,7 +1400,7 @@
             if (tableHTML === '') {
                 tableHTML = `
                     <tr>
-                        <td colspan="7" class="text-center py-4">
+                        <td colspan="8" class="text-center py-4">
                             <div class="alert alert-info mb-0">
                                 No models match your search criteria
                             </div>
@@ -1458,6 +1469,10 @@
                     case 6: // Cost band
                         valueA = getCostBandValue(a.cost_band);
                         valueB = getCostBandValue(b.cost_band);
+                        break;
+                    case 7: // ELO score
+                        valueA = a.elo_score || 0;
+                        valueB = b.elo_score || 0;
                         break;
                     default:
                         valueA = a.model_name.toLowerCase();

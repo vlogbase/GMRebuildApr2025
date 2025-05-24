@@ -327,7 +327,8 @@ function sortPricingTableBase(columnIndex, order = 'asc') {
         3: 'context_length',
         4: 'multimodal',
         5: 'pdfs',
-        6: 'cost_band'
+        6: 'cost_band',
+        7: 'elo_score'
     };
     
     const column = columnMapping[columnIndex];
@@ -364,6 +365,11 @@ function sortPricingTableBase(columnIndex, order = 'asc') {
             const costOrder = { 'Free': 0, 'Very Low Cost': 1, 'Low Cost': 2, 'Medium Cost': 3, 'High Cost': 4, 'Auto': 5 };
             aVal = costOrder[aVal] !== undefined ? costOrder[aVal] : 999;
             bVal = costOrder[bVal] !== undefined ? costOrder[bVal] : 999;
+        }
+        // Handle ELO score
+        else if (column === 'elo_score') {
+            aVal = aVal || 0;
+            bVal = bVal || 0;
         }
         // Handle string columns
         else {
