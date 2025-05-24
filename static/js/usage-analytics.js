@@ -115,7 +115,8 @@ function updateSummaryTab(data) {
 
     data.usage.forEach(usage => {
         const modelName = usage.model_id ? usage.model_id.split('/').pop() : 'Unknown';
-        const cost = (usage.total_cost || 0) / 100000; // Convert to dollars
+        const creditsUsed = usage.credits_used || 0;
+        const cost = creditsUsed / 100; // Convert credits to USD (1 credit = $0.01)
 
         if (!modelUsage[modelName]) {
             modelUsage[modelName] = { requests: 0, cost: 0 };
@@ -190,11 +191,14 @@ function updateDetailedTab(data) {
     let tableRows = '';
     data.usage.forEach(usage => {
         const date = new Date(usage.created_at).toLocaleString();
-        const inputTokens = usage.input_tokens || 0;
-        const outputTokens = usage.output_tokens || 0;
-        const inputCost = (usage.input_cost || 0) / 100000;
-        const outputCost = (usage.output_cost || 0) / 100000;
-        const totalCost = (usage.total_cost || 0) / 100000;
+        const inputTokens = usage.prompt_tokens || 0;
+        const outputTokens = usage.completion_tokens || 0;
+        const creditsUsed = usage.credits_used || 0;
+        // Convert credits to USD (assuming 1 credit = $0.01)
+        const totalCost = creditsUsed / 100;
+        // Estimate input/output costs (this is an approximation)
+        const inputCost = totalCost * 0.6; // Roughly 60% for input
+        const outputCost = totalCost * 0.4; // Roughly 40% for output
 
         tableRows += `
             <tr>

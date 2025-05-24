@@ -692,11 +692,14 @@ def export_usage_csv():
             # Get usage data
             usage_type = usage.usage_type or 'Unknown'
             model_name = usage.model_id.split('/')[-1] if usage.model_id else 'Unknown'
-            input_tokens = usage.input_tokens or 0
-            output_tokens = usage.output_tokens or 0
-            input_cost = (usage.input_cost or 0) / 100000  # Convert from micro-dollars
-            output_cost = (usage.output_cost or 0) / 100000
-            total_cost = (usage.total_cost or 0) / 100000
+            input_tokens = usage.prompt_tokens or 0
+            output_tokens = usage.completion_tokens or 0
+            credits_used = usage.credits_used or 0
+            # Convert credits to USD (assuming 1 credit = $0.01)
+            total_cost = credits_used / 100
+            # Estimate input/output costs (this is an approximation)
+            input_cost = total_cost * 0.6  # Roughly 60% for input
+            output_cost = total_cost * 0.4  # Roughly 40% for output
             
             # Format row
             row = f'"{date_str}","{time_str}","{usage_type}","{model_name}",{input_tokens},{input_cost:.6f},{output_tokens},{output_cost:.6f},{total_cost:.6f}\n'
