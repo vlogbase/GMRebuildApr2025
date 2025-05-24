@@ -67,52 +67,117 @@ def load_lmsys_data(hf_token: str) -> Dict[str, Dict]:
         Dictionary mapping normalized model names to ELO data
     """
     try:
-        from datasets import load_dataset
-        print("Loading LMSYS Chatbot Arena dataset...")
+        import requests
+        import json
         
-        # Load the dataset
-        lmsys_ds = load_dataset("mathewhe/chatbot-arena-elo", token=hf_token)
+        print("Loading LMSYS Chatbot Arena dataset via Hugging Face Hub API...")
         
-        print("Dataset loaded successfully!")
-        print(f"Dataset features: {lmsys_ds['train'].features}")
-        print(f"Number of entries: {len(lmsys_ds['train'])}")
+        # Try to access the dataset directly via Hugging Face Hub API
+        headers = {"Authorization": f"Bearer {hf_token}"}
         
-        # Parse the dataset into a usable format
-        lmsys_models = {}
+        # First, get dataset info
+        dataset_url = "https://huggingface.co/api/datasets/mathewhe/chatbot-arena-elo"
+        response = requests.get(dataset_url, headers=headers, timeout=30)
         
-        for entry in lmsys_ds['train']:
-            # Extract model identifier and ELO score based on actual dataset structure
-            # We'll need to see the actual column names first
-            print(f"Sample entry: {dict(entry)}")
+        if response.status_code == 200:
+            print("Dataset access confirmed!")
+            dataset_info = response.json()
+            print(f"Dataset info: {dataset_info.get('description', 'No description')}")
+        else:
+            print(f"Dataset API response: {response.status_code}")
+        
+        # Try to get the actual data files
+        files_url = "https://huggingface.co/api/datasets/mathewhe/chatbot-arena-elo/tree/main"
+        response = requests.get(files_url, headers=headers, timeout=30)
+        
+        if response.status_code == 200:
+            files_info = response.json()
+            print(f"Dataset files found: {[f.get('path') for f in files_info if f.get('type') == 'file']}")
             
-            # Common possible column names for model identifier
-            model_name = None
-            for col in ['model', 'model_name', 'name', 'model_id', 'identifier']:
-                if col in entry:
-                    model_name = entry[col]
-                    break
+            # Look for common data file types
+            data_files = [f for f in files_info if f.get('type') == 'file' and 
+                         any(f.get('path', '').endswith(ext) for ext in ['.parquet', '.csv', '.json', '.jsonl'])]
             
-            # Common possible column names for ELO score
-            elo_score = None
-            for col in ['elo', 'elo_score', 'rating', 'score']:
-                if col in entry:
-                    elo_score = entry[col]
-                    break
-            
-            if model_name and elo_score is not None:
-                normalized_name = normalize_for_matching(model_name)
-                lmsys_models[normalized_name] = {
-                    'elo_score': elo_score,
-                    'original_lmsys_name': model_name,
-                    'normalized_name': normalized_name
-                }
+            if data_files:
+                # Try to download the first data file
+                data_file = data_files[0]
+                file_path = data_file.get('path')
+                print(f"Attempting to download data file: {file_path}")
+                
+                file_url = f"https://huggingface.co/datasets/mathewhe/chatbot-arena-elo/resolve/main/{file_path}"
+                response = requests.get(file_url, headers=headers, timeout=60)
+                
+                if response.status_code == 200:
+                    # Parse based on file type
+                    lmsys_models = {}
+                    
+                    if file_path.endswith('.json'):
+                        data = response.json()
+                        if isinstance(data, list):
+                            entries = data
+                        else:
+                            entries = data.get('data', [])
+                    elif file_path.endswith('.jsonl'):
+                        entries = []
+                        for line in response.text.strip().split('\n'):
+                            if line:
+                                entries.append(json.loads(line))
+                    elif file_path.endswith('.csv'):
+                        import csv
+                        import io
+                        entries = []
+                        csv_data = io.StringIO(response.text)
+                        reader = csv.DictReader(csv_data)
+                        entries = list(reader)
+                    else:
+                        print(f"Unsupported file format: {file_path}")
+                        return {}
+                    
+                    print(f"Loaded {len(entries)} entries from {file_path}")
+                    
+                    # Show sample entry structure
+                    if entries:
+                        sample_entry = entries[0]
+                        print(f"Sample entry structure: {list(sample_entry.keys())}")
+                        print(f"Sample entry: {sample_entry}")
+                    
+                    # Parse entries - now process all entries
+                    for entry in entries:
+                        # Extract model identifier and ELO score based on actual CSV structure
+                        model_name = entry.get('Model')  # Based on the sample structure
+                        elo_score_str = entry.get('Arena Score')  # Based on the sample structure
+                        
+                        # Convert ELO score to number
+                        elo_score = None
+                        if elo_score_str:
+                            try:
+                                elo_score = float(elo_score_str)
+                            except ValueError:
+                                try:
+                                    # Handle potential formatting issues
+                                    elo_score = float(elo_score_str.replace(',', ''))
+                                except ValueError:
+                                    continue
+                        
+                        if model_name and elo_score is not None:
+                            normalized_name = normalize_for_matching(model_name)
+                            lmsys_models[normalized_name] = {
+                                'elo_score': elo_score,
+                                'original_lmsys_name': model_name,
+                                'normalized_name': normalized_name
+                            }
+                    
+                    print(f"Successfully parsed {len(lmsys_models)} models from LMSYS dataset")
+                    return lmsys_models
+                else:
+                    print(f"Failed to download data file: {response.status_code}")
+            else:
+                print("No suitable data files found in dataset")
+        else:
+            print(f"Failed to access dataset files: {response.status_code}")
         
-        print(f"Parsed {len(lmsys_models)} models from LMSYS dataset")
-        return lmsys_models
-        
-    except ImportError:
-        print("Error: 'datasets' library not installed. Please install it with: pip install datasets")
         return {}
+        
     except Exception as e:
         print(f"Error loading LMSYS dataset: {e}")
         return {}
