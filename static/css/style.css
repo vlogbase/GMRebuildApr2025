@@ -4341,6 +4341,7 @@ code {
         left: -280px; /* Start off-screen */
         width: 280px;
         height: 100vh;
+        height: 100dvh; /* Use dynamic viewport height if supported */
         z-index: 1100; /* Higher than fixed input container */
         transition: left 0.3s ease;
         box-shadow: 2px 0 8px rgba(0, 0, 0, 0.2);
@@ -4359,14 +4360,18 @@ code {
     
     .conversation-list {
         max-height: calc(100vh - 170px); /* Adjust for sidebar header and footer */
+        max-height: calc(100dvh - 170px); /* Use dynamic viewport height if supported */
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
     }
     
     /* Chat container layout */
     .chat-container {
         height: 100vh;
+        height: 100dvh; /* Use dynamic viewport height if supported */
         width: 100%;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
         display: flex;
         flex-direction: column;
         padding-top: 50px; /* Add padding to the top to account for the fixed header */

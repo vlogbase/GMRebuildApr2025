@@ -3560,6 +3560,48 @@ def chat(): # Synchronous function
         abort(500, description=f"Chat endpoint setup error: {str(e)}") 
 # === END OF SYNC chat() ENDPOINT ===
 
+@app.route('/chat/stream', methods=['GET'])
+def chat_stream_safari_fallback():
+    """
+    EventSource-compatible streaming endpoint for Safari iOS compatibility.
+    
+    This route provides a fallback for iOS Safari browsers which have issues
+    with fetch() streaming. It uses Server-Sent Events (EventSource) instead.
+    
+    The client stores the payload in sessionStorage and passes a temp_id
+    parameter to this endpoint to retrieve it.
+    """
+    try:
+        temp_id = request.args.get('temp_id')
+        if not temp_id:
+            return "Missing temp_id parameter", 400
+            
+        logger.info(f"Safari fallback: handling stream request with temp_id={temp_id}")
+        
+        # This is a placeholder implementation - the actual payload would be
+        # retrieved from a temporary storage mechanism (Redis, database, or sessionStorage)
+        # For now, we'll return an error directing users to use the main endpoint
+        
+        def generate_safari_fallback():
+            """Generate SSE-compatible response for Safari"""
+            yield f"data: {json.dumps({'type': 'error', 'error': 'Safari fallback endpoint - please use the main /chat endpoint with the compatibility layer'})}\n\n"
+            yield f"event: complete\ndata: {json.dumps({'type': 'complete'})}\n\n"
+        
+        return Response(
+            stream_with_context(generate_safari_fallback()),
+            content_type='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Cache-Control'
+            }
+        )
+        
+    except Exception as e:
+        logger.exception("Error in Safari fallback endpoint")
+        return f"Error: {str(e)}", 500
+
 
 # --- Other Synchronous Routes (Keep As Is) ---
 # Helper function to fetch models from OpenRouter and/or database

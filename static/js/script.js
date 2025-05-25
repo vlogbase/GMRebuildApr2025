@@ -4433,51 +4433,142 @@ window.resetToDefault = function(presetId) {
         // Log the full payload for debugging
         console.log('📤 Sending payload to backend:', JSON.stringify(payload, null, 2));
         
-        // Create fetch request to /chat endpoint
-        fetch('/chat', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': getCSRFToken()
-            },
-            body: JSON.stringify(payload)
-        }).then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! Status: ${response.status}`);
-            }
-            
-            // Setup event source for streaming
-            const reader = response.body.getReader();
-            const decoder = new TextDecoder();
-            let buffer = '';
-            let responseText = '';
-            
-            // Remove typing indicator - with extra safe checks
-            if (typingIndicator && chatMessages) {
-                try {
-                    if (chatMessages.contains(typingIndicator)) {
-                        chatMessages.removeChild(typingIndicator);
-                    }
-                } catch (e) {
-                    console.warn('Error removing typing indicator:', e);
+        // Safari-compatible chunk handler function
+        function handleStreamChunk(data, messageContent, assistantMessageElement, responseTextRef) {
+            if (data.type === 'content' && data.content) {
+                responseTextRef += data.content;
+                if (messageContent) {
+                    messageContent.innerHTML = formatMessage(responseTextRef);
                 }
-            }
-            
-            // Add empty assistant message
-            const assistantMessageElement = addMessage('', 'assistant');
-            const messageContent = assistantMessageElement.querySelector('.message-content');
-            
-            // Function to process chunks
-            function processChunks() {
-                return reader.read().then(({ done, value }) => {
-                    if (done) {
-                        console.log("Stream closed by server");
-                        // We now let the done/metadata events handle completion
-                        return;
+                
+                // Auto-scroll if user is near bottom
+                if (chatMessages) {
+                    const shouldScroll = chatMessages.scrollTop + chatMessages.clientHeight >= chatMessages.scrollHeight - 10;
+                    if (shouldScroll) {
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                    }
+                }
+            } else if (data.type === 'reasoning' && data.reasoning) {
+                // Handle reasoning display similar to original implementation
+                if (assistantMessageElement) {
+                    let reasoningContainer = assistantMessageElement.querySelector('.reasoning-container');
+                    if (!reasoningContainer) {
+                        reasoningContainer = document.createElement('div');
+                        reasoningContainer.className = 'reasoning-container';
+                        assistantMessageElement.insertBefore(reasoningContainer, messageContent);
                     }
                     
-                    // Decode the chunk and add to buffer
-                    buffer += decoder.decode(value, { stream: true });
+                    let reasoningContent = reasoningContainer.querySelector('.reasoning-content');
+                    if (!reasoningContent) {
+                        const reasoningHeader = document.createElement('div');
+                        reasoningHeader.className = 'reasoning-header';
+                        reasoningHeader.innerHTML = '<span class="reasoning-toggle">▼</span> Reasoning';
+                        
+                        reasoningContent = document.createElement('div');
+                        reasoningContent.className = 'reasoning-content';
+                        
+                        reasoningContainer.appendChild(reasoningHeader);
+                        reasoningContainer.appendChild(reasoningContent);
+                        
+                        // Add toggle functionality
+                        reasoningHeader.addEventListener('click', () => {
+                            const toggle = reasoningHeader.querySelector('.reasoning-toggle');
+                            if (reasoningContent.style.display === 'none') {
+                                reasoningContent.style.display = 'block';
+                                toggle.textContent = '▼';
+                                reasoningContainer.classList.add('reasoning-expanded');
+                            } else {
+                                reasoningContent.style.display = 'none';
+                                toggle.textContent = '▶';
+                                reasoningContainer.classList.remove('reasoning-expanded');
+                            }
+                        });
+                    }
+                    
+                    reasoningContent.innerHTML = formatMessage(data.reasoning);
+                }
+            } else if (data.type === 'metadata') {
+                console.log('Received metadata:', data.metadata);
+                // Handle conversation saving and other metadata processing
+                if (data.metadata && data.metadata.id) {
+                    currentConversationId = data.metadata.id;
+                    fetchConversations(true, true);
+                }
+            } else if (data.type === 'error') {
+                console.error('Stream error:', data.error);
+                if (messageContent) {
+                    messageContent.innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+                }
+            }
+        }
+        
+        // Remove typing indicator - with extra safe checks
+        if (typingIndicator && chatMessages) {
+            try {
+                if (chatMessages.contains(typingIndicator)) {
+                    chatMessages.removeChild(typingIndicator);
+                }
+            } catch (e) {
+                console.warn('Error removing typing indicator:', e);
+            }
+        }
+        
+        // Add empty assistant message
+        const assistantMessageElement = addMessage('', 'assistant');
+        const messageContent = assistantMessageElement.querySelector('.message-content');
+        let responseText = '';
+        
+        // Use Safari-compatible streaming
+        if (window.safariStreamingCompat) {
+            window.safariStreamingCompat.handleStreamingResponse(
+                '/chat',
+                payload,
+                // onChunk callback
+                (data) => {
+                    handleStreamChunk(data, messageContent, assistantMessageElement, responseText);
+                },
+                // onError callback
+                (error) => {
+                    console.error('Streaming error:', error);
+                    if (messageContent) {
+                        messageContent.innerHTML = `<p style="color: red;">Error: ${error.message}</p>`;
+                    }
+                },
+                // onComplete callback
+                () => {
+                    console.log('Streaming completed');
+                }
+            );
+        } else {
+            // Fallback to original fetch method if Safari compatibility not loaded
+            console.warn('Safari compatibility layer not loaded, using standard fetch');
+            fetch('/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCSRFToken()
+                },
+                body: JSON.stringify(payload)
+            }).then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                
+                // Setup event source for streaming
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                
+                // Function to process chunks
+                function processChunks() {
+                    return reader.read().then(({ done, value }) => {
+                        if (done) {
+                            console.log("Stream closed by server");
+                            return;
+                        }
+                        
+                        // Decode the chunk and add to buffer
+                        buffer += decoder.decode(value, { stream: true });
                     
                     // Split by double newlines (SSE standard)
                     const potentialMessages = buffer.split('\n\n');
