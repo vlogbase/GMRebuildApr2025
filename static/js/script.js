@@ -5471,4 +5471,3 @@ window.resetToDefault = function(presetId) {
             });
         }
     }
-}); // Fixed syntax - removed extra closing bracket
