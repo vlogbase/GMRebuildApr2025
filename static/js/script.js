@@ -5471,3 +5471,4 @@ window.resetToDefault = function(presetId) {
             });
         }
     }
+}); // Close the DOMContentLoaded event listener
