@@ -93,19 +93,44 @@ def callback():
         user.email = users_email
         user.enable_memory = True  # Enable memory by default for new users
         
-        # Set Google-specific fields
+        # Set Google-specific fields with validation
         user.google_id = userinfo.get("sub")  # Use sub as the Google ID
-        user.profile_picture = userinfo.get("picture")
+        
+        # Validate and truncate profile picture URL if needed (max 1024 chars)
+        picture_url = userinfo.get("picture", "")
+        if len(picture_url) > 1024:
+            picture_url = picture_url[:1024]
+            app.logger.warning(f"Truncated long profile picture URL for user {users_email}")
+        user.profile_picture = picture_url
+        
         user.last_login_at = datetime.datetime.utcnow()
         
-        db.session.add(user)
-        db.session.commit()
+        try:
+            db.session.add(user)
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Failed to create user {users_email}: {str(e)}")
+            return redirect(url_for('index') + '?error=login_failed')
     else:
-        # Update existing user's Google info
+        # Update existing user's Google info with validation
         user.google_id = userinfo.get("sub")
-        user.profile_picture = userinfo.get("picture")
+        
+        # Validate and truncate profile picture URL if needed
+        picture_url = userinfo.get("picture", "")
+        if len(picture_url) > 1024:
+            picture_url = picture_url[:1024]
+            app.logger.warning(f"Truncated long profile picture URL for user {users_email}")
+        user.profile_picture = picture_url
+        
         user.last_login_at = datetime.datetime.utcnow()
-        db.session.commit()
+        
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Failed to update user {users_email}: {str(e)}")
+            return redirect(url_for('index') + '?error=login_failed')
 
     # Log the user in
     login_user(user)
