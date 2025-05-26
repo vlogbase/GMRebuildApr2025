@@ -139,8 +139,8 @@ window.selectModelForPreset = function(presetId, modelId, skipActivation = false
     updatePresetButtonModel(presetId, modelId);
     
     // Save preferences to server
-    if (typeof savePreferences === 'function') {
-        savePreferences();
+    if (window.models && window.models.saveUserPreferences) {
+        window.models.saveUserPreferences();
     }
     
     // Activate the preset unless specifically skipped
