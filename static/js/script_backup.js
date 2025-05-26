@@ -5424,4 +5424,51 @@ window.resetToDefault = function(presetId) {
     `;
     document.head.appendChild(style);
     
+    // Login prompt for non-authenticated users
+    if (typeof userIsLoggedIn !== 'undefined' && !userIsLoggedIn) {
+        // Initialize login prompt modal elements
+        const loginPromptModal = document.getElementById('login-prompt-modal');
+        const closeLoginPromptBtn = document.getElementById('close-login-prompt');
+        const noThanksBtn = document.getElementById('no-thanks-btn');
+        
+        // Function to show the login prompt modal
+        window.showLoginPrompt = function() {
+            if (loginPromptModal) {
+                loginPromptModal.style.display = 'flex';
+                // Add animation class
+                setTimeout(() => {
+                    loginPromptModal.style.opacity = '1';
+                }, 10);
+            }
+        };
+        
+        // Function to hide the login prompt modal
+        function hideLoginPrompt() {
+            if (loginPromptModal) {
+                loginPromptModal.style.opacity = '0';
+                setTimeout(() => {
+                    loginPromptModal.style.display = 'none';
+                }, 300); // Match the CSS transition duration
+            }
+        }
+        
+        // Close button event listener
+        if (closeLoginPromptBtn) {
+            closeLoginPromptBtn.addEventListener('click', hideLoginPrompt);
+        }
+        
+        // "No thanks" button event listener
+        if (noThanksBtn) {
+            noThanksBtn.addEventListener('click', hideLoginPrompt);
+        }
+        
+        // Close modal when clicking outside the modal content
+        if (loginPromptModal) {
+            loginPromptModal.addEventListener('click', function(e) {
+                if (e.target === loginPromptModal) {
+                    hideLoginPrompt();
+                }
+            });
+        }
+    }
 });
