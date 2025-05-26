@@ -398,7 +398,7 @@ async function loadConversation(conversationId) {
         const response = await fetch(`/conversation/${conversationId}/messages`);
         if (response.ok) {
             const data = await response.json();
-            displayConversationMessages(data);
+            displayConversationMessages(data.messages);
             currentConversationId = conversationId;
         }
     } catch (error) {
