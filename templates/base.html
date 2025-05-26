@@ -137,23 +137,14 @@
     <!-- Safari Compatibility Layer (load early for iOS/Safari fixes) -->
     <script src="{{ url_for('static', filename='js/safari-compatibility.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
-    <!-- Modular JavaScript Files (deferred to not block rendering) -->
-    <script defer src="{{ url_for('static', filename='js/utils.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/auth.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/models.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/premium.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/user-preferences.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/presets.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/document-manager.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/camera.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/specialized.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/message-actions.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/upload.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/chat.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
-    <script defer src="{{ url_for('static', filename='js/ui.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    <!-- Working Modular JavaScript Files (extracted from original script.js) -->
+    <script defer src="{{ url_for('static', filename='js/utils-original.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/premium-original.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/user-preferences-original.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/presets-original.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
-    <!-- Preset Fix Script (loads last to override any issues) -->
-    <script defer src="{{ url_for('static', filename='js/preset-fix.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    <!-- Original working script (temporary - until full split is complete) -->
+    <script defer src="{{ url_for('static', filename='js/script.js.old') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
     <!-- Cookie Consent JavaScript (non-critical, can be deferred) -->
     <script defer src="{{ url_for('static', filename='js/cookie_consent.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
