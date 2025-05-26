@@ -4550,7 +4550,9 @@ def view_conversation(conversation_id):
         return render_template('index.html', 
                              conversation_id=conversation_id,
                              conversation_title=conversation.title,
-                             messages=messages)
+                             messages=messages,
+                             is_logged_in=current_user.is_authenticated,
+                             initial_conversation_id=conversation_id)
     except Exception as e:
         logger.exception(f"Error viewing conversation {conversation_id}")
         abort(500, description=str(e))
