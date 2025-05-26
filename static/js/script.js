@@ -5471,4 +5471,4 @@ window.resetToDefault = function(presetId) {
             });
         }
     }
-}); // Close the DOMContentLoaded event listener
+} // Close the DOMContentLoaded event listener
