@@ -4512,12 +4512,9 @@ def new_conversation():
     """Create a new conversation for the current user"""
     try:
         from models import Conversation
-        conversation = Conversation(
-            user_id=current_user.id,
-            title="New Chat",
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow()
-        )
+        conversation = Conversation()
+        conversation.user_id = current_user.id
+        conversation.title = "New Chat"
         db.session.add(conversation)
         db.session.commit()
         logger.info(f"Created new conversation {conversation.id} for user {current_user.id}")
@@ -4548,7 +4545,7 @@ def view_conversation(conversation_id):
         
         # Get messages for this conversation
         messages = Message.query.filter_by(conversation_id=conversation_id)\
-                               .order_by(Message.timestamp.asc()).all()
+                               .order_by(Message.created_at.asc()).all()
         
         return render_template('index.html', 
                              conversation_id=conversation_id,

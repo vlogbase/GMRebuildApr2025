@@ -43,15 +43,10 @@ function handleInitialChatState() {
             fetchConversations(true, true);
         }, 700);
     } else {
-        // No conversation in URL, create a new one after page loads
+        // No conversation in URL, just load the conversation list
         setTimeout(() => {
-            createNewConversation().then(() => {
-                // Load conversation list after creating new conversation
-                setTimeout(() => {
-                    fetchConversations();
-                }, 500);
-            });
-        }, 800);
+            fetchConversations();
+        }, 500);
     }
 }
 
