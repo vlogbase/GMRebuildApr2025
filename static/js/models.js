@@ -28,10 +28,10 @@ function initializeModels() {
 // Load models from server
 async function loadModelsFromServer() {
     try {
-        const response = await fetch('/api/models');
+        const response = await fetch('/models');
         if (response.ok) {
             const data = await response.json();
-            allModels = data.models || [];
+            allModels = data.data || data.models || [];
             window.availableModels = allModels;
             
             console.log(`Loaded ${allModels.length} models from server`);

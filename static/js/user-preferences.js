@@ -3,7 +3,7 @@
 
 // Fetch user preferences from server
 window.fetchUserPreferences = function() {
-    return fetch('/api/user-preferences')
+    return fetch('/get_preferences')
         .then(response => {
             if (response.ok) {
                 return response.json();
