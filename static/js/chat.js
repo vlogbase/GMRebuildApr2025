@@ -395,10 +395,10 @@ async function createNewConversation() {
 // Load specific conversation
 async function loadConversation(conversationId) {
     try {
-        const response = await fetch(`/conversation/${conversationId}`);
+        const response = await fetch(`/conversation/${conversationId}/messages`);
         if (response.ok) {
             const data = await response.json();
-            displayConversationMessages(data.messages);
+            displayConversationMessages(data);
             currentConversationId = conversationId;
         }
     } catch (error) {
@@ -441,16 +441,54 @@ function updateConversationsList() {
     conversationsList.innerHTML = '';
     
     conversations.forEach(conversation => {
-        const listItem = document.createElement('li');
-        listItem.innerHTML = `
-            <a href="/conversation/${conversation.id}" 
-               class="conversation-link ${conversation.id === currentConversationId ? 'active' : ''}"
-               data-conversation-id="${conversation.id}">
-                ${conversation.title || 'New Conversation'}
-            </a>
+        const conversationItem = document.createElement('div');
+        conversationItem.className = `conversation-item ${conversation.id === currentConversationId ? 'active' : ''}`;
+        conversationItem.setAttribute('data-conversation-id', conversation.id);
+        conversationItem.innerHTML = `
+            <div class="conversation-title">${conversation.title || 'New Conversation'}</div>
+            <div class="conversation-date">${formatDate(conversation.created_at)}</div>
+            <button class="edit-conversation-btn" title="Rename conversation">
+                <i class="fas fa-edit"></i>
+            </button>
         `;
-        conversationsList.appendChild(listItem);
+        
+        // Add click handler for loading conversation
+        conversationItem.addEventListener('click', function(e) {
+            if (e.target.closest('.edit-conversation-btn')) {
+                return; // Don't load conversation if edit button was clicked
+            }
+            loadConversation(conversation.id);
+            updateUrlWithConversation(conversation.id);
+            
+            // Update active state
+            document.querySelectorAll('.conversation-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            conversationItem.classList.add('active');
+            currentConversationId = conversation.id;
+        });
+        
+        conversationsList.appendChild(conversationItem);
     });
+}
+
+// Helper function to format dates
+function formatDate(dateString) {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = now - date;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+        return 'Today';
+    } else if (diffDays === 1) {
+        return 'Yesterday';
+    } else if (diffDays < 7) {
+        return `${diffDays} days ago`;
+    } else {
+        return date.toLocaleDateString();
+    }
 }
 
 // Utility functions
