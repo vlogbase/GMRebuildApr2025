@@ -137,8 +137,12 @@
     <!-- Safari Compatibility Layer (load early for iOS/Safari fixes) -->
     <script src="{{ url_for('static', filename='js/safari-compatibility.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
-    <!-- Main JavaScript (deferred to not block rendering) -->
-    <script defer src="{{ url_for('static', filename='js/script.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    <!-- Modular JavaScript Files (deferred to not block rendering) -->
+    <script defer src="{{ url_for('static', filename='js/utils.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/auth.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/upload.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/chat.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    <script defer src="{{ url_for('static', filename='js/ui.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
     <!-- Cookie Consent JavaScript (non-critical, can be deferred) -->
     <script defer src="{{ url_for('static', filename='js/cookie_consent.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
