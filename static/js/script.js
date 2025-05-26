@@ -5471,4 +5471,4 @@ window.resetToDefault = function(presetId) {
             });
         }
     }
-});
+}); // This closes the DOMContentLoaded event listener from line 236
