@@ -2,14 +2,14 @@
 // Handles login prompts, user authentication status, and related UI
 
 // Global variables for authentication
-let userIsLoggedIn = false;
-let userCreditBalance = 0;
+window.userIsLoggedIn = window.userIsLoggedIn || false;
+window.userCreditBalance = window.userCreditBalance || 0;
 
 // Initialize authentication status
 function initializeAuth() {
     // Check if user is authenticated (look for the logout button which only shows for logged in users)
     const isAuthenticated = !!document.getElementById('logout-btn');
-    userIsLoggedIn = isAuthenticated;
+    window.userIsLoggedIn = isAuthenticated;
     console.log('User authentication status:', isAuthenticated ? 'Logged in' : 'Not logged in');
     
     // Get user's credit balance if logged in
@@ -20,14 +20,14 @@ function initializeAuth() {
             const balanceText = accountLink.textContent.trim();
             const matches = balanceText.match(/Credits: \$([0-9.]+)/);
             if (matches && matches[1]) {
-                userCreditBalance = parseFloat(matches[1]);
-                console.log('User credit balance:', userCreditBalance);
+                window.userCreditBalance = parseFloat(matches[1]);
+                console.log('User credit balance:', window.userCreditBalance);
             }
         }
     }
     
     // Setup login prompt if user is not authenticated
-    if (!userIsLoggedIn) {
+    if (!window.userIsLoggedIn) {
         setupLoginPrompt();
     }
 }
@@ -82,10 +82,10 @@ function setupLoginPrompt() {
 
 // Check if user has sufficient credits for an operation
 function checkCredits(requiredAmount = 0.01) {
-    if (!userIsLoggedIn) {
+    if (!window.userIsLoggedIn) {
         return false;
     }
-    return userCreditBalance >= requiredAmount;
+    return window.userCreditBalance >= requiredAmount;
 }
 
 // Show low credit warning
@@ -101,8 +101,8 @@ window.auth = {
     setupLoginPrompt,
     checkCredits,
     showLowCreditWarning,
-    get isLoggedIn() { return userIsLoggedIn; },
-    get creditBalance() { return userCreditBalance; }
+    get isLoggedIn() { return window.userIsLoggedIn; },
+    get creditBalance() { return window.userCreditBalance; }
 };
 
 // Initialize authentication when DOM is ready

@@ -4506,6 +4506,59 @@ def rate_message(message_id):
         abort(500, description=str(e))
 
 
+@app.route('/new_conversation', methods=['POST'])
+@login_required
+def new_conversation():
+    """Create a new conversation for the current user"""
+    try:
+        from models import Conversation
+        conversation = Conversation(
+            user_id=current_user.id,
+            title="New Chat",
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+        db.session.add(conversation)
+        db.session.commit()
+        logger.info(f"Created new conversation {conversation.id} for user {current_user.id}")
+        return jsonify({
+            "success": True, 
+            "conversation_id": conversation.id,
+            "title": conversation.title
+        })
+    except Exception as e:
+        logger.exception("Error creating new conversation")
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/conversation/<int:conversation_id>')
+@login_required
+def view_conversation(conversation_id):
+    """View a specific conversation"""
+    try:
+        from models import Conversation, Message
+        conversation = db.session.get(Conversation, conversation_id)
+        if not conversation:
+            abort(404, description="Conversation not found")
+        
+        # Verify the conversation belongs to the current user
+        if conversation.user_id != current_user.id:
+            abort(403, description="You don't have permission to view this conversation")
+        
+        # Get messages for this conversation
+        messages = Message.query.filter_by(conversation_id=conversation_id)\
+                               .order_by(Message.timestamp.asc()).all()
+        
+        return render_template('index.html', 
+                             conversation_id=conversation_id,
+                             conversation_title=conversation.title,
+                             messages=messages)
+    except Exception as e:
+        logger.exception(f"Error viewing conversation {conversation_id}")
+        abort(500, description=str(e))
+
+
 @app.route('/conversation/<int:conversation_id>/share', methods=['POST']) 
 @login_required
 def share_conversation(conversation_id):
