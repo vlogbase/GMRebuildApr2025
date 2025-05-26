@@ -5471,9 +5471,4 @@ window.resetToDefault = function(presetId) {
             });
         }
     }
-}); // This closes the DOMContentLoaded event listener from line 236
-
-// Add the missing 3 closing brackets to balance the structure
-}
-}
-}
+});
