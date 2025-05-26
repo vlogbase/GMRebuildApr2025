@@ -43,14 +43,17 @@ function setupPresetEventListeners() {
 
 // Select a preset button
 window.selectPresetButton = function(presetId) {
-    // Check if this is a premium preset (all except preset 6)
-    if (presetId !== '6') {
-        // Check premium access before allowing selection of premium model
-        if (typeof checkPremiumAccess === 'function' && !checkPremiumAccess('premium_model')) {
-            // If access check failed, select the free model instead
-            console.log('Premium access denied, selecting free model instead');
-            selectPresetButton('6');
-            return;
+    // Always allow free preset (6)
+    if (presetId === '6') {
+        // Free preset is always allowed
+    } else {
+        // For premium presets, check access but don't redirect - just inform user
+        if (window.checkPremiumAccess && !window.checkPremiumAccess('premium_model')) {
+            console.log('Premium access denied for preset', presetId);
+            // Still allow selection but show notification
+            if (window.specialized && window.specialized.showNotification) {
+                window.specialized.showNotification('Premium preset requires credits', 'info');
+            }
         }
     }
     
@@ -68,10 +71,8 @@ window.selectPresetButton = function(presetId) {
         selectedButton.classList.add('active');
     }
     
-    // Update current model and preferences
-    if (typeof updateCurrentModel === 'function') {
-        updateCurrentModel(presetId);
-    }
+    // Store current selection globally
+    window.currentPresetId = presetId;
     
     console.log(`Selected preset button: ${presetId}`);
 };

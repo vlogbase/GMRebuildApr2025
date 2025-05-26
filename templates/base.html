@@ -152,6 +152,9 @@
     <script defer src="{{ url_for('static', filename='js/chat.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     <script defer src="{{ url_for('static', filename='js/ui.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
+    <!-- Preset Fix Script (loads last to override any issues) -->
+    <script defer src="{{ url_for('static', filename='js/preset-fix.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    
     <!-- Cookie Consent JavaScript (non-critical, can be deferred) -->
     <script defer src="{{ url_for('static', filename='js/cookie_consent.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     

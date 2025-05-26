@@ -4,29 +4,33 @@
 // Check if user has premium access for a specific feature
 function checkPremiumAccess(featureName) {
     // Check if user is logged in
-    if (!userIsLoggedIn) {
+    if (!window.userIsLoggedIn) {
         console.log(`Premium access check failed: User not logged in for feature: ${featureName}`);
         return false;
     }
     
+    // For now, assume logged-in users with credits have premium access
+    // You can modify this logic based on your actual premium system
+    const hasCredits = window.userCredits && window.userCredits > 0;
+    const isPremiumUser = window.userHasPremium || hasCredits;
+    
     // Check specific premium features
     switch (featureName) {
         case 'premium_model':
-            // For premium models, check if user has premium access
-            // This would typically check user's subscription status
-            return window.userHasPremium || false;
+            // Allow premium models if user has credits or premium status
+            return isPremiumUser;
             
         case 'file_upload':
-            // File upload might be a premium feature
-            return window.userHasPremium || false;
+            // File upload available for premium users
+            return isPremiumUser;
             
         case 'advanced_features':
             // Advanced features require premium
-            return window.userHasPremium || false;
+            return isPremiumUser;
             
         default:
             console.warn(`Unknown premium feature: ${featureName}`);
-            return false;
+            return isPremiumUser;
     }
 }
 
@@ -113,15 +117,17 @@ window.updateMultimodalControls = function(modelId) {
 // Lock premium features for non-premium users
 function lockPremiumFeatures() {
     if (checkPremiumAccess('premium_model')) {
-        return; // User has premium, don't lock anything
+        // User has premium, remove any existing locks
+        unlockPremiumFeatures();
+        return;
     }
     
-    // Add disabled class to premium preset buttons
+    // Add disabled class to premium preset buttons (1-5, not 6)
     const premiumPresets = document.querySelectorAll('.model-preset-btn:not([data-preset-id="6"])');
     premiumPresets.forEach(button => {
         button.classList.add('premium-locked');
         
-        // Add overlay to show it's locked
+        // Only add overlay if it doesn't already exist
         if (!button.querySelector('.premium-overlay')) {
             const overlay = document.createElement('div');
             overlay.className = 'premium-overlay';
@@ -134,11 +140,37 @@ function lockPremiumFeatures() {
     showPremiumPrompts();
 }
 
+// Unlock premium features for premium users
+function unlockPremiumFeatures() {
+    // Remove premium-locked class from all buttons
+    const allPresets = document.querySelectorAll('.model-preset-btn');
+    allPresets.forEach(button => {
+        button.classList.remove('premium-locked');
+        
+        // Remove any existing premium overlays
+        const overlay = button.querySelector('.premium-overlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    });
+    
+    // Hide premium prompts
+    hidePremiumPrompts();
+}
+
 // Show premium upgrade prompts
 function showPremiumPrompts() {
     const premiumPrompts = document.querySelectorAll('.premium-prompt');
     premiumPrompts.forEach(prompt => {
         prompt.style.display = 'block';
+    });
+}
+
+// Hide premium upgrade prompts
+function hidePremiumPrompts() {
+    const premiumPrompts = document.querySelectorAll('.premium-prompt');
+    premiumPrompts.forEach(prompt => {
+        prompt.style.display = 'none';
     });
 }
 
@@ -184,15 +216,16 @@ window.updateSelectedModelCostIndicator = function(modelId) {
 
 // Initialize premium system
 function initializePremium() {
-    // Check and update UI based on premium status
-    if (!checkPremiumAccess('premium_model')) {
-        lockPremiumFeatures();
-    }
+    // Don't lock features immediately - wait for user data to load
+    console.log('Premium system initialized - waiting for user data');
     
-    // Update UI for current model capabilities
-    updateUIForModelCapabilities();
-    
-    console.log('Premium system initialized');
+    // Set up a delayed check after other systems have loaded
+    setTimeout(() => {
+        if (!checkPremiumAccess('premium_model')) {
+            console.log('No premium access detected, but not locking features yet');
+            // Don't lock features automatically - let user try to use them
+        }
+    }, 2000);
 }
 
 // Make functions globally available
