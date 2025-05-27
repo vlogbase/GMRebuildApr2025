@@ -1327,133 +1327,19 @@ document.addEventListener('DOMContentLoaded', function() {
         window.attachedDocuments = attachedDocuments;
     }
     
-    // Function to remove a specific image by index
-    function removeImage(index) {
-        // Remove the image from the array
-        if (index >= 0 && index < attachedImageUrls.length) {
-            attachedImageUrls.splice(index, 1);
-            // Only update unified document display
-            updateDocumentPreviews(); 
-        }
-    }
+
     
-    // Function for adding a single image
-    function showImagePreview(imageUrl) {
-        // Add the URL to our array if it's not already there
-        if (imageUrl && !attachedImageUrls.includes(imageUrl)) {
-            attachedImageUrls.push(imageUrl);
-        }
-        
-        // Update document preview
-        updateDocumentPreviews();
-    }
+
     
-    // Clear all attached images
-    function clearAttachedImages() {
-        attachedImageBlob = null;
-        attachedImageUrls = [];
-        // Only update unified document display
-        updateDocumentPreviews();
-    }
+
     
-    // Legacy function for backward compatibility
-    function clearAttachedImage() {
-        clearAttachedImages();
-    }
+
     
-    // Function to clear attached PDF (part of unified document handling)
-    function clearAttachedPdf() {
-        attachedPdfUrl = null;
-        attachedPdfName = null;
-        
-        // Remove any standalone PDF indicators from the UI (legacy support)
-        const pdfIndicators = document.querySelectorAll('.pdf-indicator');
-        pdfIndicators.forEach(indicator => indicator.remove());
-        
-        // Update unified document preview area
-        updateDocumentPreviews();
-        
-        // Update send button state
-        updateSendButtonState();
-    }
+
     
-    // Function to remove a document from the unified display
-    function removeDocument(index) {
-        if (index >= 0 && index < attachedDocuments.length) {
-            const docItem = attachedDocuments[index]; // Renamed to avoid shadowing global 'document' object
-            
-            if (docItem.type === 'image') {
-                // Find the corresponding image in the image URLs array
-                const imageIndex = attachedImageUrls.indexOf(docItem.url);
-                if (imageIndex !== -1) {
-                    attachedImageUrls.splice(imageIndex, 1);
-                    // updateImagePreviews(); // Removed in favor of unified document preview
-                    updateDocumentPreviews(); // Update unified document display
-                }
-            } else if (docItem.type === 'pdf') {
-                // Clear the PDF
-                clearAttachedPdf();
-            }
-            
-            // Update the document display
-            updateDocumentPreviews();
-            
-            // Update send button state
-            updateSendButtonState();
-        }
-    }
+
     
-    // Function to open document viewer for both images and PDFs
-    function openDocumentViewer(index) {
-        if (index >= 0 && index < attachedDocuments.length) {
-            const docItem = attachedDocuments[index]; // Renamed to avoid shadowing global 'document' object
-            
-            if (docItem.type === 'image') {
-                // For images, open in a new tab
-                window.open(docItem.url, '_blank');
-            } else if (docItem.type === 'pdf') {
-                // For PDFs, display in our modal
-                const pdfViewerModal = document.getElementById('pdf-viewer-modal');
-                const pdfIframe = document.getElementById('pdf-iframe');
-                const pdfTitle = document.getElementById('pdf-viewer-title');
-                
-                if (pdfViewerModal && pdfIframe) {
-                    // Set the PDF source - if it's a data URL, use it directly
-                    pdfIframe.src = docItem.url; // Fixed: renamed to avoid shadowing global 'document' object
-                    
-                    // Set the title
-                    if (pdfTitle) {
-                        pdfTitle.textContent = docItem.name || 'Document Viewer'; // Fixed: renamed to avoid shadowing global 'document' object
-                    }
-                    
-                    // Show the modal
-                    pdfViewerModal.style.display = 'flex';
-                    
-                    // Add close event listener if not already added
-                    const closeButton = document.getElementById('close-pdf-viewer');
-                    if (closeButton) {
-                        // Use once: true to ensure we don't add multiple listeners
-                        closeButton.addEventListener('click', function() {
-                            pdfViewerModal.style.display = 'none';
-                            // Clear the iframe src when closing to prevent memory issues
-                            pdfIframe.src = '';
-                        }, { once: true });
-                    }
-                    
-                    // Also close when clicking outside the modal
-                    pdfViewerModal.addEventListener('click', function(event) {
-                        if (event.target === pdfViewerModal) {
-                            pdfViewerModal.style.display = 'none';
-                            // Clear the iframe src when closing to prevent memory issues
-                            pdfIframe.src = '';
-                        }
-                    }, { once: true });
-                } else {
-                    console.error('PDF viewer modal or iframe not found');
-                }
-            }
-        }
-    }
+
     
     // Function to update send button state based on image upload status
     function updateSendButtonState() {
