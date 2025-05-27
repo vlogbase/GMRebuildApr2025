@@ -74,46 +74,18 @@ export function initializePrioritized() {
         if (messageInput) {
             messageInput.focus();
         }
-        
-        // Setup essential event listeners for user interaction
-        if (sendButton) {
-            sendButton.addEventListener('click', sendMessage);
-        }
-        
-        if (messageInput) {
-            messageInput.addEventListener('keydown', handleMessageInputKeydown);
-        }
     }, 50);
-    
-    // Lower priority - can be deferred until shortly after page loads
-    setTimeout(() => {
-        // Fetch model preferences only after the page is visibly loaded
-        const modelSelector = document.getElementById('model-selector');
-        if (modelSelector) {
-            initializeModelSelector();
-        }
-    }, 100);
     
     // Lowest priority - can be deferred until after page is fully interactive
     if ('requestIdleCallback' in window) {
         requestIdleCallback(() => {
             // Run cleanup and non-essential initializations during browser idle time
             performIdleCleanup();
-            
-            // Fetch conversations list during idle time if user is authenticated
-            const userIsLoggedIn = !!document.getElementById('logout-btn');
-            if (userIsLoggedIn) {
-                fetchConversations(false, true);
-            }
         }, { timeout: 2000 }); // 2-second timeout as fallback
     } else {
         // Fallback for browsers without requestIdleCallback
         setTimeout(() => {
             performIdleCleanup();
-            const userIsLoggedIn = !!document.getElementById('logout-btn');
-            if (userIsLoggedIn) {
-                fetchConversations(false, true);
-            }
         }, 2000);
     }
 }

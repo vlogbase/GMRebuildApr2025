@@ -429,3 +429,60 @@ export function clearAttachedPdf() {
     attachedPdfUrl = null;
     attachedPdfName = null;
 }
+
+// Function to clear chat
+export function clearChat() {
+    // Clear the message history
+    messageHistory.length = 0;
+    
+    // Get chat messages container
+    const chatMessages = document.getElementById('chat-messages');
+    
+    // Make sure chatMessages exists
+    if (!chatMessages) {
+        console.warn('Chat messages container not found - cannot clear chat');
+        return;
+    }
+    
+    // Keep only the welcome container or create it if it doesn't exist
+    if (!document.querySelector('.welcome-container')) {
+        chatMessages.innerHTML = `
+            <div class="welcome-container">
+                <div class="welcome-icon">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                    </svg>
+                </div>
+                <h1 class="welcome-heading">Welcome to GloriaMundo!</h1>
+                <p class="welcome-text">
+                    Ask me anything and I'll provide helpful, accurate responses. Sign in to 
+                    save your conversations and access them from any device.
+                </p>
+                <button class="example-question-btn" id="example-question-btn">
+                    <i class="fa-regular fa-lightbulb"></i> Try an example question
+                </button>
+            </div>
+        `;
+        
+        // Re-attach event listener to the new example question button
+        const exampleBtn = document.getElementById('example-question-btn');
+        if (exampleBtn) {
+            exampleBtn.addEventListener('click', function() {
+                const exampleQuestions = [
+                    "What are the major differences between renewable and fossil fuel energy sources?",
+                    "Can you explain how artificial intelligence works in simple terms?",
+                    "What are some effective strategies for reducing carbon emissions?",
+                    "How does quantum computing differ from classical computing?",
+                    "What are the potential implications of gene editing technologies?"
+                ];
+                
+                const randomQuestion = exampleQuestions[Math.floor(Math.random() * exampleQuestions.length)];
+                if (messageInput) {
+                    messageInput.value = randomQuestion;
+                    // Trigger the send message function
+                    sendMessage();
+                }
+            });
+        }
+    }
+}

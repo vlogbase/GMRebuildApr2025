@@ -204,3 +204,58 @@ export function createUploadIndicator() {
     
     return indicator;
 }
+
+// Camera-related variables and functions
+let cameras = [];
+let currentCameraIndex = 0;
+
+export function stopCameraStream() {
+    const cameraStream = document.getElementById('camera-video');
+    if (cameraStream && cameraStream.srcObject) {
+        const tracks = cameraStream.srcObject.getTracks();
+        tracks.forEach(track => track.stop());
+        cameraStream.srcObject = null;
+    }
+}
+
+export async function switchCamera() {
+    const cameraStream = document.getElementById('camera-video');
+    const switchCameraButton = document.getElementById('switch-camera-button');
+    
+    if (cameras.length > 1 && cameraStream) {
+        stopCameraStream();
+        currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { deviceId: { exact: cameras[currentCameraIndex].deviceId } }
+            });
+            if (cameraStream) {
+                cameraStream.srcObject = stream;
+            }
+        } catch (err) {
+            console.error('Error switching camera:', err);
+            alert('Failed to switch camera');
+        }
+    }
+}
+
+export async function loadCameraDevices() {
+    if (!navigator.mediaDevices?.enumerateDevices) {
+        console.warn('enumerateDevices() not supported');
+        return;
+    }
+    
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        cameras = devices.filter(device => device.kind === 'videoinput');
+        
+        // Enable/disable switch camera button based on available cameras
+        const switchCameraButton = document.getElementById('switch-camera-button');
+        if (switchCameraButton) {
+            switchCameraButton.style.display = cameras.length > 1 ? 'block' : 'none';
+        }
+    } catch (err) {
+        console.error('Error enumerating devices:', err);
+    }
+}
