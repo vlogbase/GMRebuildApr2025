@@ -17,32 +17,7 @@ import { initializeMainEventListeners, lockPremiumFeatures } from './eventOrches
 
 
 
-// Define essential functions if not already defined
-// This ensures they exist before they're called
-if (typeof fetchConversations !== 'function') {
-    // Placeholder implementation - will be properly defined later
-    window.fetchConversations = function(bustCache = false, metadataOnly = true) {
-        console.log('Placeholder fetchConversations called');
-        return Promise.resolve([]);
-    };
-}
 
-if (typeof initializeModelSelector !== 'function') {
-    // Placeholder implementation - will be properly defined later
-    window.initializeModelSelector = function() {
-        console.log('Placeholder initializeModelSelector called');
-    };
-}
-
-if (typeof handleMessageInputKeydown !== 'function') {
-    // Placeholder implementation - will be properly defined later
-    window.handleMessageInputKeydown = function(event) {
-        console.log('Placeholder handleMessageInputKeydown called');
-    };
-}
-
-// Call prioritized initialization when document is loaded
-document.addEventListener('DOMContentLoaded', initializePrioritized);
 
 
 
@@ -219,44 +194,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         return indicator;
     }
-    // DOM Elements
-    const messageInput = document.getElementById('message-input');
-    const sendButton = document.getElementById('send-btn');
-    const chatMessages = document.getElementById('chat-messages');
-    const modelPresetButtons = document.querySelectorAll('.model-preset-btn');
-    const newChatButton = document.getElementById('new-chat-btn');
-    const clearConversationsButton = document.getElementById('clear-conversations-btn');
-    const exampleQuestionButton = document.getElementById('example-question-btn');
-    const conversationsList = document.getElementById('conversations-list');
-    const modelSelector = document.getElementById('model-selector');
-    const modelList = document.getElementById('model-list');
-    const modelSearch = document.getElementById('model-search');
-    const closeSelector = document.getElementById('close-selector');
-    
-    // Document upload elements - Legacy RAG system elements are now null
-    const uploadDocumentsBtn = null; // Removed button - replaced with unified upload
-    const refreshPricesBtn = document.getElementById('refresh-prices-btn');
-    const documentUploadModal = null; // Removed modal - using unified file upload instead
-    const closeUploadModal = null; // Removed with modal
-    const uploadDropzone = null; // Removed with modal
-    const uploadFileList = null; // Removed with modal
-    const uploadFilesBtn = null; // Removed with modal
-    const uploadStatus = null; // Removed with modal
-    
-    // Image upload and camera elements
-    const imageUploadInput = document.getElementById('file-upload-input');
-    const imageUploadButton = document.getElementById('file-upload-button');
-    const cameraButton = document.getElementById('camera-button');
-    const cameraModal = document.getElementById('camera-modal');
-    const cameraStream = document.getElementById('camera-stream');
-    const imageCanvas = document.getElementById('image-canvas');
-    const captureButton = document.getElementById('capture-button');
-    const switchCameraButton = document.getElementById('switch-camera-button');
-    const closeCameraButton = document.getElementById('close-camera-button');
-    // Legacy image preview area has been removed in favor of the unified document preview
-    // const imagePreviewArea = document.getElementById('image-preview-area');
-    // const imagePreview = document.getElementById('image-preview');
-    // const removeImageButton = document.getElementById('remove-image-button');
+
     
     // App state
     let activePresetButton = null; // Currently selected preset button
