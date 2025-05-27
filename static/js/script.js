@@ -966,13 +966,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Image handling functions
-    async function handleImageFile(fileOrBlob) {
-        console.log("✅ handleImageFile() - delegating to handleFileUpload");
-        if (!fileOrBlob) return;
-        
-        // Use the unified file upload handler with type 'image'
-        return handleFileUpload(fileOrBlob, 'image');
-    }
+
     
 
     
@@ -1199,55 +1193,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // PDF handling function (now using the unified uploader)
-    async function handlePdfFile(file) {
-        console.log("📄 handlePdfFile() - delegating to handleFileUpload");
-        
-        // Show upload indicator specifically for PDF
-        const uploadIndicator = document.getElementById('upload-indicator') || createUploadIndicator();
-        uploadIndicator.style.display = 'block';
-        uploadIndicator.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing PDF document...';
-        uploadIndicator.className = 'upload-indicator pdf-upload';
-        
-        const result = await handleFileUpload(file, 'pdf');
-        
-        // Update indicator based on result
-        if (result && result.success) {
-            uploadIndicator.innerHTML = '<i class="fas fa-check-circle"></i> PDF ready for chat!';
-            uploadIndicator.className = 'upload-indicator pdf-upload success';
-            
-            // If we have a document name from the response, display it
-            if (result.document_name) {
-                // Update the displayed name
-                uploadIndicator.innerHTML = '<i class="fas fa-check-circle"></i> PDF ready: ' + result.document_name;
-            }
-            
-            // Show success message for 3 seconds then fade out
-            setTimeout(() => {
-                uploadIndicator.style.opacity = '0';
-                setTimeout(() => {
-                    uploadIndicator.style.display = 'none';
-                    uploadIndicator.style.opacity = '1';
-                    uploadIndicator.className = 'upload-indicator';
-                }, 500); // Fade out transition duration
-            }, 3000);
-        } else {
-            uploadIndicator.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Error processing PDF: ' + (result?.error || 'Unknown error');
-            uploadIndicator.className = 'upload-indicator pdf-upload error';
-            
-            // Show error for 5 seconds then fade out
-            setTimeout(() => {
-                uploadIndicator.style.opacity = '0';
-                setTimeout(() => {
-                    uploadIndicator.style.display = 'none';
-                    uploadIndicator.style.opacity = '1';
-                    uploadIndicator.className = 'upload-indicator';
-                }, 500); // Fade out transition duration
-            }, 5000);
-        }
-        
-        return result;
-    }
+
     
     // Removed updateImagePreviews function as we now use only the unified document preview area
     // All image previews are now handled by updateDocumentPreviews function
