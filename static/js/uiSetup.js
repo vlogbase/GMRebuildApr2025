@@ -1,5 +1,7 @@
 // Import utility functions
 import { getCSRFToken } from './utils.js';
+// Import API functions
+import { fetchConversationsAPI, cleanupEmptyConversationsAPI } from './apiService.js';
 
 // Define necessary elements early to avoid reference errors
 export let messageInput;
@@ -114,14 +116,7 @@ export function performIdleCleanup() {
     if ('requestIdleCallback' in window) {
         requestIdleCallback(() => {
             console.log('Performing idle cleanup of empty conversations');
-            fetch('/api/cleanup-empty-conversations', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
-                }
-            })
-            .then(response => response.json())
+            cleanupEmptyConversationsAPI()
             .then(data => {
                 if (data.success) {
                     console.log(`Cleaned up ${data.deleted_count} empty conversations`);
@@ -135,14 +130,7 @@ export function performIdleCleanup() {
         // Fallback for browsers without requestIdleCallback
         setTimeout(() => {
             console.log('Performing delayed cleanup of empty conversations');
-            fetch('/api/cleanup-empty-conversations', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
-                }
-            })
-            .then(response => response.json())
+            cleanupEmptyConversationsAPI()
             .then(data => {
                 if (data.success) {
                     console.log(`Cleaned up ${data.deleted_count} empty conversations`);

@@ -2,6 +2,10 @@
 import { debounce, getCSRFToken, forceRepaint } from './utils.js';
 // Import UI setup functions
 import { setupLazyLoading, initializePrioritized, performIdleCleanup, messageInput, sendButton } from './uiSetup.js';
+// Import API service functions
+import { fetchConversationsAPI, sendMessageAPI, loadConversationAPI, createNewConversationAPI, fetchUserPreferencesAPI, saveModelPreferenceAPI, uploadFileAPI, fetchAvailableModelsAPI } from './apiService.js';
+// Import chat logic functions
+import { sendMessage, addMessage, formatMessage, addTypingIndicator, clearAttachedImages, clearAttachedPdf, messageHistory, currentConversationId, attachedImageUrls, attachedPdfUrl, attachedPdfName } from './chatLogic.js';
 
 
 
@@ -29,137 +33,10 @@ if (typeof handleMessageInputKeydown !== 'function') {
     };
 }
 
-// Set up prioritized loading for better performance
-function initializePrioritized() {
-    // High priority - critical for immediate UI interaction
-    setupLazyLoading();
-    
-    // Initialize basic UI elements
-    messageInput = document.getElementById('user-input') || document.getElementById('message-input');
-    sendButton = document.getElementById('send-button');
-    
-    // Medium priority - important but can be slightly delayed
-    setTimeout(() => {
-        // Initialize other important features with a small delay
-        if (messageInput) {
-            messageInput.focus();
-        }
-        
-        // Setup essential event listeners for user interaction
-        if (sendButton) {
-            sendButton.addEventListener('click', sendMessage);
-        }
-        
-        if (messageInput) {
-            messageInput.addEventListener('keydown', handleMessageInputKeydown);
-        }
-    }, 50);
-    
-    // Lower priority - can be deferred until shortly after page loads
-    setTimeout(() => {
-        // Fetch model preferences only after the page is visibly loaded
-        const modelSelector = document.getElementById('model-selector');
-        if (modelSelector) {
-            initializeModelSelector();
-        }
-    }, 100);
-    
-    // Lowest priority - can be deferred until after page is fully interactive
-    if ('requestIdleCallback' in window) {
-        requestIdleCallback(() => {
-            // Run cleanup and non-essential initializations during browser idle time
-            performIdleCleanup();
-            
-            // Fetch conversations list during idle time if user is authenticated
-            const userIsLoggedIn = !!document.getElementById('logout-btn');
-            if (userIsLoggedIn) {
-                fetchConversations(false, true);
-            }
-        }, { timeout: 2000 }); // 2-second timeout as fallback
-    } else {
-        // Fallback for browsers without requestIdleCallback
-        setTimeout(() => {
-            performIdleCleanup();
-            const userIsLoggedIn = !!document.getElementById('logout-btn');
-            if (userIsLoggedIn) {
-                fetchConversations(false, true);
-            }
-        }, 2000);
-    }
-}
-
 // Call prioritized initialization when document is loaded
 document.addEventListener('DOMContentLoaded', initializePrioritized);
 
-// Utility function to perform empty conversation cleanup when browser is idle
-// This prevents the cleanup from affecting initial page load performance
-function performIdleCleanup() {
-    // Check if user is authenticated by looking for the logout button
-    // Using this approach allows the function to work regardless of where it's called
-    const userIsLoggedIn = !!document.getElementById('logout-btn');
-    
-    // Only run if user is authenticated
-    if (!userIsLoggedIn) return;
-    
-    // Check if requestIdleCallback is supported
-    if ('requestIdleCallback' in window) {
-        requestIdleCallback(() => {
-            console.log('Performing idle cleanup of empty conversations');
-            fetch('/api/cleanup-empty-conversations', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
-                }
-            })
-            .then(response => response.json())
-            .then(cleanupData => {
-                if (cleanupData.success) {
-                    const cleanedCount = cleanupData.cleaned_count || 0;
-                    if (cleanedCount > 0) {
-                        console.log(`Idle cleanup: permanently deleted ${cleanedCount} empty conversations`);
-                        // Refresh the conversation list if any were deleted
-                        // Use window.fetchConversations to ensure it's accessible globally
-                        if (typeof window.fetchConversations === 'function') {
-                            window.fetchConversations(true);
-                        } else {
-                            console.log('Conversations will be refreshed on next user interaction');
-                        }
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error during idle cleanup:', error);
-            });
-        }, { timeout: 2000 }); // 2 second timeout
-    } else {
-        // Fallback for browsers that don't support requestIdleCallback
-        setTimeout(() => {
-            console.log('Performing delayed cleanup of empty conversations (fallback)');
-            fetch('/api/cleanup-empty-conversations', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRFToken': getCSRFToken()
-                }
-            })
-            .then(response => response.json())
-            .then(cleanupData => {
-                if (cleanupData.success) {
-                    const cleanedCount = cleanupData.cleaned_count || 0;
-                    if (cleanedCount > 0) {
-                        console.log(`Delayed cleanup: permanently deleted ${cleanedCount} empty conversations`);
-                        // Refresh the conversation list if any were deleted
-                        fetchConversations(true);
-                    }
-                }
-            })
-            .catch(error => {
-                console.error('Error during delayed cleanup:', error);
-            });
-        }, 2000);
-    }
-}
+
 
 // Enable debug mode by default to help troubleshoot mobile issues
 window.debugMode = true;
