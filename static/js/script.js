@@ -1960,65 +1960,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to update the model preset button labels
-    function updatePresetButtonLabels() {
-        for (const presetId in userPreferences) {
-            const modelId = userPreferences[presetId];
-            const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
-            if (button) {
-                // Set the data-model-id attribute required for capability checks
-                button.setAttribute('data-model-id', modelId);
-                
-                const nameSpan = button.querySelector('.model-name');
-                if (nameSpan) {
-                    // Remove any existing cost band indicators
-                    const existingCostBand = nameSpan.querySelector('.cost-band-indicator');
-                    if (existingCostBand) {
-                        existingCostBand.remove();
-                    }
-                    
-                    // Special handling for preset 6 (Free Model)
-                    if (presetId === '6') {
-                        // Check if we have a display name
-                        if (defaultModelDisplayNames[modelId]) {
-                            nameSpan.textContent = 'FREE - ' + defaultModelDisplayNames[modelId];
-                        } else {
-                            nameSpan.textContent = 'FREE - ' + formatModelName(modelId, true);
-                        }
-                    } else {
-                        // Check if we have a display name
-                        if (defaultModelDisplayNames[modelId]) {
-                            nameSpan.textContent = defaultModelDisplayNames[modelId];
-                        } else {
-                            nameSpan.textContent = formatModelName(modelId);
-                        }
-                        
-                        // Find the model in allModels to get its cost band
-                        const model = allModels?.find(m => m.id === modelId);
-                        if (model?.cost_band) {
-                            const costSpan = document.createElement('span');
-                            costSpan.textContent = model.cost_band;
-                            costSpan.className = 'cost-band-indicator';
-                            
-                            // Add the specific band class based on the band value
-                            if (model.cost_band === '$$$$') {
-                                costSpan.classList.add('cost-band-4-danger');
-                            } else if (model.cost_band === '$$$') {
-                                costSpan.classList.add('cost-band-3-warn');
-                            } else if (model.cost_band === '$$') {
-                                costSpan.classList.add('cost-band-2');
-                            } else if (model.cost_band === '$') {
-                                costSpan.classList.add('cost-band-1');
-                            } else {
-                                costSpan.classList.add('cost-band-free');
-                            }
-                            
-                            nameSpan.appendChild(costSpan);
-                        }
-                    }
-                }
-            }
-        }
-    }
+
     
     // Function to format model ID into a display name
     // Expose this function globally for mobile UI
@@ -2500,15 +2442,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Function to close the model selector
-    function closeModelSelector() {
-        if (modelSelector) {
-            modelSelector.style.display = 'none';
-            currentlyEditingPresetId = null;
-            
-            // Remove the selector active class from body (for mobile view)
-            document.body.classList.remove('model-selector-active');
-        }
-    }
+
     
     // Function to populate the model list based on preset filters
     // Expose this function globally for mobile UI
@@ -2755,21 +2689,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Function to filter the model list by search term
-    function filterModelList(searchTerm) {
-        const items = modelList.querySelectorAll('li');
-        
-        items.forEach(item => {
-            const modelName = item.querySelector('.model-name')?.textContent.toLowerCase() || '';
-            const modelProvider = item.querySelector('.model-provider')?.textContent.toLowerCase() || '';
-            
-            if (modelName.includes(searchTerm) || modelProvider.includes(searchTerm)) {
-                item.style.display = '';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    }
+
     
     // Function to select a model for a preset and save the preference
     // Expose this function globally for mobile UI
