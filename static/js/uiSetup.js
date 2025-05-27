@@ -6,6 +6,14 @@ import { fetchConversationsAPI, cleanupEmptyConversationsAPI } from './apiServic
 // Define necessary elements early to avoid reference errors
 export let messageInput;
 export let sendButton;
+export let newChatButton;
+export let clearConversationsButton;
+export let imageUploadButton;
+export let imageUploadInput;
+export let cameraButton;
+export let captureButton;
+export let switchCameraButton;
+export let refreshPricesBtn;
 
 // Implement lazy loading for images to improve initial page load
 export function setupLazyLoading() {
@@ -51,6 +59,14 @@ export function initializePrioritized() {
     // Initialize basic UI elements
     messageInput = document.getElementById('user-input') || document.getElementById('message-input');
     sendButton = document.getElementById('send-button');
+    newChatButton = document.getElementById('new-chat-button');
+    clearConversationsButton = document.getElementById('clear-conversations-button');
+    imageUploadButton = document.getElementById('image-upload-button');
+    imageUploadInput = document.getElementById('image-upload');
+    cameraButton = document.getElementById('camera-button');
+    captureButton = document.getElementById('capture-button');
+    switchCameraButton = document.getElementById('switch-camera-button');
+    refreshPricesBtn = document.getElementById('refresh-prices-btn');
     
     // Medium priority - important but can be slightly delayed
     setTimeout(() => {
