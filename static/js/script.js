@@ -2515,7 +2515,6 @@ window.resetToDefault = function(presetId) {
                 this.disabled = false;
             });
         });
-    }
     
     // Add CSS for disabled button
     const style = document.createElement('style');
