@@ -6,6 +6,10 @@ import { setupLazyLoading, initializePrioritized, performIdleCleanup, messageInp
 import { fetchConversationsAPI, sendMessageAPI, loadConversationAPI, createNewConversationAPI, fetchUserPreferencesAPI, saveModelPreferenceAPI, uploadFileAPI, fetchAvailableModelsAPI } from './apiService.js';
 // Import chat logic functions
 import { sendMessage, addMessage, formatMessage, addTypingIndicator, clearAttachedImages, clearAttachedPdf, messageHistory, currentConversationId, attachedImageUrls, attachedPdfUrl, attachedPdfName } from './chatLogic.js';
+// Import file upload functions
+import { handleFileUpload, handleImageFile, handlePdfFile, showImagePreview, showPdfPreview, createUploadIndicator, isUploadingFile } from './fileUpload.js';
+// Import conversation management functions
+import { fetchConversations, loadConversation, createNewConversation } from './conversationManagement.js';
 
 
 
