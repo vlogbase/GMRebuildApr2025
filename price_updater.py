@@ -399,16 +399,15 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                             # Check for free models based on price or special tags
                             db_model.is_free = model_data['input_price'] < 0.01 or ':free' in model_id.lower()
                             
-                            # ELO score updating disabled - manual updates only
                             # Look up and assign ELO score from LMSYS data
-                            # try:
-                            #     elo_score = get_elo_score_for_model(model_id, elo_cache) if elo_cache else None
-                            #     db_model.elo_score = elo_score
-                            #     if elo_score:
-                            #         logger.debug(f"Updated ELO score for {model_id}: {elo_score}")
-                            # except Exception as elo_error:
-                            #     logger.warning(f"Error getting ELO score for {model_id}: {elo_error}")
-                            #     db_model.elo_score = None
+                            try:
+                                elo_score = get_elo_score_for_model(model_id, elo_cache) if elo_cache else None
+                                db_model.elo_score = elo_score
+                                if elo_score:
+                                    logger.debug(f"Updated ELO score for {model_id}: {elo_score}")
+                            except Exception as elo_error:
+                                logger.warning(f"Error getting ELO score for {model_id}: {elo_error}")
+                                db_model.elo_score = None
                             
                             # Use accurate reasoning support from OpenRouter API supported_parameters
                             original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
@@ -476,16 +475,15 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                             new_model.supports_reasoning = supports_reasoning
                             new_model.cost_band = cost_band
                             
-                            # ELO score updating disabled - manual updates only
                             # Look up and assign ELO score from LMSYS data for new models
-                            # try:
-                            #     elo_score = get_elo_score_for_model(model_id, elo_cache) if elo_cache else None
-                            #     new_model.elo_score = elo_score
-                            #     if elo_score:
-                            #         logger.debug(f"Assigned ELO score for new model {model_id}: {elo_score}")
-                            # except Exception as elo_error:
-                            #     logger.warning(f"Error getting ELO score for new model {model_id}: {elo_error}")
-                            #     new_model.elo_score = None
+                            try:
+                                elo_score = get_elo_score_for_model(model_id, elo_cache) if elo_cache else None
+                                new_model.elo_score = elo_score
+                                if elo_score:
+                                    logger.debug(f"Assigned ELO score for new model {model_id}: {elo_score}")
+                            except Exception as elo_error:
+                                logger.warning(f"Error getting ELO score for new model {model_id}: {elo_error}")
+                                new_model.elo_score = None
                             
                             new_model.model_is_active = True
                             new_model.created_at = datetime.utcnow()
