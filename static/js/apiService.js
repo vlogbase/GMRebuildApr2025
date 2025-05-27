@@ -146,6 +146,31 @@ export async function uploadFileAPI(file, conversationId) {
     }
 }
 
+// Reset model preference to default
+export async function resetModelPreferenceAPI(presetId) {
+    try {
+        const response = await fetch('/api/reset_model_preference', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({
+                preset_id: presetId
+            })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error resetting model preference:', error);
+        throw error;
+    }
+}
+
 // Cleanup empty conversations
 export async function cleanupEmptyConversationsAPI() {
     try {

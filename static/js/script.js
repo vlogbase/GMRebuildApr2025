@@ -8,6 +8,8 @@ import { fetchConversationsAPI, sendMessageAPI, loadConversationAPI, createNewCo
 import { sendMessage, addMessage, formatMessage, addTypingIndicator, clearAttachedImages, clearAttachedPdf, messageHistory, currentConversationId, attachedImageUrls, attachedPdfUrl, attachedPdfName } from './chatLogic.js';
 // Import file upload functions
 import { handleFileUpload, handleImageFile, handlePdfFile, showImagePreview, showPdfPreview, createUploadIndicator, isUploadingFile } from './fileUpload.js';
+// Import model selection functions
+import { initializeModelSelectionLogic, selectPresetButton, allModels, userPreferences, currentModel, currentPresetId, updatePresetButtonLabels, fetchUserPreferences, fetchAvailableModels } from './modelSelection.js';
 // Import conversation management functions
 import { fetchConversations, loadConversation, createNewConversation } from './conversationManagement.js';
 
@@ -528,6 +530,9 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     }
+    
+    // Initialize model selection functionality
+    initializeModelSelectionLogic();
     
     // For non-authenticated users or users with no credits, lock premium features
     if (!isAuthenticated || userCreditBalance <= 0) {
