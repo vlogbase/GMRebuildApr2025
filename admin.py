@@ -155,16 +155,11 @@ def index():
                 .filter_by(status=CommissionStatus.APPROVED.value)\
                 .scalar() or 0
                 
-            # Get full Commission objects to avoid attribute setting issues
+            # Get recent commissions (simplified to avoid relationship issues)
             recent_commissions = Commission.query.filter(Commission.created_at != None)\
             .order_by(Commission.created_at.desc())\
             .limit(5)\
             .all()
-            
-            # Pre-load affiliates to avoid N+1 query issues
-            for commission in recent_commissions:
-                # Make sure we access the affiliate to ensure it's loaded
-                _ = commission.affiliate
             
             # Revenue stats
             logger.info("Getting revenue stats")

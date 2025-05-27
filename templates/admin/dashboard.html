@@ -173,8 +173,7 @@
                         <tr>
                             <td class="py-3 px-4 text-sm text-gray-800">{{ commission.id }}</td>
                             <td class="py-3 px-4 text-sm text-gray-800">
-                                {% set affiliate = commission.affiliate %}
-                                {{ affiliate.name if affiliate else 'Unknown' }}
+                                Affiliate #{{ commission.affiliate_id if commission.affiliate_id else 'Unknown' }}
                             </td>
                             <td class="py-3 px-4 text-sm text-gray-800">${{ '%0.2f' | format(commission.commission_amount) }}</td>
                             <td class="py-3 px-4">
