@@ -366,8 +366,6 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // App state
     let activePresetButton = null; // Currently selected preset button
-    let currentModel = null; // Model ID of the currently selected preset
-    let currentPresetId = '1'; // Default to first preset
     let currentConversationId = null;
     let messageHistory = [];
     let attachedPdfUrl = null; // URL for attached PDF
@@ -382,83 +380,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let cameras = [];
     let currentCameraIndex = 0;
     
-    // Model data
-    let allModels = []; // All models from OpenRouter
-    window.availableModels = allModels; // Expose globally for mobile scripts
-    let userPreferences = {}; // User preferences for preset buttons
-    window.userPreferences = userPreferences; // Expose globally
-    
-    // Filter configurations for each preset
-    const presetFilters = {
-        '1': (model) => !model.is_free, // All non-free models
-        '2': (model) => !model.is_free, // All non-free models
-        '3': (model) => {
-            // Use accurate reasoning detection from OpenRouter API
-            const passes = model.is_reasoning === true && !model.is_free;
-            
-            // Debug logging for first few reasoning models to verify the fix
-            if (model.id.includes('o1') || model.id.includes('claude-3') || model.id.includes('reasoning')) {
-                console.log(`[Preset 3 Debug] ${model.id}: is_reasoning=${model.is_reasoning}, is_free=${model.is_free}, passes=${passes}`);
-            }
-            
-            return passes;
-        },
-        '4': (model) => {
-            // For preset 4, prioritize true vision models
-            // OpenAI GPT-4o is the primary choice for this preset
-            const isMultimodal = model.is_multimodal === true;
-            const isFree = model.is_free === true;
-            const passes = isMultimodal && !isFree;
-            
-            // Debug logging for first few models to identify the issue
-            if (model.id === 'qwen/qwen-vl-max' || model.id === 'x-ai/grok-2-vision-1212' || model.id === 'openai/gpt-4o') {
-                console.log(`[Preset 4 Debug] ${model.id}: is_multimodal=${model.is_multimodal}, is_free=${model.is_free}, passes=${passes}`);
-            }
-            
-            return passes;
-        },
-        '5': (model) => {
-            // Check for Perplexity models by ID
-            const isPerplexity = model.is_perplexity === true || model.id.includes('perplexity');
-            return isPerplexity && !model.is_free;
-        },
-        '6': (model) => model.is_free === true || model.id.includes(':free') // Include all free models, check model ID for :free suffix too
-    };
-    
-    // Default model IDs for each preset button - must match DEFAULT_PRESET_MODELS in app.py
-    const defaultModels = {
-        '1': 'google/gemini-2.5-pro-preview', // Multi-purpose powerhouse
-        '2': 'meta-llama/llama-4-maverick', // Fast, good quality
-        '3': 'openai/o4-mini-high', // Balanced performance
-        '4': 'openai/gpt-4o-2024-11-20', // Premium quality
-        '5': 'perplexity/sonar-pro', // Open model
-        '6': 'google/gemini-2.0-flash-exp:free' // Free model
-    };
-    
-    // Expose defaultModels globally for mobile scripts
-    window.defaultModels = defaultModels;
-    
-    // Short display names for preset buttons
-    const defaultModelDisplayNames = {
-        'google/gemini-2.5-pro-preview': 'Gemini 2.5 Pro',
-        'meta-llama/llama-4-maverick': 'Llama 4 M',
-        'openai/o4-mini-high': 'O4 Mini High',
-        'openai/gpt-4o-2024-11-20': 'GPT-4o',
-        'perplexity/sonar-pro': 'Sonar Pro',
-        'google/gemini-2.0-flash-exp:free': 'Gemini Flash'
-    };
-    
-    // Free model fallbacks (in order of preference)
-    const freeModelFallbacks = [
-        'google/gemini-2.0-flash-exp:free',
-        'google/gemini-flash:free',
-        'openai/gpt-3.5-turbo:free',
-        'anthropic/claude-instant:free',
-        'mistralai/mistral-7b-instruct:free'
-    ];
-    
-    // Open selector variable - tracks which preset is being configured
-    let currentlyEditingPresetId = null;
+
     
     // Fetch conversations on load - rely on userIsLoggedIn from server
     // userIsLoggedIn is set in the template and more reliable than DOM checks
