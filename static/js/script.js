@@ -54,11 +54,11 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeModelSelectionLogic();
     
     // Initialize main event listeners
-    initializeMainEventListeners();
+    initializeMainEventListeners(isAuthenticated, userCreditBalance);
     
     // For non-authenticated users or users with no credits, lock premium features
     if (!isAuthenticated || userCreditBalance <= 0) {
-        lockPremiumFeatures();
+        lockPremiumFeatures(isAuthenticated, userCreditBalance);
     }
     
     // Initialize conversations

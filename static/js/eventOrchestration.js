@@ -11,7 +11,7 @@ import { handleFileUpload, handleImageFile, switchCamera, stopCameraStream } fro
 import { selectPresetButton } from './modelSelection.js';
 
 // Initialize main event listeners
-export function initializeMainEventListeners() {
+export function initializeMainEventListeners(isAuthenticated, userCreditBalance) {
     console.log('🎯 Initializing main event listeners...');
     
     // Setup core UI event listeners
@@ -24,7 +24,7 @@ export function initializeMainEventListeners() {
     setupDocumentEventListeners();
     
     // Setup page navigation event listeners
-    setupPageNavigationEventListeners();
+    setupPageNavigationEventListeners(isAuthenticated, userCreditBalance);
 }
 
 // Setup core UI event listeners
@@ -137,13 +137,13 @@ function setupDocumentEventListeners() {
 }
 
 // Setup page navigation event listeners
-function setupPageNavigationEventListeners() {
+function setupPageNavigationEventListeners(isAuthenticated, userCreditBalance) {
     // Handle browser back/forward navigation
     window.addEventListener('pageshow', function(event) {
         console.log('📄 Page show event');
         // Re-apply locks when user navigates back from billing page
         if (!isAuthenticated || userCreditBalance <= 0) {
-            lockPremiumFeatures();
+            lockPremiumFeatures(isAuthenticated, userCreditBalance);
         }
     });
     
@@ -353,7 +353,7 @@ function refreshModelPrices() {
 }
 
 // Setup premium feature locks (moved from main script)
-export function lockPremiumFeatures() {
+export function lockPremiumFeatures(isAuthenticated, userCreditBalance) {
     console.log('🔒 Locking premium features...');
     
     // Process all model preset buttons

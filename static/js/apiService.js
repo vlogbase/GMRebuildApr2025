@@ -81,7 +81,7 @@ export async function createNewConversationAPI() {
 // Fetch user preferences
 export async function fetchUserPreferencesAPI() {
     try {
-        const response = await fetch('/api/user_preferences');
+        const response = await fetch('/get_preferences');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -196,7 +196,7 @@ export async function cleanupEmptyConversationsAPI() {
 // Fetch available models
 export async function fetchAvailableModelsAPI() {
     try {
-        const response = await fetch('/api/models');
+        const response = await fetch('/api/get_model_prices');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }

@@ -107,7 +107,8 @@ export function performIdleCleanup() {
             cleanupEmptyConversationsAPI()
             .then(data => {
                 if (data.success) {
-                    console.log(`Cleaned up ${data.deleted_count} empty conversations`);
+                    const cleanedCount = data.cleaned_count || 0;
+                    console.log(`Cleaned up ${cleanedCount} empty conversations`);
                 }
             })
             .catch(error => {
@@ -121,7 +122,8 @@ export function performIdleCleanup() {
             cleanupEmptyConversationsAPI()
             .then(data => {
                 if (data.success) {
-                    console.log(`Cleaned up ${data.deleted_count} empty conversations`);
+                    const cleanedCount = data.cleaned_count || 0;
+                    console.log(`Cleaned up ${cleanedCount} empty conversations`);
                 }
             })
             .catch(error => {
