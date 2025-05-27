@@ -206,16 +206,54 @@ export async function fetchAvailableModels() {
         console.log('🤖 Fetching available models...');
         const data = await fetchAvailableModelsAPI();
         
-        if (data.success && data.models) {
-            allModels = data.models;
+        console.log('🔍 Complete API response structure:', data);
+        
+        // Check if the API call was successful and returned prices (not models)
+        if (data.success && data.prices) {
+            console.log('✅ API returned prices data, processing models...');
+            
+            // Create model data array directly from pricing data (matching original logic)
+            const modelDataArray = [];
+            for (const modelId in data.prices) {
+                const modelData = data.prices[modelId];
+                
+                // Format the model name if it doesn't exist in the pricing data
+                const formatModelName = (id) => {
+                    return id.split('/').pop().replace(/-/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+                };
+                
+                modelDataArray.push({
+                    id: modelId,
+                    name: modelData.name || formatModelName(modelId),
+                    cost_band: modelData.cost_band,
+                    pricing: modelData.pricing,
+                    is_multimodal: modelData.is_multimodal || false,
+                    supports_pdf: modelData.supports_pdf || false,
+                    context_length: modelData.context_length,
+                    description: modelData.description
+                });
+            }
+            
+            allModels = modelDataArray;
             window.availableModels = allModels;
-            console.log(`✅ Loaded ${allModels.length} models`);
+            console.log(`✅ Loaded ${allModels.length} models from prices data`);
             updatePresetButtonLabels();
         } else {
-            console.error('❌ Failed to fetch models:', data.error);
+            const errorMsg = data.error || 'API response missing success=true or prices data';
+            console.error('❌ Failed to fetch models - API response structure issue:', {
+                hasSuccess: !!data.success,
+                hasPrices: !!data.prices,
+                hasModels: !!data.models,
+                fullResponse: data,
+                errorFromAPI: errorMsg
+            });
         }
     } catch (error) {
-        console.error('❌ Error fetching models:', error);
+        console.error('❌ Error fetching models in modelSelection.js:', {
+            errorMessage: error.message || error.toString(),
+            errorName: error.name,
+            fullError: error
+        });
     }
 }
 

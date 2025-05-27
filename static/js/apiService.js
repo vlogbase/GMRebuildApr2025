@@ -196,13 +196,30 @@ export async function cleanupEmptyConversationsAPI() {
 // Fetch available models
 export async function fetchAvailableModelsAPI() {
     try {
+        console.log('🔍 Calling /api/get_model_prices...');
         const response = await fetch('/api/get_model_prices');
+        
+        console.log('📡 Response status:', response.status, response.statusText);
+        console.log('📡 Response headers:', response.headers.get('content-type'));
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            throw new Error(`HTTP error! status: ${response.status} ${response.statusText}`);
         }
-        return await response.json();
+        
+        const responseText = await response.text();
+        console.log('📄 Raw response text:', responseText);
+        
+        const data = JSON.parse(responseText);
+        console.log('📦 Parsed JSON data:', data);
+        
+        return data;
     } catch (error) {
-        console.error('Error fetching available models:', error);
+        console.error('❌ Error in fetchAvailableModelsAPI:', {
+            name: error.name,
+            message: error.message,
+            stack: error.stack,
+            fullError: error
+        });
         throw error;
     }
 }
