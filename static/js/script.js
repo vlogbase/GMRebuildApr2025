@@ -1496,9 +1496,8 @@ window.resetToDefault = function(presetId) {
                 });
         }, 50); // Small delay to allow UI to render first
     }
-                ];
-                
-                const randomQuestion = exampleQuestions[Math.floor(Math.random() * exampleQuestions.length)];
+    
+    // Function to format message with markdown, code blocks, etc.
                 messageInput.value = randomQuestion;
                 sendMessage();
             });
