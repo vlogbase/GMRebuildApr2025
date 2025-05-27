@@ -5424,4 +5424,4 @@ window.resetToDefault = function(presetId) {
     `;
     document.head.appendChild(style);
     
-});
+}); // Fixed closing bracket for DOMContentLoaded
