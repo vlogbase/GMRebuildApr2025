@@ -17,7 +17,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import func, desc, and_, not_, text
 from typing import NoReturn
 
-from models import User, Transaction, Commission, CustomerReferral, CommissionStatus, AffiliateStatus, PaymentStatus
+from models import User, Transaction, Commission, CustomerReferral, CommissionStatus, AffiliateStatus, PaymentStatus, OpenRouterModel
 from database import db
 
 # Set up logger
@@ -618,6 +618,127 @@ def reject_commission(commission_id):
         logger.error(f"Error rejecting commission: {str(e)}", exc_info=True)
         flash(f'Error rejecting commission: {str(e)}', 'error')
         return redirect(url_for('admin_simple.manage_commissions'))
+
+# --- ELO Score Management Routes ---
+
+@admin_bp.route('/elo-management')
+@admin_required
+def elo_management():
+    """Admin page for managing ELO scores"""
+    try:
+        # Get all models with pagination
+        page = request.args.get('page', 1, type=int)
+        search = request.args.get('search', '', type=str)
+        per_page = 50  # Show 50 models per page
+        
+        # Build query
+        query = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True)
+        
+        # Add search filter if provided
+        if search:
+            query = query.filter(OpenRouterModel.model_id.ilike(f'%{search}%'))
+        
+        # Order by model_id for consistent pagination
+        query = query.order_by(OpenRouterModel.model_id)
+        
+        # Paginate
+        models = query.paginate(
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+        
+        # Get summary stats
+        total_models = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).count()
+        models_with_elo = OpenRouterModel.query.filter(
+            OpenRouterModel.model_is_active == True,
+            OpenRouterModel.elo_score.isnot(None)
+        ).count()
+        
+        return render_template('admin/elo_management.html',
+                             models=models,
+                             search=search,
+                             total_models=total_models,
+                             models_with_elo=models_with_elo)
+                             
+    except Exception as e:
+        logger.error(f"Error in ELO management: {str(e)}", exc_info=True)
+        flash(f'Error loading ELO management: {str(e)}', 'error')
+        return redirect(url_for('admin_simple.index'))
+
+@admin_bp.route('/update-elo-score', methods=['POST'])
+@admin_required
+def update_elo_score():
+    """Update ELO score for a specific model"""
+    try:
+        model_id = request.form.get('model_id')
+        elo_score_str = request.form.get('elo_score', '').strip()
+        
+        if not model_id:
+            flash('Model ID is required', 'error')
+            return redirect(url_for('admin_simple.elo_management'))
+        
+        # Find the model
+        model = OpenRouterModel.query.filter_by(model_id=model_id).first()
+        if not model:
+            flash('Model not found', 'error')
+            return redirect(url_for('admin_simple.elo_management'))
+        
+        # Parse ELO score
+        elo_score = None
+        if elo_score_str:
+            try:
+                elo_score = int(elo_score_str)
+            except ValueError:
+                flash('ELO score must be a whole number', 'error')
+                return redirect(url_for('admin_simple.elo_management'))
+        
+        # Update the model
+        old_score = model.elo_score
+        model.elo_score = elo_score
+        db.session.commit()
+        
+        # Log the change
+        logger.info(f"ELO score updated for {model_id}: {old_score} -> {elo_score} by {current_user.email}")
+        
+        if elo_score is None:
+            flash(f'ELO score cleared for {model_id}', 'success')
+        else:
+            flash(f'ELO score updated for {model_id}: {elo_score}', 'success')
+            
+        return redirect(url_for('admin_simple.elo_management', search=request.form.get('search', '')))
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error updating ELO score: {str(e)}", exc_info=True)
+        flash(f'Error updating ELO score: {str(e)}', 'error')
+        return redirect(url_for('admin_simple.elo_management'))
+
+@admin_bp.route('/reset-all-elo-scores', methods=['POST'])
+@admin_required
+def reset_all_elo_scores():
+    """Reset all ELO scores to NULL"""
+    try:
+        # Count how many models have ELO scores currently
+        models_with_elo = OpenRouterModel.query.filter(
+            OpenRouterModel.elo_score.isnot(None)
+        ).count()
+        
+        # Reset all ELO scores to NULL
+        OpenRouterModel.query.update({OpenRouterModel.elo_score: None})
+        db.session.commit()
+        
+        # Log the action
+        logger.info(f"All ELO scores reset to NULL by {current_user.email}. {models_with_elo} models affected.")
+        
+        flash(f'Reset {models_with_elo} ELO scores to blank', 'success')
+        return redirect(url_for('admin_simple.elo_management'))
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error resetting ELO scores: {str(e)}", exc_info=True)
+        flash(f'Error resetting ELO scores: {str(e)}', 'error')
+        return redirect(url_for('admin_simple.elo_management'))
 
 def init_admin(app):
     """Register the admin blueprint with the app"""
