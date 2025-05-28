@@ -446,11 +446,6 @@ export function addTypingIndicator() {
 
 
 
-export function clearAttachedPdf() {
-    attachedPdfUrl = null;
-    attachedPdfName = null;
-}
-
 // Function to clear chat
 export function clearChat() {
     // Clear the message history
