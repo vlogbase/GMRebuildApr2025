@@ -70,8 +70,9 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log(`Loading initial conversation: ${initialConversationId}`);
             loadConversation(initialConversationId);
         } else {
-            // Create new conversation if none specified (original behavior)
-            createNewConversation();
+            // Create new conversation if none specified, but don't update URL (keep homepage at /)
+            console.log('Creating default conversation for homepage without URL update');
+            createNewConversation(false);
         }
     });
     
