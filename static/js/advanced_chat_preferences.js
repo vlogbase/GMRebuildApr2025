@@ -399,14 +399,14 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 // Show success message
-                showToast('Advanced preferences saved successfully!', 'success');
+                showToast('success', 'Advanced preferences saved successfully!');
             } else {
-                showToast('Error saving preferences: ' + data.error, 'error');
+                showToast('error', 'Error saving preferences: ' + data.error);
             }
         })
         .catch(error => {
             console.error('Error saving settings:', error);
-            showToast('Failed to save preferences: ' + error.message, 'error');
+            showToast('error', 'Failed to save preferences: ' + error.message);
         });
     }
     

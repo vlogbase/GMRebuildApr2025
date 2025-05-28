@@ -3,6 +3,9 @@
  * Main initialization and coordination for the account page
  */
 
+import { updateUsageData } from './usage-analytics.js';
+import { loadPricingData } from './pricing-table.js';
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired - Initializing account page functions');
 

@@ -3,6 +3,8 @@
  * Handles account settings functionality including conversation clearing
  */
 
+import { showToast } from './utils.js';
+
 function initializeAccountSettings() {
     // Clear conversations functionality
     const clearConversationsBtn = document.getElementById('clearConversationsBtn');
