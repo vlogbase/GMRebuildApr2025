@@ -165,17 +165,7 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
     start_time = time.time()
     logger.info("Scheduled job: fetch_and_store_openrouter_prices started")
     
-    # Load LMSYS ELO cache for integration
-    try:
-        from lmsys_updater import load_lmsys_elo_cache, get_elo_score_for_model
-        elo_cache = load_lmsys_elo_cache()
-        logger.info(f"Loaded {len(elo_cache)} ELO scores for model matching")
-    except ImportError as e:
-        logger.warning(f"Could not import LMSYS updater: {e}")
-        elo_cache = {}
-    except Exception as e:
-        logger.warning(f"Error loading LMSYS ELO cache: {e}")
-        elo_cache = {}
+    # ELO scores are now managed manually via admin interface - no automatic fetching
     
     try:
         api_key = os.environ.get('OPENROUTER_API_KEY')
@@ -399,15 +389,8 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                             # Check for free models based on price or special tags
                             db_model.is_free = model_data['input_price'] < 0.01 or ':free' in model_id.lower()
                             
-                            # Look up and assign ELO score from LMSYS data
-                            try:
-                                elo_score = get_elo_score_for_model(model_id, elo_cache) if elo_cache else None
-                                db_model.elo_score = elo_score
-                                if elo_score:
-                                    logger.debug(f"Updated ELO score for {model_id}: {elo_score}")
-                            except Exception as elo_error:
-                                logger.warning(f"Error getting ELO score for {model_id}: {elo_error}")
-                                db_model.elo_score = None
+                            # ELO scores are now managed manually via admin interface
+                            # Don't overwrite existing manually-set ELO scores
                             
                             # Use accurate reasoning support from OpenRouter API supported_parameters
                             original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
@@ -475,15 +458,8 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                             new_model.supports_reasoning = supports_reasoning
                             new_model.cost_band = cost_band
                             
-                            # Look up and assign ELO score from LMSYS data for new models
-                            try:
-                                elo_score = get_elo_score_for_model(model_id, elo_cache) if elo_cache else None
-                                new_model.elo_score = elo_score
-                                if elo_score:
-                                    logger.debug(f"Assigned ELO score for new model {model_id}: {elo_score}")
-                            except Exception as elo_error:
-                                logger.warning(f"Error getting ELO score for new model {model_id}: {elo_error}")
-                                new_model.elo_score = None
+                            # ELO scores are managed manually via admin interface for new models
+                            new_model.elo_score = None
                             
                             new_model.model_is_active = True
                             new_model.created_at = datetime.utcnow()
