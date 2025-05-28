@@ -82,31 +82,28 @@
                         </div>
                     </div>
 
-                    <!-- Search Form -->
+                    <!-- Real-time Search -->
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <form method="GET" action="{{ url_for('admin_simple.elo_management') }}">
-                                <div class="input-group">
-                                    <input type="text" 
-                                           class="form-control" 
-                                           name="search" 
-                                           placeholder="Search models by ID..." 
-                                           value="{{ search }}">
-                                    <div class="input-group-append">
-                                        <button class="btn btn-primary" type="submit">
-                                            <i class="fas fa-search"></i> Search
-                                        </button>
-                                    </div>
+                            <div class="input-group">
+                                <input type="text" 
+                                       id="realtime-search" 
+                                       class="form-control" 
+                                       placeholder="Start typing to filter models..." 
+                                       value="{{ search }}">
+                                <div class="input-group-append">
+                                    <span class="input-group-text">
+                                        <i class="fas fa-search"></i>
+                                    </span>
                                 </div>
-                            </form>
+                            </div>
+                            <small class="text-muted">Filter results instantly as you type</small>
                         </div>
-                        {% if search %}
                         <div class="col-md-6">
-                            <a href="{{ url_for('admin_simple.elo_management') }}" class="btn btn-secondary">
-                                <i class="fas fa-times"></i> Clear Search
-                            </a>
+                            <div class="text-muted">
+                                <span id="visible-count">{{ models.items|length }}</span> of {{ total_models }} models shown
+                            </div>
                         </div>
-                        {% endif %}
                     </div>
 
                     <!-- Models Table -->
@@ -134,32 +131,23 @@
                                         {% endif %}
                                     </td>
                                     <td>
-                                        <form method="POST" action="{{ url_for('admin_simple.update_elo_score') }}" class="d-inline">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <input type="hidden" name="model_id" value="{{ model.model_id }}">
-                                            <input type="hidden" name="search" value="{{ search }}">
-                                            <input type="number" 
-                                                   name="elo_score" 
-                                                   class="form-control form-control-sm d-inline-block" 
-                                                   style="width: 120px;" 
-                                                   placeholder="Enter score"
-                                                   value="{{ model.elo_score if model.elo_score is not none else '' }}">
+                                        <input type="number" 
+                                               class="form-control form-control-sm elo-input" 
+                                               style="width: 120px;" 
+                                               placeholder="Enter score"
+                                               data-model-id="{{ model.model_id }}"
+                                               value="{{ model.elo_score if model.elo_score is not none else '' }}"
+                                               title="Press Enter or click away to save">
                                     </td>
                                     <td>
-                                            <button type="submit" class="btn btn-success btn-sm">
-                                                <i class="fas fa-save"></i> Save
-                                            </button>
-                                        </form>
+                                        <span class="save-status" data-model-id="{{ model.model_id }}"></span>
                                         {% if model.elo_score is not none %}
-                                        <form method="POST" action="{{ url_for('admin_simple.update_elo_score') }}" class="d-inline ml-1">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                            <input type="hidden" name="model_id" value="{{ model.model_id }}">
-                                            <input type="hidden" name="search" value="{{ search }}">
-                                            <input type="hidden" name="elo_score" value="">
-                                            <button type="submit" class="btn btn-outline-secondary btn-sm" title="Clear ELO score">
-                                                <i class="fas fa-eraser"></i>
-                                            </button>
-                                        </form>
+                                        <button type="button" 
+                                                class="btn btn-outline-secondary btn-sm clear-elo" 
+                                                data-model-id="{{ model.model_id }}"
+                                                title="Clear ELO score">
+                                            <i class="fas fa-eraser"></i>
+                                        </button>
                                         {% endif %}
                                     </td>
                                 </tr>
@@ -278,5 +266,135 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Get CSRF token for AJAX requests
+        const csrfToken = document.querySelector('input[name="csrf_token"]').value;
+        
+        // Real-time search functionality
+        const searchInput = document.getElementById('realtime-search');
+        const tableRows = document.querySelectorAll('tbody tr');
+        const visibleCountSpan = document.getElementById('visible-count');
+        
+        function filterTable() {
+            const searchTerm = searchInput.value.toLowerCase();
+            let visibleCount = 0;
+            
+            tableRows.forEach(row => {
+                const modelId = row.querySelector('code').textContent.toLowerCase();
+                if (modelId.includes(searchTerm)) {
+                    row.style.display = '';
+                    visibleCount++;
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+            
+            visibleCountSpan.textContent = visibleCount;
+        }
+        
+        // Filter as user types
+        searchInput.addEventListener('input', filterTable);
+        
+        // AJAX save functionality
+        function saveEloScore(modelId, eloScore) {
+            const statusSpan = document.querySelector(`[data-model-id="${modelId}"].save-status`);
+            
+            // Show saving indicator
+            statusSpan.innerHTML = '<small class="text-info"><i class="fas fa-spinner fa-spin"></i> Saving...</small>';
+            
+            // Prepare form data
+            const formData = new FormData();
+            formData.append('csrf_token', csrfToken);
+            formData.append('model_id', modelId);
+            formData.append('elo_score', eloScore);
+            
+            fetch('{{ url_for("admin_simple.update_elo_score") }}', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    statusSpan.innerHTML = '<small class="text-success"><i class="fas fa-check"></i> Saved</small>';
+                    // Update the current ELO display
+                    const currentEloCell = statusSpan.closest('tr').querySelector('td:nth-child(2)');
+                    if (eloScore === '') {
+                        currentEloCell.innerHTML = '<span class="badge badge-secondary">Not Set</span>';
+                    } else {
+                        currentEloCell.innerHTML = `<span class="badge badge-primary">${eloScore}</span>`;
+                    }
+                } else {
+                    statusSpan.innerHTML = '<small class="text-danger"><i class="fas fa-exclamation-triangle"></i> Error</small>';
+                }
+                // Clear status after 3 seconds
+                setTimeout(() => {
+                    statusSpan.innerHTML = '';
+                }, 3000);
+            })
+            .catch(error => {
+                statusSpan.innerHTML = '<small class="text-danger"><i class="fas fa-exclamation-triangle"></i> Error</small>';
+                setTimeout(() => {
+                    statusSpan.innerHTML = '';
+                }, 3000);
+            });
+        }
+        
+        // Handle ELO input changes
+        document.querySelectorAll('.elo-input').forEach(input => {
+            // Save on Enter key
+            input.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    const modelId = this.dataset.modelId;
+                    const eloScore = this.value;
+                    saveEloScore(modelId, eloScore);
+                }
+            });
+            
+            // Save when user clicks away (blur event)
+            input.addEventListener('blur', function() {
+                const modelId = this.dataset.modelId;
+                const eloScore = this.value;
+                const originalValue = this.defaultValue;
+                
+                // Only save if value changed
+                if (eloScore !== originalValue) {
+                    saveEloScore(modelId, eloScore);
+                    this.defaultValue = eloScore; // Update default value
+                }
+            });
+        });
+        
+        // Handle clear ELO buttons
+        document.querySelectorAll('.clear-elo').forEach(button => {
+            button.addEventListener('click', function() {
+                const modelId = this.dataset.modelId;
+                const input = document.querySelector(`input[data-model-id="${modelId}"]`);
+                
+                // Clear the input and save
+                input.value = '';
+                saveEloScore(modelId, '');
+                input.defaultValue = '';
+                
+                // Hide the clear button
+                this.style.display = 'none';
+            });
+        });
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            // Ctrl/Cmd + F to focus search
+            if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+                e.preventDefault();
+                searchInput.focus();
+                searchInput.select();
+            }
+        });
+        
+        // Initialize with any existing search term
+        if (searchInput.value) {
+            filterTable();
+        }
+    </script>
 </body>
 </html>

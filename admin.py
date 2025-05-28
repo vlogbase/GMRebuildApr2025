@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime, timedelta
 from functools import wraps
 
-from flask import Blueprint, flash, redirect, url_for, render_template, request, abort, current_app
+from flask import Blueprint, flash, redirect, url_for, render_template, request, abort, current_app, jsonify
 from flask_login import current_user, login_required
 from sqlalchemy import func, desc, and_, not_, text
 from typing import NoReturn
@@ -696,12 +696,23 @@ def update_elo_score():
         # Log the change
         logger.info(f"ELO score updated for {model_id}: {old_score} -> {elo_score} by {current_user.email}")
         
-        if elo_score is None:
-            flash(f'ELO score cleared for {model_id}', 'success')
+        # Check if this is an AJAX request
+        from flask import jsonify
+        if request.is_json or 'application/json' in request.headers.get('Accept', ''):
+            # Return JSON response for AJAX
+            return jsonify({
+                'success': True,
+                'message': f'ELO score {"cleared" if elo_score is None else "updated"} for {model_id}',
+                'elo_score': elo_score
+            })
         else:
-            flash(f'ELO score updated for {model_id}: {elo_score}', 'success')
-            
-        return redirect(url_for('admin_simple.elo_management', search=request.form.get('search', '')))
+            # Regular form submission - redirect with flash message
+            if elo_score is None:
+                flash(f'ELO score cleared for {model_id}', 'success')
+            else:
+                flash(f'ELO score updated for {model_id}: {elo_score}', 'success')
+                
+            return redirect(url_for('admin_simple.elo_management', search=request.form.get('search', '')))
         
     except Exception as e:
         db.session.rollback()
