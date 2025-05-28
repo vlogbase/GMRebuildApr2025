@@ -648,17 +648,61 @@ function populateModelList(presetId) {
 }
 
 // Function to select a model for a specific preset
-async function selectModelForPreset(presetId, modelId) {
-    console.log(`📝 Selecting model ${modelId} for preset ${presetId}`);
+async function selectModelForPreset(presetId, modelId, skipActivation) {
+    // Check if trying to assign a free model to a non-free preset
+    const isFreeModel = modelId.includes(':free') || allModels.some(m => m.id === modelId && m.is_free === true);
+    if (presetId !== '6' && isFreeModel) {
+        alert('Free models can only be selected for Preset 6');
+        return;
+    }
     
-    const success = await saveModelPreference(presetId, modelId);
-    if (success) {
-        // Update current model if this is the active preset
-        if (presetId === currentPresetId) {
-            currentModel = modelId;
-            updateSelectedModelCostIndicator(modelId);
-            updateMultimodalControls(modelId);
+    // Update the UI
+    const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
+    if (button) {
+        const nameSpan = button.querySelector('.model-name');
+        if (nameSpan) {
+            // Special handling for preset 6 (Free Model)
+            if (presetId === '6') {
+                if (defaultModelDisplayNames[modelId]) {
+                    nameSpan.textContent = 'FREE - ' + defaultModelDisplayNames[modelId];
+                } else {
+                    nameSpan.textContent = 'FREE - ' + formatModelName(modelId, true);
+                }
+            } else {
+                if (defaultModelDisplayNames[modelId]) {
+                    nameSpan.textContent = defaultModelDisplayNames[modelId];
+                } else {
+                    nameSpan.textContent = formatModelName(modelId);
+                }
+            }
         }
+    }
+    
+    // Update local state
+    userPreferences[presetId] = modelId;
+    
+    // If this is the active preset, update the current model
+    if (presetId === currentPresetId) {
+        currentModel = modelId;
+        
+        // Update multimodal controls based on the selected model
+        updateMultimodalControls(modelId);
+    }
+    
+    // Save preference to server
+    await saveModelPreference(presetId, modelId);
+    
+    // Close the selector
+    closeModelSelector();
+    
+    // For the desktop flow, automatically activate the preset we just updated
+    // For mobile, we'll handle this separately to avoid duplicate calls
+    if (!skipActivation && presetId !== currentPresetId) {
+        // Log for debugging
+        console.log(`Auto-activating preset ${presetId} after model selection`);
+        
+        // Select the preset button to actually use this model
+        selectPresetButton(presetId);
     }
 }
 
