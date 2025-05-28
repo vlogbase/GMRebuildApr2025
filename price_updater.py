@@ -131,6 +131,83 @@ def should_update_prices() -> bool:
         logger.warning(f"Error checking last price update time: {e}. Will update prices to be safe.")
         return True
 
+def _populate_redis_pricing_cache():
+    """
+    Populate Redis cache with current database pricing data.
+    This prevents cost band regeneration by ensuring Redis has the latest data.
+    """
+    try:
+        from app import app, db
+        from models import OpenRouterModel
+        
+        with app.app_context():
+            # Get all active models from database
+            db_models = OpenRouterModel.query.filter_by(model_is_active=True).all()
+            
+            if not db_models:
+                logger.warning("No active models found in database for Redis cache population")
+                return
+            
+            # Build pricing data structure matching the API format
+            pricing_data = {}
+            models_count = 0
+            
+            for db_model in db_models:
+                model_id = db_model.model_id
+                
+                # Use stored cost band from database (no regeneration!)
+                cost_band = db_model.cost_band or ""
+                
+                # Get pricing values
+                input_price_raw = db_model.input_price_usd_million or 0
+                output_price_raw = db_model.output_price_usd_million or 0
+                
+                # Handle special cases for AutoRouter
+                if model_id == "openrouter/auto":
+                    input_price_raw = None
+                    output_price_raw = None
+                    cost_band = "Auto"
+                
+                # Create pricing data matching API format
+                pricing_data[model_id] = {
+                    'input_price': input_price_raw,
+                    'output_price': output_price_raw,
+                    'context_length': str(db_model.context_length) if db_model.context_length else 'N/A',
+                    'multimodal': "Yes" if db_model.is_multimodal else "No",
+                    'pdfs': "Yes" if db_model.supports_pdf else "No",
+                    'model_name': db_model.name or model_id,
+                    'model_id': model_id,
+                    'cost_band': cost_band,  # Use stored value - no generation!
+                    'is_free': db_model.is_free or False,
+                    'is_reasoning': db_model.supports_reasoning or False,
+                    'elo_score': db_model.elo_score,
+                    'source': 'database_cache'
+                }
+                
+                models_count += 1
+            
+            # Store in Redis cache
+            try:
+                from api_cache import get_redis_client
+                redis_client = get_redis_client()
+                
+                if redis_client:
+                    import json
+                    cache_key = 'cache:pricing_table_data'
+                    cache_data = json.dumps(pricing_data)
+                    
+                    # Set with 1 hour TTL (3600 seconds)
+                    redis_client.setex(cache_key, 3600, cache_data)
+                    logger.info(f"Populated Redis cache with {models_count} models, preventing cost band regeneration")
+                else:
+                    logger.warning("Redis client not available for cache population")
+                    
+            except Exception as redis_error:
+                logger.error(f"Error storing pricing data in Redis: {redis_error}")
+                
+    except Exception as e:
+        logger.error(f"Error populating Redis pricing cache: {e}")
+
 def fetch_and_store_openrouter_prices(force_update=False) -> bool:
     """
     Fetch current model prices from OpenRouter API and store them in the database.
@@ -515,7 +592,13 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                 logger.error(f"Error during session rollback: {rollback_error}")
             return False
         
-        # Database is now the single source of truth, no need to update global caches
+        # CRITICAL FIX: Update Redis cache after database update to prevent cost band regeneration
+        try:
+            _populate_redis_pricing_cache()
+            logger.info("Successfully updated Redis pricing cache after database update")
+        except Exception as redis_error:
+            logger.warning(f"Failed to update Redis cache after database update: {redis_error}")
+            # Don't fail the entire operation if Redis is unavailable
         
         # Log successful completion
         elapsed_time = time.time() - start_time
