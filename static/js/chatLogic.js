@@ -444,9 +444,7 @@ export function addTypingIndicator() {
     return addMessage('', 'assistant', true);
 }
 
-export function clearAttachedImages() {
-    attachedImageUrls = [];
-}
+
 
 export function clearAttachedPdf() {
     attachedPdfUrl = null;
