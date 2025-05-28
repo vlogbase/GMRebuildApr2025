@@ -289,29 +289,36 @@ export function closeModelSelector() {
     const modelSelector = document.getElementById('model-selector');
     if (modelSelector) {
         modelSelector.style.display = 'none';
-        document.body.classList.remove('modal-open');
+        currentlyEditingPresetId = null;
+        
+        // Remove the selector active class from body (for mobile view)
+        document.body.classList.remove('model-selector-active');
     }
-    currentlyEditingPresetId = null;
 }
 
 // Function to filter model list
 export function filterModelList(searchTerm) {
-    const modelItems = document.querySelectorAll('.model-item');
+    const modelList = document.querySelector('.model-list');
+    if (!modelList) return;
+    
+    const items = modelList.querySelectorAll('li');
     const lowerSearchTerm = searchTerm.toLowerCase();
     
-    modelItems.forEach(item => {
+    items.forEach(item => {
         const modelName = item.querySelector('.model-name')?.textContent.toLowerCase() || '';
-        const modelId = item.dataset.modelId?.toLowerCase() || '';
+        const modelProvider = item.querySelector('.model-provider')?.textContent.toLowerCase() || '';
         
-        const matches = modelName.includes(lowerSearchTerm) || modelId.includes(lowerSearchTerm);
-        item.style.display = matches ? 'flex' : 'none';
+        if (modelName.includes(lowerSearchTerm) || modelProvider.includes(lowerSearchTerm)) {
+            item.style.display = '';
+        } else {
+            item.style.display = 'none';
+        }
     });
 }
 
 // Function to open model selector for a preset
 export function openModelSelector(presetId, buttonElement) {
-    console.log(`🔧 Opening model selector for preset ${presetId}`);
-    
+    // Set current editing preset
     currentlyEditingPresetId = presetId;
     
     const modelSelector = document.getElementById('model-selector');
@@ -320,65 +327,324 @@ export function openModelSelector(presetId, buttonElement) {
         return;
     }
     
-    // Show the modal
-    modelSelector.style.display = 'flex';
-    document.body.classList.add('modal-open');
+    // For mobile: add a class to body when selector is active
+    if (window.innerWidth <= 576) {
+        document.body.classList.add('model-selector-active');
+    }
     
-    // Clear and populate the model list
-    populateModelList(presetId);
-    
-    // Clear search input
-    const searchInput = document.getElementById('model-search');
-    if (searchInput) {
-        searchInput.value = '';
+    // Position the selector relative to the button
+    const button = buttonElement || document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
+    if (button) {
+        const rect = button.getBoundingClientRect();
+        const selectorRect = modelSelector.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        
+        // Calculate position with a gap
+        const gap = 10; // Gap in pixels
+        
+        // Set default dimensions for selector
+        const selectorWidth = 300; // Width of the selector
+        const selectorHeight = selectorRect.height || 300; // Default if not visible yet
+        
+        // Mobile-specific positioning (centered in viewport)
+        if (window.innerWidth <= 576) {
+            // Center horizontally on the screen
+            const leftPosition = Math.max(10, Math.floor((viewportWidth - selectorWidth) / 2));
+            
+            // Position vertically in the middle of the viewport
+            const topPosition = Math.floor((viewportHeight - selectorHeight) / 2);
+            
+            // Apply centered position
+            modelSelector.style.top = `${topPosition}px`;
+            modelSelector.style.left = `${leftPosition}px`;
+        } else {
+            // Desktop positioning (relative to button)
+            // Try to position above the button first
+            let topPosition = rect.top - selectorHeight - gap;
+            
+            // Check if there's enough space above
+            if (topPosition < 0) {
+                // Not enough space above, position below the button
+                topPosition = rect.bottom + gap;
+            }
+            
+            // Center horizontally relative to the button
+            let leftPosition = rect.left + (rect.width / 2) - (selectorWidth / 2);
+            
+            // Ensure the selector doesn't go off-screen
+            if (leftPosition < 10) leftPosition = 10;
+            if (leftPosition + selectorWidth > viewportWidth - 10) {
+                leftPosition = viewportWidth - selectorWidth - 10;
+            }
+            
+            // Apply the position
+            modelSelector.style.top = `${topPosition}px`;
+            modelSelector.style.left = `${leftPosition}px`;
+        }
+        
+        // Make visible
+        modelSelector.style.display = 'block';
+        
+        // Clear search input
+        const modelSearch = document.getElementById('model-search');
+        if (modelSearch) {
+            modelSearch.value = '';
+        }
+        
+        // Populate model list for this preset
+        populateModelList(presetId);
     }
 }
 
 // Function to populate model list based on preset filter
 function populateModelList(presetId) {
+    // Log: At function start
+    console.log(`[Debug] populateModelList called for presetId: ${presetId}`);
+    console.log(`[Debug] Current global allModels count: ${allModels ? allModels.length : 'undefined'}`);
+    
     const modelList = document.querySelector('.model-list');
     if (!modelList) {
         console.error('Model list container not found');
         return;
     }
     
-    // Clear existing models
+    // Clear existing items
     modelList.innerHTML = '';
     
-    // Get filter for this preset
-    const filter = presetFilters[presetId] || (() => true);
-    
-    // Filter and display models
-    const filteredModels = allModels.filter(filter);
-    
-    filteredModels.forEach(model => {
-        const modelItem = document.createElement('div');
-        modelItem.className = 'model-item';
-        modelItem.dataset.modelId = model.id;
+    // For FREE models (preset 6), ensure there's always at least the default free models available
+    // This is especially important for non-logged in users where the API might not return models
+    if (presetId === '6' && (!allModels || allModels.length === 0 || !allModels.some(m => m.is_free === true || m.id.includes(':free')))) {
+        console.log('[Debug] No free models found in allModels, using fallback models for preset 6');
         
-        // Check if this model is currently selected for this preset
-        const currentModelId = userPreferences[presetId] || defaultModels[presetId];
-        const isSelected = model.id === currentModelId;
+        // Create fallback list of free models
+        const fallbackFreeModels = [
+            {
+                id: 'google/gemini-2.0-flash-exp:free',
+                name: 'Gemini 2.0 Flash',
+                is_free: true,
+                is_multimodal: false,
+                pricing: { prompt: 0, completion: 0 },
+                cost_band: ''
+            },
+            {
+                id: 'qwen/qwq-32b:free',
+                name: 'Qwen 32B',
+                is_free: true,
+                is_multimodal: false,
+                pricing: { prompt: 0, completion: 0 },
+                cost_band: ''
+            },
+            {
+                id: 'deepseek/deepseek-r1-distill-qwen-32b:free',
+                name: 'Deepseek R1 Qwen 32B',
+                is_free: true,
+                is_multimodal: false,
+                pricing: { prompt: 0, completion: 0 },
+                cost_band: ''
+            }
+        ];
         
-        modelItem.innerHTML = `
-            <div class="model-info">
-                <div class="model-name">${model.name}</div>
-                <div class="model-id">${model.id}</div>
-            </div>
-            <div class="model-meta">
-                <span class="cost-band cost-${model.cost_band || 'unknown'}">${model.cost_band || 'Unknown'}</span>
-                ${isSelected ? '<span class="selected-indicator">✓</span>' : ''}
-            </div>
-        `;
+        // Use DocumentFragment for batch DOM updates
+        const fragment = document.createDocumentFragment();
         
-        // Add click handler to select this model
-        modelItem.addEventListener('click', () => {
-            selectModelForPreset(presetId, model.id);
-            closeModelSelector();
+        // Add these fallback models to the fragment
+        fallbackFreeModels.forEach(model => {
+            const li = document.createElement('li');
+            li.dataset.modelId = model.id;
+            
+            // Create free tag
+            const freeTag = document.createElement('span');
+            freeTag.className = 'free-tag';
+            freeTag.textContent = 'FREE';
+            
+            // Create model name element
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'model-name';
+            nameSpan.textContent = model.name;
+            
+            // Create provider span
+            const providerSpan = document.createElement('span');
+            providerSpan.className = 'model-provider';
+            providerSpan.textContent = model.id.split('/')[0];
+            
+            // Assemble the elements
+            li.appendChild(freeTag);
+            li.appendChild(nameSpan);
+            li.appendChild(providerSpan);
+            
+            // Add click handler to select this model
+            li.addEventListener('click', function() {
+                selectModelForPreset(presetId, model.id);
+            });
+            
+            // Add to the fragment instead of directly to DOM
+            fragment.appendChild(li);
         });
         
-        modelList.appendChild(modelItem);
+        // Add the fragment to the DOM in one operation
+        modelList.appendChild(fragment);
+        
+        // Exit early as we've already populated the list with fallback models
+        return;
+    }
+    
+    // Standard case - API returned models properly
+    if (!allModels || allModels.length === 0) {
+        const placeholder = document.createElement('li');
+        placeholder.textContent = 'Loading models...';
+        modelList.appendChild(placeholder);
+        return;
+    }
+    
+    // Get filter function for this preset
+    const filterFn = presetFilters[presetId] || (() => true);
+    
+    // Filter and sort models
+    const filteredModels = allModels
+        .filter(filterFn)
+        .sort((a, b) => {
+            // Preset 2 ONLY: Sort by context length first (for context-focused models)
+            if (presetId === '2') {
+                // Primary sort: Context Length (descending)
+                const aContext = parseInt(a.context_length) || 0;
+                const bContext = parseInt(b.context_length) || 0;
+                if (aContext !== bContext) {
+                    return bContext - aContext;
+                }
+                
+                // Secondary sort: Input Price (ascending)
+                const aPrice = a.pricing?.prompt || 0;
+                const bPrice = b.pricing?.prompt || 0;
+                if (aPrice !== bPrice) {
+                    return aPrice - bPrice;
+                }
+                
+                // Tertiary sort: Model Name (alphabetical)
+                return a.name.localeCompare(b.name);
+            }
+            
+            // For other presets: ELO-based sorting
+            
+            // Primary sort: ELO Score (descending, higher is better)
+            const aElo = a.elo_score || 0;
+            const bElo = b.elo_score || 0;
+            
+            // Models with ELO scores come before models without ELO scores
+            if (aElo > 0 && bElo === 0) return -1;
+            if (aElo === 0 && bElo > 0) return 1;
+            
+            // Both have ELO scores - sort by ELO (descending)
+            if (aElo !== bElo) {
+                return bElo - aElo;
+            }
+            
+            // Secondary sort: Context Length (descending)
+            const aContext = parseInt(a.context_length) || 0;
+            const bContext = parseInt(b.context_length) || 0;
+            if (aContext !== bContext) {
+                return bContext - aContext;
+            }
+            
+            // Tertiary sort: Input Price (ascending)
+            const aPrice = a.pricing?.prompt || 0;
+            const bPrice = b.pricing?.prompt || 0;
+            if (aPrice !== bPrice) {
+                return aPrice - bPrice;
+            }
+            
+            // Quaternary sort: Model Name (alphabetical)
+            return a.name.localeCompare(b.name);
+        });
+    
+    // Log: After filtering
+    console.log(`[Debug] Filtered models count for preset ${presetId}: ${filteredModels.length}`);
+    if (filteredModels.length === 0 && allModels && allModels.length > 0) {
+        console.warn(`[Debug] Filtering for preset ${presetId} resulted in 0 models. Check filter logic and model properties.`);
+        // Log the filter function itself if possible
+        console.log('[Debug] Filter function:', filterFn.toString());
+        // Log the first few models from allModels again for comparison
+        console.log('[Debug] First few models in allModels before filtering:', JSON.stringify(allModels.slice(0, 3), null, 2));
+    }
+    
+    // Use DocumentFragment for batch DOM updates
+    const fragment = document.createDocumentFragment();
+    
+    // Add each model to the fragment
+    filteredModels.forEach(model => {
+        // Log: Inside rendering loop
+        console.log(`[Debug] Rendering list item for model: ${model.id}, Band: ${model.cost_band}`);
+        
+        const li = document.createElement('li');
+        li.dataset.modelId = model.id;
+        
+        // Create model name element
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'model-name';
+        // Use our display name mapping if available
+        if (defaultModelDisplayNames[model.id]) {
+            nameSpan.textContent = defaultModelDisplayNames[model.id];
+        } else {
+            nameSpan.textContent = model.name;
+        }
+        
+        // Add cost band indicator if available
+        if (model.cost_band) {
+            const costSpan = document.createElement('span');
+            costSpan.textContent = model.cost_band;
+            costSpan.className = 'cost-band-indicator';
+            
+            // Add the specific band class based on the band value
+            if (model.cost_band === '$$$$') {
+                costSpan.classList.add('cost-band-4-danger');
+            } else if (model.cost_band === '$$$') {
+                costSpan.classList.add('cost-band-3-warn');
+            } else if (model.cost_band === '$$') {
+                costSpan.classList.add('cost-band-2');
+            } else if (model.cost_band === '$') {
+                costSpan.classList.add('cost-band-1');
+            } else {
+                // For empty band (free models)
+                costSpan.classList.add('cost-band-free');
+            }
+            
+            nameSpan.appendChild(costSpan);
+        }
+        
+        // Create provider badge
+        const providerSpan = document.createElement('span');
+        providerSpan.className = 'model-provider';
+        providerSpan.textContent = model.id.split('/')[0];
+        
+        // Add badge for free models
+        if (model.is_free === true || model.id.includes(':free')) {
+            const freeTag = document.createElement('span');
+            freeTag.className = 'free-tag';
+            freeTag.textContent = 'FREE';
+            li.appendChild(freeTag);
+        }
+        
+        li.appendChild(nameSpan);
+        li.appendChild(providerSpan);
+        
+        // Add click handler to select this model
+        li.addEventListener('click', function() {
+            selectModelForPreset(currentlyEditingPresetId, model.id);
+        });
+        
+        // Add to fragment instead of directly to DOM
+        fragment.appendChild(li);
     });
+    
+    // Add the fragment to the DOM in one operation
+    modelList.appendChild(fragment);
+    
+    // If no models match the filter
+    if (filteredModels.length === 0) {
+        const noResults = document.createElement('li');
+        noResults.textContent = 'No models found';
+        modelList.appendChild(noResults);
+    }
 }
 
 // Function to select a model for a specific preset
@@ -536,3 +802,5 @@ window.closeModelSelector = closeModelSelector;
 window.updatePresetButtonLabels = updatePresetButtonLabels;
 window.fetchAvailableModels = fetchAvailableModels;
 window.fetchUserPreferences = fetchUserPreferences;
+window.populateModelList = populateModelList;
+window.selectModelForPreset = selectModelForPreset;

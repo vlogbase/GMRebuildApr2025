@@ -1,6 +1,6 @@
 // Import required modules
 import { fetchConversationsAPI, loadConversationAPI, createNewConversationAPI } from './apiService.js';
-import { addMessage, currentConversationId } from './chatLogic.js';
+import { addMessage, currentConversationId, setCurrentConversationId } from './chatLogic.js';
 
 // Conversation management functions
 export async function fetchConversations(bustCache = false, metadataOnly = true) {
@@ -90,10 +90,8 @@ function updateConversationsList(conversations) {
         `;
         
         conversationElement.addEventListener('click', () => {
-            // Update the current conversation ID in chat logic
-            if (typeof currentConversationId !== 'undefined') {
-                currentConversationId = conversation.id;
-            }
+            // Update the current conversation ID using setter function
+            setCurrentConversationId(conversation.id);
             
             // Update active state in UI
             document.querySelectorAll('.conversation-item').forEach(item => {

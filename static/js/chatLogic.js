@@ -10,6 +10,11 @@ export let attachedImageUrls = [];
 export let attachedPdfUrl = null;
 export let attachedPdfName = null;
 
+// Setter function for currentConversationId to avoid const assignment errors
+export function setCurrentConversationId(id) {
+    currentConversationId = id;
+}
+
 // Export functions for external access
 export function sendMessage() {
     // Add null check for messageInput
