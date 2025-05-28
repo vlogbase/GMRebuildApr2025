@@ -5,10 +5,8 @@ import os
 import datetime
 
 import requests
-from app import app, db
-from flask import Blueprint, redirect, request, url_for, session
+from flask import Blueprint, redirect, request, url_for, session, current_app
 from flask_login import login_required, login_user, logout_user
-from models import User
 from oauthlib.oauth2 import WebApplicationClient
 
 GOOGLE_CLIENT_ID = os.environ["GOOGLE_OAUTH_CLIENT_ID"]
@@ -82,6 +80,10 @@ def callback():
     else:
         return "User email not available or not verified by Google.", 400
 
+    # Import inside function to avoid circular imports
+    from models import User
+    from database import db
+    
     # Check if user exists
     is_new_user = False
     user = User.query.filter_by(email=users_email).first()
@@ -100,7 +102,7 @@ def callback():
         picture_url = userinfo.get("picture", "")
         if len(picture_url) > 1024:
             picture_url = picture_url[:1024]
-            app.logger.warning(f"Truncated long profile picture URL for user {users_email}")
+            current_app.logger.warning(f"Truncated long profile picture URL for user {users_email}")
         user.profile_picture = picture_url
         
         user.last_login_at = datetime.datetime.utcnow()
@@ -110,7 +112,7 @@ def callback():
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            app.logger.error(f"Failed to create user {users_email}: {str(e)}")
+            current_app.logger.error(f"Failed to create user {users_email}: {str(e)}")
             return redirect(url_for('index') + '?error=login_failed')
     else:
         # Update existing user's Google info with validation
@@ -120,7 +122,7 @@ def callback():
         picture_url = userinfo.get("picture", "")
         if len(picture_url) > 1024:
             picture_url = picture_url[:1024]
-            app.logger.warning(f"Truncated long profile picture URL for user {users_email}")
+            current_app.logger.warning(f"Truncated long profile picture URL for user {users_email}")
         user.profile_picture = picture_url
         
         user.last_login_at = datetime.datetime.utcnow()
@@ -129,7 +131,7 @@ def callback():
             db.session.commit()
         except Exception as e:
             db.session.rollback()
-            app.logger.error(f"Failed to update user {users_email}: {str(e)}")
+            current_app.logger.error(f"Failed to update user {users_email}: {str(e)}")
             return redirect(url_for('index') + '?error=login_failed')
 
     # Log the user in

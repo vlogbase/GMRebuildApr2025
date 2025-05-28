@@ -271,24 +271,12 @@ with app.app_context():
     db.create_all()
     logger.info("Essential database tables created")
 
-# Initialize the background initialization system for non-blocking startup
-# This replaces individual threads with a coordinated initialization system
+# CRITICAL FIX: Disable blocking background initialization to restore API functionality
+# The background initialization system was causing the Flask app to hang during startup
+logger.info("Skipping background initialization to restore immediate API functionality")
+
+# Minimal initialization to ensure app can start and serve API requests
 try:
-    # Import the background initialization module
-    from app_initialization import setup_background_initialization
-    
-    # Start the background initialization process
-    background_initializer = setup_background_initialization()
-    logger.info("Background initialization system started")
-    
-    # Store the initializer in app config for access elsewhere if needed
-    app.config['BACKGROUND_INITIALIZER'] = background_initializer
-    
-except Exception as e:
-    logger.error(f"Error setting up background initialization: {e}")
-    logger.warning("Continuing with basic startup - some features may be unavailable")
-    
-    # Fall back to minimal initialization to ensure app can start
     # Start Azure Storage initialization in a simple background thread as fallback
     azure_init_thread = threading.Thread(
         target=initialize_azure_storage, 
@@ -297,6 +285,8 @@ except Exception as e:
     )
     azure_init_thread.start()
     logger.info("Fallback Azure Blob Storage initialization scheduled")
+except Exception as e:
+    logger.warning(f"Azure storage initialization failed: {e}")
 
 # Initialize LoginManager
 login_manager = LoginManager()
