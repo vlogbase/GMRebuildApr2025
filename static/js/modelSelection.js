@@ -4,7 +4,7 @@
  */
 
 import { debounce } from './utils.js';
-import { fetchUserPreferencesAPI, fetchAvailableModelsAPI, saveModelPreferenceAPI, resetModelPreferenceAPI } from './apiService.js';
+import { fetchUserPreferencesAPI, fetchAvailableModelsAPI, saveModelPreferenceAPI, resetPreferencesAPI } from './apiService.js';
 
 // Model selection state variables
 export let allModels = []; // All models from OpenRouter
@@ -888,7 +888,7 @@ export async function resetToDefault(presetId) {
     try {
         console.log(`🔄 Resetting preset ${presetId} to default`);
         
-        const data = await resetModelPreferenceAPI(presetId);
+        const data = await resetPreferencesAPI(presetId);
         
         if (data.success) {
             delete userPreferences[presetId];

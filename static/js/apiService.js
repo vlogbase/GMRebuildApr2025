@@ -169,18 +169,21 @@ export async function uploadFileAPI(file, conversationId) {
     }
 }
 
-// Reset model preference to default
-export async function resetModelPreferenceAPI(presetId) {
+// Reset preferences (unified function for both single preset and all presets)
+export async function resetPreferencesAPI(presetId = null) {
     try {
-        const response = await fetch('/api/reset_model_preference', {
+        const requestBody = {};
+        if (presetId !== null && presetId !== undefined) {
+            requestBody.preset_id = presetId;
+        }
+        
+        const response = await fetch('/reset_preferences', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRFToken': getCSRFToken()
             },
-            body: JSON.stringify({
-                preset_id: presetId
-            })
+            body: JSON.stringify(requestBody)
         });
         
         if (!response.ok) {
@@ -189,9 +192,15 @@ export async function resetModelPreferenceAPI(presetId) {
         
         return await response.json();
     } catch (error) {
-        console.error('Error resetting model preference:', error);
+        console.error('Error resetting preferences:', error);
         throw error;
     }
+}
+
+// Legacy function for backward compatibility (now uses unified API)
+export async function resetModelPreferenceAPI(presetId) {
+    console.warn('resetModelPreferenceAPI is deprecated, use resetPreferencesAPI instead');
+    return resetPreferencesAPI(presetId);
 }
 
 // Cleanup empty conversations

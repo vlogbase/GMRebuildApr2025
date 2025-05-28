@@ -8,7 +8,8 @@ import { messageInput, sendButton, newChatButton, clearConversationsButton, imag
 import { sendMessage, clearChat } from './chatLogic.js';
 import { createNewConversation, fetchConversations } from './conversationManagement.js';
 import { handleImageFile, switchCamera, stopCameraStream } from './fileUpload.js';
-import { selectPresetButton, resetToDefault } from './modelSelection.js';
+import { selectPresetButton, resetToDefault, fetchUserPreferences, updatePresetButtonLabels } from './modelSelection.js';
+import { resetPreferencesAPI } from './apiService.js';
 
 // Initialize main event listeners
 export function initializeMainEventListeners(isAuthenticated, userCreditBalance) {
@@ -384,28 +385,30 @@ function updateLayoutForScreenSize() {
     }
 }
 
-// Refresh model prices (placeholder function)
+// Reset all model presets to defaults
 async function resetAllPresets() {
     console.log('🔄 Resetting all model presets to defaults...');
     
-    // Get all preset IDs (1-6 based on the current preset buttons)
-    const presetIds = ['1', '2', '3', '4', '5', '6'];
-    let allSuccess = true;
-    
-    for (const presetId of presetIds) {
-        try {
-            const success = await resetToDefault(presetId);
-            if (!success) {
-                allSuccess = false;
-                console.error(`❌ Failed to reset preset ${presetId}`);
-            }
-        } catch (error) {
-            console.error(`❌ Error resetting preset ${presetId}:`, error);
-            allSuccess = false;
+    try {
+        // Make a single API call to reset all preferences
+        const response = await resetPreferencesAPI();
+        
+        if (response && response.success) {
+            console.log('✅ All presets reset successfully');
+            
+            // Refresh user preferences and update UI
+            await fetchUserPreferences();
+            updatePresetButtonLabels();
+            
+            return true;
+        } else {
+            console.error('❌ Failed to reset presets:', response?.error || 'Unknown error');
+            return false;
         }
+    } catch (error) {
+        console.error('❌ Error resetting all presets:', error);
+        return false;
     }
-    
-    return allSuccess;
 }
 
 // Setup premium feature locks (moved from main script)
