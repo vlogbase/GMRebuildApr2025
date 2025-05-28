@@ -632,6 +632,8 @@ def elo_management():
         # Add search filter if provided
         if search:
             query = query.filter(OpenRouterModel.model_id.ilike(f'%{search}%'))
+            # When searching, show more results per page to be more useful
+            per_page = 200
         
         # Order by model_id for consistent pagination
         query = query.order_by(OpenRouterModel.model_id)

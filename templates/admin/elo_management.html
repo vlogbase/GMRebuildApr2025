@@ -273,28 +273,44 @@
         
         // Real-time search functionality
         const searchInput = document.getElementById('realtime-search');
-        const tableRows = document.querySelectorAll('tbody tr');
+        const tableContainer = document.querySelector('.table-responsive');
         const visibleCountSpan = document.getElementById('visible-count');
+        let searchTimeout;
         
-        function filterTable() {
-            const searchTerm = searchInput.value.toLowerCase();
-            let visibleCount = 0;
+        function performSearch() {
+            const searchTerm = searchInput.value.trim();
             
-            tableRows.forEach(row => {
-                const modelId = row.querySelector('code').textContent.toLowerCase();
-                if (modelId.includes(searchTerm)) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
-            });
+            // Show loading indicator
+            if (searchTerm) {
+                tableContainer.style.opacity = '0.5';
+            }
             
-            visibleCountSpan.textContent = visibleCount;
+            // Construct URL with search parameter
+            const url = new URL(window.location.href);
+            if (searchTerm) {
+                url.searchParams.set('search', searchTerm);
+            } else {
+                url.searchParams.delete('search');
+            }
+            url.searchParams.delete('page'); // Reset to page 1 when searching
+            
+            // Redirect to perform the search on the server
+            window.location.href = url.toString();
         }
         
-        // Filter as user types
-        searchInput.addEventListener('input', filterTable);
+        // Search as user types (with debouncing)
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(performSearch, 500); // Wait 500ms after user stops typing
+        });
+        
+        // Also search immediately on Enter key
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                clearTimeout(searchTimeout);
+                performSearch();
+            }
+        });
         
         // AJAX save functionality
         function saveEloScore(modelId, eloScore) {
@@ -390,11 +406,6 @@
                 searchInput.select();
             }
         });
-        
-        // Initialize with any existing search term
-        if (searchInput.value) {
-            filterTable();
-        }
     </script>
 </body>
 </html>
