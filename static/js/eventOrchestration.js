@@ -59,7 +59,15 @@ function setupCoreUIEventListeners() {
     // Example question buttons
     setupExampleQuestionListeners();
     
-    // Message input focus/blur events
+    // Send button click event
+    if (sendButton) {
+        sendButton.addEventListener('click', () => {
+            console.log('📤 Send button clicked');
+            sendMessage();
+        });
+    }
+    
+    // Message input focus/blur events and Enter key handling
     if (messageInput) {
         messageInput.addEventListener('focus', () => {
             console.log('📝 Message input focused');
@@ -71,6 +79,27 @@ function setupCoreUIEventListeners() {
             console.log('📝 Message input blurred');
             // Remove focused class
             messageInput.classList.remove('focused');
+        });
+        
+        // Handle Enter key for sending messages (desktop) vs new line (mobile)
+        messageInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                // On mobile (width <= 576px), allow Enter to create new lines
+                if (window.innerWidth <= 576) {
+                    // Allow default behavior (new line)
+                    return;
+                }
+                
+                // On desktop, send message unless Shift is held
+                if (!event.shiftKey) {
+                    event.preventDefault();
+                    console.log('📤 Enter key pressed - sending message');
+                    sendMessage();
+                } else {
+                    // Shift+Enter creates a new line (allow default behavior)
+                    console.log('📝 Shift+Enter pressed - creating new line');
+                }
+            }
         });
     }
 }
