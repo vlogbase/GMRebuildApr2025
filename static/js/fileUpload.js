@@ -1,6 +1,6 @@
 // Import required modules
 import { uploadFileAPI } from './apiService.js';
-import { attachedImageUrls, attachedPdfUrl, attachedPdfName, currentConversationId } from './chatLogic.js';
+import { attachedImageUrls, currentConversationId, clearAttachedPdf } from './chatLogic.js';
 
 // File upload state management
 export let isUploadingFile = false;
@@ -43,13 +43,13 @@ export async function handleFileUpload(file, type = null) {
                     filename: file.name
                 };
             } else if (detectedType === 'pdf' && response.document_url) {
-                // Store PDF data for sending with the message
-                attachedPdfUrl = response.document_url;
-                attachedPdfName = response.document_name || file.name;
-                console.log(`📄 PDF stored: ${attachedPdfName}`);
+                // Store PDF data in the global state
+                window.attachedPdfUrl = response.document_url;
+                window.attachedPdfName = response.document_name || file.name;
+                console.log(`📄 PDF stored: ${window.attachedPdfName}`);
                 
                 // Show PDF preview/indicator
-                showPdfPreview(attachedPdfName);
+                showPdfPreview(window.attachedPdfName);
                 
                 return {
                     success: true,

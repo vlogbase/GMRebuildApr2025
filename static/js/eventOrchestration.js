@@ -168,7 +168,7 @@ function setupDocumentEventListeners() {
 // Setup page navigation event listeners
 function setupPageNavigationEventListeners(isAuthenticated, userCreditBalance) {
     // Handle browser back/forward navigation
-    window.addEventListener('pageshow', function(event) {
+    window.addEventListener('pageshow', function() {
         console.log('📄 Page show event');
         // Re-apply locks when user navigates back from billing page
         if (!isAuthenticated || userCreditBalance <= 0) {
