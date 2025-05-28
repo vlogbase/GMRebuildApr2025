@@ -1,6 +1,6 @@
 // Import required modules
 import { forceRepaint } from './utils.js';
-import { sendMessageAPI } from './apiService.js';
+import { sendMessageAPI, shareConversationAPI, rateMessageAPI } from './apiService.js';
 import { messageInput, sendButton } from './uiSetup.js';
 
 // Chat state management
@@ -349,6 +349,11 @@ export function addMessage(content, sender, isTyping = false, metadata = null) {
         messageWrapper.appendChild(actionsContainer);
     }
     
+    // Set message ID for rating/sharing functionality (from original behavior)
+    if (metadata && metadata.id) {
+        messageElement.dataset.messageId = metadata.id;
+    }
+    
     // Assemble the message element
     messageElement.appendChild(avatar);
     messageElement.appendChild(messageWrapper);
@@ -489,5 +494,135 @@ export function clearChat() {
                 }
             });
         }
+    }
+}
+
+// Copy message text function (original behavior)
+export function copyMessageText(messageElement) {
+    // Find message content and strip out image elements
+    const messageContent = messageElement.querySelector('.message-content');
+    if (!messageContent) return;
+    
+    // Clone the content to avoid modifying the original
+    const contentClone = messageContent.cloneNode(true);
+    
+    // Remove image elements from the clone
+    const images = contentClone.querySelectorAll('img, .message-image-container, .message-multi-image');
+    images.forEach(img => img.remove());
+    
+    const textContent = contentClone.textContent.trim();
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(textContent).then(() => {
+        // Update button text briefly
+        const copyBtn = messageElement.querySelector('.copy-btn');
+        if (copyBtn) {
+            const originalText = copyBtn.innerHTML;
+            copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied';
+            copyBtn.disabled = true;
+            
+            // Restore after 2 seconds
+            setTimeout(() => {
+                copyBtn.innerHTML = originalText;
+                copyBtn.disabled = false;
+            }, 2000);
+        }
+    }).catch(err => {
+        console.error('Failed to copy text:', err);
+    });
+}
+
+// Share conversation function (original behavior)
+export async function shareConversation(messageElement) {
+    if (!currentConversationId) {
+        console.warn('No conversation ID available for sharing');
+        return;
+    }
+    
+    try {
+        const response = await shareConversationAPI(currentConversationId);
+        
+        if (response.share_url) {
+            // Copy share URL to clipboard
+            await navigator.clipboard.writeText(response.share_url);
+            
+            // Update button text briefly
+            const shareBtn = messageElement.querySelector('.share-btn');
+            if (shareBtn) {
+                const originalText = shareBtn.innerHTML;
+                shareBtn.innerHTML = '<i class="fa-solid fa-check"></i> Copied link';
+                shareBtn.disabled = true;
+                
+                // Restore after 2 seconds
+                setTimeout(() => {
+                    shareBtn.innerHTML = originalText;
+                    shareBtn.disabled = false;
+                }, 2000);
+            }
+        }
+    } catch (error) {
+        console.error('Failed to share conversation:', error);
+    }
+}
+
+// Rate message function (original behavior)
+export async function rateMessage(messageElement, rating) {
+    const messageId = messageElement.dataset.messageId;
+    if (!messageId) {
+        console.warn('No message ID found for rating');
+        return;
+    }
+    
+    try {
+        const response = await rateMessageAPI(messageId, rating);
+        
+        if (response.success) {
+            // Update UI buttons - toggle voted class
+            const upvoteBtn = messageElement.querySelector('.upvote-btn');
+            const downvoteBtn = messageElement.querySelector('.downvote-btn');
+            
+            if (upvoteBtn && downvoteBtn) {
+                // Clear existing votes
+                upvoteBtn.classList.remove('voted');
+                downvoteBtn.classList.remove('voted');
+                
+                // Add voted class to the selected button
+                if (rating === 1) {
+                    upvoteBtn.classList.add('voted');
+                } else if (rating === -1) {
+                    downvoteBtn.classList.add('voted');
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Failed to rate message:', error);
+    }
+}
+
+// Show login prompt function (original behavior)
+export function showLoginPrompt() {
+    console.log('Showing login prompt for unauthenticated user');
+    
+    // Check if prompt already exists
+    if (document.querySelector('.login-prompt-sidebar')) {
+        return;
+    }
+    
+    // Create login prompt element
+    const loginPrompt = document.createElement('div');
+    loginPrompt.className = 'login-prompt-sidebar';
+    loginPrompt.innerHTML = `
+        <div class="login-prompt-content">
+            <h3>Ready for more?</h3>
+            <p>Create a free account to continue your conversation and unlock additional features.</p>
+            <a href="/login" class="btn btn-primary">Sign in / Sign up</a>
+        </div>
+    `;
+    
+    // Find the sidebar and insert the prompt
+    const sidebar = document.querySelector('.sidebar') || document.querySelector('#sidebar');
+    if (sidebar) {
+        // Insert at the top of the sidebar
+        sidebar.insertBefore(loginPrompt, sidebar.firstChild);
     }
 }

@@ -49,8 +49,9 @@ export async function createNewConversation() {
     try {
         const data = await createNewConversationAPI();
         
-        if (data.conversation_id) {
-            currentConversationId = data.conversation_id;
+        if (data.conversation && data.conversation.id) {
+            // Set the new conversation ID using the setter function
+            setCurrentConversationId(data.conversation.id);
             
             // Clear current chat
             const chatMessages = document.getElementById('chat-messages');
@@ -58,12 +59,15 @@ export async function createNewConversation() {
                 chatMessages.innerHTML = '';
             }
             
-            // Update URL if needed
+            // Update URL state to match original behavior
             if (window.history && window.history.pushState) {
-                window.history.pushState(null, '', `/chat/${data.conversation_id}`);
+                window.history.pushState(null, '', `/chat/${data.conversation.id}`);
             }
             
-            console.log(`✅ Created new conversation: ${data.conversation_id}`);
+            // Refresh sidebar to show new conversation (mirroring original behavior)
+            await fetchConversations(true, true);
+            
+            console.log(`✅ Created new conversation: ${data.conversation.id}`);
         }
         
         return data;

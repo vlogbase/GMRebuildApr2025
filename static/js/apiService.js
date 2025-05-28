@@ -45,7 +45,7 @@ export async function sendMessageAPI(payload) {
 // Load specific conversation
 export async function loadConversationAPI(conversationId) {
     try {
-        const response = await fetch(`/conversation/${conversationId}`);
+        const response = await fetch(`/conversation/${conversationId}/messages`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -59,7 +59,7 @@ export async function loadConversationAPI(conversationId) {
 // Create new conversation
 export async function createNewConversationAPI() {
     try {
-        const response = await fetch('/new_conversation', {
+        const response = await fetch('/api/create-conversation', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -220,6 +220,51 @@ export async function fetchAvailableModelsAPI() {
             stack: error.stack,
             fullError: error
         });
+        throw error;
+    }
+}
+
+// Share conversation
+export async function shareConversationAPI(conversationId) {
+    try {
+        const response = await fetch(`/conversation/${conversationId}/share`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error sharing conversation:', error);
+        throw error;
+    }
+}
+
+// Rate message
+export async function rateMessageAPI(messageId, rating) {
+    try {
+        const response = await fetch(`/message/${messageId}/rate`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCSRFToken()
+            },
+            body: JSON.stringify({ rating })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return await response.json();
+    } catch (error) {
+        console.error('Error rating message:', error);
         throw error;
     }
 }
