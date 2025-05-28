@@ -28,7 +28,7 @@ export function setUserIsLoggedIn(isLoggedIn) {
 }
 
 // Function to create message elements (copied from script.js.backup)
-function createMessageElement(content, sender, isTyping = false, metadata = null) {
+function createMessageElement(content, sender, metadata = null) {
     // Create the main message container
     const messageElement = document.createElement('div');
     messageElement.className = `message message-${sender}`;
@@ -152,10 +152,7 @@ export function sendMessage() {
     const typingIndicator = addTypingIndicator();
     
     // IMPORTANT: Keep the PDF/image data available until AFTER sending to backend
-    // Store current attachment states
-    const storedImageUrls = [...attachedImageUrls];
-    const storedPdfUrl = attachedPdfUrl;
-    const storedPdfName = attachedPdfName;
+    // Note: Attachment data is preserved for backend sending
     
     // Clear UI indicators (we've already displayed them in the message)
     // But preserve the actual data for the backend call

@@ -1,6 +1,6 @@
 // Import required modules
 import { fetchConversationsAPI, loadConversationAPI, createNewConversationAPI } from './apiService.js';
-import { addMessage, currentConversationId, setCurrentConversationId } from './chatLogic.js';
+import { addMessage, setCurrentConversationId } from './chatLogic.js';
 
 // Conversation management functions
 export async function fetchConversations(bustCache = false, metadataOnly = true) {

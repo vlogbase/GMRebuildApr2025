@@ -121,7 +121,7 @@ function setupLegacyTabFunction() {
             }
         } else if (tabName === 'tellFriend') {
             console.log('Loading Tell a Friend tab content - SIMPLIFIED VERSION');
-            const tellFriendTab = document.getElementById('tellFriend');
+            // Initialize affiliate functionality for Tell a Friend tab
 
             // Initialize the "Tell a Friend" tab with simplified functionality
             if (typeof window.initializeSimplifiedAffiliateFunctions === 'function') {

@@ -22,7 +22,7 @@ export function forceRepaint(element) {
     }
     
     // Read layout property to force layout calculation
-    const currentHeight = element.offsetHeight;
+    element.offsetHeight;
     // Force a style recalculation with a more substantial change
     element.style.transform = 'translateZ(0)';
     // Use requestAnimationFrame to ensure it processes in the next paint cycle
