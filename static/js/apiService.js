@@ -81,13 +81,36 @@ export async function createNewConversationAPI() {
 // Fetch user preferences
 export async function fetchUserPreferencesAPI() {
     try {
+        console.log('Fetching user preferences from /get_preferences');
         const response = await fetch('/get_preferences');
+        
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+        console.log('Response headers:', response.headers);
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorText = await response.text();
+            console.error('Non-OK response body:', errorText);
+            throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
         }
-        return await response.json();
+        
+        const responseText = await response.text();
+        console.log('Raw response text:', responseText);
+        
+        try {
+            const data = JSON.parse(responseText);
+            console.log('Parsed JSON data:', data);
+            return data;
+        } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Failed to parse response text:', responseText);
+            throw new Error(`Invalid JSON response: ${parseError.message}`);
+        }
     } catch (error) {
-        console.error('Error fetching user preferences:', error);
+        console.error('Complete error object:', error);
+        console.error('Error name:', error.name);
+        console.error('Error message:', error.message);
+        console.error('Error stack:', error.stack);
         throw error;
     }
 }

@@ -45,7 +45,7 @@ export async function loadConversation(conversationId) {
     }
 }
 
-export async function createNewConversation() {
+export async function createNewConversation(updateURL = true) {
     try {
         const data = await createNewConversationAPI();
         
@@ -59,9 +59,13 @@ export async function createNewConversation() {
                 chatMessages.innerHTML = '';
             }
             
-            // Update URL state to match original behavior
-            if (window.history && window.history.pushState) {
+            // Only update URL if explicitly requested (e.g., when user clicks "New Chat")
+            // Don't update URL during initial page load or default conversation creation
+            if (updateURL && window.history && window.history.pushState) {
                 window.history.pushState(null, '', `/chat/${data.conversation.id}`);
+                console.log(`🔗 Updated URL to /chat/${data.conversation.id}`);
+            } else {
+                console.log(`📝 Created conversation ${data.conversation.id} without URL update`);
             }
             
             // Refresh sidebar to show new conversation (mirroring original behavior)

@@ -54,12 +54,10 @@ export const presetFilters = {
 export const defaultModels = {
     '1': 'anthropic/claude-3-5-sonnet-20241022',
     '2': 'openai/gpt-4o-2024-11-20',
-    '3': 'anthropic/claude-3-5-sonnet-20241022', // Image-capable
-    '4': 'anthropic/claude-3-5-sonnet-20241022', // Document-capable
-    '5': 'meta-llama/llama-3.1-8b-instruct:free',
-    '6': 'meta-llama/llama-3.2-11b-vision-instruct:free', // Free image-capable
-    '7': 'meta-llama/llama-3.1-8b-instruct:free', // Free document-capable (fallback)
-    '8': 'openai/o1-preview' // Reasoning
+    '3': 'openai/o1-preview', // Reasoning
+    '4': 'anthropic/claude-3-5-sonnet-20241022', // Multimodal
+    '5': 'meta-llama/llama-3.1-8b-instruct:free', // Search/Perplexity
+    '6': 'meta-llama/llama-3.2-11b-vision-instruct:free' // Free
 };
 
 // Expose defaultModels globally for mobile scripts
@@ -172,7 +170,7 @@ export function updatePresetButtonLabels() {
                 if (modelInfo) {
                     displayName = modelInfo.name || formatModelName(modelId);
                 } else {
-                    console.warn(`Model ${modelId} not found in allModels array`);
+                    console.debug(`Model ${modelId} not found in allModels array, using fallback name`);
                 }
             }
             
@@ -182,10 +180,11 @@ export function updatePresetButtonLabels() {
                 nameSpan.textContent = displayName;
                 console.log(`Updated preset ${presetId} label to: ${displayName}`);
             } else {
-                console.warn(`Could not find .model-name span in preset button ${presetId}`);
+                console.debug(`Could not find .model-name span in preset button ${presetId}`);
             }
         } else {
-            console.warn(`Could not find preset button with data-preset-id="${presetId}"`);
+            // Only log debug message instead of warning since some presets may not exist in HTML
+            console.debug(`Preset button ${presetId} not found in HTML - this is normal if not all presets are implemented`);
         }
     });
 }
@@ -214,16 +213,31 @@ export async function fetchUserPreferences() {
         console.log('👤 Fetching user preferences...');
         const data = await fetchUserPreferencesAPI();
         
-        if (data.success) {
+        console.log('Received preferences data:', data);
+        
+        if (data && data.success) {
             userPreferences = data.preferences || {};
             window.userPreferences = userPreferences;
             console.log('✅ User preferences loaded:', userPreferences);
             updatePresetButtonLabels();
         } else {
-            console.warn('⚠️ Failed to fetch user preferences:', data.error);
+            const errorMsg = data ? data.error : 'No data received';
+            console.warn('⚠️ Failed to fetch user preferences:', errorMsg);
+            console.warn('Full response data:', data);
         }
     } catch (error) {
-        console.error('❌ Error fetching user preferences:', error);
+        console.error('❌ Complete error fetching user preferences:');
+        console.error('Error object:', error);
+        console.error('Error type:', typeof error);
+        console.error('Error constructor:', error.constructor.name);
+        console.error('Error message:', error.message || 'No message available');
+        console.error('Error stack:', error.stack || 'No stack available');
+        
+        // If error is undefined or has no message, provide more context
+        if (!error || error.message === undefined) {
+            console.error('Error appears to be undefined or malformed');
+            console.error('This might indicate a network issue or CORS problem');
+        }
     }
 }
 
