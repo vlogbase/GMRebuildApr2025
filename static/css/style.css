@@ -2294,6 +2294,28 @@ body.account-page .tab-pane {
     color: var(--text-color);
 }
 
+/* Reset Presets Button - Uses same styling as upload button */
+.reset-presets-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--button-bg);
+    color: var(--secondary-text);
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    transition: all 0.2s ease;
+    margin-left: auto;
+}
+
+.reset-presets-btn:hover {
+    background-color: var(--hover-color);
+    color: var(--text-color);
+}
+
 /* Document Upload Modal */
 .document-upload-modal {
     display: none;

@@ -385,10 +385,27 @@ function updateLayoutForScreenSize() {
 }
 
 // Refresh model prices (placeholder function)
-function refreshModelPrices() {
-    console.log('🔄 Refreshing model prices...');
-    // This function would typically call the API to refresh prices
-    // For now, it's a placeholder that could dispatch an event or call apiService
+async function resetAllPresets() {
+    console.log('🔄 Resetting all model presets to defaults...');
+    
+    // Get all preset IDs (1-6 based on the current preset buttons)
+    const presetIds = ['1', '2', '3', '4', '5', '6'];
+    let allSuccess = true;
+    
+    for (const presetId of presetIds) {
+        try {
+            const success = await resetToDefault(presetId);
+            if (!success) {
+                allSuccess = false;
+                console.error(`❌ Failed to reset preset ${presetId}`);
+            }
+        } catch (error) {
+            console.error(`❌ Error resetting preset ${presetId}:`, error);
+            allSuccess = false;
+        }
+    }
+    
+    return allSuccess;
 }
 
 // Setup premium feature locks (moved from main script)
