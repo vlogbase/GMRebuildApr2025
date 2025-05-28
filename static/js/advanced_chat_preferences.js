@@ -388,7 +388,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         // Try to parse as JSON for structured error
                         const errorData = JSON.parse(text);
                         throw new Error(errorData.error || 'Unknown error');
-                    } catch (e) {
+                    } catch {
                         // If not JSON, use text or status
                         throw new Error(text || `HTTP error ${response.status}`);
                     }

@@ -1,6 +1,6 @@
 // Import required modules
 import { uploadFileAPI } from './apiService.js';
-import { attachedImageUrls, currentConversationId, clearAttachedPdf } from './chatLogic.js';
+import { attachedImageUrls, currentConversationId } from './chatLogic.js';
 
 // File upload state management
 export let isUploadingFile = false;
@@ -55,7 +55,7 @@ export async function handleFileUpload(file, type = null) {
                     success: true,
                     type: 'pdf',
                     url: response.document_url,
-                    filename: attachedPdfName,
+                    filename: window.attachedPdfName,
                     document_name: response.document_name
                 };
             }

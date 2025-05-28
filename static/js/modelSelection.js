@@ -607,55 +607,6 @@ function populateModelList(presetId) {
         });
     
     console.log(`[Debug] Found ${filteredModels.length} models for preset ${presetId}`);
-                const aContext = parseInt(a.context_length) || 0;
-                const bContext = parseInt(b.context_length) || 0;
-                if (aContext !== bContext) {
-                    return bContext - aContext;
-                }
-                
-                // Secondary sort: Input Price (ascending)
-                const aPrice = a.pricing?.prompt || 0;
-                const bPrice = b.pricing?.prompt || 0;
-                if (aPrice !== bPrice) {
-                    return aPrice - bPrice;
-                }
-                
-                // Tertiary sort: Model Name (alphabetical)
-                return a.name.localeCompare(b.name);
-            }
-            
-            // For other presets: ELO-based sorting
-            
-            // Primary sort: ELO Score (descending, higher is better)
-            const aElo = a.elo_score || 0;
-            const bElo = b.elo_score || 0;
-            
-            // Models with ELO scores come before models without ELO scores
-            if (aElo > 0 && bElo === 0) return -1;
-            if (aElo === 0 && bElo > 0) return 1;
-            
-            // Both have ELO scores - sort by ELO (descending)
-            if (aElo !== bElo) {
-                return bElo - aElo;
-            }
-            
-            // Secondary sort: Context Length (descending)
-            const aContext = parseInt(a.context_length) || 0;
-            const bContext = parseInt(b.context_length) || 0;
-            if (aContext !== bContext) {
-                return bContext - aContext;
-            }
-            
-            // Tertiary sort: Input Price (ascending)
-            const aPrice = a.pricing?.prompt || 0;
-            const bPrice = b.pricing?.prompt || 0;
-            if (aPrice !== bPrice) {
-                return aPrice - bPrice;
-            }
-            
-            // Quaternary sort: Model Name (alphabetical)
-            return a.name.localeCompare(b.name);
-        });
     
     // Log: After filtering
     console.log(`[Debug] Filtered models count for preset ${presetId}: ${filteredModels.length}`);

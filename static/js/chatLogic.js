@@ -186,7 +186,7 @@ export function sendMessage() {
 export function addMessage(content, sender, isTyping = false, metadata = null) {
     // Get message elements
     const elements = createMessageElement(content, sender, isTyping, metadata);
-    const { messageElement, avatar, messageWrapper, messageContent, metadataContainer } = elements;
+    const { messageElement, avatar, messageWrapper, messageContent } = elements;
     
     if (isTyping) {
         messageContent.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
@@ -477,7 +477,7 @@ export function formatMessage(text) {
     });
     
     // Final step: Restore protected URLs
-    text = protectedHtml.replace(/__PROTECTED_URL_(\d+)__/g, (match, id) => {
+    text = protectedHtml.replace(/__PROTECTED_URL_(\d+)__/g, (match) => {
         return urlPlaceholders[match] || match;
     });
     

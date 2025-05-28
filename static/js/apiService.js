@@ -4,7 +4,7 @@ import { getCSRFToken } from './utils.js';
 // API Service Module - Centralized backend communication
 
 // Fetch conversations from the backend
-export async function fetchConversationsAPI(bustCache = false, metadataOnly = true) {
+export async function fetchConversationsAPI(metadataOnly = true) {
     const url = `/conversations?_=${Date.now()}&metadata_only=${metadataOnly}`;
     
     try {
