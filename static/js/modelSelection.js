@@ -130,7 +130,6 @@ function setupPresetButtonListeners() {
 
 // Set up event listeners for model selector
 function setupModelSelectorListeners() {
-    const modelSelector = document.getElementById('model-selector');
     const modelSearchInput = document.getElementById('model-search');
     const closeButton = document.getElementById('close-selector');
     

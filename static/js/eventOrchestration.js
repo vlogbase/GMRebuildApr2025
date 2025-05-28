@@ -8,7 +8,7 @@ import { messageInput, sendButton, newChatButton, clearConversationsButton, imag
 import { sendMessage, clearChat } from './chatLogic.js';
 import { createNewConversation, fetchConversations } from './conversationManagement.js';
 import { handleImageFile, switchCamera, stopCameraStream } from './fileUpload.js';
-import { selectPresetButton, resetToDefault, fetchUserPreferences, updatePresetButtonLabels, closeModelSelector } from './modelSelection.js';
+import { selectPresetButton, fetchUserPreferences, updatePresetButtonLabels, closeModelSelector } from './modelSelection.js';
 import { resetPreferencesAPI } from './apiService.js';
 
 // Initialize main event listeners

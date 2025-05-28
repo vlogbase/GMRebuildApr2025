@@ -278,7 +278,6 @@
         safeDisconnect();
         
         const messages = document.querySelectorAll('.message');
-        let processed = 0;
         
         // Process messages in small batches to avoid blocking the main thread
         const processBatch = (index, batchSize = 5) => {

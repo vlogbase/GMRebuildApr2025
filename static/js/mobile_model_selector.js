@@ -1000,7 +1000,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Listen for model changes from the main script
-    document.addEventListener('model-selected', function(e) {
+    document.addEventListener('model-selected', function() {
         updateSelectedModelNames();
     });
     

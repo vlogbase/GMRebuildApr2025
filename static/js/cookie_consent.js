@@ -419,7 +419,7 @@ function getCookie(name) {
 /**
  * Delete a cookie by name
  */
-function deleteCookie(name) {
+export function deleteCookie(name) {
     setCookie(name, '', -1);
 }
 
