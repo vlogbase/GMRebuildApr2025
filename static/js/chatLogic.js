@@ -2,6 +2,7 @@
 import { forceRepaint } from './utils.js';
 import { sendMessageAPI, shareConversationAPI, rateMessageAPI } from './apiService.js';
 import { messageInput, sendButton } from './uiSetup.js';
+import { formatModelName } from './modelSelection.js';
 
 // Get chat messages container
 const chatMessages = document.getElementById('chat-messages');
@@ -16,6 +17,39 @@ export let attachedPdfName = null;
 // Setter function for currentConversationId to avoid const assignment errors
 export function setCurrentConversationId(id) {
     currentConversationId = id;
+}
+
+// Function to create message elements (copied from script.js.backup)
+function createMessageElement(content, sender, isTyping = false, metadata = null) {
+    // Create the main message container
+    const messageElement = document.createElement('div');
+    messageElement.className = `message message-${sender}`;
+    messageElement.dataset.messageId = metadata ? metadata.id : Date.now(); // Use actual message ID if available
+    
+    // Create avatar
+    const avatar = document.createElement('div');
+    avatar.className = `message-avatar ${sender}`;
+    
+    if (sender === 'user') {
+        avatar.textContent = 'U';
+    } else {
+        avatar.textContent = 'A';
+    }
+    
+    // Create wrapper for content, actions, and metadata
+    const messageWrapper = document.createElement('div');
+    messageWrapper.className = 'message-wrapper';
+    
+    // Create content container
+    const messageContent = document.createElement('div');
+    messageContent.className = 'message-content';
+    
+    return {
+        messageElement,
+        avatar,
+        messageWrapper,
+        messageContent
+    };
 }
 
 // Clear attachment functions (matching original behavior)

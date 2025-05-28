@@ -361,6 +361,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// Export functions for ES6 modules
+export { updateUsageData };
+
 // Export functions for global use
 window.updateUsageData = updateUsageData;
 window.switchUsageTab = switchUsageTab;

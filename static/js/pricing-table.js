@@ -424,6 +424,9 @@ function updateSortIcons(activeColumn, order) {
     }
 }
 
+// Export functions for ES6 modules
+export { loadPricingData };
+
 // Export functions for global use
 window.loadPricingData = loadPricingData;
 window.renderPricingTable = renderPricingTable;
