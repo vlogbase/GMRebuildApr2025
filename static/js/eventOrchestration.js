@@ -3,9 +3,9 @@
  * Handles main event listener setup and orchestrates interactions between modules
  */
 
-import { debounce, getCSRFToken, forceRepaint } from './utils.js';
+import { debounce } from './utils.js';
 import { messageInput, sendButton, newChatButton, clearConversationsButton, imageUploadButton, imageUploadInput, cameraButton, captureButton, switchCameraButton, refreshPricesBtn } from './uiSetup.js';
-import { sendMessage, addMessage, clearChat } from './chatLogic.js';
+import { sendMessage, clearChat } from './chatLogic.js';
 import { createNewConversation, fetchConversations } from './conversationManagement.js';
 import { handleFileUpload, handleImageFile, switchCamera, stopCameraStream } from './fileUpload.js';
 import { selectPresetButton } from './modelSelection.js';

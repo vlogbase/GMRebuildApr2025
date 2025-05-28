@@ -1,15 +1,9 @@
-// Import utility functions from utils module
-import { debounce, getCSRFToken, forceRepaint } from './utils.js';
 // Import UI setup functions
-import { setupLazyLoading, initializePrioritized, performIdleCleanup, messageInput, sendButton } from './uiSetup.js';
-// Import API service functions
-import { fetchConversationsAPI, sendMessageAPI, loadConversationAPI, createNewConversationAPI, fetchUserPreferencesAPI, saveModelPreferenceAPI, uploadFileAPI, fetchAvailableModelsAPI } from './apiService.js';
+import { initializePrioritized, performIdleCleanup } from './uiSetup.js';
 // Import chat logic functions
-import { sendMessage, addMessage, formatMessage, addTypingIndicator, clearAttachedImages, clearAttachedPdf, messageHistory, currentConversationId, attachedImageUrls, attachedPdfUrl, attachedPdfName, setUserIsLoggedIn } from './chatLogic.js';
-// Import file upload functions
-import { handleFileUpload, handleImageFile, handlePdfFile, showImagePreview, showPdfPreview, createUploadIndicator, isUploadingFile } from './fileUpload.js';
+import { setUserIsLoggedIn } from './chatLogic.js';
 // Import model selection functions
-import { initializeModelSelectionLogic, selectPresetButton, allModels, userPreferences, currentModel, currentPresetId, updatePresetButtonLabels, fetchUserPreferences, fetchAvailableModels, openModelSelector, closeModelSelector, updateUIForModelCapabilities } from './modelSelection.js';
+import { initializeModelSelectionLogic, openModelSelector, closeModelSelector } from './modelSelection.js';
 // Import conversation management functions
 import { fetchConversations, loadConversation, createNewConversation } from './conversationManagement.js';
 // Import event orchestration functions

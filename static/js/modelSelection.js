@@ -3,7 +3,7 @@
  * Handles all model selection functionality including presets, filters, and user preferences
  */
 
-import { debounce, getCSRFToken, forceRepaint } from './utils.js';
+import { debounce } from './utils.js';
 import { fetchUserPreferencesAPI, fetchAvailableModelsAPI, saveModelPreferenceAPI, resetModelPreferenceAPI } from './apiService.js';
 
 // Model selection state variables

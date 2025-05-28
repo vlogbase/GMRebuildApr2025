@@ -1,7 +1,5 @@
-// Import utility functions
-import { getCSRFToken } from './utils.js';
 // Import API functions
-import { fetchConversationsAPI, cleanupEmptyConversationsAPI } from './apiService.js';
+import { cleanupEmptyConversationsAPI } from './apiService.js';
 
 // Define necessary elements early to avoid reference errors
 export let messageInput;

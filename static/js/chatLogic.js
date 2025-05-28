@@ -1,7 +1,7 @@
 // Import required modules
 import { forceRepaint } from './utils.js';
 import { sendMessageAPI, shareConversationAPI, rateMessageAPI } from './apiService.js';
-import { messageInput, sendButton } from './uiSetup.js';
+import { messageInput } from './uiSetup.js';
 import { formatModelName, currentModel } from './modelSelection.js';
 
 // Get chat messages container
