@@ -16,17 +16,14 @@ def run_migration():
     """Run the database migration to create the user_chat_settings table."""
     logger.info("Starting UserChatSettings migration...")
     
-    # Get database URL from environment variables
-    db_url = os.environ.get("DATABASE_URL")
-    if not db_url:
-        logger.error("DATABASE_URL environment variable not set.")
-        return False
-    
-    # Create database engine
-    engine = create_engine(db_url)
-    connection = engine.connect()
-    
     try:
+        # Use Flask's existing database connection instead of creating a new one
+        from flask import current_app
+        from app import db
+        
+        # Use the Flask app's database session to avoid connection conflicts
+        connection = db.engine.connect()
+        
         # Start a transaction
         transaction = connection.begin()
         
