@@ -66,26 +66,3 @@ document.addEventListener('DOMContentLoaded', function() {
     
     console.log('Script.js initialization complete');
 });
-// Restore missing global functions for backward compatibility
-window.openModelSelector = openModelSelector;
-window.closeModelSelector = closeModelSelector;
-window.selectPresetButton = selectPresetButton;
-window.populateModelList = populateModelList;
-window.selectModelForPreset = selectModelForPreset;
-window.handleMessageInputKeydown = handleMessageInputKeydown;
-window.sendMessage = sendMessage;
-window.addMessage = addMessage;
-window.fetchConversations = fetchConversations;
-window.loadConversation = loadConversation;
-window.createNewConversation = createNewConversation;
-window.deleteConversation = deleteConversation;
-window.shareConversation = shareConversation;
-window.refreshModelPrices = refreshModelPrices;
-window.lockPremiumFeatures = lockPremiumFeatures;
-window.checkModelCapabilities = checkModelCapabilities;
-window.updateModelCapabilityButtons = updateModelCapabilityButtons;
-window.handleFileUpload = handleFileUpload;
-window.handlePaste = handlePaste;
-window.handleKeyboardShortcuts = handleKeyboardShortcuts;
-window.handleOutsideClicks = handleOutsideClicks;
-window.handleWindowResize = handleWindowResize;

@@ -20,47 +20,33 @@ window.userPreferences = userPreferences;
 // Filter configurations for each preset
 export const presetFilters = {
     '1': (model) => {
-        // Preset 1: all models except free, sorted by ELO, high to low
-        const isFree = model.is_free === true || model.id.includes(':free');
+        // All non-free models - check for :free suffix and cost_band
+        const isFree = model.id.includes(':free') || model.cost_band === 'free';
         return !isFree;
     },
     '2': (model) => {
-        // Preset 2: all models except free, sorted by context, high to low
-        const isFree = model.is_free === true || model.id.includes(':free');
+        // All non-free models
+        const isFree = model.id.includes(':free') || model.cost_band === 'free';
         return !isFree;
     },
     '3': (model) => {
-        // Preset 3: Only reasoning models, not including free models, sorted by ELO, high to low
-        const isFree = model.is_free === true || model.id.includes(':free');
-        if (isFree) return false;
-        
-        const modelName = (model.name || '').toLowerCase();
-        const modelId = (model.id || '').toLowerCase();
-        return modelName.includes('reason') || modelId.includes('reason') || 
-               modelName.includes('think') || modelId.includes('think') ||
-               modelName.includes('o1') || modelId.includes('o1') ||
-               modelName.includes('qwq') || modelId.includes('qwq') ||
-               modelName.includes('deepseek-r1') || modelId.includes('deepseek-r1');
+        // Reasoning models - check for o1, o3, reasoning keywords
+        return model.id.includes('reasoning') || model.id.includes('o1') || model.id.includes('o3');
     },
     '4': (model) => {
-        // Preset 4: Only multimodal models, not including free models, sorted by ELO, high to low
-        const isFree = model.is_free === true || model.id.includes(':free');
-        if (isFree) return false;
-        
-        return model.is_multimodal === true;
+        // Multimodal/image-capable models (non-free)
+        const isFree = model.id.includes(':free') || model.cost_band === 'free';
+        const isMultimodal = model.is_multimodal || model.supports_vision || 
+                            model.id.includes('vision') || model.id.includes('gpt-4o');
+        return !isFree && isMultimodal;
     },
     '5': (model) => {
-        // Preset 5: Only search models (are from perplexity or contain the word "search"), not including free models, sorted by ELO, high to low
-        const isFree = model.is_free === true || model.id.includes(':free');
-        if (isFree) return false;
-        
-        const modelName = (model.name || '').toLowerCase();
-        const modelId = (model.id || '').toLowerCase();
-        return modelId.includes('perplexity') || modelName.includes('search') || modelId.includes('search');
+        // Search/Perplexity models - placeholder filter for now
+        return model.id.includes('perplexity') || model.id.includes('search');
     },
     '6': (model) => {
-        // Preset 6: all free models, sorted by ELO, high to low
-        return model.is_free === true || model.id.includes(':free');
+        // Free models only
+        return model.id.includes(':free') || model.cost_band === 'free';
     }
 };
 
