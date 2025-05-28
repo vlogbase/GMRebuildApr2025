@@ -19,28 +19,34 @@ window.userPreferences = userPreferences;
 
 // Filter configurations for each preset
 export const presetFilters = {
-    '1': (model) => !model.is_free, // All non-free models
-    '2': (model) => !model.is_free, // All non-free models
+    '1': (model) => {
+        // All non-free models - check for :free suffix and cost_band
+        const isFree = model.id.includes(':free') || model.cost_band === 'free';
+        return !isFree;
+    },
+    '2': (model) => {
+        // All non-free models
+        const isFree = model.id.includes(':free') || model.cost_band === 'free';
+        return !isFree;
+    },
     '3': (model) => {
-        // All image-capable models (non-free)
-        return !model.is_free && model.supports_vision;
+        // Reasoning models - check for o1, o3, reasoning keywords
+        return model.id.includes('reasoning') || model.id.includes('o1') || model.id.includes('o3');
     },
     '4': (model) => {
-        // All document-capable models (non-free) 
-        return !model.is_free && model.supports_pdf;
+        // Multimodal/image-capable models (non-free)
+        const isFree = model.id.includes(':free') || model.cost_band === 'free';
+        const isMultimodal = model.is_multimodal || model.supports_vision || 
+                            model.id.includes('vision') || model.id.includes('gpt-4o');
+        return !isFree && isMultimodal;
     },
-    '5': (model) => model.is_free, // Free models only
+    '5': (model) => {
+        // Search/Perplexity models - placeholder filter for now
+        return model.id.includes('perplexity') || model.id.includes('search');
+    },
     '6': (model) => {
-        // Free image-capable models
-        return model.is_free && model.supports_vision;
-    },
-    '7': (model) => {
-        // Free document-capable models
-        return model.is_free && model.supports_pdf;
-    },
-    '8': (model) => {
-        // Reasoning models
-        return model.id.includes('reasoning') || model.id.includes('o1') || model.id.includes('o3');
+        // Free models only
+        return model.id.includes(':free') || model.cost_band === 'free';
     }
 };
 
@@ -94,11 +100,26 @@ export function initializeModelSelectionLogic() {
 
 // Set up event listeners for preset buttons
 function setupPresetButtonListeners() {
-    const presetButtons = document.querySelectorAll('.preset-button');
+    console.log('🔧 Setting up preset button listeners...');
+    
+    // Use the correct selector for the actual HTML structure
+    const presetButtons = document.querySelectorAll('.model-preset-btn');
+    console.log(`Found ${presetButtons.length} preset buttons`);
+    
     presetButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const presetId = button.dataset.preset;
-            selectPresetButton(presetId);
+        const presetId = button.getAttribute('data-preset-id');
+        console.log(`Setting up listener for preset ${presetId}`);
+        
+        button.addEventListener('click', (e) => {
+            // Check if click was on the dropdown selector
+            if (e.target.closest('.selector-icon-container')) {
+                e.preventDefault();
+                e.stopPropagation();
+                openModelSelector(presetId, button);
+            } else {
+                // Regular button click - select the preset
+                selectPresetButton(presetId);
+            }
         });
     });
 }
@@ -139,7 +160,8 @@ export function updatePresetButtonLabels() {
     console.log('🏷️ Updating preset button labels...');
     
     Object.keys(defaultModels).forEach(presetId => {
-        const button = document.querySelector(`[data-preset="${presetId}"]`);
+        // Use the correct selector for the actual HTML structure
+        const button = document.querySelector(`[data-preset-id="${presetId}"]`);
         if (button) {
             let modelId = userPreferences[presetId] || defaultModels[presetId];
             let displayName = defaultModelDisplayNames[modelId] || formatModelName(modelId);
@@ -154,11 +176,16 @@ export function updatePresetButtonLabels() {
                 }
             }
             
-            // Update button text
-            const nameSpan = button.querySelector('.preset-name');
+            // Update button text using the correct class name
+            const nameSpan = button.querySelector('.model-name');
             if (nameSpan) {
                 nameSpan.textContent = displayName;
+                console.log(`Updated preset ${presetId} label to: ${displayName}`);
+            } else {
+                console.warn(`Could not find .model-name span in preset button ${presetId}`);
             }
+        } else {
+            console.warn(`Could not find preset button with data-preset-id="${presetId}"`);
         }
     });
 }
@@ -281,6 +308,94 @@ export function filterModelList(searchTerm) {
     });
 }
 
+// Function to open model selector for a preset
+export function openModelSelector(presetId, buttonElement) {
+    console.log(`🔧 Opening model selector for preset ${presetId}`);
+    
+    currentlyEditingPresetId = presetId;
+    
+    const modelSelector = document.getElementById('model-selector');
+    if (!modelSelector) {
+        console.error('Model selector element not found');
+        return;
+    }
+    
+    // Show the modal
+    modelSelector.style.display = 'flex';
+    document.body.classList.add('modal-open');
+    
+    // Clear and populate the model list
+    populateModelList(presetId);
+    
+    // Clear search input
+    const searchInput = document.getElementById('model-search');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+}
+
+// Function to populate model list based on preset filter
+function populateModelList(presetId) {
+    const modelList = document.querySelector('.model-list');
+    if (!modelList) {
+        console.error('Model list container not found');
+        return;
+    }
+    
+    // Clear existing models
+    modelList.innerHTML = '';
+    
+    // Get filter for this preset
+    const filter = presetFilters[presetId] || (() => true);
+    
+    // Filter and display models
+    const filteredModels = allModels.filter(filter);
+    
+    filteredModels.forEach(model => {
+        const modelItem = document.createElement('div');
+        modelItem.className = 'model-item';
+        modelItem.dataset.modelId = model.id;
+        
+        // Check if this model is currently selected for this preset
+        const currentModelId = userPreferences[presetId] || defaultModels[presetId];
+        const isSelected = model.id === currentModelId;
+        
+        modelItem.innerHTML = `
+            <div class="model-info">
+                <div class="model-name">${model.name}</div>
+                <div class="model-id">${model.id}</div>
+            </div>
+            <div class="model-meta">
+                <span class="cost-band cost-${model.cost_band || 'unknown'}">${model.cost_band || 'Unknown'}</span>
+                ${isSelected ? '<span class="selected-indicator">✓</span>' : ''}
+            </div>
+        `;
+        
+        // Add click handler to select this model
+        modelItem.addEventListener('click', () => {
+            selectModelForPreset(presetId, model.id);
+            closeModelSelector();
+        });
+        
+        modelList.appendChild(modelItem);
+    });
+}
+
+// Function to select a model for a specific preset
+async function selectModelForPreset(presetId, modelId) {
+    console.log(`📝 Selecting model ${modelId} for preset ${presetId}`);
+    
+    const success = await saveModelPreference(presetId, modelId);
+    if (success) {
+        // Update current model if this is the active preset
+        if (presetId === currentPresetId) {
+            currentModel = modelId;
+            updateSelectedModelCostIndicator(modelId);
+            updateMultimodalControls(modelId);
+        }
+    }
+}
+
 // Function to select a preset button
 export function selectPresetButton(presetId) {
     console.log(`🎯 Selecting preset ${presetId}`);
@@ -288,11 +403,11 @@ export function selectPresetButton(presetId) {
     // Update active preset
     currentPresetId = presetId;
     
-    // Update UI
-    const presetButtons = document.querySelectorAll('.preset-button');
+    // Update UI using correct selectors
+    const presetButtons = document.querySelectorAll('.model-preset-btn');
     presetButtons.forEach(btn => {
         btn.classList.remove('active');
-        if (btn.dataset.preset === presetId) {
+        if (btn.getAttribute('data-preset-id') === presetId) {
             btn.classList.add('active');
         }
     });
@@ -413,3 +528,11 @@ export async function resetToDefault(presetId) {
         return false;
     }
 }
+
+// Expose functions globally for cross-module compatibility
+window.openModelSelector = openModelSelector;
+window.selectPresetButton = selectPresetButton;
+window.closeModelSelector = closeModelSelector;
+window.updatePresetButtonLabels = updatePresetButtonLabels;
+window.fetchAvailableModels = fetchAvailableModels;
+window.fetchUserPreferences = fetchUserPreferences;

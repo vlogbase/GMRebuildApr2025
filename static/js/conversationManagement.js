@@ -86,10 +86,21 @@ function updateConversationsList(conversations) {
         conversationElement.className = 'conversation-item';
         conversationElement.innerHTML = `
             <div class="conversation-title">${conversation.title || 'New Conversation'}</div>
-            <div class="conversation-date">${formatDate(conversation.updated_at)}</div>
+            <div class="conversation-date">${formatDate(conversation.created_at)}</div>
         `;
         
         conversationElement.addEventListener('click', () => {
+            // Update the current conversation ID in chat logic
+            if (typeof currentConversationId !== 'undefined') {
+                currentConversationId = conversation.id;
+            }
+            
+            // Update active state in UI
+            document.querySelectorAll('.conversation-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            conversationElement.classList.add('active');
+            
             loadConversation(conversation.id);
         });
         
@@ -98,6 +109,22 @@ function updateConversationsList(conversations) {
 }
 
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString();
+    if (!dateString) {
+        return 'No date';
+    }
+    
+    try {
+        const date = new Date(dateString);
+        
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+            console.warn('Invalid date string:', dateString);
+            return 'Invalid date';
+        }
+        
+        return date.toLocaleDateString();
+    } catch (error) {
+        console.error('Error formatting date:', error, 'for dateString:', dateString);
+        return 'Date error';
+    }
 }
