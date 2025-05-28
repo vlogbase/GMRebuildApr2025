@@ -298,7 +298,7 @@ export function closeModelSelector() {
 
 // Function to filter model list
 export function filterModelList(searchTerm) {
-    const modelList = document.querySelector('.model-list');
+    const modelList = document.getElementById('model-list');
     if (!modelList) return;
     
     const items = modelList.querySelectorAll('li');
@@ -403,7 +403,7 @@ function populateModelList(presetId) {
     console.log(`[Debug] populateModelList called for presetId: ${presetId}`);
     console.log(`[Debug] Current global allModels count: ${allModels ? allModels.length : 'undefined'}`);
     
-    const modelList = document.querySelector('.model-list');
+    const modelList = document.getElementById('model-list');
     if (!modelList) {
         console.error('Model list container not found');
         return;
