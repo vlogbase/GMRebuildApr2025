@@ -132,14 +132,7 @@ function setupModelSelectorListeners() {
         closeButton.addEventListener('click', closeModelSelector);
     }
     
-    if (modelSelector) {
-        // Close selector when clicking outside
-        modelSelector.addEventListener('click', (e) => {
-            if (e.target === modelSelector) {
-                closeModelSelector();
-            }
-        });
-    }
+    // Note: Click outside handling is now managed in eventOrchestration.js
     
     if (modelSearchInput) {
         // Debounced search

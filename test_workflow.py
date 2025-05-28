@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
 """
-Test workflow to verify the JavaScript fixes
+Test workflow for model selector functionality
 """
 
-import os
+import subprocess
 import sys
-sys.path.append('.')
+import os
 
-from app import app
+def run():
+    """Run the Flask application for testing"""
+    os.environ['FLASK_ENV'] = 'development'
+    os.environ['FLASK_DEBUG'] = '1'
+    
+    try:
+        subprocess.run([sys.executable, 'app.py'], check=True)
+    except KeyboardInterrupt:
+        print("\nStopped")
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+if __name__ == "__main__":
+    run()

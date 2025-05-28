@@ -8,7 +8,7 @@ import { messageInput, sendButton, newChatButton, clearConversationsButton, imag
 import { sendMessage, clearChat } from './chatLogic.js';
 import { createNewConversation, fetchConversations } from './conversationManagement.js';
 import { handleImageFile, switchCamera, stopCameraStream } from './fileUpload.js';
-import { selectPresetButton, resetToDefault, fetchUserPreferences, updatePresetButtonLabels } from './modelSelection.js';
+import { selectPresetButton, resetToDefault, fetchUserPreferences, updatePresetButtonLabels, closeModelSelector } from './modelSelection.js';
 import { resetPreferencesAPI } from './apiService.js';
 
 // Initialize main event listeners
@@ -252,13 +252,14 @@ function handleKeyboardShortcuts(e) {
 
 // Handle clicks outside modals to close them
 function handleOutsideClicks(e) {
-    // Check if click is outside model selector
+    // Check if click is outside model selector (using original logic from script.js.backup)
     const modelSelector = document.getElementById('model-selector');
-    if (modelSelector && modelSelector.style.display === 'block') {
-        if (e.target === modelSelector) {
-            console.log('🖱️ Clicked outside model selector');
-            closeModelSelector();
-        }
+    if (modelSelector && modelSelector.style.display === 'block' && 
+        !modelSelector.contains(e.target) && 
+        !e.target.matches('.model-preset-btn') && 
+        !e.target.closest('.model-preset-btn')) {
+        console.log('🖱️ Clicked outside model selector');
+        closeModelSelector();
     }
     
     // Check if click is outside other modals
@@ -351,14 +352,7 @@ function closeModal(modal) {
     document.body.classList.remove('modal-open');
 }
 
-// Close model selector (imported from modelSelection.js)
-function closeModelSelector() {
-    const modelSelector = document.getElementById('model-selector');
-    if (modelSelector) {
-        modelSelector.style.display = 'none';
-        document.body.classList.remove('modal-open');
-    }
-}
+// Note: closeModelSelector is now imported from modelSelection.js
 
 // Handle window resize
 function handleWindowResize() {
