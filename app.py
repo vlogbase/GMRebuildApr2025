@@ -3785,7 +3785,7 @@ def get_model_prices():
                         
                     model_id = db_model.model_id
                     
-                    # Auto-generate missing cost band based on pricing
+                    # CRITICAL FIX: Use stored cost band, generate and persist if missing
                     cost_band = db_model.cost_band
                     if not cost_band or cost_band.strip() == '':
                         input_price = db_model.input_price_usd_million or 0
@@ -3798,8 +3798,15 @@ def get_model_prices():
                         else:
                             cost_band = "$$$"
                         
-                        # Log the auto-generation for monitoring
-                        logger.info(f"Auto-generated cost band '{cost_band}' for model {model_id}")
+                        # CRITICAL FIX: Persist the generated cost band to database to prevent regeneration
+                        try:
+                            db_model.cost_band = cost_band
+                            db.session.commit()
+                            logger.info(f"Generated and persisted cost band '{cost_band}' for model {model_id}")
+                        except Exception as persist_error:
+                            logger.error(f"Failed to persist cost band for {model_id}: {persist_error}")
+                            db.session.rollback()
+                        
                         models_with_missing_data.append(model_id)
                     
                     # Get raw pricing values for JavaScript calculations (already per-million in database)
@@ -3861,6 +3868,14 @@ def get_model_prices():
             # Log summary of data completeness issues
             if models_with_missing_data:
                 logger.warning(f"Generated missing cost bands for {len(models_with_missing_data)} models: {models_with_missing_data[:5]}{'...' if len(models_with_missing_data) > 5 else ''}")
+                
+                # CRITICAL FIX: Update Redis cache after persisting new cost bands
+                try:
+                    from price_updater import _populate_redis_pricing_cache
+                    _populate_redis_pricing_cache()
+                    logger.info("Updated Redis cache after generating new cost bands")
+                except Exception as cache_error:
+                    logger.warning(f"Failed to update Redis cache after cost band generation: {cache_error}")
             
             # Use the timestamp of the most recently updated model
             latest_model = OpenRouterModel.query.order_by(OpenRouterModel.last_fetched_at.desc()).first()
