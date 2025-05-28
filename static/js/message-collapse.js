@@ -284,9 +284,7 @@
             const endIndex = Math.min(index + batchSize, messages.length);
             
             for (let i = index; i < endIndex; i++) {
-                if (processMessage(messages[i])) {
-                    processed++;
-                }
+                processMessage(messages[i]);
             }
             
             if (endIndex < messages.length) {

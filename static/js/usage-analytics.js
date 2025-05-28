@@ -6,7 +6,6 @@
 function updateUsageData(dateRange) {
     // Show loading indicator
     const summaryTab = document.getElementById('usage-summary-tab');
-    const detailedTab = document.getElementById('usage-detailed-tab');
 
     if (summaryTab) {
         summaryTab.innerHTML = '<div class="text-center py-3"><i class="fas fa-circle-notch fa-spin fa-2x"></i><p class="mt-2">Loading usage data...</p></div>';
