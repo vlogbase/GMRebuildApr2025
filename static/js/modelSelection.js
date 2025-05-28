@@ -638,10 +638,10 @@ function populateModelList(presetId) {
             nameSpan.textContent = model.name;
         }
         
-        // Add cost band indicator if available
-        if (model.cost_band) {
+        // Add cost band indicator if available - gracefully handle missing cost_band
+        if (model.cost_band !== undefined && model.cost_band !== null) {
             const costSpan = document.createElement('span');
-            costSpan.textContent = model.cost_band;
+            costSpan.textContent = model.cost_band || ''; // Handle empty string cost_band for free models
             costSpan.className = 'cost-band-indicator';
             
             // Add the specific band class based on the band value
@@ -654,12 +654,13 @@ function populateModelList(presetId) {
             } else if (model.cost_band === '$') {
                 costSpan.classList.add('cost-band-1');
             } else {
-                // For empty band (free models)
+                // For empty band (free models) or any other value
                 costSpan.classList.add('cost-band-free');
             }
             
             nameSpan.appendChild(costSpan);
         }
+        // If cost_band is missing entirely, simply don't add a cost indicator - no error thrown
         
         // Create provider badge
         const providerSpan = document.createElement('span');
@@ -793,9 +794,16 @@ export function updateSelectedModelCostIndicator(modelId) {
     // Update cost indicator in the UI
     const costIndicator = document.querySelector('.cost-indicator');
     if (costIndicator) {
-        const costBand = calculateCostBand(modelInfo);
-        costIndicator.className = `cost-indicator cost-${costBand}`;
-        costIndicator.textContent = modelInfo.is_free ? 'FREE' : `$${costBand}`;
+        // Handle missing cost_band gracefully - check if cost_band exists and is valid
+        if (modelInfo.cost_band && ['$$$$', '$$$', '$$', '$', ''].includes(modelInfo.cost_band)) {
+            const costBand = modelInfo.cost_band;
+            costIndicator.className = `cost-indicator cost-${costBand}`;
+            costIndicator.textContent = modelInfo.is_free ? 'FREE' : (costBand || 'N/A');
+        } else {
+            // Fallback when cost_band is missing - don't show cost indicator
+            costIndicator.className = 'cost-indicator';
+            costIndicator.textContent = modelInfo.is_free ? 'FREE' : '';
+        }
     }
 }
 

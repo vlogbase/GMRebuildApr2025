@@ -141,7 +141,7 @@
     <script defer type="module" src="{{ url_for('static', filename='js/script.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
     <!-- Cookie Consent JavaScript (non-critical, can be deferred) -->
-    <script defer src="{{ url_for('static', filename='js/cookie_consent.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
+    <script type="module" defer src="{{ url_for('static', filename='js/cookie_consent.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}"></script>
     
     <!-- Mobile responsiveness JavaScript (lower priority) -->
     <script defer src="{{ url_for('static', filename='js/mobile.js') }}?v={{ config.get('ASSETS_VERSION', '1.0') }}" fetchpriority="low"></script>
