@@ -3,6 +3,9 @@ import { forceRepaint } from './utils.js';
 import { sendMessageAPI, shareConversationAPI, rateMessageAPI } from './apiService.js';
 import { messageInput, sendButton } from './uiSetup.js';
 
+// Get chat messages container
+const chatMessages = document.getElementById('chat-messages');
+
 // Chat state management
 export let messageHistory = [];
 export let currentConversationId = null;
@@ -13,6 +16,16 @@ export let attachedPdfName = null;
 // Setter function for currentConversationId to avoid const assignment errors
 export function setCurrentConversationId(id) {
     currentConversationId = id;
+}
+
+// Clear attachment functions (matching original behavior)
+export function clearAttachedImages() {
+    attachedImageUrls.length = 0;
+}
+
+export function clearAttachedPdf() {
+    attachedPdfUrl = null;
+    attachedPdfName = null;
 }
 
 // Export functions for external access
@@ -624,5 +637,133 @@ export function showLoginPrompt() {
     if (sidebar) {
         // Insert at the top of the sidebar
         sidebar.insertBefore(loginPrompt, sidebar.firstChild);
+    }
+}
+
+// Send message to backend function (original behavior)
+async function sendMessageToBackend(message, selectedModel, typingIndicator) {
+    try {
+        // Build the payload with the same structure as the original
+        const payload = {
+            messages: [
+                { role: 'user', content: message }
+            ]
+        };
+        
+        // Add selected model if available
+        if (selectedModel) {
+            payload.model_id = selectedModel;
+        }
+        
+        // Add conversation ID if available
+        if (currentConversationId) {
+            payload.conversation_id = currentConversationId;
+        }
+        
+        // Add attachments to the payload (images and PDFs)
+        if (attachedImageUrls && attachedImageUrls.length > 0) {
+            // Create content array with text and images
+            const userContent = [
+                { type: 'text', text: message || 'Image:' }
+            ];
+            
+            // Add image URLs
+            attachedImageUrls.forEach(imageUrl => {
+                userContent.push({
+                    type: 'image_url',
+                    image_url: { url: imageUrl }
+                });
+            });
+            
+            payload.messages[0].content = userContent;
+        }
+        
+        // Add PDF to payload if present
+        if (attachedPdfUrl) {
+            if (Array.isArray(payload.messages[0].content)) {
+                payload.messages[0].content.push({
+                    type: 'file',
+                    file: {
+                        filename: attachedPdfName || 'document.pdf',
+                        file_data: attachedPdfUrl
+                    }
+                });
+            } else {
+                payload.messages[0].content = [
+                    { type: 'text', text: message || 'Document:' },
+                    {
+                        type: 'file',
+                        file: {
+                            filename: attachedPdfName || 'document.pdf',
+                            file_data: attachedPdfUrl
+                        }
+                    }
+                ];
+            }
+        }
+        
+        console.log('🚀 Sending message to backend:', payload);
+        
+        // Send message via API
+        const response = await sendMessageAPI(payload);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Handle streaming response
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        
+        // Remove typing indicator
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+        
+        // Create message element for assistant response
+        const assistantMessage = addMessage('', 'assistant', false);
+        const messageContent = assistantMessage.querySelector('.message-content');
+        
+        let fullResponse = '';
+        
+        // Process stream
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    const data = line.slice(6);
+                    if (data === '[DONE]') continue;
+                    
+                    try {
+                        const parsed = JSON.parse(data);
+                        if (parsed.content) {
+                            fullResponse += parsed.content;
+                            messageContent.innerHTML = formatMessage(fullResponse);
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                    } catch (e) {
+                        // Ignore JSON parse errors for partial chunks
+                    }
+                }
+            }
+        }
+        
+        console.log('✅ Message sent successfully');
+        
+    } catch (error) {
+        console.error('❌ Error sending message:', error);
+        
+        // Remove typing indicator on error
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+        
+        // Show error message
+        addMessage('Sorry, there was an error processing your message. Please try again.', 'assistant');
     }
 }

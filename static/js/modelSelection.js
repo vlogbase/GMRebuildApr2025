@@ -296,6 +296,59 @@ export function closeModelSelector() {
     }
 }
 
+// Update UI based on model capabilities (original behavior)
+export function updateUIForModelCapabilities() {
+    if (!currentModel || !allModels.length) {
+        return;
+    }
+    
+    // Find the current model in the available models
+    const model = allModels.find(m => m.id === currentModel);
+    if (!model) {
+        return;
+    }
+    
+    console.log(`🔧 Updating UI for model capabilities: ${model.name}`);
+    
+    // Update image upload button visibility
+    const imageUploadButton = document.getElementById('image-upload-button');
+    if (imageUploadButton) {
+        if (model.is_multimodal || model.supports_vision) {
+            imageUploadButton.style.display = 'block';
+            imageUploadButton.disabled = false;
+        } else {
+            imageUploadButton.style.display = 'none';
+            imageUploadButton.disabled = true;
+        }
+    }
+    
+    // Update PDF upload button visibility
+    const pdfUploadButton = document.getElementById('pdf-upload-button');
+    if (pdfUploadButton) {
+        if (model.supports_pdf) {
+            pdfUploadButton.style.display = 'block';
+            pdfUploadButton.disabled = false;
+        } else {
+            pdfUploadButton.style.display = 'none';
+            pdfUploadButton.disabled = true;
+        }
+    }
+    
+    // Update general file upload input
+    const imageUploadInput = document.getElementById('image-upload');
+    if (imageUploadInput) {
+        if (model.is_multimodal || model.supports_pdf) {
+            const acceptTypes = [];
+            if (model.is_multimodal) acceptTypes.push('image/*');
+            if (model.supports_pdf) acceptTypes.push('application/pdf');
+            imageUploadInput.accept = acceptTypes.join(',');
+        } else {
+            imageUploadInput.accept = '';
+            imageUploadInput.disabled = true;
+        }
+    }
+}
+
 // Function to filter model list
 export function filterModelList(searchTerm) {
     const modelList = document.getElementById('model-list');

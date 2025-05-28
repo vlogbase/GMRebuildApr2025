@@ -9,7 +9,7 @@ import { sendMessage, addMessage, formatMessage, addTypingIndicator, clearAttach
 // Import file upload functions
 import { handleFileUpload, handleImageFile, handlePdfFile, showImagePreview, showPdfPreview, createUploadIndicator, isUploadingFile } from './fileUpload.js';
 // Import model selection functions
-import { initializeModelSelectionLogic, selectPresetButton, allModels, userPreferences, currentModel, currentPresetId, updatePresetButtonLabels, fetchUserPreferences, fetchAvailableModels } from './modelSelection.js';
+import { initializeModelSelectionLogic, selectPresetButton, allModels, userPreferences, currentModel, currentPresetId, updatePresetButtonLabels, fetchUserPreferences, fetchAvailableModels, openModelSelector, closeModelSelector, updateUIForModelCapabilities } from './modelSelection.js';
 // Import conversation management functions
 import { fetchConversations, loadConversation, createNewConversation } from './conversationManagement.js';
 // Import event orchestration functions
@@ -61,8 +61,32 @@ document.addEventListener('DOMContentLoaded', function() {
         lockPremiumFeatures(isAuthenticated, userCreditBalance);
     }
     
-    // Initialize conversations
-    fetchConversations();
+    // Check for initial conversation ID from URL (for shared links or direct conversation access)
+    const pathParts = window.location.pathname.split('/');
+    const initialConversationId = pathParts.includes('chat') && pathParts[pathParts.indexOf('chat') + 1] 
+        ? pathParts[pathParts.indexOf('chat') + 1] : null;
+    
+    // Initialize conversations and handle initial loading
+    fetchConversations().then(() => {
+        if (initialConversationId) {
+            // Load specific conversation if provided (from shared link or direct access)
+            console.log(`Loading initial conversation: ${initialConversationId}`);
+            loadConversation(initialConversationId);
+        } else {
+            // Create new conversation if none specified (original behavior)
+            createNewConversation();
+        }
+    });
+    
+    // Perform idle cleanup (original behavior)
+    setTimeout(() => {
+        performIdleCleanup();
+    }, 1000);
     
     console.log('Script.js initialization complete');
 });
+
+// Export global functions for HTML compatibility (original behavior)
+// These are needed for any inline HTML event handlers or mobile compatibility
+window.openModelSelector = openModelSelector;
+window.closeModelSelector = closeModelSelector;
