@@ -1,6 +1,6 @@
 // Import required modules
 import { uploadFileAPI } from './apiService.js';
-import { attachedImageUrls, currentConversationId } from './chatLogic.js';
+import { attachedImageUrls, attachedPdfUrl, attachedPdfName, currentConversationId } from './chatLogic.js';
 
 // File upload state management
 export let isUploadingFile = false;

@@ -778,7 +778,7 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
                             messageContent.innerHTML = formatMessage(fullResponse);
                             chatMessages.scrollTop = chatMessages.scrollHeight;
                         }
-                    } catch (e) {
+                    } catch {
                         // Ignore JSON parse errors for partial chunks
                     }
                 }

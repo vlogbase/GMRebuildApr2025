@@ -100,7 +100,7 @@ function initializeBootstrapTabs() {
 
 function setupLegacyTabFunction() {
     // Legacy openTab function for backward compatibility
-    window.openTab = function(tabName, clickEvent) {
+    window.openTab = function(tabName) {
         console.log(`Opening tab with Bootstrap 5: ${tabName}`);
 
         // Find the corresponding tab trigger element

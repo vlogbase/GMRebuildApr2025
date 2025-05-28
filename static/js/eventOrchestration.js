@@ -7,7 +7,7 @@ import { debounce } from './utils.js';
 import { messageInput, sendButton, newChatButton, clearConversationsButton, imageUploadButton, imageUploadInput, cameraButton, captureButton, switchCameraButton, refreshPricesBtn } from './uiSetup.js';
 import { sendMessage, clearChat } from './chatLogic.js';
 import { createNewConversation, fetchConversations } from './conversationManagement.js';
-import { handleFileUpload, handleImageFile, switchCamera, stopCameraStream } from './fileUpload.js';
+import { handleImageFile, switchCamera, stopCameraStream } from './fileUpload.js';
 import { selectPresetButton } from './modelSelection.js';
 
 // Initialize main event listeners

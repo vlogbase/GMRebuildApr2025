@@ -136,7 +136,7 @@ class SafariStreamingCompat {
                 if (onError) onError(new Error('EventSource connection error'));
             };
             
-            eventSource.addEventListener('complete', function(event) {
+            eventSource.addEventListener('complete', function() {
                 eventSource.close();
                 // Clean up
                 sessionStorage.removeItem(`safari_payload_${tempId}`);
@@ -183,7 +183,7 @@ class IOSImageCompat {
      * Convert HEIC file to JPEG if possible
      * For now, this shows an error message since HEIC conversion requires special libraries
      */
-    async handleHEICFile(file) {
+    async handleHEICFile() {
         // For now, we'll show a user-friendly error message
         // In the future, this could be enhanced with a HEIC-to-JPEG conversion library
         
