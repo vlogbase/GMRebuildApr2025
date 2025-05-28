@@ -2098,12 +2098,12 @@ block body_class %}account-page{% endblock %} {% block styles %} {{ super() }}
 <script src="{{ url_for('static', filename='js/paypal_email_updater.js') }}"></script>
 
 <!-- Modular JavaScript Files - Clean and Separated -->
-<script src="{{ url_for('static', filename='js/account-utilities.js') }}"></script>
-<script src="{{ url_for('static', filename='js/account-tabs.js') }}"></script>
-<script src="{{ url_for('static', filename='js/affiliate-functionality.js') }}"></script>
-<script src="{{ url_for('static', filename='js/usage-analytics.js') }}"></script>
-<script src="{{ url_for('static', filename='js/pricing-table.js') }}"></script>
-<script src="{{ url_for('static', filename='js/account-settings.js') }}"></script>
-<script src="{{ url_for('static', filename='js/account-main.js') }}"></script>
-<script src="{{ url_for('static', filename='js/debug-utilities.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/account-utilities.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/account-tabs.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/affiliate-functionality.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/usage-analytics.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/pricing-table.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/account-settings.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/account-main.js') }}"></script>
+<script type="module" src="{{ url_for('static', filename='js/debug-utilities.js') }}"></script>
 {% endblock %}
