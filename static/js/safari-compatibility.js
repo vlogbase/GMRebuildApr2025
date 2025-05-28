@@ -11,6 +11,8 @@
  * 4. Touch and keyboard optimizations
  */
 
+import { getCSRFToken } from './utils.js';
+
 // Safari detection utility
 function isSafari() {
     const userAgent = navigator.userAgent;

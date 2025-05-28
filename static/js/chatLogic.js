@@ -2,7 +2,7 @@
 import { forceRepaint } from './utils.js';
 import { sendMessageAPI, shareConversationAPI, rateMessageAPI } from './apiService.js';
 import { messageInput, sendButton } from './uiSetup.js';
-import { formatModelName } from './modelSelection.js';
+import { formatModelName, currentModel } from './modelSelection.js';
 
 // Get chat messages container
 const chatMessages = document.getElementById('chat-messages');

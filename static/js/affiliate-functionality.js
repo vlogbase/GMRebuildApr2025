@@ -83,6 +83,9 @@ function initializeSimplifiedAffiliateFunctions() {
     }
 }
 
+// Export the function for ES6 modules
+export { initializeSimplifiedAffiliateFunctions };
+
 // Override the original problem functions that cause "Almost Ready!" message
 window.initializeTellFriendTabContent = function() {
     console.log('Original initializeTellFriendTabContent called - redirected to simplified version');

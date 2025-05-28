@@ -11,7 +11,7 @@ export default [
       globals: {
         ...globals.browser, // Predefined browser global variables
         // Add any custom global variables your project uses here, if any
-        // e.g., myCustomGlobal: "readonly"
+        bootstrap: "readonly" // Bootstrap 5 global object
         // For now, we primarily need globals.browser
       }
     },

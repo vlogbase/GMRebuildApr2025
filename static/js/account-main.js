@@ -5,6 +5,7 @@
 
 import { updateUsageData } from './usage-analytics.js';
 import { loadPricingData } from './pricing-table.js';
+import { initializeSimplifiedAffiliateFunctions } from './affiliate-functionality.js';
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOMContentLoaded event fired - Initializing account page functions');
