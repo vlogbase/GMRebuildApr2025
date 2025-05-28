@@ -566,13 +566,47 @@ function populateModelList(presetId) {
     // Get filter function for this preset
     const filterFn = presetFilters[presetId] || (() => true);
     
-    // Filter and sort models
+    // Filter and sort models with ELO-based sorting (restored from original)
     const filteredModels = allModels
         .filter(filterFn)
         .sort((a, b) => {
             // Preset 2 ONLY: Sort by context length first (for context-focused models)
             if (presetId === '2') {
                 // Primary sort: Context Length (descending)
+                const aContext = parseInt(a.context_length) || 0;
+                const bContext = parseInt(b.context_length) || 0;
+                if (aContext !== bContext) {
+                    return bContext - aContext;
+                }
+                
+                // Secondary sort: Input Price (ascending)
+                const aPrice = a.pricing?.prompt || 0;
+                const bPrice = b.pricing?.prompt || 0;
+                if (aPrice !== bPrice) {
+                    return aPrice - bPrice;
+                }
+            } else {
+                // For all other presets: ELO-based sorting
+                // Primary sort: ELO Score (descending, with null handling)
+                const aElo = a.elo_score !== null && a.elo_score !== undefined ? a.elo_score : -1;
+                const bElo = b.elo_score !== null && b.elo_score !== undefined ? b.elo_score : -1;
+                if (aElo !== bElo) {
+                    return bElo - aElo;
+                }
+                
+                // Secondary sort: Context Length (descending)
+                const aContext = parseInt(a.context_length) || 0;
+                const bContext = parseInt(b.context_length) || 0;
+                if (aContext !== bContext) {
+                    return bContext - aContext;
+                }
+            }
+            
+            // Tertiary sort: Alphabetical by name
+            return (a.name || a.id).localeCompare(b.name || b.id);
+        });
+    
+    console.log(`[Debug] Found ${filteredModels.length} models for preset ${presetId}`);
                 const aContext = parseInt(a.context_length) || 0;
                 const bContext = parseInt(b.context_length) || 0;
                 if (aContext !== bContext) {
