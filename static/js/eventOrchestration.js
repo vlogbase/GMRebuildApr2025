@@ -8,7 +8,7 @@ import { messageInput, sendButton, newChatButton, clearConversationsButton, imag
 import { sendMessage, clearChat } from './chatLogic.js';
 import { createNewConversation, fetchConversations } from './conversationManagement.js';
 import { handleImageFile, switchCamera, stopCameraStream } from './fileUpload.js';
-import { selectPresetButton } from './modelSelection.js';
+import { selectPresetButton, resetToDefault } from './modelSelection.js';
 
 // Initialize main event listeners
 export function initializeMainEventListeners(isAuthenticated, userCreditBalance) {
@@ -48,11 +48,21 @@ function setupCoreUIEventListeners() {
         });
     }
     
-    // Refresh prices button
+    // Reset all presets button
     if (refreshPricesBtn) {
-        refreshPricesBtn.addEventListener('click', () => {
-            console.log('🔄 Refresh prices button clicked');
-            refreshModelPrices();
+        refreshPricesBtn.addEventListener('click', async () => {
+            console.log('🔄 Reset all presets button clicked');
+            if (confirm('Are you sure you want to reset all model presets to their defaults? This will clear your custom model selections.')) {
+                // Reset all presets by calling resetToDefault without arguments (resets all)
+                try {
+                    const success = await resetAllPresets();
+                    if (success) {
+                        console.log('✅ All presets reset successfully');
+                    }
+                } catch (error) {
+                    console.error('❌ Error resetting presets:', error);
+                }
+            }
         });
     }
     

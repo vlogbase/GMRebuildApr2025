@@ -56,7 +56,7 @@ export function initializePrioritized() {
     
     // Initialize basic UI elements
     messageInput = document.getElementById('user-input') || document.getElementById('message-input');
-    sendButton = document.getElementById('send-button');
+    sendButton = document.getElementById('send-btn');
     newChatButton = document.getElementById('new-chat-button');
     clearConversationsButton = document.getElementById('clear-conversations-button');
     imageUploadButton = document.getElementById('image-upload-button');
@@ -64,7 +64,7 @@ export function initializePrioritized() {
     cameraButton = document.getElementById('camera-button');
     captureButton = document.getElementById('capture-button');
     switchCameraButton = document.getElementById('switch-camera-button');
-    refreshPricesBtn = document.getElementById('refresh-prices-btn');
+    refreshPricesBtn = document.getElementById('reset-all-presets-btn');
     
     // Medium priority - important but can be slightly delayed
     setTimeout(() => {

@@ -215,13 +215,13 @@ export async function fetchUserPreferences() {
         
         console.log('Received preferences data:', data);
         
-        if (data && data.success) {
+        if (data && data.preferences) {
             userPreferences = data.preferences || {};
             window.userPreferences = userPreferences;
             console.log('✅ User preferences loaded:', userPreferences);
             updatePresetButtonLabels();
         } else {
-            const errorMsg = data ? data.error : 'No data received';
+            const errorMsg = data ? (data.error || 'No preferences data in response') : 'No data received';
             console.warn('⚠️ Failed to fetch user preferences:', errorMsg);
             console.warn('Full response data:', data);
         }
