@@ -95,7 +95,7 @@ export async function fetchUserPreferencesAPI() {
 // Save model preference
 export async function saveModelPreferenceAPI(presetId, modelId) {
     try {
-        const response = await fetch('/api/save_model_preference', {
+        const response = await fetch('/save_preference', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
