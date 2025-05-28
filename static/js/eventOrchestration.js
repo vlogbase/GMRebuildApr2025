@@ -59,6 +59,15 @@ function setupCoreUIEventListeners() {
     // Example question buttons
     setupExampleQuestionListeners();
     
+    // Model selector close button
+    const closeSelectorButton = document.getElementById('close-selector');
+    if (closeSelectorButton) {
+        closeSelectorButton.addEventListener('click', () => {
+            console.log('❌ Model selector close button clicked');
+            window.closeModelSelector();
+        });
+    }
+    
     // Send button click event
     if (sendButton) {
         sendButton.addEventListener('click', () => {
