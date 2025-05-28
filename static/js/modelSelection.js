@@ -20,33 +20,39 @@ window.userPreferences = userPreferences;
 // Filter configurations for each preset
 export const presetFilters = {
     '1': (model) => {
-        // All non-free models - check for :free suffix and cost_band
-        const isFree = model.id.includes(':free') || model.cost_band === 'free';
+        // All non-free models - check for :free suffix, cost_band, and is_free flag
+        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
         return !isFree;
     },
     '2': (model) => {
         // All non-free models
-        const isFree = model.id.includes(':free') || model.cost_band === 'free';
+        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
         return !isFree;
     },
     '3': (model) => {
-        // Reasoning models - check for o1, o3, reasoning keywords
+        // Reasoning models - check for is_reasoning flag first, then fallback to ID patterns
+        if (model.is_reasoning === true) {
+            return true;
+        }
+        // Fallback to ID-based detection for o1, o3, reasoning keywords
         return model.id.includes('reasoning') || model.id.includes('o1') || model.id.includes('o3');
     },
     '4': (model) => {
         // Multimodal/image-capable models (non-free)
-        const isFree = model.id.includes(':free') || model.cost_band === 'free';
+        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
         const isMultimodal = model.is_multimodal || model.supports_vision || 
                             model.id.includes('vision') || model.id.includes('gpt-4o');
         return !isFree && isMultimodal;
     },
     '5': (model) => {
-        // Search/Perplexity models - placeholder filter for now
-        return model.id.includes('perplexity') || model.id.includes('search');
+        // Search/Perplexity models - only Perplexity models, exclude free models
+        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+        const isPerplexity = model.id.includes('perplexity');
+        return isPerplexity && !isFree;
     },
     '6': (model) => {
         // Free models only
-        return model.id.includes(':free') || model.cost_band === 'free';
+        return model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
     }
 };
 
@@ -126,7 +132,7 @@ function setupPresetButtonListeners() {
 function setupModelSelectorListeners() {
     const modelSelector = document.getElementById('model-selector');
     const modelSearchInput = document.getElementById('model-search');
-    const closeButton = document.querySelector('.close-model-selector');
+    const closeButton = document.getElementById('close-selector');
     
     if (closeButton) {
         closeButton.addEventListener('click', closeModelSelector);

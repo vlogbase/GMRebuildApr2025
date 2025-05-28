@@ -1,6 +1,6 @@
 // Import required modules
 import { fetchConversationsAPI, loadConversationAPI, createNewConversationAPI } from './apiService.js';
-import { addMessage, setCurrentConversationId } from './chatLogic.js';
+import { addMessage, setCurrentConversationId, clearChat } from './chatLogic.js';
 
 // Conversation management functions
 export async function fetchConversations(bustCache = false, metadataOnly = true) {
@@ -47,17 +47,17 @@ export async function loadConversation(conversationId) {
 
 export async function createNewConversation(updateURL = true) {
     try {
+        // Clear chat UI first (using the same function as the original)
+        clearChat();
+        
+        // Reset conversation ID to null as fallback
+        setCurrentConversationId(null);
+        
         const data = await createNewConversationAPI();
         
         if (data.conversation && data.conversation.id) {
             // Set the new conversation ID using the setter function
             setCurrentConversationId(data.conversation.id);
-            
-            // Clear current chat
-            const chatMessages = document.getElementById('chat-messages');
-            if (chatMessages) {
-                chatMessages.innerHTML = '';
-            }
             
             // Only update URL if explicitly requested (e.g., when user clicks "New Chat")
             // Don't update URL during initial page load or default conversation creation

@@ -52,11 +52,17 @@ function createMessageElement(content, sender, metadata = null) {
     const messageContent = document.createElement('div');
     messageContent.className = 'message-content';
     
+    // Create metadata container for assistant messages (restored from original)
+    const metadataContainer = document.createElement('div');
+    metadataContainer.className = 'message-metadata';
+    metadataContainer.style.display = 'none'; // Hidden by default, shown when metadata is added
+    
     return {
         messageElement,
         avatar,
         messageWrapper,
-        messageContent
+        messageContent,
+        metadataContainer
     };
 }
 
@@ -180,7 +186,7 @@ export function sendMessage() {
 export function addMessage(content, sender, isTyping = false, metadata = null) {
     // Get message elements
     const elements = createMessageElement(content, sender, isTyping, metadata);
-    const { messageElement, avatar, messageWrapper, messageContent } = elements;
+    const { messageElement, avatar, messageWrapper, messageContent, metadataContainer } = elements;
     
     if (isTyping) {
         messageContent.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
