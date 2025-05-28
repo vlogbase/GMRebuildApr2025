@@ -14,9 +14,17 @@ export let attachedImageUrls = [];
 export let attachedPdfUrl = null;
 export let attachedPdfName = null;
 
+// Authentication state - will be set by the main script
+let userIsLoggedIn = null;
+
 // Setter function for currentConversationId to avoid const assignment errors
 export function setCurrentConversationId(id) {
     currentConversationId = id;
+}
+
+// Setter function for userIsLoggedIn state
+export function setUserIsLoggedIn(isLoggedIn) {
+    userIsLoggedIn = isLoggedIn;
 }
 
 // Function to create message elements (copied from script.js.backup)

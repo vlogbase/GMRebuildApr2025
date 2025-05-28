@@ -5,7 +5,7 @@ import { setupLazyLoading, initializePrioritized, performIdleCleanup, messageInp
 // Import API service functions
 import { fetchConversationsAPI, sendMessageAPI, loadConversationAPI, createNewConversationAPI, fetchUserPreferencesAPI, saveModelPreferenceAPI, uploadFileAPI, fetchAvailableModelsAPI } from './apiService.js';
 // Import chat logic functions
-import { sendMessage, addMessage, formatMessage, addTypingIndicator, clearAttachedImages, clearAttachedPdf, messageHistory, currentConversationId, attachedImageUrls, attachedPdfUrl, attachedPdfName } from './chatLogic.js';
+import { sendMessage, addMessage, formatMessage, addTypingIndicator, clearAttachedImages, clearAttachedPdf, messageHistory, currentConversationId, attachedImageUrls, attachedPdfUrl, attachedPdfName, setUserIsLoggedIn } from './chatLogic.js';
 // Import file upload functions
 import { handleFileUpload, handleImageFile, handlePdfFile, showImagePreview, showPdfPreview, createUploadIndicator, isUploadingFile } from './fileUpload.js';
 // Import model selection functions
@@ -52,6 +52,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize model selection functionality
     initializeModelSelectionLogic();
+    
+    // Set authentication state in chat logic
+    setUserIsLoggedIn(isAuthenticated);
     
     // Initialize main event listeners
     initializeMainEventListeners(isAuthenticated, userCreditBalance);
