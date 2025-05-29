@@ -74,10 +74,11 @@ export const defaultModels = {
     '6': 'google/gemini-2.0-flash-exp:free' // Free
 };
 
-// Expose defaultModels globally for mobile scripts
+// Expose defaultModels and fullModelDisplayNames globally for mobile scripts
 window.defaultModels = defaultModels;
+window.fullModelDisplayNames = fullModelDisplayNames;
 
-// Display names for default models
+// Display names for default models (shown on buttons - concise for limited space)
 export const defaultModelDisplayNames = {
     'google/gemini-2.5-pro-experimental': 'Gemini 2.5 Pro',
     'x-ai/grok-3-beta': 'Grok 3',
@@ -85,6 +86,16 @@ export const defaultModelDisplayNames = {
     'openai/gpt-4o-2024-11-20': 'GPT 4o',
     'perplexity/sonar-pro': 'Perplexity Pro',
     'google/gemini-2.0-flash-exp:free': 'Gemini 2'
+};
+
+// Full technical names for dropdown display (users see exact model names when selecting)
+export const fullModelDisplayNames = {
+    'google/gemini-2.5-pro-experimental': 'Gemini 2.5 Pro Experimental',
+    'x-ai/grok-3-beta': 'Grok 3 Beta',
+    'anthropic/claude-sonnet-4': 'Claude Sonnet 4',
+    'openai/gpt-4o-2024-11-20': 'GPT-4o (2024-11-20)',
+    'perplexity/sonar-pro': 'Perplexity Sonar Pro',
+    'google/gemini-2.0-flash-exp:free': 'Gemini 2.0 Flash Experimental (Free)'
 };
 
 // Free model fallbacks for different capabilities
@@ -652,9 +663,9 @@ function populateModelList(presetId) {
         // Create model name element
         const nameSpan = document.createElement('span');
         nameSpan.className = 'model-name';
-        // Use our display name mapping if available
-        if (defaultModelDisplayNames[model.id]) {
-            nameSpan.textContent = defaultModelDisplayNames[model.id];
+        // Use full technical names for dropdown display
+        if (fullModelDisplayNames[model.id]) {
+            nameSpan.textContent = fullModelDisplayNames[model.id];
         } else {
             nameSpan.textContent = model.name;
         }
