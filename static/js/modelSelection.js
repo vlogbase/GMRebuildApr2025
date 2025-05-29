@@ -901,37 +901,137 @@ export function updateUploadControls(modelId) {
     }
 }
 
+// Cache for UI state to enable instant updates
+const uiStateCache = {
+    uploadControls: new Map(), // modelId -> {canImage, canPdf}
+    lastKnownCapabilities: new Map() // presetId -> {canImage, canPdf}
+};
+
+// Function to get cached UI capabilities or reasonable defaults
+function getCachedCapabilities(modelId, presetId) {
+    // First try the exact model ID
+    if (uiStateCache.uploadControls.has(modelId)) {
+        return uiStateCache.uploadControls.get(modelId);
+    }
+    
+    // Then try the preset's last known capabilities
+    if (uiStateCache.lastKnownCapabilities.has(presetId)) {
+        return uiStateCache.lastKnownCapabilities.get(presetId);
+    }
+    
+    // Default fallback based on known model patterns
+    const isGemini = modelId.includes('gemini');
+    const isGPT = modelId.includes('gpt-4');
+    const isClaude = modelId.includes('claude-3');
+    const isMultimodal = isGemini || isGPT || isClaude;
+    
+    return { canImage: isMultimodal, canPdf: isMultimodal };
+}
+
+// Function to apply UI updates immediately
+function applyUploadControlsUI(capabilities, modelId) {
+    const fileBtn = document.getElementById('file-upload-button');
+    const camBtn = document.getElementById('camera-button');
+    const fileInput = document.getElementById('file-upload-input');
+    
+    if (!fileBtn) return;
+    
+    const { canImage, canPdf } = capabilities;
+    
+    // Apply changes immediately
+    if (canImage || canPdf) {
+        fileBtn.style.display = 'flex';
+        fileBtn.disabled = false;
+    } else {
+        fileBtn.style.display = 'none';
+        fileBtn.disabled = true;
+    }
+    
+    if (camBtn) {
+        if (canImage) {
+            camBtn.style.display = 'flex';
+            camBtn.disabled = false;
+        } else {
+            camBtn.style.display = 'none';
+            camBtn.disabled = true;
+        }
+    }
+    
+    if (fileInput) {
+        let acceptTypes = [];
+        if (canImage) acceptTypes.push('image/*');
+        if (canPdf) acceptTypes.push('.pdf');
+        fileInput.accept = acceptTypes.join(',');
+    }
+    
+    console.log(`⚡ Applied cached UI for ${modelId}: canImage=${canImage}, canPdf=${canPdf}`);
+}
+
 // Function to update multimodal controls based on model
 export function updateMultimodalControls(modelId) {
     console.log(`🔄 updateMultimodalControls called with modelId: ${modelId}`);
-    console.log(`📊 allModels.length: ${allModels.length}`);
     
     if (!modelId) {
         console.log(`❌ No modelId provided to updateMultimodalControls`);
         return;
     }
     
+    // Get current preset for caching
+    const presetId = currentPresetId;
+    
+    // STEP 1: Apply cached/predicted UI immediately for fast response
+    const cachedCapabilities = getCachedCapabilities(modelId, presetId);
+    applyUploadControlsUI(cachedCapabilities, modelId);
+    
+    // STEP 2: Verify with actual model data in background
     if (!allModels.length) {
-        console.log(`⚠️ allModels array is empty, attempting to fetch models`);
-        // Try to fetch models if they're not loaded yet
+        console.log(`📡 Models not loaded, fetching in background`);
         fetchAvailableModels().then(() => {
-            // Retry after models are loaded
-            console.log(`🔄 Retrying updateMultimodalControls after model fetch`);
-            updateMultimodalControls(modelId);
+            updateMultimodalControlsBackground(modelId, presetId);
         });
         return;
     }
     
-    const modelInfo = allModels.find(m => m.id === modelId);
+    updateMultimodalControlsBackground(modelId, presetId);
+}
+
+// Background function to verify and update cache
+function updateMultimodalControlsBackground(modelId, presetId) {
+    let modelInfo = allModels.find(m => m.id === modelId);
+    
+    // If exact model not found, try fuzzy matching
     if (!modelInfo) {
-        console.log(`⚠️ Model ${modelId} not found in allModels array`);
-        console.log(`📋 Available models: ${allModels.map(m => m.id).slice(0, 5).join(', ')}...`);
-        return;
+        console.log(`🔍 Exact model ${modelId} not found, trying fuzzy match`);
+        modelInfo = allModels.find(m => 
+            m.id.toLowerCase().includes(modelId.toLowerCase().split('/').pop()) ||
+            modelId.toLowerCase().includes(m.id.toLowerCase().split('/').pop())
+        );
     }
     
-    console.log(`✅ Found model info for ${modelId}, calling updateUploadControls`);
-    // Call the unified upload controls function
-    updateUploadControls(modelId);
+    if (!modelInfo) {
+        console.log(`⚠️ Model ${modelId} not found even with fuzzy matching`);
+        return; // Keep using cached UI state
+    }
+    
+    // Calculate actual capabilities
+    const actualCapabilities = {
+        canImage: modelInfo.supports_vision || modelInfo.is_multimodal,
+        canPdf: !!modelInfo.supports_pdf
+    };
+    
+    // Update cache
+    uiStateCache.uploadControls.set(modelId, actualCapabilities);
+    uiStateCache.lastKnownCapabilities.set(presetId, actualCapabilities);
+    
+    // Check if UI needs updating (capabilities changed)
+    const currentCached = getCachedCapabilities(modelId, presetId);
+    if (currentCached.canImage !== actualCapabilities.canImage || 
+        currentCached.canPdf !== actualCapabilities.canPdf) {
+        console.log(`🔄 Capabilities changed, updating UI`);
+        applyUploadControlsUI(actualCapabilities, modelId);
+    }
+    
+    console.log(`✅ Background verification complete for ${modelId}`);
 }
 
 // Function to save model preference
