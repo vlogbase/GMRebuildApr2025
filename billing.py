@@ -27,7 +27,8 @@ from reportlab.lib import colors
 from reportlab.platypus import Table, TableStyle
 from reportlab.lib.units import inch, cm
 
-from app import db
+# Import database instance and models
+from database import db
 from models import User, Transaction, Usage, Package, PaymentStatus
 from models import CustomerReferral, Commission, CommissionStatus
 # AffiliateStatus is no longer needed since affiliate functionality is handled by User model
