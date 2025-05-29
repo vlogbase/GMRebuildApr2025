@@ -2797,43 +2797,19 @@ def chat(): # Synchronous function
                         pdf_to_process.append((pdf_data, filename))
                 
                 for pdf_data_url, filename in pdf_to_process:
-                    processed_pdf_data = None
-                    
-                    # Check if it's already in the correct base64 format
+                    # Validate that this is a data URL (required for OpenRouter PDF handling)
                     if pdf_data_url.startswith('data:application/pdf;base64,'):
-                        processed_pdf_data = pdf_data_url
-                        logger.info(f"PDF already in base64 format: {filename}")
-                    
-                    # If it's a blob URL, encode the URL to base64 format expected by OpenRouter
-                    elif pdf_data_url.startswith('https://'):
-                        logger.info(f"Encoding blob URL to base64 format for: {filename}")
-                        try:
-                            import base64
-                            
-                            # Encode the URL itself to base64 (not the file content)
-                            url_base64 = base64.b64encode(pdf_data_url.encode('utf-8')).decode('utf-8')
-                            processed_pdf_data = f"data:application/pdf;base64,{url_base64}"
-                            
-                            logger.info(f"Successfully encoded PDF URL to base64: {filename}")
-                            
-                        except Exception as e:
-                            logger.error(f"Failed to encode PDF URL {filename}: {e}")
-                            continue
-                    
-                    else:
-                        logger.error(f"❌ INVALID PDF URL FORMAT: {pdf_data_url[:100]}...")
-                        continue
-                    
-                    # Add the processed PDF to multimodal content
-                    if processed_pdf_data:
+                        # Add this PDF to the multimodal content
                         multimodal_content.append({
                             "type": "file",
                             "file": {
                                 "filename": filename,
-                                "file_data": processed_pdf_data
+                                "file_data": pdf_data_url
                             }
                         })
                         logger.info(f"Added PDF document to message: {filename}")
+                    else:
+                        logger.error(f"❌ INVALID PDF DATA URL FORMAT: PDF URLs must be data:application/pdf;base64,... format")
             
             # Add the multimodal content to messages if we have at least one valid image or PDF
             if len(multimodal_content) > 1:  # First item is text, so we need more than 1 item
