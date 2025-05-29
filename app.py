@@ -3420,6 +3420,7 @@ def chat(): # Synchronous function
                                     # Handle content chunk
                                     if content_chunk:
                                         assistant_response_content.append(content_chunk)
+                                        logger.info(f"🔍 CONTENT ACCUMULATION: Added chunk '{content_chunk[:50]}...' (total chunks: {len(assistant_response_content)})")
                                         # Yield content chunk to the client
                                         content_payload = {'type': 'content', 'content': content_chunk, 'conversation_id': current_conv_id}
                                         content_json_str = json.dumps(content_payload)
@@ -3476,8 +3477,12 @@ def chat(): # Synchronous function
                 logger.info(f"🔍 full_response_text length: {len(full_response_text)}")
                 logger.info(f"🔍 full_response_text sample: {repr(full_response_text[:100]) if full_response_text else 'Empty string'}")
 
-                if full_response_text: # Only save if there was actual content
-                    logger.info(f"✅ METADATA CONDITION: full_response_text check passed - proceeding with metadata generation")
+                # Always send metadata regardless of content accumulation issues
+                # This fixes the bug where metadata wasn't being sent due to content accumulation problems
+                logger.info(f"🔧 METADATA FIX: Always proceeding with metadata generation")
+                logger.info(f"🔧 Original condition would be: {bool(full_response_text)}")
+                
+                if True:  # Always generate metadata - content streaming works independently
                     try:
                         from models import Message
                         from ensure_app_context import ensure_app_context
