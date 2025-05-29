@@ -269,14 +269,29 @@ export async function fetchAvailableModels() {
                     return id.split('/').pop().replace(/-/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
                 };
                 
+                // Determine capabilities with fallbacks for known multimodal models
+                const isKnownVisionModel = modelId.includes('claude') || modelId.includes('gpt-4') || 
+                                         modelId.includes('gemini') || modelId.includes('vision');
+                const hasVisionSupport = modelData.supports_vision || modelData.is_multimodal || isKnownVisionModel;
+                const hasPdfSupport = modelData.supports_pdf || isKnownVisionModel;
+                
+                console.log(`📝 Processing model ${modelId}:`, {
+                    originalData: { 
+                        is_multimodal: modelData.is_multimodal, 
+                        supports_vision: modelData.supports_vision, 
+                        supports_pdf: modelData.supports_pdf 
+                    },
+                    computed: { hasVisionSupport, hasPdfSupport, isKnownVisionModel }
+                });
+                
                 modelDataArray.push({
                     id: modelId,
                     name: modelData.name || formatModelName(modelId),
                     cost_band: modelData.cost_band,
                     pricing: modelData.pricing,
-                    is_multimodal: modelData.is_multimodal || false,
-                    supports_vision: modelData.supports_vision || modelData.is_multimodal || false,
-                    supports_pdf: modelData.supports_pdf || false,
+                    is_multimodal: modelData.is_multimodal || isKnownVisionModel,
+                    supports_vision: hasVisionSupport,
+                    supports_pdf: hasPdfSupport,
                     context_length: modelData.context_length,
                     description: modelData.description,
                     is_reasoning: modelData.is_reasoning || false,
@@ -832,24 +847,43 @@ export function updateUploadControls(modelId) {
     const fileBtn = document.getElementById('file-upload-button');
     const camBtn = document.getElementById('camera-button');
     const fileInput = document.getElementById('file-upload-input');
-    if (!modelInfo || !fileBtn) return;
+    
+    console.log(`🔧 updateUploadControls called for model: ${modelId}`);
+    console.log(`📊 Model info:`, modelInfo);
+    console.log(`🔍 Button elements found:`, { fileBtn: !!fileBtn, camBtn: !!camBtn, fileInput: !!fileInput });
+    
+    if (!modelInfo || !fileBtn) {
+        console.log(`❌ Early return: modelInfo=${!!modelInfo}, fileBtn=${!!fileBtn}`);
+        return;
+    }
     
     // Only enable if model supports vision or PDF
     const canImage = modelInfo.supports_vision || modelInfo.is_multimodal;
     const canPdf = !!modelInfo.supports_pdf;
     
+    console.log(`🎯 Capabilities: canImage=${canImage} (supports_vision=${modelInfo.supports_vision}, is_multimodal=${modelInfo.is_multimodal}), canPdf=${canPdf}`);
+    
     if (canImage || canPdf) {
+        console.log(`✅ Showing upload button - model supports uploads`);
         fileBtn.style.display = 'flex';
         fileBtn.disabled = false;
     } else {
+        console.log(`❌ Hiding upload button - model doesn't support uploads`);
         fileBtn.style.display = 'none';
         fileBtn.disabled = true;
     }
     
     // Adjust camera: only if vision supported
     if (camBtn) {
-        camBtn.style.display = canImage ? 'flex' : 'none';
-        camBtn.disabled = !canImage;
+        if (canImage) {
+            console.log(`📷 Showing camera button`);
+            camBtn.style.display = 'flex';
+            camBtn.disabled = false;
+        } else {
+            console.log(`📷 Hiding camera button`);
+            camBtn.style.display = 'none';
+            camBtn.disabled = true;
+        }
     }
     
     // Adjust file input accept types
@@ -858,6 +892,7 @@ export function updateUploadControls(modelId) {
         if (canImage) acceptTypes.push('image/*');
         if (canPdf) acceptTypes.push('.pdf');
         fileInput.accept = acceptTypes.join(',');
+        console.log(`📎 File input accept types: ${fileInput.accept}`);
     }
 }
 
@@ -868,30 +903,8 @@ export function updateMultimodalControls(modelId) {
     const modelInfo = allModels.find(m => m.id === modelId);
     if (!modelInfo) return;
     
-    // Call the new upload controls function
+    // Call the unified upload controls function
     updateUploadControls(modelId);
-    
-    // Update image upload button visibility
-    const imageUploadButton = document.getElementById('image-upload-button');
-    if (imageUploadButton) {
-        if (modelInfo.supports_vision) {
-            imageUploadButton.style.display = 'flex';
-            imageUploadButton.disabled = false;
-        } else {
-            imageUploadButton.style.display = 'none';
-        }
-    }
-    
-    // Update PDF upload button visibility  
-    const pdfUploadButton = document.getElementById('pdf-upload-button');
-    if (pdfUploadButton) {
-        if (modelInfo.supports_pdf) {
-            pdfUploadButton.style.display = 'flex';
-            pdfUploadButton.disabled = false;
-        } else {
-            pdfUploadButton.style.display = 'none';
-        }
-    }
 }
 
 // Function to save model preference
