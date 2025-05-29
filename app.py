@@ -4379,7 +4379,7 @@ def save_preference():
 
 @app.route('/get_preferences', methods=['GET'])
 def get_preferences():
-    """ Get all user preferences """
+    """ Get all user preferences including fallback setting """
     try:
         user_identifier = get_user_identifier()
         from models import UserPreference 
@@ -4391,7 +4391,15 @@ def get_preferences():
             if preset_id_str not in result:
                 result[preset_id_str] = default_model
 
-        return jsonify({"preferences": result})
+        # Include user's fallback preference
+        enable_fallback = True  # Default for non-authenticated users
+        if current_user and current_user.is_authenticated:
+            enable_fallback = current_user.enable_model_fallback
+
+        return jsonify({
+            "preferences": result,
+            "enable_model_fallback": enable_fallback
+        })
     except Exception as e:
         logger.exception("Error getting preferences")
         abort(500, description=str(e))

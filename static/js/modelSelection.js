@@ -9,6 +9,7 @@ import { fetchUserPreferencesAPI, fetchAvailableModelsAPI, saveModelPreferenceAP
 // Model selection state variables
 export let allModels = []; // All models from OpenRouter
 export let userPreferences = {}; // User preferences for preset buttons
+export let userFallbackEnabled = true; // User's fallback preference setting
 export let currentModel = null; // Model ID of the currently selected preset
 export let currentPresetId = '1'; // Default to first preset
 export let currentlyEditingPresetId = null;
@@ -69,7 +70,7 @@ export const defaultModels = {
     '1': 'google/gemini-2.5-pro-preview', // Current Gemini 2.5 Pro
     '2': 'x-ai/grok-3-beta',
     '3': 'anthropic/claude-sonnet-4', // Reasoning
-    '4': 'openai/gpt-4o-2024-11-20', // Multimodal
+    '4': 'openai/gpt-4o', // Multimodal
     '5': 'perplexity/sonar-pro', // Search/Perplexity
     '6': 'google/gemini-2.0-flash-exp:free' // Free
 };
@@ -78,40 +79,45 @@ export const defaultModels = {
 export const presetFallbackChains = {
     '1': [ // Multimodal Gemini preset
         'google/gemini-2.5-pro-preview',
-        'google/gemini-2.0-flash-exp', 
-        'google/gemini-pro-vision',
-        'openai/gpt-4o-2024-11-20',
-        'anthropic/claude-3-sonnet-20240229'
+        'google/gemini-2.5-flash-preview-05-20', 
+        'openai/o4-mini-high',
+        'openai/o4-mini',
+        'meta-llama/llama-4-maverick'
     ],
     '2': [ // Reasoning/Advanced preset  
         'x-ai/grok-3-beta',
-        'anthropic/claude-3-opus-20240229',
-        'openai/gpt-4o-2024-11-20',
+        'meta-llama/llama-4-maverick',
+        'anthropic/claude-3.7-sonnet:thinking',
+        'openai/o4-mini-high',
         'anthropic/claude-3-sonnet-20240229'
     ],
     '3': [ // Reasoning preset
         'anthropic/claude-sonnet-4',
-        'anthropic/claude-3-opus-20240229',
-        'anthropic/claude-3-sonnet-20240229',
-        'openai/gpt-4o-2024-11-20'
+        'anthropic/claude-3.7-sonnet:thinking',
+        'deepseek/deepseek-r1-0528',
+        'openai/o4-mini-high',
+        'openai/o4',
+        'anthropic/claude-opus-4'
     ],
     '4': [ // Premium multimodal preset
+        'openai/gpt-4o',
         'openai/gpt-4o-2024-11-20',
         'openai/gpt-4o-2024-05-13',
-        'google/gemini-2.5-pro-preview',
-        'anthropic/claude-3-opus-20240229'
+        'openai/gpt-4.1',
+        'openai/gpt-4o-mini',
+        'google/gemini-2.0-flash-001'
     ],
     '5': [ // Search/Web preset
         'perplexity/sonar-pro',
-        'perplexity/llama-3.1-sonar-huge-128k-online',
-        'google/gemini-2.0-flash-exp',
-        'anthropic/claude-3-sonnet-20240229'
+        'perplexity/sonar-reasoning-pro',
+        'perplexity/sonar',
+        'perplexity/llama-3.1-sonar-large-128k-online'
     ],
     '6': [ // Free preset
         'google/gemini-2.0-flash-exp:free',
-        'google/gemini-flash:free',
-        'meta-llama/llama-3.1-8b-instruct:free',
-        'qwen/qwen-2.5-7b-instruct:free'
+        'meta-llama/llama-4-scout:free',
+        'microsoft/phi-4-reasoning-plus:free',
+        'deepseek/deepseek-r1-0528:free'
     ]
 };
 
@@ -120,7 +126,7 @@ export const defaultModelDisplayNames = {
     'google/gemini-2.5-pro-preview': 'Gemini 2.5 Pro',
     'x-ai/grok-3-beta': 'Grok 3',
     'anthropic/claude-sonnet-4': 'Claude Sonnet 4',
-    'openai/gpt-4o-2024-11-20': 'GPT 4o',
+    'openai/gpt-4o': 'GPT 4o',
     'perplexity/sonar-pro': 'Perplexity Pro',
     'google/gemini-2.0-flash-exp:free': 'Gemini 2'
 };
@@ -270,7 +276,11 @@ export async function fetchUserPreferences() {
         if (data && data.preferences) {
             userPreferences = data.preferences || {};
             window.userPreferences = userPreferences;
+            
+            // Set user's fallback preference
+            userFallbackEnabled = data.enable_model_fallback !== undefined ? data.enable_model_fallback : true;
             console.log('✅ User preferences loaded:', userPreferences);
+            console.log('📋 User fallback enabled:', userFallbackEnabled);
             updatePresetButtonLabels();
         } else {
             const errorMsg = data ? (data.error || 'No preferences data in response') : 'No data received';
@@ -1045,6 +1055,12 @@ function findBestAvailableModel(modelId, presetId) {
     if (requestedModel) {
         console.log(`✅ Requested model ${modelId} is available`);
         return { modelId, modelInfo: requestedModel, fallbackUsed: false };
+    }
+    
+    // Check if user has fallback enabled before trying alternatives
+    if (!userFallbackEnabled) {
+        console.log(`❌ Model ${modelId} not available and user has disabled fallbacks`);
+        return null;
     }
     
     // Try fuzzy matching for the requested model
