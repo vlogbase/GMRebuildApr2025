@@ -182,15 +182,8 @@ export function updatePresetButtonLabels() {
             let modelId = userPreferences[presetId] || defaultModels[presetId];
             let displayName = defaultModelDisplayNames[modelId] || formatModelName(modelId);
             
-            // Find the model in our allModels array for better display name
-            if (allModels.length > 0) {
-                const modelInfo = allModels.find(m => m.id === modelId);
-                if (modelInfo) {
-                    displayName = modelInfo.name || formatModelName(modelId);
-                } else {
-                    console.debug(`Model ${modelId} not found in allModels array, using fallback name`);
-                }
-            }
+            // Keep using our predefined concise display names for buttons
+            // Don't override with full technical names from allModels
             
             // Update button text using the correct class name
             const nameSpan = button.querySelector('.model-name');
