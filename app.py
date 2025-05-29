@@ -277,7 +277,7 @@ logger.info("Starting background initialization with improved timeout protection
 
 try:
     from background_initializer import BackgroundInitializer
-    from app_initialization import run_database_migrations, init_azure_storage
+    from app_initialization import run_database_migrations, initialize_azure_storage as init_azure_storage
     
     bg_init = BackgroundInitializer()
     bg_init.add_task('database_migrations', run_database_migrations, priority=1, timeout=60)
