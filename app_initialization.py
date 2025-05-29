@@ -84,93 +84,55 @@ def initialize_azure_storage() -> Dict[str, Any]:
             'details': str(e)
         }
 
-def run_database_migrations() -> Dict[str, Any]:
+def check_database_health() -> Dict[str, Any]:
     """
-    Run all necessary database migrations in background
+    Quick database health check without running migrations.
+    Migrations are now handled by deployment scripts, not instance startup.
     
     Returns:
-        Dict with migration status and details
+        Dict with database health status
     """
     try:
         from app import app, db
         
-        migration_results = {
-            'openrouter_model': False,
-            'user_chat_settings': False,
-            'conversation_index': False,
-            'message_index': False,
-            'affiliate': False
-        }
-        
         with app.app_context():
-            # Run OpenRouter model migrations if needed
-            try:
-                from sqlalchemy import inspect
-                inspector = inspect(db.engine)
-                
-                # OpenRouter model migration
-                if not inspector.has_table('open_router_model'):
-                    logger.info("OpenRouterModel table not found, running migrations...")
-                    from migrations_openrouter_model import run_migrations
-                    success = run_migrations()
-                    migration_results['openrouter_model'] = success
-                else:
-                    logger.info("OpenRouterModel table already exists, skipping migrations")
-                    migration_results['openrouter_model'] = True
-                    
-                # UserChatSettings migration with timeout protection
-                logger.info("Running UserChatSettings migration...")
-                from migrations_user_chat_settings import run_migration
-                
-                # Add timeout protection for the migration
-                import signal
-                
-                def migration_timeout_handler(signum, frame):
-                    raise TimeoutError("UserChatSettings migration timed out after 30 seconds")
-                
-                try:
-                    if hasattr(signal, 'SIGALRM'):
-                        signal.signal(signal.SIGALRM, migration_timeout_handler)
-                        signal.alarm(30)  # 30 second timeout
-                    
-                    success = run_migration()
-                    migration_results['user_chat_settings'] = success
-                    
-                finally:
-                    if hasattr(signal, 'SIGALRM'):
-                        signal.alarm(0)  # Clear timeout
-                
-                # Remove hypothetical migration that doesn't exist in the codebase
-                # This avoids the error with non-existent imports
-                migration_results['conversation_index'] = True  # Assume success for now
-                migration_results['message_index'] = True       # Assume success for now
-                
-                # Log migration summary
-                successful = sum(1 for result in migration_results.values() if result)
-                total = len(migration_results)
-                logger.info(f"Database migrations completed: {successful}/{total} successful")
-                
-            except Exception as e:
-                logger.error(f"Error running database migrations: {e}")
+            # Simple connectivity test
+            from sqlalchemy import text
+            with db.engine.connect() as connection:
+                connection.execute(text('SELECT 1'))
+            
+            # Check if critical tables exist
+            from sqlalchemy import inspect
+            inspector = inspect(db.engine)
+            
+            critical_tables = ['user', 'conversation', 'message']
+            missing_tables = []
+            
+            for table in critical_tables:
+                if not inspector.has_table(table):
+                    missing_tables.append(table)
+            
+            if missing_tables:
                 return {
                     'success': False,
-                    'status': 'error',
-                    'details': str(e),
-                    'results': migration_results
+                    'status': 'missing_tables',
+                    'missing_tables': missing_tables,
+                    'message': 'Critical tables missing - run deployment migrations'
                 }
+            
+            return {
+                'success': True,
+                'status': 'healthy',
+                'message': 'Database connectivity confirmed'
+            }
                 
-        return {
-            'success': True,
-            'status': 'completed',
-            'results': migration_results
-        }
-    
     except Exception as e:
-        logger.error(f"Error during database migrations: {e}")
+        logger.error(f"Database health check failed: {e}")
         return {
             'success': False,
             'status': 'error',
-            'details': str(e)
+            'details': str(e),
+            'message': 'Database connection failed'
         }
 
 def initialize_model_cache() -> Dict[str, Any]:
@@ -232,12 +194,12 @@ def setup_background_initialization():
         # Add tasks with priorities and dependencies
         # Lower priority numbers run first
         
-        # 1. Database migrations (priority 1)
+        # 1. Database health check (priority 1)
         initializer.add_task(
-            name='database_migrations',
-            func=run_database_migrations,
+            name='database_health_check',
+            func=check_database_health,
             priority=1,
-            timeout=120  # Allow more time for database migrations
+            timeout=30  # Quick health check
         )
         
         # 2. Azure Storage initialization (priority 2)
