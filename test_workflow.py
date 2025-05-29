@@ -1,21 +1,18 @@
 #!/usr/bin/env python3
 """
-Test workflow for model selector functionality
+Simple test workflow for the metadata display fix
 """
-
 import subprocess
 import sys
-import os
 
 def run():
     """Run the Flask application for testing"""
-    os.environ['FLASK_ENV'] = 'development'
-    os.environ['FLASK_DEBUG'] = '1'
-    
     try:
-        subprocess.run([sys.executable, 'app.py'], check=True)
+        subprocess.run([sys.executable, "app.py"], check=True)
     except KeyboardInterrupt:
-        print("\nStopped")
+        print("Server stopped")
+    except Exception as e:
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     run()

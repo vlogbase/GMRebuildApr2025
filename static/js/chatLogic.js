@@ -773,6 +773,7 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
         const messageContent = assistantMessage.querySelector('.message-content');
         
         let fullResponse = '';
+        let finalMetadata = null;
         
         // Process stream
         while (true) {
@@ -794,10 +795,69 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
                             messageContent.innerHTML = formatMessage(fullResponse);
                             chatMessages.scrollTop = chatMessages.scrollHeight;
                         }
+                        
+                        // Check for metadata in the response
+                        if (parsed.id && (parsed.model_id_used || parsed.prompt_tokens || parsed.completion_tokens)) {
+                            finalMetadata = parsed;
+                            console.log('📊 Received metadata:', finalMetadata);
+                        }
                     } catch {
                         // Ignore JSON parse errors for partial chunks
                     }
                 }
+            }
+        }
+        
+        // After streaming is complete, add metadata if we received it
+        if (finalMetadata) {
+            console.log('🏷️ Adding metadata to message:', finalMetadata);
+            
+            // Find the message wrapper and add metadata
+            const messageWrapper = assistantMessage.querySelector('.message-wrapper');
+            if (messageWrapper) {
+                // Create metadata container
+                const metadataContainer = document.createElement('div');
+                metadataContainer.className = 'message-metadata message-metadata-outside';
+                
+                // Build metadata text
+                let metadataText = '';
+                
+                if (finalMetadata.model_id_used) {
+                    const shortModelName = formatModelName(finalMetadata.model_id_used);
+                    metadataText += `Model: ${shortModelName}`;
+                }
+                
+                if (finalMetadata.prompt_tokens && finalMetadata.completion_tokens) {
+                    if (metadataText) metadataText += ' · ';
+                    metadataText += `Tokens: ${finalMetadata.prompt_tokens} prompt + ${finalMetadata.completion_tokens} completion`;
+                }
+                
+                metadataContainer.textContent = metadataText;
+                
+                // Add document reference if using documents
+                if (finalMetadata.using_documents) {
+                    const documentRef = document.createElement('span');
+                    documentRef.className = 'document-reference';
+                    documentRef.innerHTML = '<i class="fa-solid fa-file-lines"></i> Using your documents';
+                    
+                    if (finalMetadata.document_sources && finalMetadata.document_sources.length > 0) {
+                        const sourceCount = finalMetadata.document_sources.length;
+                        const sourceText = sourceCount === 1 
+                            ? finalMetadata.document_sources[0] 
+                            : `${sourceCount} documents`;
+                        documentRef.innerHTML = `<i class="fa-solid fa-file-lines"></i> Using ${sourceText}`;
+                    }
+                    
+                    metadataContainer.appendChild(documentRef);
+                }
+                
+                // Only append if we have metadata text or document info
+                if (metadataText || finalMetadata.using_documents) {
+                    messageWrapper.appendChild(metadataContainer);
+                }
+                
+                // Store metadata on the message element for later use (rating, sharing, etc.)
+                assistantMessage.dataset.messageMetadata = JSON.stringify(finalMetadata);
             }
         }
         
