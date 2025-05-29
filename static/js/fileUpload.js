@@ -219,7 +219,7 @@ export function stopCameraStream() {
 }
 
 export async function switchCamera() {
-    const cameraStream = document.getElementById('camera-video');
+    const cameraStream = document.getElementById('camera-stream');
     
     if (cameras.length > 1 && cameraStream) {
         stopCameraStream();
