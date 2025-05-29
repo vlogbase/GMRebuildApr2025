@@ -4930,12 +4930,9 @@ def pwa_test():
 if __name__ == '__main__':
     logger.info("Starting Flask development server")
     
-    # Scheduler is already started during app initialization, no need to start again
-    logger.info("Using existing background scheduler for model price updates")
-    
-    # Note: Model price fetching is now handled by the singleton background worker
-    # No need for instance-specific price fetching threads
-    logger.info("Singleton background worker will handle system-wide tasks")
+    # Note: All background tasks are now handled by optimized startup sequence
+    # Price fetching uses Redis distributed locks to ensure cluster-wide coordination
+    logger.info("🚀 Optimized autoscaling startup completed - ready for requests!")
     
     # ensure gevent monkey-patching already happened at import time
     app.run(host='0.0.0.0', port=5000, debug=True)

@@ -135,36 +135,44 @@ def check_database_health() -> Dict[str, Any]:
             'message': 'Database connection failed'
         }
 
-def start_singleton_background_worker() -> Dict[str, Any]:
+def initialize_price_fetching_with_locks() -> Dict[str, Any]:
     """
-    Start the singleton background worker that handles system-wide tasks.
+    Initialize price fetching using Redis distributed locks for cluster coordination.
     
-    This replaces the old model cache initialization with a proper singleton
-    service that coordinates across all instances using Redis distributed locks.
+    This calls the now-Redis-locked fetch_and_store_openrouter_prices() function,
+    which ensures only one instance across the cluster performs expensive API calls.
     
     Returns:
         Dict with initialization status and details
     """
     try:
+        from price_updater import fetch_and_store_openrouter_prices
         from singleton_background_worker import start_singleton_worker
         
         # Start time for performance tracking
         start_time = time.time()
         
-        # Start the singleton worker
+        # Start the singleton worker for scheduled tasks
+        logger.info("Starting singleton worker for scheduled tasks...")
         worker = start_singleton_worker()
+        
+        # Call the Redis-locked price fetching function
+        # If another instance is already fetching, this will return quickly
+        logger.info("Initializing price data with cluster coordination...")
+        price_success = fetch_and_store_openrouter_prices()
         
         elapsed = time.time() - start_time
         
         return {
             'success': True,
-            'status': 'started',
-            'worker_status': worker.get_status() if worker else {},
+            'status': 'initialized',
+            'price_fetch_success': price_success,
+            'worker_started': worker is not None,
             'initialization_time': elapsed
         }
     
     except Exception as e:
-        logger.error(f"Error starting singleton background worker: {e}")
+        logger.error(f"Error initializing optimized price fetching: {e}")
         return {
             'success': False,
             'status': 'error',
@@ -204,13 +212,14 @@ def setup_background_initialization():
             timeout=30
         )
         
-        # 3. Start singleton background worker (priority 3, depends on database health)
+        # 3. Initialize optimized price fetching (priority 3, depends on database health)
+        # This uses Redis distributed locks for cluster-wide coordination
         initializer.add_task(
-            name='singleton_worker',
-            func=start_singleton_background_worker,
+            name='optimized_price_init',
+            func=initialize_price_fetching_with_locks,
             priority=3,
             dependencies=['database_health_check'],
-            timeout=30
+            timeout=15  # Fast with distributed locks
         )
         
         # Start the initialization process

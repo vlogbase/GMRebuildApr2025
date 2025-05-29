@@ -8,6 +8,7 @@ ensuring model information is stored in the database for reliability.
 import os
 import time
 import logging
+import threading
 import requests
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
@@ -212,12 +213,17 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
     """
     Fetch current model prices from OpenRouter API and store them in the database.
     
-    This function now:
-    1. Checks if an update is needed based on time elapsed since last update (unless force_update=True)
-    2. Fetches models from the OpenRouter API
-    3. Stores them in the database using the OpenRouterModel model
-    4. Also updates the legacy cache for backward compatibility
-    5. Updates the global OPENROUTER_MODELS_INFO variable for consistency
+    This function now includes Redis distributed locking to ensure only one instance
+    across the entire cluster performs the expensive API fetch and database update.
+    
+    This function:
+    1. Acquires a Redis distributed lock to coordinate across instances
+    2. Checks if an update is needed based on time elapsed since last update (unless force_update=True)
+    3. Fetches models from the OpenRouter API (only if lock acquired)
+    4. Stores them in the database using the OpenRouterModel model
+    5. Also updates the legacy cache for backward compatibility
+    6. Updates the global OPENROUTER_MODELS_INFO variable for consistency
+    7. Releases the Redis lock
     
     Args:
         force_update: If True, bypass the time check and always update
@@ -232,15 +238,56 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
     except ImportError as e:
         logger.error(f"Failed to import app modules: {e}")
         return False
+    
+    # Redis distributed lock setup
+    LOCK_KEY = "cluster:price_update_lock"
+    LOCK_TTL = 1800  # 30 minutes - enough time for full price update
+    redis_client = None
+    lock_acquired = False
+    worker_id = f"{os.getpid()}_{threading.current_thread().ident}"
+    
+    try:
+        # Get Redis client for distributed locking
+        from api_cache import get_redis_client
+        redis_client = get_redis_client()
         
-    # Check if we should update based on time elapsed
-    if not force_update and not should_update_prices():
-        logger.info("Skipping price update - prices are recent enough")
-        return True
+        if redis_client:
+            # Try to acquire distributed lock using atomic SET NX EX
+            lock_acquired = redis_client.set(LOCK_KEY, worker_id, nx=True, ex=LOCK_TTL)
+            
+            if lock_acquired:
+                logger.info(f"✓ Acquired cluster-wide price update lock (worker: {worker_id})")
+            else:
+                # Check who has the lock
+                current_holder = redis_client.get(LOCK_KEY)
+                if current_holder:
+                    logger.info(f"⏱️ Price update already running on worker: {current_holder.decode()}")
+                else:
+                    logger.info("⏱️ Price update lock recently released, skipping")
+                
+                # Check if we should still return True (data is fresh)
+                if not force_update and not should_update_prices():
+                    logger.info("✓ Prices are fresh, no update needed")
+                    return True
+                else:
+                    logger.info("⚠️ Skipping price update - another instance is handling it")
+                    return False
+        else:
+            logger.warning("⚠️ Redis not available - proceeding without distributed lock")
+            # Continue without locking if Redis is unavailable
+            
+    except Exception as e:
+        logger.warning(f"⚠️ Error setting up Redis lock: {e} - proceeding without lock")
         
-    # Mark the start time for performance tracking
-    start_time = time.time()
-    logger.info("Scheduled job: fetch_and_store_openrouter_prices started")
+    try:
+        # Check if we should update based on time elapsed
+        if not force_update and not should_update_prices():
+            logger.info("Skipping price update - prices are recent enough")
+            return True
+            
+        # Mark the start time for performance tracking
+        start_time = time.time()
+        logger.info("🚀 Cluster-coordinated price update started")
     
     # ELO scores are now managed manually via admin interface - no automatic fetching
     
@@ -602,18 +649,36 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
         
         # Log successful completion
         elapsed_time = time.time() - start_time
-        logger.info(f"Successfully processed {len(prices)} models in {elapsed_time:.2f} seconds")
-        logger.info("Scheduled job: fetch_and_store_openrouter_prices completed successfully")
+        logger.info(f"✅ Successfully processed {len(prices)} models in {elapsed_time:.2f} seconds")
+        logger.info("🎉 Cluster-coordinated price update completed successfully")
         return True
         
     except requests.exceptions.RequestException as e:
-        logger.error(f"Request error fetching model prices: {e}")
-        logger.info("Scheduled job: fetch_and_store_openrouter_prices failed")
+        logger.error(f"❌ Request error fetching model prices: {e}")
         return False
     except Exception as e:
-        logger.error(f"Error fetching or processing model prices: {e}")
-        logger.info("Scheduled job: fetch_and_store_openrouter_prices failed")
+        logger.error(f"❌ Error fetching or processing model prices: {e}")
         return False
+        
+    finally:
+        # Always release the Redis lock if we acquired it
+        if lock_acquired and redis_client:
+            try:
+                # Use Lua script for atomic check-and-delete to ensure we only delete our own lock
+                lua_script = """
+                if redis.call("get", KEYS[1]) == ARGV[1] then
+                    return redis.call("del", KEYS[1])
+                else
+                    return 0
+                end
+                """
+                result = redis_client.eval(lua_script, 1, LOCK_KEY, worker_id)
+                if result == 1:
+                    logger.info(f"🔓 Released cluster-wide price update lock (worker: {worker_id})")
+                else:
+                    logger.warning(f"⚠️ Could not release price update lock - not owned by this worker")
+            except Exception as e:
+                logger.error(f"❌ Error releasing Redis lock: {e}")
 
 def get_model_cost(model_id: str) -> dict:
     """
