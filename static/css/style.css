@@ -2086,56 +2086,6 @@ body.account-page .tab-pane {
     background-color: #254344; /* Updated from var(--accent-color) (#24b9bd) */
 }
 
-/* Tooltip styles for desktop preset buttons */
-.model-preset-btn {
-    position: relative;
-}
-
-.model-preset-btn::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.9);
-    color: white;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 12px;
-    white-space: nowrap;
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s, visibility 0.3s;
-    pointer-events: none;
-    z-index: 1000;
-    margin-bottom: 8px;
-}
-
-.model-preset-btn::before {
-    content: '';
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    border: 5px solid transparent;
-    border-top-color: rgba(0, 0, 0, 0.9);
-    opacity: 0;
-    visibility: hidden;
-    transition: opacity 0.3s, visibility 0.3s;
-    pointer-events: none;
-    z-index: 1000;
-    margin-bottom: 3px;
-}
-
-/* Show tooltip on hover (desktop only) */
-@media (hover: hover) and (pointer: fine) {
-    .model-preset-btn:hover::after,
-    .model-preset-btn:hover::before {
-        opacity: 1;
-        visibility: visible;
-    }
-}
-
 /* Locked premium features */
 .premium-locked {
     position: relative;

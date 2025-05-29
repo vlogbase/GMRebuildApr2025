@@ -655,41 +655,22 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Helper function to filter and display models after they're loaded
     function finishPopulatingModels(allModels, presetId) {
-        // Helper functions to match the desktop logic
-        function isModelFree(model) {
-            return model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
-        }
-
-        function isModelReasoning(model) {
-            // First check if model has supported_parameters and includes 'include_reasoning'
-            if (model.supported_parameters && Array.isArray(model.supported_parameters)) {
-                return model.supported_parameters.includes('include_reasoning');
+        // First filter out free models for all presets except 6
+        const nonFreeModels = presetId === '6' ? allModels : allModels.filter(model => !model.is_free && !model.id.includes(':free'));
+        
+        // Then apply specific filters based on preset
+        const filteredModels = presetId === '3' ? nonFreeModels.filter(model => model.is_reasoning === true) :
+                              presetId === '4' ? nonFreeModels.filter(model => {
+            const passes = model.is_multimodal === true;
+            // Debug logging for multimodal filter
+            if (model.id === 'qwen/qwen-vl-max' || model.id === 'x-ai/grok-2-vision-1212' || model.id === 'openai/gpt-4o') {
+                console.log(`[Mobile Preset 4 Debug] ${model.id}: is_multimodal=${model.is_multimodal}, is_free=${model.is_free}, passes=${passes}`);
             }
-            
-            // Fallback to existing logic for cached data that might not have supported_parameters
-            if (model.is_reasoning === true) {
-                return true;
-            }
-            
-            // Secondary fallback to ID-based detection for o1, o3, reasoning keywords
-            return model.id.includes('reasoning') || model.id.includes('o1') || model.id.includes('o3');
-        }
-
-        // Apply filters based on preset using the same logic as desktop
-        const filteredModels = presetId === '1' ? allModels.filter(model => !isModelFree(model)) :
-                              presetId === '2' ? allModels.filter(model => !isModelFree(model)) :
-                              presetId === '3' ? allModels.filter(model => isModelReasoning(model) && !isModelFree(model)) :
-                              presetId === '4' ? allModels.filter(model => {
-            const isMultimodal = model.is_multimodal || model.supports_vision || 
-                                model.id.includes('vision') || model.id.includes('gpt-4o');
-            return !isModelFree(model) && isMultimodal;
+            return passes;
         }) :
-                              presetId === '5' ? allModels.filter(model => {
-            const isPerplexity = model.id.includes('perplexity');
-            return isPerplexity && !isModelFree(model);
-        }) :
-                              presetId === '6' ? allModels.filter(model => isModelFree(model)) :
-                              allModels; // Fallback
+                              presetId === '5' ? nonFreeModels.filter(model => model.id.includes('perplexity')) :
+                              presetId === '6' ? allModels.filter(model => model.is_free === true || model.id.includes(':free')) :
+                              nonFreeModels; // For presets 1-5, we already filtered out free models above
                               
         console.log(`Mobile: Filtered to ${filteredModels.length} models for preset ${presetId} (excluding free models for presets 1-5)`);
         
