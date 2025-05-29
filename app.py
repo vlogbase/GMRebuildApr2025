@@ -4933,17 +4933,9 @@ if __name__ == '__main__':
     # Scheduler is already started during app initialization, no need to start again
     logger.info("Using existing background scheduler for model price updates")
     
-    # Perform initial model price fetch in background thread to avoid blocking server startup
-    def background_initial_fetch():
-        try:
-            logger.info("Performing initial model price fetch in background")
-            fetch_and_store_openrouter_prices()
-        except Exception as e:
-            logger.error(f"Error during initial model price fetch: {e}")
-    
-    # Start background fetch thread
-    fetch_thread = threading.Thread(target=background_initial_fetch, daemon=True)
-    fetch_thread.start()
+    # Note: Model price fetching is now handled by the singleton background worker
+    # No need for instance-specific price fetching threads
+    logger.info("Singleton background worker will handle system-wide tasks")
     
     # ensure gevent monkey-patching already happened at import time
     app.run(host='0.0.0.0', port=5000, debug=True)

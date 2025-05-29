@@ -135,42 +135,36 @@ def check_database_health() -> Dict[str, Any]:
             'message': 'Database connection failed'
         }
 
-def initialize_model_cache() -> Dict[str, Any]:
+def start_singleton_background_worker() -> Dict[str, Any]:
     """
-    Initialize and validate the model information cache
+    Start the singleton background worker that handles system-wide tasks.
     
-    This ensures price information for AI models is available without 
-    blocking application startup.
+    This replaces the old model cache initialization with a proper singleton
+    service that coordinates across all instances using Redis distributed locks.
     
     Returns:
         Dict with initialization status and details
     """
     try:
-        from price_updater import fetch_and_store_openrouter_prices
+        from singleton_background_worker import start_singleton_worker
         
         # Start time for performance tracking
         start_time = time.time()
         
-        # Force update to ensure we have the latest data
-        success = fetch_and_store_openrouter_prices(force_update=True)
+        # Start the singleton worker
+        worker = start_singleton_worker()
         
         elapsed = time.time() - start_time
         
-        if success:
-            return {
-                'success': True,
-                'status': 'updated',
-                'initialization_time': elapsed
-            }
-        else:
-            return {
-                'success': False,
-                'status': 'update_failed',
-                'initialization_time': elapsed
-            }
+        return {
+            'success': True,
+            'status': 'started',
+            'worker_status': worker.get_status() if worker else {},
+            'initialization_time': elapsed
+        }
     
     except Exception as e:
-        logger.error(f"Error initializing model cache: {e}")
+        logger.error(f"Error starting singleton background worker: {e}")
         return {
             'success': False,
             'status': 'error',
@@ -210,13 +204,13 @@ def setup_background_initialization():
             timeout=30
         )
         
-        # 3. Model cache initialization (priority 3, depends on database migrations)
+        # 3. Start singleton background worker (priority 3, depends on database health)
         initializer.add_task(
-            name='model_cache',
-            func=initialize_model_cache,
+            name='singleton_worker',
+            func=start_singleton_background_worker,
             priority=3,
-            dependencies=['database_migrations'],
-            timeout=60
+            dependencies=['database_health_check'],
+            timeout=30
         )
         
         # Start the initialization process
