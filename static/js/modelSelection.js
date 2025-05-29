@@ -276,7 +276,8 @@ export async function fetchAvailableModels() {
                     context_length: modelData.context_length,
                     description: modelData.description,
                     is_reasoning: modelData.is_reasoning || false,
-                    is_free: modelData.is_free || false
+                    is_free: modelData.is_free || false,
+                    elo_score: modelData.elo_score || null
                 });
             }
             
@@ -469,6 +470,27 @@ export function openModelSelector(presetId, buttonElement) {
     }
 }
 
+// Function to sort models based on preset requirements
+function sortModelsByPreset(models, presetId) {
+    const modelsCopy = [...models]; // Create a copy to avoid mutating original array
+    
+    if (presetId === '2') {
+        // Preset 2: Sort by context length (highest first)
+        return modelsCopy.sort((a, b) => {
+            const contextA = parseInt(a.context_length) || 0;
+            const contextB = parseInt(b.context_length) || 0;
+            return contextB - contextA;
+        });
+    } else {
+        // All other presets: Sort by ELO score (highest first)
+        return modelsCopy.sort((a, b) => {
+            const eloA = parseFloat(a.elo_score) || 0;
+            const eloB = parseFloat(b.elo_score) || 0;
+            return eloB - eloA;
+        });
+    }
+}
+
 // Function to populate model list based on preset filter
 function populateModelList(presetId) {
     // Log: At function start
@@ -572,51 +594,17 @@ function populateModelList(presetId) {
     // Get filter function for this preset
     const filterFn = presetFilters[presetId] || (() => true);
     
-    // Filter and sort models with ELO-based sorting (restored from original)
-    const filteredModels = allModels
-        .filter(filterFn)
-        .sort((a, b) => {
-            // Preset 2 ONLY: Sort by context length first (for context-focused models)
-            if (presetId === '2') {
-                // Primary sort: Context Length (descending)
-                const aContext = parseInt(a.context_length) || 0;
-                const bContext = parseInt(b.context_length) || 0;
-                if (aContext !== bContext) {
-                    return bContext - aContext;
-                }
-                
-                // Secondary sort: Input Price (ascending)
-                const aPrice = a.pricing?.prompt || 0;
-                const bPrice = b.pricing?.prompt || 0;
-                if (aPrice !== bPrice) {
-                    return aPrice - bPrice;
-                }
-            } else {
-                // For all other presets: ELO-based sorting
-                // Primary sort: ELO Score (descending, with null handling)
-                const aElo = a.elo_score !== null && a.elo_score !== undefined ? a.elo_score : -1;
-                const bElo = b.elo_score !== null && b.elo_score !== undefined ? b.elo_score : -1;
-                if (aElo !== bElo) {
-                    return bElo - aElo;
-                }
-                
-                // Secondary sort: Context Length (descending)
-                const aContext = parseInt(a.context_length) || 0;
-                const bContext = parseInt(b.context_length) || 0;
-                if (aContext !== bContext) {
-                    return bContext - aContext;
-                }
-            }
-            
-            // Tertiary sort: Alphabetical by name
-            return (a.name || a.id).localeCompare(b.name || b.id);
-        });
+    // Apply the filter
+    const filteredModels = allModels.filter(filterFn);
+    
+    // Sort the filtered models based on preset requirements
+    const sortedModels = sortModelsByPreset(filteredModels, presetId);
     
     console.log(`[Debug] Found ${filteredModels.length} models for preset ${presetId}`);
+    console.log(`[Debug] After sorting: ${sortedModels.length} models for preset ${presetId}`);
     
-    // Log: After filtering
-    console.log(`[Debug] Filtered models count for preset ${presetId}: ${filteredModels.length}`);
-    if (filteredModels.length === 0 && allModels && allModels.length > 0) {
+    // Log: After filtering and sorting
+    if (sortedModels.length === 0 && allModels && allModels.length > 0) {
         console.warn(`[Debug] Filtering for preset ${presetId} resulted in 0 models. Check filter logic and model properties.`);
         // Log the filter function itself if possible
         console.log('[Debug] Filter function:', filterFn.toString());
@@ -628,7 +616,7 @@ function populateModelList(presetId) {
     const fragment = document.createDocumentFragment();
     
     // Add each model to the fragment
-    filteredModels.forEach(model => {
+    sortedModels.forEach(model => {
         // Log: Inside rendering loop
         console.log(`[Debug] Rendering list item for model: ${model.id}, Band: ${model.cost_band}`);
         

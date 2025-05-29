@@ -659,7 +659,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const nonFreeModels = presetId === '6' ? allModels : allModels.filter(model => !model.is_free && !model.id.includes(':free'));
         
         // Then apply specific filters based on preset
-        const filteredModels = presetId === '3' ? nonFreeModels.filter(model => {
+        let filteredModels = presetId === '3' ? nonFreeModels.filter(model => {
             // Reasoning models (non-free) - already filtered out free models above
             return model.is_reasoning === true;
         }) :
