@@ -2804,25 +2804,20 @@ def chat(): # Synchronous function
                         processed_pdf_data = pdf_data_url
                         logger.info(f"PDF already in base64 format: {filename}")
                     
-                    # If it's a blob URL, fetch and convert to base64
+                    # If it's a blob URL, encode the URL to base64 format expected by OpenRouter
                     elif pdf_data_url.startswith('https://'):
-                        logger.info(f"Converting blob URL to base64 for: {filename}")
+                        logger.info(f"Encoding blob URL to base64 format for: {filename}")
                         try:
-                            import requests
                             import base64
                             
-                            # Fetch the PDF from the blob URL
-                            response = requests.get(pdf_data_url, timeout=30)
-                            response.raise_for_status()
+                            # Encode the URL itself to base64 (not the file content)
+                            url_base64 = base64.b64encode(pdf_data_url.encode('utf-8')).decode('utf-8')
+                            processed_pdf_data = f"data:application/pdf;base64,{url_base64}"
                             
-                            # Convert to base64
-                            pdf_base64 = base64.b64encode(response.content).decode('utf-8')
-                            processed_pdf_data = f"data:application/pdf;base64,{pdf_base64}"
-                            
-                            logger.info(f"Successfully converted PDF to base64: {filename} ({len(response.content)} bytes)")
+                            logger.info(f"Successfully encoded PDF URL to base64: {filename}")
                             
                         except Exception as e:
-                            logger.error(f"Failed to fetch and convert PDF {filename}: {e}")
+                            logger.error(f"Failed to encode PDF URL {filename}: {e}")
                             continue
                     
                     else:
