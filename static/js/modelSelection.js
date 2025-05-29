@@ -66,7 +66,7 @@ export const presetFilters = {
 
 // Default models for each preset
 export const defaultModels = {
-    '1': 'google/gemini-2.0-flash-exp', // Updated to actual working Gemini model
+    '1': 'google/gemini-2.5-pro-preview', // Current Gemini 2.5 Pro
     '2': 'x-ai/grok-3-beta',
     '3': 'anthropic/claude-sonnet-4', // Reasoning
     '4': 'openai/gpt-4o-2024-11-20', // Multimodal
@@ -74,9 +74,50 @@ export const defaultModels = {
     '6': 'google/gemini-2.0-flash-exp:free' // Free
 };
 
+// Preset fallback chains - ordered by preference for each preset category
+export const presetFallbackChains = {
+    '1': [ // Multimodal Gemini preset
+        'google/gemini-2.5-pro-preview',
+        'google/gemini-2.0-flash-exp', 
+        'google/gemini-pro-vision',
+        'openai/gpt-4o-2024-11-20',
+        'anthropic/claude-3-sonnet-20240229'
+    ],
+    '2': [ // Reasoning/Advanced preset  
+        'x-ai/grok-3-beta',
+        'anthropic/claude-3-opus-20240229',
+        'openai/gpt-4o-2024-11-20',
+        'anthropic/claude-3-sonnet-20240229'
+    ],
+    '3': [ // Reasoning preset
+        'anthropic/claude-sonnet-4',
+        'anthropic/claude-3-opus-20240229',
+        'anthropic/claude-3-sonnet-20240229',
+        'openai/gpt-4o-2024-11-20'
+    ],
+    '4': [ // Premium multimodal preset
+        'openai/gpt-4o-2024-11-20',
+        'openai/gpt-4o-2024-05-13',
+        'google/gemini-2.5-pro-preview',
+        'anthropic/claude-3-opus-20240229'
+    ],
+    '5': [ // Search/Web preset
+        'perplexity/sonar-pro',
+        'perplexity/llama-3.1-sonar-huge-128k-online',
+        'google/gemini-2.0-flash-exp',
+        'anthropic/claude-3-sonnet-20240229'
+    ],
+    '6': [ // Free preset
+        'google/gemini-2.0-flash-exp:free',
+        'google/gemini-flash:free',
+        'meta-llama/llama-3.1-8b-instruct:free',
+        'qwen/qwen-2.5-7b-instruct:free'
+    ]
+};
+
 // Display names for default models (shown on buttons - concise for limited space)
 export const defaultModelDisplayNames = {
-    'google/gemini-2.0-flash-exp': 'Gemini 2.0 Flash',
+    'google/gemini-2.5-pro-preview': 'Gemini 2.5 Pro',
     'x-ai/grok-3-beta': 'Grok 3',
     'anthropic/claude-sonnet-4': 'Claude Sonnet 4',
     'openai/gpt-4o-2024-11-20': 'GPT 4o',
@@ -995,22 +1036,60 @@ export function updateMultimodalControls(modelId) {
     updateMultimodalControlsBackground(modelId, presetId);
 }
 
-// Background function to verify and update cache
-function updateMultimodalControlsBackground(modelId, presetId) {
-    let modelInfo = allModels.find(m => m.id === modelId);
+// Function to find the best available model from a fallback chain
+function findBestAvailableModel(modelId, presetId) {
+    console.log(`🔍 Finding best available model for ${modelId} (preset ${presetId})`);
     
-    // If exact model not found, try fuzzy matching
-    if (!modelInfo) {
-        console.log(`🔍 Exact model ${modelId} not found, trying fuzzy match`);
-        modelInfo = allModels.find(m => 
-            m.id.toLowerCase().includes(modelId.toLowerCase().split('/').pop()) ||
-            modelId.toLowerCase().includes(m.id.toLowerCase().split('/').pop())
-        );
+    // First check if the requested model is available
+    const requestedModel = allModels.find(m => m.id === modelId);
+    if (requestedModel) {
+        console.log(`✅ Requested model ${modelId} is available`);
+        return { modelId, modelInfo: requestedModel, fallbackUsed: false };
     }
     
-    if (!modelInfo) {
-        console.log(`⚠️ Model ${modelId} not found even with fuzzy matching`);
-        return; // Keep using cached UI state
+    // Try fuzzy matching for the requested model
+    const fuzzyMatch = allModels.find(m => 
+        m.id.toLowerCase().includes(modelId.toLowerCase().split('/').pop()) ||
+        modelId.toLowerCase().includes(m.id.toLowerCase().split('/').pop())
+    );
+    
+    if (fuzzyMatch) {
+        console.log(`🎯 Found fuzzy match: ${fuzzyMatch.id} for ${modelId}`);
+        return { modelId: fuzzyMatch.id, modelInfo: fuzzyMatch, fallbackUsed: true };
+    }
+    
+    // Use preset fallback chain
+    const fallbackChain = presetFallbackChains[presetId] || [];
+    console.log(`📋 Trying fallback chain for preset ${presetId}:`, fallbackChain);
+    
+    for (const fallbackModelId of fallbackChain) {
+        const fallbackModel = allModels.find(m => m.id === fallbackModelId);
+        if (fallbackModel) {
+            console.log(`✅ Found working fallback: ${fallbackModelId}`);
+            return { modelId: fallbackModelId, modelInfo: fallbackModel, fallbackUsed: true };
+        }
+    }
+    
+    console.log(`⚠️ No fallbacks available for preset ${presetId}`);
+    return null;
+}
+
+// Background function to verify and update cache
+function updateMultimodalControlsBackground(modelId, presetId) {
+    const result = findBestAvailableModel(modelId, presetId);
+    
+    if (!result) {
+        console.log(`❌ No working model found for ${modelId}`);
+        return;
+    }
+    
+    const { modelId: workingModelId, modelInfo, fallbackUsed } = result;
+    
+    if (fallbackUsed && workingModelId !== modelId) {
+        console.log(`🔄 Switching to fallback model: ${workingModelId}`);
+        // Update the preset to use the working model
+        currentModel = workingModelId;
+        updatePresetButtonLabel(presetId, workingModelId);
     }
     
     // Calculate actual capabilities
@@ -1019,8 +1098,9 @@ function updateMultimodalControlsBackground(modelId, presetId) {
         canPdf: !!modelInfo.supports_pdf
     };
     
-    // Update cache
+    // Update cache for both original and working model IDs
     uiStateCache.uploadControls.set(modelId, actualCapabilities);
+    uiStateCache.uploadControls.set(workingModelId, actualCapabilities);
     uiStateCache.lastKnownCapabilities.set(presetId, actualCapabilities);
     
     // Check if UI needs updating (capabilities changed)
@@ -1028,10 +1108,27 @@ function updateMultimodalControlsBackground(modelId, presetId) {
     if (currentCached.canImage !== actualCapabilities.canImage || 
         currentCached.canPdf !== actualCapabilities.canPdf) {
         console.log(`🔄 Capabilities changed, updating UI`);
-        applyUploadControlsUI(actualCapabilities, modelId);
+        applyUploadControlsUI(actualCapabilities, workingModelId);
     }
     
-    console.log(`✅ Background verification complete for ${modelId}`);
+    console.log(`✅ Background verification complete for ${workingModelId}`);
+}
+
+// Function to update a preset button label when fallback is used
+function updatePresetButtonLabel(presetId, modelId) {
+    const button = document.querySelector(`[data-preset-id="${presetId}"]`);
+    if (!button) return;
+    
+    const nameElement = button.querySelector('.model-name');
+    if (!nameElement) return;
+    
+    // Get display name for the model
+    const displayName = defaultModelDisplayNames[modelId] || 
+                       fullModelDisplayNames[modelId] || 
+                       modelId.split('/').pop();
+    
+    nameElement.textContent = displayName;
+    console.log(`🏷️ Updated preset ${presetId} label to: ${displayName}`);
 }
 
 // Function to save model preference

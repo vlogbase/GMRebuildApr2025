@@ -429,7 +429,7 @@ OPENROUTER_MODELS = {
     "free-gemini": "google/gemini-flash:free" # Verified free model
 }
 DEFAULT_PRESET_MODELS = {
-    "1": "google/gemini-2.0-flash-exp", # Google: Gemini 2.0 Flash Experimental (multimodal)
+    "1": "google/gemini-2.5-pro-preview", # Google: Gemini 2.5 Pro Preview (multimodal)
     "2": "x-ai/grok-3-beta", # Grok 3 Beta
     "3": "anthropic/claude-sonnet-4", # Reasoning models (preset loads non-free reasoning models)
     "4": "openai/gpt-4o-2024-11-20", # Premium quality
