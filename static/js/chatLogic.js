@@ -64,7 +64,6 @@ function createMessageElement(content, sender, metadata = null) {
     // Create metadata container for assistant messages (restored from original)
     const metadataContainer = document.createElement('div');
     metadataContainer.className = 'message-metadata';
-    metadataContainer.style.display = 'none'; // Hidden by default, shown when metadata is added
     
     return {
         messageElement,
@@ -169,19 +168,21 @@ export function sendMessage() {
     // IMPORTANT: Keep the PDF/image data available until AFTER sending to backend
     // Note: Attachment data is preserved for backend sending
     
-    // Clear UI indicators (we've already displayed them in the message)
-    // But preserve the actual data for the backend call
+    // Clear preview elements after sending (as specified in ChatGPT instructions)
     if (attachedImageUrls.length > 0) {
-        // Just clear the UI indicators
-        const uploadIndicators = document.querySelectorAll('.image-preview-container');
-        uploadIndicators.forEach(indicator => indicator.remove());
+        const indicators = document.querySelectorAll('.image-preview, .image-preview-container');
+        indicators.forEach(el => el.remove());
+    }
+    if (attachedPdfUrl) {
+        const indicators = document.querySelectorAll('.pdf-preview, .pdf-indicator');
+        indicators.forEach(el => el.remove());
     }
     
-    // Clear PDF UI indicators but keep the data
-    if (attachedPdfUrl) {
-        // Just clear the UI indicator
-        const pdfIndicators = document.querySelectorAll('.pdf-indicator');
-        pdfIndicators.forEach(indicator => indicator.remove());
+    // Hide or clear the document preview area
+    const previewArea = document.getElementById('document-preview-area');
+    if (previewArea) {
+        previewArea.innerHTML = '';
+        previewArea.style.display = 'none';
     }
     
     // Send message to backend with the data still intact

@@ -819,12 +819,50 @@ function calculateCostBand(modelData) {
     return 'premium';
 }
 
+// Function to update upload controls based on model capabilities
+export function updateUploadControls(modelId) {
+    const modelInfo = allModels.find(m => m.id === modelId);
+    const fileBtn = document.getElementById('file-upload-button');
+    const camBtn = document.getElementById('camera-button');
+    const fileInput = document.getElementById('file-upload-input');
+    if (!modelInfo || !fileBtn) return;
+    
+    // Only enable if model supports vision or PDF
+    const canImage = modelInfo.supports_vision || modelInfo.is_multimodal;
+    const canPdf = !!modelInfo.supports_pdf;
+    
+    if (canImage || canPdf) {
+        fileBtn.style.display = 'flex';
+        fileBtn.disabled = false;
+    } else {
+        fileBtn.style.display = 'none';
+        fileBtn.disabled = true;
+    }
+    
+    // Adjust camera: only if vision supported
+    if (camBtn) {
+        camBtn.style.display = canImage ? 'flex' : 'none';
+        camBtn.disabled = !canImage;
+    }
+    
+    // Adjust file input accept types
+    if (fileInput) {
+        let acceptTypes = [];
+        if (canImage) acceptTypes.push('image/*');
+        if (canPdf) acceptTypes.push('.pdf');
+        fileInput.accept = acceptTypes.join(',');
+    }
+}
+
 // Function to update multimodal controls based on model
 export function updateMultimodalControls(modelId) {
     if (!modelId || !allModels.length) return;
     
     const modelInfo = allModels.find(m => m.id === modelId);
     if (!modelInfo) return;
+    
+    // Call the new upload controls function
+    updateUploadControls(modelId);
     
     // Update image upload button visibility
     const imageUploadButton = document.getElementById('image-upload-button');

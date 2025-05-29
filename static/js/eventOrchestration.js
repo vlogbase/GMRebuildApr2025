@@ -8,7 +8,7 @@ import { messageInput, sendButton, newChatButton, clearConversationsButton, imag
 import { sendMessage, clearChat } from './chatLogic.js';
 import { createNewConversation, fetchConversations } from './conversationManagement.js';
 import { handleImageFile, handlePdfFile, handleFileUpload, switchCamera, stopCameraStream, loadCameraDevices } from './fileUpload.js';
-import { selectPresetButton, fetchUserPreferences, updatePresetButtonLabels, closeModelSelector } from './modelSelection.js';
+import { selectPresetButton, fetchUserPreferences, updatePresetButtonLabels, closeModelSelector, allModels, currentModel } from './modelSelection.js';
 import { resetPreferencesAPI } from './apiService.js';
 
 // Initialize main event listeners
@@ -135,6 +135,20 @@ function setupFileUploadEventListeners() {
             if (files && files.length > 0) {
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
+                    const modelInfo = allModels.find(m => m.id === currentModel);
+                    
+                    // Check model capabilities before processing
+                    if (file.type === 'application/pdf' && (!modelInfo || !modelInfo.supports_pdf)) {
+                        alert('This model does not support PDF input. Please select a different model.');
+                        event.target.value = '';
+                        return;
+                    }
+                    if (file.type.startsWith('image/') && (!modelInfo || (!modelInfo.supports_vision && !modelInfo.is_multimodal))) {
+                        alert('This model does not support image input. Please select a different model.');
+                        event.target.value = '';
+                        return;
+                    }
+                    
                     // Detect file type and call appropriate handler
                     if (file.type.startsWith('image/')) {
                         console.log('📸 Image file detected:', file.name);
