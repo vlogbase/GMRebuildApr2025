@@ -429,9 +429,9 @@ OPENROUTER_MODELS = {
     "free-gemini": "google/gemini-flash:free" # Verified free model
 }
 DEFAULT_PRESET_MODELS = {
-    "1": "google/gemini-2.5-pro-preview", # Multi-purpose powerhouse
+    "1": "anthropic/claude-sonnet-4", # Default model - reasoning powerhouse
     "2": "meta-llama/llama-4-maverick", # Fast, good quality
-    "3": "openai/o4-mini-high", # Balanced performance
+    "3": "anthropic/claude-sonnet-4", # Reasoning models (preset loads non-free reasoning models)
     "4": "openai/gpt-4o-2024-11-20", # Premium quality
     "5": "perplexity/sonar-pro", # Open model
     "6": "google/gemini-2.0-flash-exp:free", # Free model
