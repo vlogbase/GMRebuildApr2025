@@ -66,12 +66,12 @@ export const presetFilters = {
 
 // Default models for each preset
 export const defaultModels = {
-    '1': 'anthropic/claude-3-5-sonnet-20241022',
-    '2': 'openai/gpt-4o-2024-11-20',
-    '3': 'openai/o1-preview', // Reasoning
-    '4': 'anthropic/claude-3-5-sonnet-20241022', // Multimodal
-    '5': 'meta-llama/llama-3.1-8b-instruct:free', // Search/Perplexity
-    '6': 'meta-llama/llama-3.2-11b-vision-instruct:free' // Free
+    '1': 'google/gemini-2.5-pro-experimental',
+    '2': 'x-ai/grok-3-beta',
+    '3': 'anthropic/claude-sonnet-4', // Reasoning
+    '4': 'openai/gpt-4o-2024-11-20', // Multimodal
+    '5': 'perplexity/sonar-pro', // Search/Perplexity
+    '6': 'google/gemini-2.0-flash-exp:free' // Free
 };
 
 // Expose defaultModels globally for mobile scripts
@@ -79,11 +79,12 @@ window.defaultModels = defaultModels;
 
 // Display names for default models
 export const defaultModelDisplayNames = {
-    'anthropic/claude-3-5-sonnet-20241022': 'Claude 3.5 Sonnet',
-    'openai/gpt-4o-2024-11-20': 'GPT-4o',
-    'meta-llama/llama-3.1-8b-instruct:free': 'Llama 3.1 8B',
-    'meta-llama/llama-3.2-11b-vision-instruct:free': 'Llama 3.2 11B Vision',
-    'openai/o1-preview': 'o1-preview'
+    'google/gemini-2.5-pro-experimental': 'Gemini 2.5 Pro',
+    'x-ai/grok-3-beta': 'Grok 3',
+    'anthropic/claude-sonnet-4': 'Reasoning',
+    'openai/gpt-4o-2024-11-20': 'GPT 4o',
+    'perplexity/sonar-pro': 'Perplexity Pro',
+    'google/gemini-2.0-flash-exp:free': 'Gemini 2'
 };
 
 // Free model fallbacks for different capabilities
