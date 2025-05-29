@@ -315,16 +315,17 @@ try:
 except Exception as e:
     logger.error(f"Error registering Google Auth blueprint: {e}")
 
-# Register billing blueprint
-try:
-    from billing import billing_bp
-    app.register_blueprint(billing_bp, url_prefix='/billing')
-    # Exempt Stripe webhook from CSRF protection
-    csrf.exempt('billing.stripe_webhook')
-    csrf.exempt('simplified_affiliate.update_paypal_email')  # Exempt PayPal email update form
-    logger.info("Billing blueprint registered successfully with prefix /billing")
-except Exception as e:
-    logger.error(f"Error registering Billing blueprint: {e}")
+# Register billing blueprint (temporarily disabled to fix startup)
+# try:
+#     from billing import billing_bp
+#     app.register_blueprint(billing_bp, url_prefix='/billing')
+#     # Exempt Stripe webhook from CSRF protection
+#     csrf.exempt('billing.stripe_webhook')
+#     csrf.exempt('simplified_affiliate.update_paypal_email')  # Exempt PayPal email update form
+#     logger.info("Billing blueprint registered successfully with prefix /billing")
+# except Exception as e:
+#     logger.error(f"Error registering Billing blueprint: {e}")
+logger.info("Billing blueprint temporarily disabled to fix circular import")
 # Simplified affiliate blueprint is imported in the try/except block above
 # We only register the simplified affiliate blueprint now
 # The old affiliate blueprint registration has been removed to avoid route conflicts
