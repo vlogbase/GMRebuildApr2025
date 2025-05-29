@@ -1591,16 +1591,114 @@ def upload_file():
         
         # Route to appropriate handler based on file type
         if extension in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
-            # Handle image uploads (pass through the request as-is)
-            return upload_image()
+            # Handle image uploads directly within this function context
+            # This ensures the request.files['file'] is available in the same context
+            
+            # Image upload logic (copied from upload_image function)
+            try:
+                if 'file' not in request.files:
+                    return jsonify({"error": "No file provided"}), 400
+                    
+                uploaded_file = request.files['file']
+                if uploaded_file.filename == '':
+                    return jsonify({"error": "No file selected"}), 400
+                
+                # Generate unique filename
+                unique_filename = f"{uuid.uuid4().hex}.{uploaded_file.filename.split('.')[-1].lower()}"
+                
+                # Read and validate the image
+                image_data = uploaded_file.read()
+                if len(image_data) == 0:
+                    return jsonify({"error": "Empty file"}), 400
+                
+                # Validate image and resize if needed
+                try:
+                    image = Image.open(io.BytesIO(image_data))
+                    # Convert to RGB if needed
+                    if image.mode in ('RGBA', 'LA', 'P'):
+                        image = image.convert('RGB')
+                    
+                    # Resize if too large
+                    max_size = (2048, 2048)
+                    if image.size[0] > max_size[0] or image.size[1] > max_size[1]:
+                        image.thumbnail(max_size, Image.LANCZOS)
+                        
+                        # Convert back to bytes
+                        img_buffer = io.BytesIO()
+                        image.save(img_buffer, format='JPEG', quality=85)
+                        image_data = img_buffer.getvalue()
+                        unique_filename = f"{uuid.uuid4().hex}.jpg"
+                        
+                except Exception as e:
+                    logger.error(f"Image processing error: {e}")
+                    return jsonify({"error": "Invalid image file"}), 400
+                
+                # Upload to Azure Blob Storage
+                blob_service_client = BlobServiceClient.from_connection_string(os.getenv('AZURE_STORAGE_CONNECTION_STRING'))
+                container_name = 'gloriamundoblobs'
+                blob_client = blob_service_client.get_blob_client(container=container_name, blob=unique_filename)
+                
+                # Set content type
+                content_type = mimetypes.guess_type(unique_filename)[0] or 'image/jpeg'
+                blob_client.upload_blob(image_data, overwrite=True, content_settings=ContentSettings(content_type=content_type))
+                
+                # Generate the blob URL
+                image_url = f"https://{blob_service_client.account_name}.blob.core.windows.net/{container_name}/{unique_filename}"
+                
+                logger.info(f"Image uploaded successfully: {image_url}")
+                
+                return jsonify({
+                    "success": True,
+                    "image_url": image_url,
+                    "file_type": "image",
+                    "filename": uploaded_file.filename
+                })
+                
+            except Exception as e:
+                logger.exception(f"Error uploading image: {e}")
+                return jsonify({"error": f"Upload failed: {str(e)}"}), 500
+                
         elif extension == '.pdf':
-            # If we don't have a conversation_id yet, pass this parameter in the query string to upload_pdf
-            if conversation_id:
-                # Pass through the original request with conversation_id
-                return upload_pdf()
-            else:
-                # Create a redirect URL with conversation_id as None to trigger conversation creation
-                return upload_pdf()
+            # Handle PDF uploads directly within this function context
+            try:
+                if 'file' not in request.files:
+                    return jsonify({"error": "No file provided"}), 400
+                    
+                uploaded_file = request.files['file']
+                if uploaded_file.filename == '':
+                    return jsonify({"error": "No file selected"}), 400
+                
+                # Generate unique filename
+                unique_filename = f"{uuid.uuid4().hex}.pdf"
+                
+                # Read the PDF data
+                pdf_data = uploaded_file.read()
+                if len(pdf_data) == 0:
+                    return jsonify({"error": "Empty file"}), 400
+                
+                # Upload to Azure Blob Storage
+                blob_service_client = BlobServiceClient.from_connection_string(os.getenv('AZURE_STORAGE_CONNECTION_STRING'))
+                container_name = 'gloriamundopdfs'
+                blob_client = blob_service_client.get_blob_client(container=container_name, blob=unique_filename)
+                
+                blob_client.upload_blob(pdf_data, overwrite=True, content_settings=ContentSettings(content_type='application/pdf'))
+                
+                # Generate the blob URL
+                document_url = f"https://{blob_service_client.account_name}.blob.core.windows.net/{container_name}/{unique_filename}"
+                
+                logger.info(f"PDF uploaded successfully: {document_url}")
+                
+                return jsonify({
+                    "success": True,
+                    "document_url": document_url,
+                    "document_name": uploaded_file.filename,
+                    "file_type": "pdf",
+                    "filename": uploaded_file.filename
+                })
+                
+            except Exception as e:
+                logger.exception(f"Error uploading PDF: {e}")
+                return jsonify({"error": f"Upload failed: {str(e)}"}), 500
         else:
             return jsonify({
                 "error": f"File type {extension} is not supported. Please upload an image (jpg, png, gif, webp) or PDF file."

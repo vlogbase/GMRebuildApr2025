@@ -303,6 +303,10 @@ function handleOutsideClicks(e) {
 async function startCameraCapture() {
     try {
         console.log('📷 Starting camera capture...');
+        
+        // Load camera devices first to check how many are available
+        await loadCameraDevices();
+        
         const stream = await navigator.mediaDevices.getUserMedia({ 
             video: { facingMode: 'environment' } 
         });
@@ -319,12 +323,15 @@ async function startCameraCapture() {
             cameraModal.style.display = 'block';
         }
         
-        // Load camera devices for switching
-        await loadCameraDevices();
-        
     } catch (error) {
         console.error('❌ Error accessing camera:', error);
-        alert('Unable to access camera. Please check permissions.');
+        if (error.name === 'NotAllowedError') {
+            alert('Camera access denied. Please allow camera permissions and try again.');
+        } else if (error.name === 'NotFoundError') {
+            alert('No camera found on this device.');
+        } else {
+            alert('Unable to access camera. Please check permissions and try again.');
+        }
     }
 }
 

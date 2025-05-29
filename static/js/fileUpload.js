@@ -221,20 +221,42 @@ export function stopCameraStream() {
 export async function switchCamera() {
     const cameraStream = document.getElementById('camera-stream');
     
-    if (cameras.length > 1 && cameraStream) {
+    // Only allow switching if there are multiple cameras
+    if (cameras.length <= 1) {
+        console.warn('📷 Cannot switch camera - only one camera available');
+        return;
+    }
+    
+    if (!cameraStream) {
+        console.error('📷 Camera stream element not found');
+        return;
+    }
+    
+    try {
         stopCameraStream();
         currentCameraIndex = (currentCameraIndex + 1) % cameras.length;
         
+        console.log(`📷 Switching to camera ${currentCameraIndex + 1} of ${cameras.length}`);
+        
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: { deviceId: { exact: cameras[currentCameraIndex].deviceId } }
+        });
+        
+        cameraStream.srcObject = stream;
+        
+    } catch (err) {
+        console.error('Error switching camera:', err);
+        
+        // Try to fall back to the default camera
         try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { deviceId: { exact: cameras[currentCameraIndex].deviceId } }
+            console.log('📷 Falling back to default camera');
+            const fallbackStream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'environment' }
             });
-            if (cameraStream) {
-                cameraStream.srcObject = stream;
-            }
-        } catch (err) {
-            console.error('Error switching camera:', err);
-            alert('Failed to switch camera');
+            cameraStream.srcObject = fallbackStream;
+        } catch (fallbackErr) {
+            console.error('Error with fallback camera:', fallbackErr);
+            alert('Failed to switch camera. Please close and reopen the camera.');
         }
     }
 }
@@ -242,6 +264,11 @@ export async function switchCamera() {
 export async function loadCameraDevices() {
     if (!navigator.mediaDevices?.enumerateDevices) {
         console.warn('enumerateDevices() not supported');
+        // Hide switch button if device enumeration is not supported
+        const switchCameraButton = document.getElementById('switch-camera-button');
+        if (switchCameraButton) {
+            switchCameraButton.style.display = 'none';
+        }
         return;
     }
     
@@ -249,12 +276,27 @@ export async function loadCameraDevices() {
         const devices = await navigator.mediaDevices.enumerateDevices();
         cameras = devices.filter(device => device.kind === 'videoinput');
         
+        console.log(`📷 Found ${cameras.length} camera(s):`, cameras.map(c => c.label || 'Camera'));
+        
         // Enable/disable switch camera button based on available cameras
         const switchCameraButton = document.getElementById('switch-camera-button');
         if (switchCameraButton) {
-            switchCameraButton.style.display = cameras.length > 1 ? 'block' : 'none';
+            if (cameras.length > 1) {
+                switchCameraButton.style.display = 'block';
+                switchCameraButton.disabled = false;
+                console.log('📷 Multiple cameras available - switch button enabled');
+            } else {
+                switchCameraButton.style.display = 'none';
+                switchCameraButton.disabled = true;
+                console.log('📷 Single camera detected - switch button hidden');
+            }
         }
     } catch (err) {
         console.error('Error enumerating devices:', err);
+        // Hide switch button on error
+        const switchCameraButton = document.getElementById('switch-camera-button');
+        if (switchCameraButton) {
+            switchCameraButton.style.display = 'none';
+        }
     }
 }
