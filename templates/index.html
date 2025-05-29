@@ -81,10 +81,10 @@
                 </div>
                 {% if current_user.is_authenticated %}
                 <div class="app-account-access">
-                    <span class="header-account-link" aria-label="My Account">
+                    <a href="{{ url_for('billing.account_management') }}" class="header-account-link" aria-label="My Account">
                         <i class="fa-solid fa-user-circle"></i>
                         <span class="account-link-text">My Account</span>
-                    </span>
+                    </a>
                 </div>
                 {% endif %}
             </div>
