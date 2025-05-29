@@ -903,11 +903,33 @@ export function updateUploadControls(modelId) {
 
 // Function to update multimodal controls based on model
 export function updateMultimodalControls(modelId) {
-    if (!modelId || !allModels.length) return;
+    console.log(`🔄 updateMultimodalControls called with modelId: ${modelId}`);
+    console.log(`📊 allModels.length: ${allModels.length}`);
+    
+    if (!modelId) {
+        console.log(`❌ No modelId provided to updateMultimodalControls`);
+        return;
+    }
+    
+    if (!allModels.length) {
+        console.log(`⚠️ allModels array is empty, attempting to fetch models`);
+        // Try to fetch models if they're not loaded yet
+        fetchAvailableModels().then(() => {
+            // Retry after models are loaded
+            console.log(`🔄 Retrying updateMultimodalControls after model fetch`);
+            updateMultimodalControls(modelId);
+        });
+        return;
+    }
     
     const modelInfo = allModels.find(m => m.id === modelId);
-    if (!modelInfo) return;
+    if (!modelInfo) {
+        console.log(`⚠️ Model ${modelId} not found in allModels array`);
+        console.log(`📋 Available models: ${allModels.map(m => m.id).slice(0, 5).join(', ')}...`);
+        return;
+    }
     
+    console.log(`✅ Found model info for ${modelId}, calling updateUploadControls`);
     // Call the unified upload controls function
     updateUploadControls(modelId);
 }
