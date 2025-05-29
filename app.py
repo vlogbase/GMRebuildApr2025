@@ -1589,12 +1589,23 @@ def upload_file():
             return jsonify({"error": "No file provided"}), 400
             
         file = request.files['file']
-        if file.filename == '':
+        # Allow camera captures which may have None or empty filenames but valid content
+        if (file.filename == '' or file.filename is None) and not hasattr(file, 'stream'):
             return jsonify({"error": "No file selected"}), 400
             
-        # Detect file type from extension
+        # Detect file type from extension - handle cases where filename might be None
         filename = file.filename
-        extension = Path(filename).suffix.lower()
+        if filename and '.' in filename:
+            extension = Path(filename).suffix.lower()
+        else:
+            # For camera captures or files without proper names, check content type
+            content_type = file.content_type or ''
+            if content_type.startswith('image/'):
+                extension = '.jpg'  # Default for images
+            elif content_type == 'application/pdf':
+                extension = '.pdf'
+            else:
+                extension = ''
         
         # Route to appropriate handler based on file type
         if extension in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
@@ -1610,8 +1621,13 @@ def upload_file():
                 if uploaded_file.filename == '':
                     return jsonify({"error": "No file selected"}), 400
                 
-                # Generate unique filename
-                unique_filename = f"{uuid.uuid4().hex}.{uploaded_file.filename.split('.')[-1].lower()}"
+                # Generate unique filename - handle cases where filename might be None or empty
+                if uploaded_file.filename and '.' in uploaded_file.filename:
+                    file_extension = uploaded_file.filename.split('.')[-1].lower()
+                else:
+                    # Default to jpg for camera captures or files without extensions
+                    file_extension = 'jpg'
+                unique_filename = f"{uuid.uuid4().hex}.{file_extension}"
                 
                 # Read and validate the image
                 image_data = uploaded_file.read()
