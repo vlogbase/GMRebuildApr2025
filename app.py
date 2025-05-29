@@ -4930,9 +4930,8 @@ def pwa_test():
 if __name__ == '__main__':
     logger.info("Starting Flask development server")
     
-    # Start the price update scheduler (initial fetch will happen automatically)
-    scheduler.start()
-    logger.info("Started background scheduler for model price updates")
+    # Scheduler is already started during app initialization, no need to start again
+    logger.info("Using existing background scheduler for model price updates")
     
     # Perform initial model price fetch in background thread to avoid blocking server startup
     def background_initial_fetch():
