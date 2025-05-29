@@ -2797,7 +2797,25 @@ def chat(): # Synchronous function
                         pdf_to_process.append((pdf_data, filename))
                 
                 for pdf_data_url, filename in pdf_to_process:
-                    # Validate that this is a data URL (required for OpenRouter PDF handling)
+                    # Convert blob URL to base64 data URL if needed
+                    if pdf_data_url.startswith('https://') and 'blob.core.windows.net' in pdf_data_url:
+                        logger.info(f"Converting blob URL to base64 for PDF: {filename}")
+                        try:
+                            # Download the PDF from Azure Blob Storage
+                            import requests
+                            response = requests.get(pdf_data_url, timeout=30)
+                            response.raise_for_status()
+                            
+                            # Convert to base64 data URL
+                            import base64
+                            pdf_base64 = base64.b64encode(response.content).decode('utf-8')
+                            pdf_data_url = f"data:application/pdf;base64,{pdf_base64}"
+                            logger.info(f"Successfully converted PDF to base64 format: {filename}")
+                        except Exception as e:
+                            logger.error(f"Failed to convert PDF blob URL to base64: {e}")
+                            continue
+                    
+                    # Validate that this is now a data URL (required for OpenRouter PDF handling)
                     if pdf_data_url.startswith('data:application/pdf;base64,'):
                         # Add this PDF to the multimodal content
                         multimodal_content.append({
