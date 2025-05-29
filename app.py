@@ -3850,6 +3850,7 @@ def get_model_prices():
                         'model_id': db_model.model_id,
                         'cost_band': 'Unknown',
                         'is_free': True,
+                        'is_reasoning': db_model.supports_reasoning or False,
                         'source': 'database_fallback'
                     }
             
