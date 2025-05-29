@@ -271,22 +271,32 @@ with app.app_context():
     db.create_all()
     logger.info("Essential database tables created")
 
-# CRITICAL FIX: Disable blocking background initialization to restore API functionality
-# The background initialization system was causing the Flask app to hang during startup
-logger.info("Skipping background initialization to restore immediate API functionality")
+# RESTORED: Background initialization with timeout protection and hang prevention
+# Fixed the database migration hanging issue by using Flask's connection pool
+logger.info("Starting background initialization with improved timeout protection...")
 
-# Minimal initialization to ensure app can start and serve API requests
 try:
-    # Start Azure Storage initialization in a simple background thread as fallback
-    azure_init_thread = threading.Thread(
-        target=initialize_azure_storage, 
-        daemon=True,
-        name="azure-storage-init-fallback"
-    )
-    azure_init_thread.start()
-    logger.info("Fallback Azure Blob Storage initialization scheduled")
+    from background_initializer import BackgroundInitializer
+    from app_initialization import run_database_migrations, init_azure_storage
+    
+    bg_init = BackgroundInitializer()
+    bg_init.add_task('database_migrations', run_database_migrations, priority=1, timeout=60)
+    bg_init.add_task('azure_storage', init_azure_storage, priority=2, timeout=30)
+    bg_init.start()
+    logger.info("Background initialization started successfully with timeout protection")
 except Exception as e:
-    logger.warning(f"Azure storage initialization failed: {e}")
+    logger.error(f"Background initialization failed: {e}")
+    # Fallback to simple Azure Storage initialization
+    try:
+        azure_init_thread = threading.Thread(
+            target=initialize_azure_storage, 
+            daemon=True,
+            name="azure-storage-init-fallback"
+        )
+        azure_init_thread.start()
+        logger.info("Fallback Azure Blob Storage initialization scheduled")
+    except Exception as fallback_e:
+        logger.warning(f"Fallback Azure storage initialization failed: {fallback_e}")
 
 # Initialize LoginManager
 login_manager = LoginManager()

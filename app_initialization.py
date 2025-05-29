@@ -118,11 +118,27 @@ def run_database_migrations() -> Dict[str, Any]:
                     logger.info("OpenRouterModel table already exists, skipping migrations")
                     migration_results['openrouter_model'] = True
                     
-                # UserChatSettings migration
+                # UserChatSettings migration with timeout protection
                 logger.info("Running UserChatSettings migration...")
                 from migrations_user_chat_settings import run_migration
-                success = run_migration()
-                migration_results['user_chat_settings'] = success
+                
+                # Add timeout protection for the migration
+                import signal
+                
+                def migration_timeout_handler(signum, frame):
+                    raise TimeoutError("UserChatSettings migration timed out after 30 seconds")
+                
+                try:
+                    if hasattr(signal, 'SIGALRM'):
+                        signal.signal(signal.SIGALRM, migration_timeout_handler)
+                        signal.alarm(30)  # 30 second timeout
+                    
+                    success = run_migration()
+                    migration_results['user_chat_settings'] = success
+                    
+                finally:
+                    if hasattr(signal, 'SIGALRM'):
+                        signal.alarm(0)  # Clear timeout
                 
                 # Remove hypothetical migration that doesn't exist in the codebase
                 # This avoids the error with non-existent imports

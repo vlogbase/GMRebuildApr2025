@@ -65,18 +65,40 @@ class BackgroundInitializer:
     def _task_wrapper(self, task):
         """Wrap task execution with error handling and timing"""
         task_name = task['name']
+        timeout = task.get('timeout', 60)
         
         # Update status
         task['status'] = 'running'
         
         start_time = time.time()
-        logger.info(f"Starting background task: {task_name}")
+        logger.info(f"Starting background task: {task_name} (timeout: {timeout}s)")
         
         try:
-            # Execute the task with timeout
-            result = task['func']()
-            success = True
-            error = None
+            # Execute the task with timeout protection
+            import signal
+            
+            def timeout_handler(signum, frame):
+                raise TimeoutError(f"Task {task_name} timed out after {timeout} seconds")
+            
+            # Set up timeout signal (only on Unix systems)
+            if hasattr(signal, 'SIGALRM'):
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(timeout)
+            
+            try:
+                result = task['func']()
+                success = True
+                error = None
+            finally:
+                # Clear the alarm
+                if hasattr(signal, 'SIGALRM'):
+                    signal.alarm(0)
+                    
+        except TimeoutError as e:
+            logger.error(f"Background task {task_name} timed out: {e}")
+            result = None
+            success = False
+            error = str(e)
         except Exception as e:
             logger.error(f"Error in background task {task_name}: {e}", exc_info=True)
             result = None
