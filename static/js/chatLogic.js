@@ -84,6 +84,68 @@ export function clearAttachedPdf() {
     attachedPdfName = null;
 }
 
+// Function to update message metadata after receiving it from stream
+function updateMessageMetadata(messageElement, metadata) {
+    if (!messageElement || !metadata) return;
+    
+    // Set the message ID
+    messageElement.dataset.messageId = metadata.id;
+    
+    // Check if metadata container already exists
+    let metadataContainer = messageElement.querySelector('.message-metadata');
+    
+    if (!metadataContainer) {
+        // Create new metadata container
+        metadataContainer = document.createElement('div');
+        metadataContainer.className = 'message-metadata message-metadata-outside';
+        
+        // Find the message wrapper to append metadata to
+        const messageWrapper = messageElement.querySelector('.message-wrapper');
+        if (messageWrapper) {
+            messageWrapper.appendChild(metadataContainer);
+        }
+    }
+    
+    // Build metadata text
+    let metadataText = '';
+    
+    if (metadata.model_id_used) {
+        // Format and shorten the model name
+        const shortModelName = formatModelName(metadata.model_id_used);
+        metadataText += `Model: ${shortModelName}`;
+    } else if (metadata.model) {
+        const shortModelName = formatModelName(metadata.model);
+        metadataText += `Model: ${shortModelName}`;
+    }
+    
+    if (metadata.prompt_tokens && metadata.completion_tokens) {
+        if (metadataText) metadataText += ' · ';
+        metadataText += `Tokens: ${metadata.prompt_tokens} prompt + ${metadata.completion_tokens} completion`;
+    }
+    
+    metadataContainer.textContent = metadataText;
+    
+    // Add document reference indicator if using documents
+    if (metadata && metadata.using_documents) {
+        const documentRef = document.createElement('span');
+        documentRef.className = 'document-reference';
+        documentRef.innerHTML = '<i class="fa-solid fa-file-lines"></i> Using your documents';
+        
+        // Add document sources if available
+        if (metadata.document_sources && metadata.document_sources.length > 0) {
+            const sourceCount = metadata.document_sources.length;
+            const sourceText = sourceCount === 1 
+                ? metadata.document_sources[0] 
+                : `${sourceCount} documents`;
+            documentRef.innerHTML = `<i class="fa-solid fa-file-lines"></i> Using ${sourceText}`;
+        }
+        
+        metadataContainer.appendChild(documentRef);
+    }
+    
+    console.log('✅ Updated message metadata:', metadataText);
+}
+
 // Export functions for external access
 export function sendMessage() {
     // Add null check for messageInput
@@ -773,6 +835,7 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
         const messageContent = assistantMessage.querySelector('.message-content');
         
         let fullResponse = '';
+        let messageMetadata = null;
         
         // Process stream
         while (true) {
@@ -789,10 +852,21 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
                     
                     try {
                         const parsed = JSON.parse(data);
+                        
+                        // Handle content chunks
                         if (parsed.content) {
                             fullResponse += parsed.content;
                             messageContent.innerHTML = formatMessage(fullResponse);
                             chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                        
+                        // Handle metadata chunks
+                        if (parsed.id && (parsed.model_id_used || parsed.prompt_tokens || parsed.completion_tokens)) {
+                            messageMetadata = parsed;
+                            console.log('📊 Received metadata:', messageMetadata);
+                            
+                            // Update the message element with metadata
+                            updateMessageMetadata(assistantMessage, messageMetadata);
                         }
                     } catch {
                         // Ignore JSON parse errors for partial chunks
