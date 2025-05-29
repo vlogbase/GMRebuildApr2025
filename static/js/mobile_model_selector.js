@@ -659,7 +659,10 @@ document.addEventListener('DOMContentLoaded', function() {
         const nonFreeModels = presetId === '6' ? allModels : allModels.filter(model => !model.is_free && !model.id.includes(':free'));
         
         // Then apply specific filters based on preset
-        const filteredModels = presetId === '3' ? nonFreeModels.filter(model => model.is_reasoning === true) :
+        const filteredModels = presetId === '3' ? nonFreeModels.filter(model => {
+            // Reasoning models (non-free) - already filtered out free models above
+            return model.is_reasoning === true;
+        }) :
                               presetId === '4' ? nonFreeModels.filter(model => {
             const passes = model.is_multimodal === true;
             // Debug logging for multimodal filter

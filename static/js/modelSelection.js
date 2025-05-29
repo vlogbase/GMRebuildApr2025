@@ -30,7 +30,12 @@ export const presetFilters = {
         return !isFree;
     },
     '3': (model) => {
-        // Reasoning models - check for is_reasoning flag first, then fallback to ID patterns
+        // Reasoning models (non-free) - check for is_reasoning flag first, then fallback to ID patterns
+        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+        if (isFree) {
+            return false; // Exclude free models
+        }
+        
         if (model.is_reasoning === true) {
             return true;
         }
@@ -269,7 +274,9 @@ export async function fetchAvailableModels() {
                     is_multimodal: modelData.is_multimodal || false,
                     supports_pdf: modelData.supports_pdf || false,
                     context_length: modelData.context_length,
-                    description: modelData.description
+                    description: modelData.description,
+                    is_reasoning: modelData.is_reasoning || false,
+                    is_free: modelData.is_free || false
                 });
             }
             
