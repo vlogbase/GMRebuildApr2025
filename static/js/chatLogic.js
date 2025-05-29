@@ -196,7 +196,7 @@ export function sendMessage() {
 export function addMessage(content, sender, isTyping = false, metadata = null) {
     // Get message elements
     const elements = createMessageElement(content, sender, isTyping, metadata);
-    const { messageElement, avatar, messageWrapper, messageContent, metadataContainer } = elements;
+    const { messageElement, avatar, messageWrapper, messageContent } = elements;
     
     if (isTyping) {
         messageContent.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
@@ -366,8 +366,8 @@ export function addMessage(content, sender, isTyping = false, metadata = null) {
             actionsContainer.appendChild(downvoteButton);
             
             // Add metadata display for assistant messages
-            if (metadata && sender === 'assistant') {
-                // Use the existing metadataContainer instead of creating a new one
+            if (metadata) {
+                const metadataContainer = document.createElement('div');
                 metadataContainer.className = 'message-metadata message-metadata-outside';
                 
                 // If we have model and token information, display it
@@ -773,7 +773,6 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
         const messageContent = assistantMessage.querySelector('.message-content');
         
         let fullResponse = '';
-        let finalMetadata = null;
         
         // Process stream
         while (true) {
@@ -795,41 +794,10 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
                             messageContent.innerHTML = formatMessage(fullResponse);
                             chatMessages.scrollTop = chatMessages.scrollHeight;
                         }
-                        
-                        // Check for metadata in the response
-                        if (parsed.id && (parsed.model_id_used || parsed.prompt_tokens || parsed.completion_tokens)) {
-                            finalMetadata = parsed;
-                            console.log('📊 Received metadata:', finalMetadata);
-                        }
                     } catch {
                         // Ignore JSON parse errors for partial chunks
                     }
                 }
-            }
-        }
-        
-        // After streaming is complete, add metadata if we received it
-        if (finalMetadata) {
-            console.log('🏷️ Adding metadata to message:', finalMetadata);
-            
-            // Store metadata on the message element for later use (rating, sharing, etc.)
-            assistantMessage.dataset.messageMetadata = JSON.stringify(finalMetadata);
-            
-            // Re-create the message with proper metadata
-            // Remove the current message and replace it with one that has metadata
-            const messageContent = assistantMessage.querySelector('.message-content');
-            const currentContent = messageContent.innerHTML;
-            
-            // Remove the old message
-            assistantMessage.remove();
-            
-            // Create a new message with the metadata
-            const newMessage = addMessage(currentContent, 'assistant', false, finalMetadata);
-            
-            // Add to chat container
-            if (chatMessages) {
-                chatMessages.appendChild(newMessage);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         }
         
