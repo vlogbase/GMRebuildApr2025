@@ -17,12 +17,17 @@ def init_app(app):
     """Initialize the database with the Flask app"""
     app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL")
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
-        "pool_size": 10,  # Increased from default of 5
-        "max_overflow": 20,  # Allow up to 20 connections to be created beyond pool_size
-        "pool_recycle": 300,  # Recycle connections after 5 minutes
+        "pool_size": 5,  # Conservative pool size
+        "max_overflow": 10,  # Allow overflow connections
+        "pool_recycle": 1800,  # Recycle connections after 30 minutes
         "pool_pre_ping": True,  # Check connection validity before using from pool
-        "pool_timeout": 30,  # Wait up to 30 seconds for a connection from the pool
-        "pool_use_lifo": True,  # Last in, first out for better performance with short requests
+        "pool_timeout": 20,  # Wait up to 20 seconds for a connection from the pool
+        "pool_reset_on_return": "commit",  # Reset connections on return to pool
+        "connect_args": {
+            "sslmode": "require",
+            "connect_timeout": 10,
+            "application_name": "gloriamundo_chatbot"
+        }
     }
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False  # Disable tracking to improve performance
     db.init_app(app)

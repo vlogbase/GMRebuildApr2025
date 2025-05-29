@@ -63,10 +63,38 @@ def should_update_prices() -> bool:
             # Use app context for database operations and capture in a variable
             # to ensure the context is properly managed
             with app.app_context():
-                # Get the most recent update timestamp from any active model
-                last_model = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).order_by(
-                    OpenRouterModel.last_fetched_at.desc()
-                ).first()
+                # Add retry logic for database operations
+                max_retries = 3
+                retry_count = 0
+                last_model = None
+                
+                while retry_count < max_retries:
+                    try:
+                        # Get the most recent update timestamp from any active model
+                        last_model = OpenRouterModel.query.filter(OpenRouterModel.model_is_active == True).order_by(
+                            OpenRouterModel.last_fetched_at.desc()
+                        ).first()
+                        
+                        # If we get here, the query succeeded, break out of retry loop
+                        break
+                        
+                    except (SQLAlchemyError, Exception) as db_error:
+                        retry_count += 1
+                        logger.warning(f"Database connection error (attempt {retry_count}/{max_retries}): {db_error}")
+                        
+                        if retry_count >= max_retries:
+                            logger.error("Max database retries exceeded. Forcing price update to be safe.")
+                            return True
+                        
+                        # Wait before retrying
+                        time.sleep(1)
+                        
+                        # Try to dispose the connection pool and recreate
+                        try:
+                            db.engine.dispose()
+                            logger.info("Disposed database connection pool for retry")
+                        except Exception:
+                            pass
                 
                 # Process the results within the app context
                 if last_model and last_model.last_fetched_at:
