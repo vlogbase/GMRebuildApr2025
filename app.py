@@ -271,32 +271,20 @@ with app.app_context():
     db.create_all()
     logger.info("Essential database tables created")
 
-# RESTORED: Background initialization with timeout protection and hang prevention
-# Fixed the database migration hanging issue by using Flask's connection pool
-logger.info("Starting background initialization with improved timeout protection...")
+# DIAGNOSTIC TEST: Completely disable background tasks to restore API functionality
+logger.info("DIAGNOSTIC: Skipping ALL background tasks to test API connectivity...")
 
+# Simple fallback Azure Storage initialization in background thread
 try:
-    from background_initializer import BackgroundInitializer
-    from app_initialization import run_database_migrations, initialize_azure_storage as init_azure_storage
-    
-    bg_init = BackgroundInitializer()
-    bg_init.add_task('database_migrations', run_database_migrations, priority=1, timeout=60)
-    bg_init.add_task('azure_storage', init_azure_storage, priority=2, timeout=30)
-    bg_init.start()
-    logger.info("Background initialization started successfully with timeout protection")
+    azure_init_thread = threading.Thread(
+        target=initialize_azure_storage, 
+        daemon=True,
+        name="azure-storage-init-fallback"
+    )
+    azure_init_thread.start()
+    logger.info("Simple Azure Storage initialization scheduled")
 except Exception as e:
-    logger.error(f"Background initialization failed: {e}")
-    # Fallback to simple Azure Storage initialization
-    try:
-        azure_init_thread = threading.Thread(
-            target=initialize_azure_storage, 
-            daemon=True,
-            name="azure-storage-init-fallback"
-        )
-        azure_init_thread.start()
-        logger.info("Fallback Azure Blob Storage initialization scheduled")
-    except Exception as fallback_e:
-        logger.warning(f"Fallback Azure storage initialization failed: {fallback_e}")
+    logger.warning(f"Azure storage initialization failed: {e}")
 
 # Initialize LoginManager
 login_manager = LoginManager()
@@ -4942,16 +4930,21 @@ def pwa_test():
 if __name__ == '__main__':
     logger.info("Starting Flask development server")
     
-    # Perform initial model price fetch
-    try:
-        logger.info("Performing initial model price fetch on startup")
-        fetch_and_store_openrouter_prices()
-    except Exception as e:
-        logger.error(f"Error during initial model price fetch: {e}")
-    
-    # Start the price update scheduler
+    # Start the price update scheduler (initial fetch will happen automatically)
     scheduler.start()
     logger.info("Started background scheduler for model price updates")
+    
+    # Perform initial model price fetch in background thread to avoid blocking server startup
+    def background_initial_fetch():
+        try:
+            logger.info("Performing initial model price fetch in background")
+            fetch_and_store_openrouter_prices()
+        except Exception as e:
+            logger.error(f"Error during initial model price fetch: {e}")
+    
+    # Start background fetch thread
+    fetch_thread = threading.Thread(target=background_initial_fetch, daemon=True)
+    fetch_thread.start()
     
     # ensure gevent monkey-patching already happened at import time
     app.run(host='0.0.0.0', port=5000, debug=True)
