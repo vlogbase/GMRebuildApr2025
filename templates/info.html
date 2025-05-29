@@ -1261,7 +1261,8 @@
                             multimodal: modelDetails.multimodal,
                             pdfs: modelDetails.pdfs,
                             cost_band: modelDetails.cost_band || calculateCostBand(modelDetails.input_price, modelDetails.output_price),
-                            elo_score: modelDetails.elo_score || null
+                            elo_score: modelDetails.elo_score || null,
+                            hidden: false // Ensure all models are visible by default
                         };
                     });
                     

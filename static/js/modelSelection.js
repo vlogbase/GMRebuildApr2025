@@ -74,10 +74,6 @@ export const defaultModels = {
     '6': 'google/gemini-2.0-flash-exp:free' // Free
 };
 
-// Expose defaultModels and fullModelDisplayNames globally for mobile scripts
-window.defaultModels = defaultModels;
-window.fullModelDisplayNames = fullModelDisplayNames;
-
 // Display names for default models (shown on buttons - concise for limited space)
 export const defaultModelDisplayNames = {
     'google/gemini-2.5-pro-experimental': 'Gemini 2.5 Pro',
@@ -97,6 +93,10 @@ export const fullModelDisplayNames = {
     'perplexity/sonar-pro': 'Perplexity Sonar Pro',
     'google/gemini-2.0-flash-exp:free': 'Gemini 2.0 Flash Experimental (Free)'
 };
+
+// Expose defaultModels and fullModelDisplayNames globally for mobile scripts
+window.defaultModels = defaultModels;
+window.fullModelDisplayNames = fullModelDisplayNames;
 
 // Free model fallbacks for different capabilities
 export const freeModelFallbacks = [
