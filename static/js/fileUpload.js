@@ -1,6 +1,6 @@
 // Import required modules
 import { uploadFileAPI } from './apiService.js';
-import { attachedImageUrls, currentConversationId } from './chatLogic.js';
+import { attachedImageUrls, currentConversationId, setAttachedPdfUrl, setAttachedPdfName } from './chatLogic.js';
 
 // File upload state management
 export let isUploadingFile = false;
@@ -43,13 +43,13 @@ export async function handleFileUpload(file, type = null) {
                     filename: file.name
                 };
             } else if (detectedType === 'pdf' && response.document_url) {
-                // Store PDF data in the global state
-                window.attachedPdfUrl = response.document_url;
-                window.attachedPdfName = response.document_name || file.name;
-                console.log(`📄 PDF stored: ${window.attachedPdfName}`);
+                // Store PDF data using the setter functions from chatLogic
+                setAttachedPdfUrl(response.document_url);
+                setAttachedPdfName(response.document_name || file.name);
+                console.log(`📄 PDF attached: ${response.document_name || file.name}`);
                 
                 // Show PDF preview/indicator
-                showPdfPreview(window.attachedPdfName);
+                showPdfPreview(response.document_name || file.name);
                 
                 return {
                     success: true,
@@ -132,48 +132,23 @@ export async function handlePdfFile(file) {
 // UI helper functions
 export function showImagePreview(imageUrl) {
     console.log(`📸 Showing image preview for: ${imageUrl}`);
-    
-    // Create or update image preview container
-    let previewContainer = document.querySelector('.image-preview-container');
-    if (!previewContainer) {
-        previewContainer = document.createElement('div');
-        previewContainer.className = 'image-preview-container';
-        
-        // Insert before the message input
-        const messageForm = document.querySelector('.message-input-container') || document.querySelector('.input-container');
-        if (messageForm) {
-            messageForm.parentNode.insertBefore(previewContainer, messageForm);
-        }
-    }
-    
-    // Create image preview element
+    const previewArea = document.getElementById('document-preview-area');
+    if (!previewArea) return;
+    previewArea.style.display = 'block';
     const preview = document.createElement('div');
     preview.className = 'image-preview';
     preview.innerHTML = `
         <img src="${imageUrl}" alt="Preview" class="preview-image">
         <button class="remove-image" onclick="this.parentElement.remove()">×</button>
     `;
-    
-    previewContainer.appendChild(preview);
+    previewArea.appendChild(preview);
 }
 
 export function showPdfPreview(filename) {
     console.log(`📄 Showing PDF preview for: ${filename}`);
-    
-    // Create or update PDF preview container
-    let previewContainer = document.querySelector('.pdf-preview-container');
-    if (!previewContainer) {
-        previewContainer = document.createElement('div');
-        previewContainer.className = 'pdf-preview-container';
-        
-        // Insert before the message input
-        const messageForm = document.querySelector('.message-input-container') || document.querySelector('.input-container');
-        if (messageForm) {
-            messageForm.parentNode.insertBefore(previewContainer, messageForm);
-        }
-    }
-    
-    // Create PDF preview element
+    const previewArea = document.getElementById('document-preview-area');
+    if (!previewArea) return;
+    previewArea.style.display = 'block';
     const preview = document.createElement('div');
     preview.className = 'pdf-preview';
     preview.innerHTML = `
@@ -181,8 +156,7 @@ export function showPdfPreview(filename) {
         <span class="pdf-name">${filename}</span>
         <button class="remove-pdf" onclick="this.parentElement.remove()">×</button>
     `;
-    
-    previewContainer.appendChild(preview);
+    previewArea.appendChild(preview);
 }
 
 export function createUploadIndicator() {

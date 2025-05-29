@@ -27,6 +27,15 @@ export function setUserIsLoggedIn(isLoggedIn) {
     userIsLoggedIn = isLoggedIn;
 }
 
+// Setter functions for PDF attachment state
+export function setAttachedPdfUrl(url) {
+    attachedPdfUrl = url;
+}
+
+export function setAttachedPdfName(name) {
+    attachedPdfName = name;
+}
+
 // Function to create message elements (copied from script.js.backup)
 function createMessageElement(content, sender, metadata = null) {
     // Create the main message container
