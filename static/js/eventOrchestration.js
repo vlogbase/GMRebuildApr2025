@@ -7,7 +7,7 @@ import { debounce } from './utils.js';
 import { messageInput, sendButton, newChatButton, clearConversationsButton, imageUploadButton, imageUploadInput, cameraButton, captureButton, switchCameraButton, refreshPricesBtn } from './uiSetup.js';
 import { sendMessage, clearChat } from './chatLogic.js';
 import { createNewConversation, fetchConversations } from './conversationManagement.js';
-import { handleImageFile, switchCamera, stopCameraStream } from './fileUpload.js';
+import { handleImageFile, handlePdfFile, handleFileUpload, switchCamera, stopCameraStream, loadCameraDevices } from './fileUpload.js';
 import { selectPresetButton, fetchUserPreferences, updatePresetButtonLabels, closeModelSelector } from './modelSelection.js';
 import { resetPreferencesAPI } from './apiService.js';
 
@@ -127,14 +127,26 @@ function setupFileUploadEventListeners() {
         });
     }
     
-    // Image upload input change
+    // File upload input change (handles both images and PDFs)
     if (imageUploadInput) {
         imageUploadInput.addEventListener('change', event => {
-            console.log('📸 Image upload input changed');
+            console.log('📁 File upload input changed');
             const files = event.target.files;
             if (files && files.length > 0) {
                 for (let i = 0; i < files.length; i++) {
-                    handleImageFile(files[i]);
+                    const file = files[i];
+                    // Detect file type and call appropriate handler
+                    if (file.type.startsWith('image/')) {
+                        console.log('📸 Image file detected:', file.name);
+                        handleImageFile(file);
+                    } else if (file.type === 'application/pdf') {
+                        console.log('📄 PDF file detected:', file.name);
+                        handlePdfFile(file);
+                    } else {
+                        console.log('📁 Unknown file type, trying unified handler:', file.name);
+                        // Use unified handler for unknown types
+                        handleFileUpload(file);
+                    }
                 }
                 // Clear the input so the same file can be selected again
                 event.target.value = '';
@@ -161,6 +173,19 @@ function setupFileUploadEventListeners() {
     // Switch camera button
     if (switchCameraButton) {
         switchCameraButton.addEventListener('click', switchCamera);
+    }
+    
+    // Close camera button
+    const closeCameraButton = document.getElementById('close-camera-button');
+    if (closeCameraButton) {
+        closeCameraButton.addEventListener('click', () => {
+            console.log('❌ Close camera button clicked');
+            stopCameraStream();
+            const cameraModal = document.getElementById('camera-modal');
+            if (cameraModal) {
+                cameraModal.style.display = 'none';
+            }
+        });
     }
 }
 
@@ -282,17 +307,20 @@ async function startCameraCapture() {
             video: { facingMode: 'environment' } 
         });
         
-        const cameraVideo = document.getElementById('camera-video');
+        const cameraVideo = document.getElementById('camera-stream');
         if (cameraVideo) {
             cameraVideo.srcObject = stream;
             cameraVideo.play();
         }
         
-        // Show camera interface
-        const cameraInterface = document.getElementById('camera-interface');
-        if (cameraInterface) {
-            cameraInterface.style.display = 'block';
+        // Show camera modal
+        const cameraModal = document.getElementById('camera-modal');
+        if (cameraModal) {
+            cameraModal.style.display = 'block';
         }
+        
+        // Load camera devices for switching
+        await loadCameraDevices();
         
     } catch (error) {
         console.error('❌ Error accessing camera:', error);
@@ -303,7 +331,7 @@ async function startCameraCapture() {
 // Capture photo from camera
 function capturePhoto() {
     console.log('📸 Capturing photo...');
-    const cameraVideo = document.getElementById('camera-video');
+    const cameraVideo = document.getElementById('camera-stream');
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     
@@ -319,11 +347,11 @@ function capturePhoto() {
             }
         }, 'image/jpeg', 0.8);
         
-        // Stop camera and hide interface
+        // Stop camera and hide modal
         stopCameraStream();
-        const cameraInterface = document.getElementById('camera-interface');
-        if (cameraInterface) {
-            cameraInterface.style.display = 'none';
+        const cameraModal = document.getElementById('camera-modal');
+        if (cameraModal) {
+            cameraModal.style.display = 'none';
         }
     }
 }

@@ -210,7 +210,7 @@ let cameras = [];
 let currentCameraIndex = 0;
 
 export function stopCameraStream() {
-    const cameraStream = document.getElementById('camera-video');
+    const cameraStream = document.getElementById('camera-stream');
     if (cameraStream && cameraStream.srcObject) {
         const tracks = cameraStream.srcObject.getTracks();
         tracks.forEach(track => track.stop());

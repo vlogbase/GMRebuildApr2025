@@ -57,10 +57,10 @@ export function initializePrioritized() {
     // Initialize basic UI elements
     messageInput = document.getElementById('user-input') || document.getElementById('message-input');
     sendButton = document.getElementById('send-btn');
-    newChatButton = document.getElementById('new-chat-button');
+    newChatButton = document.getElementById('new-chat-btn');
     clearConversationsButton = document.getElementById('clear-conversations-button');
-    imageUploadButton = document.getElementById('image-upload-button');
-    imageUploadInput = document.getElementById('image-upload');
+    imageUploadButton = document.getElementById('file-upload-button');
+    imageUploadInput = document.getElementById('file-upload-input');
     cameraButton = document.getElementById('camera-button');
     captureButton = document.getElementById('capture-button');
     switchCameraButton = document.getElementById('switch-camera-button');
