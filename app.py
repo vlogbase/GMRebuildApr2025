@@ -3571,6 +3571,13 @@ def chat(): # Synchronous function
                             'completion_tokens': final_completion_tokens
                         }
                         
+                        # DETAILED METADATA LOGGING
+                        logger.info(f"🔍 METADATA DEBUG - Raw values:")
+                        logger.info(f"🔍 assistant_message_id: {assistant_message_id} (type: {type(assistant_message_id)})")
+                        logger.info(f"🔍 final_model_id_used: {final_model_id_used} (type: {type(final_model_id_used)})")
+                        logger.info(f"🔍 final_prompt_tokens: {final_prompt_tokens} (type: {type(final_prompt_tokens)})")
+                        logger.info(f"🔍 final_completion_tokens: {final_completion_tokens} (type: {type(final_completion_tokens)})")
+                        
                         # Add document info if RAG was used
                         if 'has_rag_documents' in locals() and has_rag_documents:
                             metadata_payload['using_documents'] = True
@@ -3587,9 +3594,24 @@ def chat(): # Synchronous function
                                 print(f"DEBUG-RAG-METADATA: has_rag_documents explicitly set to {has_rag_documents}")
                             else:
                                 print(f"DEBUG-RAG-METADATA: has_rag_documents variable not defined in this scope")
+                        
+                        # DETAILED PAYLOAD LOGGING
+                        logger.info(f"🔍 METADATA PAYLOAD: {metadata_payload}")
+                        
+                        # Create the full stream message
+                        stream_message = {'type': 'metadata', 'metadata': metadata_payload}
+                        logger.info(f"🔍 FULL STREAM MESSAGE: {stream_message}")
+                        
+                        # Create the JSON string that will be sent
+                        json_string = json.dumps(stream_message)
+                        logger.info(f"🔍 JSON STRING TO SEND: {json_string}")
+                        
+                        # Create the final data line
+                        data_line = f"data: {json_string}\n\n"
+                        logger.info(f"🔍 FINAL DATA LINE: {repr(data_line)}")
                                 
                         # Send the metadata
-                        yield f"data: {json.dumps({'type': 'metadata', 'metadata': metadata_payload})}\n\n"
+                        yield data_line
                         logger.info(f"==> SUCCESSFULLY yielded METADATA for message {assistant_message_id}")
 
                     except Exception as db_error:

@@ -86,43 +86,79 @@ export function clearAttachedPdf() {
 
 // Function to update message metadata after receiving it from stream
 function updateMessageMetadata(messageElement, metadata) {
-    if (!messageElement || !metadata) return;
+    console.log('🔧 updateMessageMetadata called with:', {
+        messageElement: messageElement,
+        metadata: metadata,
+        hasMessageElement: !!messageElement,
+        hasMetadata: !!metadata
+    });
+    
+    if (!messageElement || !metadata) {
+        console.warn('❌ Missing messageElement or metadata:', { messageElement, metadata });
+        return;
+    }
     
     // Set the message ID
-    messageElement.dataset.messageId = metadata.id;
+    if (metadata.id) {
+        messageElement.dataset.messageId = metadata.id;
+        console.log('✅ Set message ID:', metadata.id);
+    }
     
     // Check if metadata container already exists
     let metadataContainer = messageElement.querySelector('.message-metadata');
+    console.log('🔍 Existing metadata container:', metadataContainer);
     
     if (!metadataContainer) {
         // Create new metadata container
         metadataContainer = document.createElement('div');
         metadataContainer.className = 'message-metadata message-metadata-outside';
+        console.log('🆕 Created new metadata container');
         
         // Find the message wrapper to append metadata to
         const messageWrapper = messageElement.querySelector('.message-wrapper');
+        console.log('🔍 Message wrapper found:', messageWrapper);
         if (messageWrapper) {
             messageWrapper.appendChild(metadataContainer);
+            console.log('✅ Appended metadata container to wrapper');
+        } else {
+            console.warn('❌ No message wrapper found');
         }
     }
     
-    // Build metadata text
+    // Build metadata text with detailed logging
     let metadataText = '';
     
+    console.log('🔧 Building metadata text with:', {
+        model_id_used: metadata.model_id_used,
+        model: metadata.model,
+        prompt_tokens: metadata.prompt_tokens,
+        completion_tokens: metadata.completion_tokens
+    });
+    
     if (metadata.model_id_used) {
-        // Format and shorten the model name
         const shortModelName = formatModelName(metadata.model_id_used);
         metadataText += `Model: ${shortModelName}`;
+        console.log('✅ Added model_id_used to metadata:', shortModelName);
     } else if (metadata.model) {
         const shortModelName = formatModelName(metadata.model);
         metadataText += `Model: ${shortModelName}`;
+        console.log('✅ Added model to metadata:', shortModelName);
+    } else {
+        console.warn('❌ No model information found');
     }
     
     if (metadata.prompt_tokens && metadata.completion_tokens) {
         if (metadataText) metadataText += ' · ';
         metadataText += `Tokens: ${metadata.prompt_tokens} prompt + ${metadata.completion_tokens} completion`;
+        console.log('✅ Added token info to metadata');
+    } else {
+        console.warn('❌ Missing token information:', {
+            prompt_tokens: metadata.prompt_tokens,
+            completion_tokens: metadata.completion_tokens
+        });
     }
     
+    console.log('📝 Final metadata text:', metadataText);
     metadataContainer.textContent = metadataText;
     
     // Add document reference indicator if using documents
@@ -141,9 +177,10 @@ function updateMessageMetadata(messageElement, metadata) {
         }
         
         metadataContainer.appendChild(documentRef);
+        console.log('✅ Added document reference');
     }
     
-    console.log('✅ Updated message metadata:', metadataText);
+    console.log('✅ Metadata update completed. Container visible:', metadataContainer.offsetParent !== null);
 }
 
 // Export functions for external access
@@ -852,24 +889,50 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
                     
                     try {
                         const parsed = JSON.parse(data);
+                        console.log('🔍 RAW STREAM DATA:', parsed);
                         
                         // Handle content chunks
                         if (parsed.content) {
+                            console.log('📝 Content chunk:', parsed.content);
                             fullResponse += parsed.content;
                             messageContent.innerHTML = formatMessage(fullResponse);
                             chatMessages.scrollTop = chatMessages.scrollHeight;
                         }
                         
-                        // Handle metadata chunks
-                        if (parsed.id && (parsed.model_id_used || parsed.prompt_tokens || parsed.completion_tokens)) {
-                            messageMetadata = parsed;
-                            console.log('📊 Received metadata:', messageMetadata);
+                        // Enhanced metadata detection with comprehensive logging
+                        console.log('🔎 Checking for metadata in:', {
+                            type: parsed.type,
+                            hasMetadataField: !!parsed.metadata,
+                            hasDirectId: !!parsed.id,
+                            hasDirectModelIdUsed: !!parsed.model_id_used,
+                            allFields: Object.keys(parsed),
+                            values: parsed
+                        });
+                        
+                        // Handle metadata chunks - check for both nested and direct metadata
+                        if (parsed.type === 'metadata' && parsed.metadata) {
+                            // Backend sends metadata nested under 'metadata' field
+                            messageMetadata = parsed.metadata;
+                            console.log('📊 NESTED METADATA DETECTED:', messageMetadata);
+                            console.log('📊 Metadata keys:', Object.keys(messageMetadata));
+                            console.log('📊 Metadata values:', messageMetadata);
                             
                             // Update the message element with metadata
                             updateMessageMetadata(assistantMessage, messageMetadata);
+                        } else if (parsed.id || parsed.model_id_used || parsed.prompt_tokens || parsed.completion_tokens || parsed.model) {
+                            // Direct metadata fields (fallback)
+                            messageMetadata = parsed;
+                            console.log('📊 DIRECT METADATA DETECTED:', messageMetadata);
+                            console.log('📊 Metadata keys:', Object.keys(messageMetadata));
+                            console.log('📊 Metadata values:', messageMetadata);
+                            
+                            // Update the message element with metadata
+                            updateMessageMetadata(assistantMessage, messageMetadata);
+                        } else {
+                            console.log('❌ No metadata detected in chunk');
                         }
-                    } catch {
-                        // Ignore JSON parse errors for partial chunks
+                    } catch (parseError) {
+                        console.warn('🚨 JSON parse error for chunk:', data, 'Error:', parseError);
                     }
                 }
             }
