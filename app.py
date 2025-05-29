@@ -4204,8 +4204,9 @@ def get_models():
                         'prompt': str(db_model.input_price_usd_million / 1000000),
                         'completion': str(db_model.output_price_usd_million / 1000000)
                     },
-                    'is_multimodal': db_model.is_multimodal,
-                    'supports_pdf': db_model.supports_pdf or db_model.model_id in DOCUMENT_MODELS,
+                    'is_multimodal': bool(db_model.is_multimodal),
+                    'supports_vision': bool(db_model.is_multimodal),  # Frontend expects this field
+                    'supports_pdf': bool(db_model.supports_pdf or db_model.model_id in DOCUMENT_MODELS),
                     'is_free': db_model.input_price_usd_million == 0 and db_model.output_price_usd_million == 0,
                     'is_perplexity': 'perplexity/' in db_model.model_id.lower(),
                     'is_reasoning': any(keyword in db_model.model_id.lower() or 

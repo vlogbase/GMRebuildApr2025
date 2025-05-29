@@ -23,6 +23,7 @@ def get_available_models():
     """
     try:
         # First try to get models from database (most reliable source)
+        logger.info("🔍 Attempting to fetch models from database")
         try:
             from app import app
             from models import OpenRouterModel
@@ -30,19 +31,28 @@ def get_available_models():
             with app.app_context():
                 # Only include active models
                 db_models = OpenRouterModel.query.filter_by(model_is_active=True).all()
+                logger.info(f"🔍 Database query returned {len(db_models) if db_models else 0} active models")
+                
                 if db_models:
                     model_ids = [model.model_id for model in db_models]
-                    logger.info(f"Found {len(model_ids)} models in database")
+                    logger.info(f"✅ Found {len(model_ids)} models in database")
+                    logger.info(f"🔍 Sample model IDs: {model_ids[:10]}")
                     
                     # Still update the cache file for backward compatibility
-                    with open('available_models.json', 'w') as f:
-                        json.dump(model_ids, f, indent=2)
+                    try:
+                        with open('available_models.json', 'w') as f:
+                            json.dump(model_ids, f, indent=2)
+                        logger.info("✅ Updated cache file with database models")
+                    except Exception as cache_write_error:
+                        logger.warning(f"⚠️ Could not update cache file: {cache_write_error}")
                         
                     return model_ids
                 else:
-                    logger.warning("No models found in database, will try API")
+                    logger.warning("❌ No models found in database, will try API")
         except Exception as db_error:
-            logger.error(f"Error accessing database models: {db_error}")
+            logger.error(f"❌ Error accessing database models: {db_error}")
+            import traceback
+            logger.error(f"❌ Database error traceback: {traceback.format_exc()}")
         
         # If database access failed, try direct API call
         api_key = os.environ.get('OPENROUTER_API_KEY')
@@ -112,8 +122,28 @@ def is_model_available(model_id, available_models=None):
     """
     if available_models is None:
         available_models = get_available_models()
+    
+    # Enhanced logging for debugging availability issues
+    logger.info(f"🔍 Checking availability for model: {model_id}")
+    logger.info(f"🔍 Available models count: {len(available_models) if available_models else 0}")
+    logger.info(f"🔍 Available models sample (first 10): {available_models[:10] if available_models else 'None'}")
+    
+    if not available_models:
+        logger.error("❌ No available models list - treating all models as unavailable")
+        return False
+    
+    is_available = model_id in available_models
+    logger.info(f"🔍 Model {model_id} availability: {is_available}")
+    
+    if not is_available:
+        # Log similar models to help debug typos or version mismatches
+        similar_models = [m for m in available_models if model_id.split('/')[-1] in m or m.split('/')[-1] in model_id]
+        if similar_models:
+            logger.warning(f"❌ Model {model_id} not found, but similar models exist: {similar_models[:5]}")
+        else:
+            logger.warning(f"❌ Model {model_id} not found and no similar models detected")
         
-    return model_id in available_models
+    return is_available
 
 def get_fallback_model(requested_model, fallback_models, available_models=None):
     """
