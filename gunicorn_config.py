@@ -12,7 +12,7 @@ import multiprocessing
 bind = "0.0.0.0:5000"
 
 # Worker configuration
-workers = 2  # Reduced from 4 to avoid memory limits on Replit
+workers = 4  # Reduced from 4 to avoid memory limits on Replit, then p
 worker_class = "gevent"  # Use gevent for async support
 threads = 2
 
