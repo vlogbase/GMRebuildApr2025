@@ -196,7 +196,7 @@ export function sendMessage() {
 export function addMessage(content, sender, isTyping = false, metadata = null) {
     // Get message elements
     const elements = createMessageElement(content, sender, isTyping, metadata);
-    const { messageElement, avatar, messageWrapper, messageContent } = elements;
+    const { messageElement, avatar, messageWrapper, messageContent, metadataContainer } = elements;
     
     if (isTyping) {
         messageContent.innerHTML = '<div class="typing-indicator"><span></span><span></span><span></span></div>';
@@ -366,8 +366,8 @@ export function addMessage(content, sender, isTyping = false, metadata = null) {
             actionsContainer.appendChild(downvoteButton);
             
             // Add metadata display for assistant messages
-            if (metadata) {
-                const metadataContainer = document.createElement('div');
+            if (metadata && sender === 'assistant') {
+                // Use the existing metadataContainer instead of creating a new one
                 metadataContainer.className = 'message-metadata message-metadata-outside';
                 
                 // If we have model and token information, display it
@@ -812,52 +812,24 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
         if (finalMetadata) {
             console.log('🏷️ Adding metadata to message:', finalMetadata);
             
-            // Find the message wrapper and add metadata
-            const messageWrapper = assistantMessage.querySelector('.message-wrapper');
-            if (messageWrapper) {
-                // Create metadata container
-                const metadataContainer = document.createElement('div');
-                metadataContainer.className = 'message-metadata message-metadata-outside';
-                
-                // Build metadata text
-                let metadataText = '';
-                
-                if (finalMetadata.model_id_used) {
-                    const shortModelName = formatModelName(finalMetadata.model_id_used);
-                    metadataText += `Model: ${shortModelName}`;
-                }
-                
-                if (finalMetadata.prompt_tokens && finalMetadata.completion_tokens) {
-                    if (metadataText) metadataText += ' · ';
-                    metadataText += `Tokens: ${finalMetadata.prompt_tokens} prompt + ${finalMetadata.completion_tokens} completion`;
-                }
-                
-                metadataContainer.textContent = metadataText;
-                
-                // Add document reference if using documents
-                if (finalMetadata.using_documents) {
-                    const documentRef = document.createElement('span');
-                    documentRef.className = 'document-reference';
-                    documentRef.innerHTML = '<i class="fa-solid fa-file-lines"></i> Using your documents';
-                    
-                    if (finalMetadata.document_sources && finalMetadata.document_sources.length > 0) {
-                        const sourceCount = finalMetadata.document_sources.length;
-                        const sourceText = sourceCount === 1 
-                            ? finalMetadata.document_sources[0] 
-                            : `${sourceCount} documents`;
-                        documentRef.innerHTML = `<i class="fa-solid fa-file-lines"></i> Using ${sourceText}`;
-                    }
-                    
-                    metadataContainer.appendChild(documentRef);
-                }
-                
-                // Only append if we have metadata text or document info
-                if (metadataText || finalMetadata.using_documents) {
-                    messageWrapper.appendChild(metadataContainer);
-                }
-                
-                // Store metadata on the message element for later use (rating, sharing, etc.)
-                assistantMessage.dataset.messageMetadata = JSON.stringify(finalMetadata);
+            // Store metadata on the message element for later use (rating, sharing, etc.)
+            assistantMessage.dataset.messageMetadata = JSON.stringify(finalMetadata);
+            
+            // Re-create the message with proper metadata
+            // Remove the current message and replace it with one that has metadata
+            const messageContent = assistantMessage.querySelector('.message-content');
+            const currentContent = messageContent.innerHTML;
+            
+            // Remove the old message
+            assistantMessage.remove();
+            
+            // Create a new message with the metadata
+            const newMessage = addMessage(currentContent, 'assistant', false, finalMetadata);
+            
+            // Add to chat container
+            if (chatMessages) {
+                chatMessages.appendChild(newMessage);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         }
         

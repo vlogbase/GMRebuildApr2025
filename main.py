@@ -1,4 +1,13 @@
-from app import app
+#!/usr/bin/env python3
+"""
+Main workflow for the Flask application
+"""
+import os
+import sys
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+def run():
+    """Run the Flask application"""
+    os.execv(sys.executable, [sys.executable, "app.py"])
+
+if __name__ == "__main__":
+    run()
