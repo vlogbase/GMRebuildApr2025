@@ -2450,10 +2450,18 @@ def chat(): # Synchronous function
                     # If we can't determine, assume no RAG to avoid using expensive models unnecessarily
             
             # Get the list of available models
+            logger.info(f"🔍 CHAT: Getting available models for validation")
             available_models = model_validator.get_available_models()
+            logger.info(f"🔍 CHAT: Received {len(available_models) if available_models else 0} available models")
             
             # Check if the requested model is available
-            if not model_validator.is_model_available(openrouter_model, available_models) or has_rag_content:
+            logger.info(f"🔍 CHAT: Validating requested model: {openrouter_model}")
+            model_is_available = model_validator.is_model_available(openrouter_model, available_models)
+            logger.info(f"🔍 CHAT: Model availability check result: {model_is_available}")
+            logger.info(f"🔍 CHAT: Has RAG content: {has_rag_content}")
+            logger.info(f"🔍 CHAT: Combined condition (not available OR has RAG): {not model_is_available or has_rag_content}")
+            
+            if not model_is_available or has_rag_content:
                 
                 # Check if user wants fallback behavior
                 enable_fallback = True  # Default for non-authenticated users
