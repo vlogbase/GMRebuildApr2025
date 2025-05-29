@@ -1,21 +1,24 @@
 #!/usr/bin/env python3
 """
-Test workflow for model selector functionality
+Test workflow for the model selection fixes
 """
 
 import subprocess
 import sys
-import os
 
 def run():
-    """Run the Flask application for testing"""
-    os.environ['FLASK_ENV'] = 'development'
-    os.environ['FLASK_DEBUG'] = '1'
+    """
+    Run the Flask application to test the model selection improvements
+    """
+    print("Starting Flask application with model selection fixes...")
     
     try:
-        subprocess.run([sys.executable, 'app.py'], check=True)
+        # Run the Flask app
+        subprocess.run([sys.executable, "app.py"], check=True)
     except KeyboardInterrupt:
-        print("\nStopped")
+        print("\nShutting down Flask application...")
+    except Exception as e:
+        print(f"Error running Flask application: {e}")
 
 if __name__ == "__main__":
     run()

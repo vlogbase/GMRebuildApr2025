@@ -17,42 +17,55 @@ export let currentlyEditingPresetId = null;
 window.availableModels = allModels;
 window.userPreferences = userPreferences;
 
+// Helper function to check if a model is free
+function isModelFree(model) {
+    return model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+}
+
+// Helper function to check if a model supports reasoning
+function isModelReasoning(model) {
+    // First check if model has supported_parameters and includes 'include_reasoning'
+    if (model.supported_parameters && Array.isArray(model.supported_parameters)) {
+        return model.supported_parameters.includes('include_reasoning');
+    }
+    
+    // Fallback to existing logic for cached data that might not have supported_parameters
+    if (model.is_reasoning === true) {
+        return true;
+    }
+    
+    // Secondary fallback to ID-based detection for o1, o3, reasoning keywords
+    return model.id.includes('reasoning') || model.id.includes('o1') || model.id.includes('o3');
+}
+
 // Filter configurations for each preset
 export const presetFilters = {
     '1': (model) => {
-        // All non-free models - check for :free suffix, cost_band, and is_free flag
-        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
-        return !isFree;
+        // All non-free models sorted by ELO
+        return !isModelFree(model);
     },
     '2': (model) => {
-        // All non-free models
-        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
-        return !isFree;
+        // All non-free models sorted by context length
+        return !isModelFree(model);
     },
     '3': (model) => {
-        // Reasoning models - check for is_reasoning flag first, then fallback to ID patterns
-        if (model.is_reasoning === true) {
-            return true;
-        }
-        // Fallback to ID-based detection for o1, o3, reasoning keywords
-        return model.id.includes('reasoning') || model.id.includes('o1') || model.id.includes('o3');
+        // Reasoning models (non-free only)
+        return isModelReasoning(model) && !isModelFree(model);
     },
     '4': (model) => {
-        // Multimodal/image-capable models (non-free)
-        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+        // Multimodal/image-capable models (non-free only)
         const isMultimodal = model.is_multimodal || model.supports_vision || 
                             model.id.includes('vision') || model.id.includes('gpt-4o');
-        return !isFree && isMultimodal;
+        return !isModelFree(model) && isMultimodal;
     },
     '5': (model) => {
-        // Search/Perplexity models - only Perplexity models, exclude free models
-        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+        // Search/Perplexity models (non-free only)
         const isPerplexity = model.id.includes('perplexity');
-        return isPerplexity && !isFree;
+        return isPerplexity && !isModelFree(model);
     },
     '6': (model) => {
         // Free models only
-        return model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+        return isModelFree(model);
     }
 };
 
@@ -700,12 +713,8 @@ function populateModelList(presetId) {
 
 // Function to select a model for a specific preset
 async function selectModelForPreset(presetId, modelId, skipActivation) {
-    // Check if trying to assign a free model to a non-free preset
-    const isFreeModel = modelId.includes(':free') || allModels.some(m => m.id === modelId && m.is_free === true);
-    if (presetId !== '6' && isFreeModel) {
-        alert('Free models can only be selected for Preset 6');
-        return;
-    }
+    // Note: We no longer need client-side validation here since the filtering 
+    // logic now prevents free models from appearing in non-free presets
     
     // Update the UI
     const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
