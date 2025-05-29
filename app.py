@@ -1659,7 +1659,7 @@ def upload_file():
                 return jsonify({"error": f"Upload failed: {str(e)}"}), 500
                 
         elif extension == '.pdf':
-            # Handle PDF uploads directly within this function context
+            # Handle PDF uploads - convert directly to base64 data URL for OpenRouter
             try:
                 if 'file' not in request.files:
                     return jsonify({"error": "No file provided"}), 400
@@ -1668,29 +1668,21 @@ def upload_file():
                 if uploaded_file.filename == '':
                     return jsonify({"error": "No file selected"}), 400
                 
-                # Generate unique filename
-                unique_filename = f"{uuid.uuid4().hex}.pdf"
-                
                 # Read the PDF data
                 pdf_data = uploaded_file.read()
                 if len(pdf_data) == 0:
                     return jsonify({"error": "Empty file"}), 400
                 
-                # Upload to Azure Blob Storage
-                blob_service_client = BlobServiceClient.from_connection_string(os.getenv('AZURE_STORAGE_CONNECTION_STRING'))
-                container_name = 'gloriamundopdfs'
-                blob_client = blob_service_client.get_blob_client(container=container_name, blob=unique_filename)
+                # Convert to base64 data URL (required format for OpenRouter PDF handling)
+                import base64
+                pdf_base64 = base64.b64encode(pdf_data).decode('utf-8')
+                pdf_data_url = f"data:application/pdf;base64,{pdf_base64}"
                 
-                blob_client.upload_blob(pdf_data, overwrite=True, content_settings=ContentSettings(content_type='application/pdf'))
-                
-                # Generate the blob URL
-                document_url = f"https://{blob_service_client.account_name}.blob.core.windows.net/{container_name}/{unique_filename}"
-                
-                logger.info(f"PDF uploaded successfully: {document_url}")
+                logger.info(f"PDF converted to base64 format: {uploaded_file.filename}")
                 
                 return jsonify({
                     "success": True,
-                    "document_url": document_url,
+                    "document_url": pdf_data_url,  # Return base64 data URL directly
                     "document_name": uploaded_file.filename,
                     "file_type": "pdf",
                     "filename": uploaded_file.filename
@@ -2797,25 +2789,7 @@ def chat(): # Synchronous function
                         pdf_to_process.append((pdf_data, filename))
                 
                 for pdf_data_url, filename in pdf_to_process:
-                    # Convert blob URL to base64 data URL if needed
-                    if pdf_data_url.startswith('https://') and 'blob.core.windows.net' in pdf_data_url:
-                        logger.info(f"Converting blob URL to base64 for PDF: {filename}")
-                        try:
-                            # Download the PDF from Azure Blob Storage
-                            import requests
-                            response = requests.get(pdf_data_url, timeout=30)
-                            response.raise_for_status()
-                            
-                            # Convert to base64 data URL
-                            import base64
-                            pdf_base64 = base64.b64encode(response.content).decode('utf-8')
-                            pdf_data_url = f"data:application/pdf;base64,{pdf_base64}"
-                            logger.info(f"Successfully converted PDF to base64 format: {filename}")
-                        except Exception as e:
-                            logger.error(f"Failed to convert PDF blob URL to base64: {e}")
-                            continue
-                    
-                    # Validate that this is now a data URL (required for OpenRouter PDF handling)
+                    # Validate that this is a data URL (required for OpenRouter PDF handling)
                     if pdf_data_url.startswith('data:application/pdf;base64,'):
                         # Add this PDF to the multimodal content
                         multimodal_content.append({
@@ -2828,6 +2802,7 @@ def chat(): # Synchronous function
                         logger.info(f"Added PDF document to message: {filename}")
                     else:
                         logger.error(f"❌ INVALID PDF DATA URL FORMAT: PDF URLs must be data:application/pdf;base64,... format")
+                        logger.error(f"Received format: {pdf_data_url[:100]}...")
             
             # Add the multimodal content to messages if we have at least one valid image or PDF
             if len(multimodal_content) > 1:  # First item is text, so we need more than 1 item
