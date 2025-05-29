@@ -261,7 +261,9 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                 # Check who has the lock
                 current_holder = redis_client.get(LOCK_KEY)
                 if current_holder:
-                    logger.info(f"⏱️ Price update already running on worker: {current_holder.decode()}")
+                    # Handle both bytes and string responses from Redis
+                    holder_info = current_holder.decode() if isinstance(current_holder, bytes) else current_holder
+                    logger.info(f"⏱️ Price update already running on worker: {holder_info}")
                 else:
                     logger.info("⏱️ Price update lock recently released, skipping")
                 
