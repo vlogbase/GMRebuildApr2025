@@ -81,7 +81,7 @@ window.defaultModels = defaultModels;
 export const defaultModelDisplayNames = {
     'google/gemini-2.5-pro-experimental': 'Gemini 2.5 Pro',
     'x-ai/grok-3-beta': 'Grok 3',
-    'anthropic/claude-sonnet-4': 'Reasoning',
+    'anthropic/claude-sonnet-4': 'Claude Sonnet 4',
     'openai/gpt-4o-2024-11-20': 'GPT 4o',
     'perplexity/sonar-pro': 'Perplexity Pro',
     'google/gemini-2.0-flash-exp:free': 'Gemini 2'
