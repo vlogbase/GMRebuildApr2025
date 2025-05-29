@@ -2705,7 +2705,7 @@ body.account-page .tab-pane {
     }
 }
 
-#image-upload-button, #camera-button {
+#file-upload-button, #camera-button {
     background-color: transparent;
     color: var(--secondary-text);
     border: none;
@@ -2720,12 +2720,12 @@ body.account-page .tab-pane {
     position: relative;
 }
 
-#image-upload-button:hover, #camera-button:hover {
+#file-upload-button:hover, #camera-button:hover {
     background-color: rgba(36, 185, 189, 0.1);
     color: var(--accent-color);
 }
 
-#image-upload-button.loading, #camera-button.loading {
+#file-upload-button.loading, #camera-button.loading {
     pointer-events: none;
     animation: pulse 1.5s infinite;
 }

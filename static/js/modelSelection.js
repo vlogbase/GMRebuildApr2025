@@ -275,6 +275,7 @@ export async function fetchAvailableModels() {
                     cost_band: modelData.cost_band,
                     pricing: modelData.pricing,
                     is_multimodal: modelData.is_multimodal || false,
+                    supports_vision: modelData.supports_vision || modelData.is_multimodal || false,
                     supports_pdf: modelData.supports_pdf || false,
                     context_length: modelData.context_length,
                     description: modelData.description,
@@ -288,6 +289,12 @@ export async function fetchAvailableModels() {
             window.availableModels = allModels;
             console.log(`✅ Loaded ${allModels.length} models from prices data`);
             updatePresetButtonLabels();
+            
+            // Initialize upload controls for the default preset
+            if (currentPresetId) {
+                console.log(`🔧 Initializing upload controls for default preset: ${currentPresetId}`);
+                selectPresetButton(currentPresetId);
+            }
         } else {
             const errorMsg = data.error || 'API response missing success=true or prices data';
             console.error('❌ Failed to fetch models - API response structure issue:', {
