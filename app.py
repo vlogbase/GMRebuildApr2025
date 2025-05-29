@@ -1589,14 +1589,23 @@ def upload_file():
             return jsonify({"error": "No file provided"}), 400
             
         file = request.files['file']
-        # Allow camera captures which may have None or empty filenames but valid content
-        if (file.filename == '' or file.filename is None) and not hasattr(file, 'stream'):
+        if not file or file.filename == '':
             return jsonify({"error": "No file selected"}), 400
             
-        # Detect file type from extension - handle cases where filename might be None
-        filename = file.filename
-        if filename and '.' in filename:
-            extension = Path(filename).suffix.lower()
+        # Generate a unique filename using user ID, timestamp, and UUID
+        import hashlib
+        import time
+        
+        # Get user ID for unique naming
+        user_id = current_user.id if current_user.is_authenticated else 'anonymous'
+        user_hash = hashlib.md5(str(user_id).encode()).hexdigest()[:8]
+        timestamp = int(time.time())
+        unique_id = uuid.uuid4().hex[:8]
+        
+        # Detect file type from extension or content type
+        original_filename = file.filename
+        if original_filename and '.' in original_filename:
+            extension = Path(original_filename).suffix.lower()
         else:
             # For camera captures or files without proper names, check content type
             content_type = file.content_type or ''
@@ -1605,7 +1614,10 @@ def upload_file():
             elif content_type == 'application/pdf':
                 extension = '.pdf'
             else:
-                extension = ''
+                return jsonify({"error": "Unable to determine file type"}), 400
+        
+        # Create the unique filename: user_timestamp_uniqueid.ext
+        unique_filename = f"{user_hash}_{timestamp}_{unique_id}{extension}"
         
         # Route to appropriate handler based on file type
         if extension in ['.jpg', '.jpeg', '.png', '.gif', '.webp']:
@@ -1621,13 +1633,7 @@ def upload_file():
                 if uploaded_file.filename == '':
                     return jsonify({"error": "No file selected"}), 400
                 
-                # Generate unique filename - handle cases where filename might be None or empty
-                if uploaded_file.filename and '.' in uploaded_file.filename:
-                    file_extension = uploaded_file.filename.split('.')[-1].lower()
-                else:
-                    # Default to jpg for camera captures or files without extensions
-                    file_extension = 'jpg'
-                unique_filename = f"{uuid.uuid4().hex}.{file_extension}"
+                # Use the unique filename already generated above
                 
                 # Read and validate the image
                 image_data = uploaded_file.read()
@@ -1674,7 +1680,8 @@ def upload_file():
                     "success": True,
                     "image_url": image_url,
                     "file_type": "image",
-                    "filename": uploaded_file.filename
+                    "filename": original_filename or "camera_capture.jpg",
+                    "stored_filename": unique_filename
                 })
                 
             except Exception as e:
