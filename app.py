@@ -3817,7 +3817,7 @@ def get_model_prices():
                         'model_name': db_model.name or model_id,
                         'model_id': model_id,
                         'cost_band': cost_band,
-                        'is_free': db_model.is_free or False,
+                        'is_free': False if model_id == "openrouter/auto" else (db_model.is_free or False),
                         'is_reasoning': db_model.supports_reasoning or False,
                         'elo_score': db_model.elo_score,  # Add LMSYS ELO score
                         'source': 'database'

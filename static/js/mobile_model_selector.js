@@ -655,8 +655,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Helper function to filter and display models after they're loaded
     function finishPopulatingModels(allModels, presetId) {
-        // First filter out free models for all presets except 6
-        const nonFreeModels = presetId === '6' ? allModels : allModels.filter(model => !model.is_free && !model.id.includes(':free'));
+        // First filter out free models for all presets except 6, but include auto model for presets 1-2
+        const nonFreeModels = presetId === '6' ? allModels : allModels.filter(model => {
+            // Include auto model specifically for non-free presets
+            if (model.id === 'openrouter/auto') return true;
+            return !model.is_free && !model.id.includes(':free');
+        });
         
         // Then apply specific filters based on preset
         let filteredModels = presetId === '3' ? nonFreeModels.filter(model => {
@@ -672,7 +676,11 @@ document.addEventListener('DOMContentLoaded', function() {
             return passes;
         }) :
                               presetId === '5' ? nonFreeModels.filter(model => model.id.includes('perplexity')) :
-                              presetId === '6' ? allModels.filter(model => model.is_free === true || model.id.includes(':free')) :
+                              presetId === '6' ? allModels.filter(model => {
+            // Free models only - exclude auto model specifically
+            if (model.id === 'openrouter/auto') return false;
+            return model.is_free === true || model.id.includes(':free');
+        }) :
                               nonFreeModels; // For presets 1-5, we already filtered out free models above
                               
         console.log(`Mobile: Filtered to ${filteredModels.length} models for preset ${presetId} (excluding free models for presets 1-5)`);

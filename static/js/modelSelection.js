@@ -20,12 +20,14 @@ window.userPreferences = userPreferences;
 // Filter configurations for each preset
 export const presetFilters = {
     '1': (model) => {
-        // All non-free models - check for :free suffix, cost_band, and is_free flag
+        // All non-free models - include auto model specifically
+        if (model.id === 'openrouter/auto') return true;
         const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
         return !isFree;
     },
     '2': (model) => {
-        // All non-free models
+        // All non-free models - include auto model specifically
+        if (model.id === 'openrouter/auto') return true;
         const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
         return !isFree;
     },
@@ -56,7 +58,8 @@ export const presetFilters = {
         return isPerplexity && !isFree;
     },
     '6': (model) => {
-        // Free models only
+        // Free models only - exclude auto model specifically
+        if (model.id === 'openrouter/auto') return false;
         return model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
     }
 };
