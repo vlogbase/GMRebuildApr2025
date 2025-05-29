@@ -66,7 +66,7 @@ export const presetFilters = {
 
 // Default models for each preset
 export const defaultModels = {
-    '1': 'google/gemini-2.5-pro-experimental',
+    '1': 'google/gemini-2.0-flash-exp', // Updated to actual working Gemini model
     '2': 'x-ai/grok-3-beta',
     '3': 'anthropic/claude-sonnet-4', // Reasoning
     '4': 'openai/gpt-4o-2024-11-20', // Multimodal
@@ -76,7 +76,7 @@ export const defaultModels = {
 
 // Display names for default models (shown on buttons - concise for limited space)
 export const defaultModelDisplayNames = {
-    'google/gemini-2.5-pro-experimental': 'Gemini 2.5 Pro',
+    'google/gemini-2.0-flash-exp': 'Gemini 2.0 Flash',
     'x-ai/grok-3-beta': 'Grok 3',
     'anthropic/claude-sonnet-4': 'Claude Sonnet 4',
     'openai/gpt-4o-2024-11-20': 'GPT 4o',
@@ -86,7 +86,7 @@ export const defaultModelDisplayNames = {
 
 // Full technical names for dropdown display (users see exact model names when selecting)
 export const fullModelDisplayNames = {
-    'google/gemini-2.5-pro-experimental': 'Gemini 2.5 Pro Experimental',
+    'google/gemini-2.0-flash-exp': 'Gemini 2.0 Flash Experimental',
     'x-ai/grok-3-beta': 'Grok 3 Beta',
     'anthropic/claude-sonnet-4': 'Claude Sonnet 4',
     'openai/gpt-4o-2024-11-20': 'GPT-4o (2024-11-20)',

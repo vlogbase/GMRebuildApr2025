@@ -233,14 +233,17 @@ def select_multimodal_fallback(has_image_content, available_models=None, has_rag
     if available_models is None:
         available_models = get_available_models()
     
-    # Priority list for multimodal models
+    # Priority list for multimodal models (updated with current model IDs)
     multimodal_priority = [
-        "anthropic/claude-3-opus-20240229",
+        "google/gemini-2.0-flash-exp",        # Current working Gemini model
+        "openai/gpt-4o-2024-11-20",         # Latest GPT-4o
+        "openai/gpt-4o-2024-05-13",         # Previous GPT-4o
+        "anthropic/claude-3-opus-20240229",  
         "anthropic/claude-3-sonnet-20240229",
-        "anthropic/claude-3-haiku-20240307",
+        "anthropic/claude-3-haiku-20240307", 
         "openai/gpt-4-vision-preview",
-        "openai/gpt-4o-2024-05-13",
-        "google/gemini-pro-vision"
+        "google/gemini-pro-vision",
+        "google/gemini-2.0-flash-exp:free"   # Free fallback
     ]
     
     # Priority list for text-only models
