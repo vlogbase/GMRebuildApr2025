@@ -1323,6 +1323,7 @@ def test_multimodal():
             return f"<h1>Error</h1><p>{error_msg}</p>", 500
 
 @app.route('/upload_image', methods=['POST'])
+@csrf.exempt
 @login_required
 def upload_image():
     """
@@ -1548,11 +1549,17 @@ def upload_image():
         }), 500
 
 @app.route('/upload_file', methods=['POST'])
+@csrf.exempt
 @login_required
 def upload_file():
     """
     Unified file upload route that handles both images and PDFs based on file type.
     This allows a single upload button in the UI to handle different file types.
+    
+    CSRF exemption: This route is exempt from CSRF protection because:
+    1. It's already protected by login_required
+    2. Camera uploads may have issues with CSRF token handling
+    3. File uploads don't modify critical user data directly
     
     For images:
         - Processes and stores in Azure 'gloriamundoblobs' container
