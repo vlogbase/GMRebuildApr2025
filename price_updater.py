@@ -288,10 +288,8 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
         # Mark the start time for performance tracking
         start_time = time.time()
         logger.info("🚀 Cluster-coordinated price update started")
-    
-    # ELO scores are now managed manually via admin interface - no automatic fetching
-    
-    try:
+        
+        # ELO scores are now managed manually via admin interface - no automatic fetching
         api_key = os.environ.get('OPENROUTER_API_KEY')
         if not api_key:
             logger.error("OPENROUTER_API_KEY not found in environment variables")
