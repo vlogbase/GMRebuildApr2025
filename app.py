@@ -2367,7 +2367,8 @@ def chat(): # Synchronous function
             logger.info(f"Request contains {len(image_urls)} images")
         
         # Use .get for default model to avoid KeyError if '1' isn't present initially
-        model_id = data.get('model', DEFAULT_PRESET_MODELS.get('1', 'google/gemini-flash-1.5')) 
+        # First try 'model_id' (sent by frontend), then fall back to 'model' (legacy), then default
+        model_id = data.get('model_id') or data.get('model', DEFAULT_PRESET_MODELS.get('1', 'google/gemini-flash-1.5')) 
         message_history = data.get('history', [])
         conversation_id = data.get('conversation_id', None)
         
