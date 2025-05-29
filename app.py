@@ -3468,9 +3468,16 @@ def chat(): # Synchronous function
                                     return # Stop generation on genuine parsing error
 
                 # --- Stream processing finished ---
+                logger.info(f"🔍 STREAM PROCESSING: Content accumulation debug")
+                logger.info(f"🔍 assistant_response_content length: {len(assistant_response_content)}")
+                logger.info(f"🔍 assistant_response_content sample: {assistant_response_content[:3] if assistant_response_content else 'Empty list'}")
+                
                 full_response_text = ''.join(assistant_response_content)
+                logger.info(f"🔍 full_response_text length: {len(full_response_text)}")
+                logger.info(f"🔍 full_response_text sample: {repr(full_response_text[:100]) if full_response_text else 'Empty string'}")
 
                 if full_response_text: # Only save if there was actual content
+                    logger.info(f"✅ METADATA CONDITION: full_response_text check passed - proceeding with metadata generation")
                     try:
                         from models import Message
                         from ensure_app_context import ensure_app_context
@@ -3627,7 +3634,10 @@ def chat(): # Synchronous function
                         db.session.rollback()
                         yield f"data: {json.dumps({'type': 'error', 'error': 'Error saving message to database'})}\n\n"
                 else:
-                     logger.info("Assistant response was empty, not saving to DB or yielding metadata.")
+                     logger.error(f"🚨 CRITICAL: Assistant response was empty - this prevents metadata from being sent!")
+                     logger.error(f"🚨 assistant_response_text length: {len(assistant_response_text) if assistant_response_text else 'None'}")
+                     logger.error(f"🚨 assistant_response_text content: {repr(assistant_response_text[:100]) if assistant_response_text else 'None'}")
+                     logger.error("🚨 This is why metadata is missing from the frontend!")
 
                 # Signal completion to the client
                 logger.info("==> Preparing to yield DONE event")
