@@ -950,8 +950,8 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
                             chatMessages.scrollTop = chatMessages.scrollHeight;
                         }
                         
-                        // Handle content chunks (main response)
-                        if (parsed.content) {
+                        // Handle content chunks (main response) - but skip if this is reasoning content
+                        if (parsed.content && parsed.type !== 'reasoning') {
                             console.log('📝 Content chunk:', parsed.content);
                             
                             // If we were streaming reasoning and now got content, collapse the reasoning box
@@ -966,12 +966,15 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
                                 responseContainer.className = 'main-response';
                                 messageContent.appendChild(responseContainer);
                                 
-                                // Update reference to point to the response container
-                                messageContent = responseContainer;
+                                // Display the main response in the response container
+                                fullResponse += parsed.content;
+                                responseContainer.innerHTML = formatMessage(fullResponse);
+                            } else {
+                                // No reasoning - display content normally
+                                fullResponse += parsed.content;
+                                messageContent.innerHTML = formatMessage(fullResponse);
                             }
                             
-                            fullResponse += parsed.content;
-                            messageContent.innerHTML = formatMessage(fullResponse);
                             chatMessages.scrollTop = chatMessages.scrollHeight;
                         }
                         
