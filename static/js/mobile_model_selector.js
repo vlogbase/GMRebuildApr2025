@@ -221,6 +221,28 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle activating a preset
     function activatePreset(presetId) {
         console.log(`Mobile: Activating preset ${presetId}`);
+        
+        // Check if user has credits for premium presets
+        const isAuthenticated = (typeof window.userIsLoggedIn !== 'undefined' && window.userIsLoggedIn) || 
+                               !!document.getElementById('logout-btn');
+        let userCreditBalance = 0;
+        if (isAuthenticated && typeof window.userCreditBalance !== 'undefined') {
+            userCreditBalance = window.userCreditBalance;
+        }
+        
+        // Block activation of premium presets for users without credits
+        const isPremiumPreset = presetId !== '6'; // Only preset 6 is free
+        if (isPremiumPreset && (!isAuthenticated || userCreditBalance <= 0)) {
+            console.log(`Mobile: Blocking activation of premium preset ${presetId} for user without credits`);
+            showMobileNotification('Credits required for premium presets', 'error');
+            // Auto-redirect to free preset (avoid recursive call)
+            if (typeof window.selectPresetButton === 'function') {
+                window.selectPresetButton('6');
+                updateMobileActiveButton('6');
+            }
+            return;
+        }
+        
         // Use the global selectPresetButton function if available
         if (typeof window.selectPresetButton === 'function') {
             window.selectPresetButton(presetId);
@@ -315,6 +337,24 @@ document.addEventListener('DOMContentLoaded', function() {
     // Select a model for a specific preset
     function selectModelForPreset(presetId, modelId) {
         console.log(`Mobile: Selected model ${modelId} for preset ${presetId}`);
+        
+        // Check if user has credits for paid models
+        const isAuthenticated = (typeof window.userIsLoggedIn !== 'undefined' && window.userIsLoggedIn) || 
+                               !!document.getElementById('logout-btn');
+        let userCreditBalance = 0;
+        if (isAuthenticated && typeof window.userCreditBalance !== 'undefined') {
+            userCreditBalance = window.userCreditBalance;
+        }
+        
+        // Check if selected model is free
+        const isFreeModel = modelId.includes(':free') || presetId === '6';
+        
+        // Block selection of paid models for users without credits
+        if (!isFreeModel && (!isAuthenticated || userCreditBalance <= 0)) {
+            console.log(`Mobile: Blocking selection of paid model ${modelId} for user without credits`);
+            showMobileNotification('Credits required for premium models', 'error');
+            return;
+        }
         
         // Get model name for notification
         let modelName = modelId;
