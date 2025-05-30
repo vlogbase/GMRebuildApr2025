@@ -935,25 +935,13 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Set up event listeners
     
-    // Mobile preset buttons (1-6) - Now clicking directly activates the preset
+    // Mobile preset buttons (1-6) - Clicking directly activates the preset
     mobilePresetBtns.forEach(btn => {
-        // Add settings icon for model selection
-        let settingsIcon = document.createElement('div');
-        settingsIcon.className = 'preset-settings-icon';
-        settingsIcon.innerHTML = '<i class="fa-solid fa-gear"></i>';
-        btn.appendChild(settingsIcon);
-        
-        // Main button click activates the preset
+        // Simple click handler - just activate the preset
         btn.addEventListener('click', function(e) {
-            // If the click was on the settings icon, open model selection instead
-            if (e.target.closest('.preset-settings-icon')) {
-                const presetId = this.getAttribute('data-preset-id');
-                handlePresetButtonClick(presetId);
-            } else {
-                // Otherwise, activate the preset
-                const presetId = this.getAttribute('data-preset-id');
-                activatePreset(presetId);
-            }
+            const presetId = this.getAttribute('data-preset-id');
+            console.log(`Mobile: Preset button ${presetId} clicked`);
+            activatePreset(presetId);
         });
     });
     
