@@ -1254,34 +1254,79 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Force complete refresh of mobile UI after state changes
-    async function refreshMobileUIAfterChange() {
+    // Cache of default model names for immediate updates
+    const defaultModelCache = {
+        '1': 'Claude 3.5 Sonnet',
+        '2': 'GPT-4o',
+        '3': 'Claude 3.5 Sonnet',
+        '4': 'GPT-4o',
+        '5': 'Perplexity Sonar Pro',
+        '6': 'Gemini 2.0 Flash'
+    };
+    
+    // Apply immediate optimistic updates, then validate in background
+    async function refreshMobileUIAfterChange(isReset = false) {
         console.log('Mobile: Force refreshing UI after state change');
         
-        // Refresh user preferences from server
-        if (typeof window.fetchUserPreferences === 'function') {
-            await window.fetchUserPreferences();
+        if (isReset) {
+            // Immediately show cached default names for instant feedback
+            applyOptimisticDefaults();
         }
         
-        // Update all mobile displays
-        updateMobilePresetsDisplay();
-        updateSelectedModelNames();
+        // Then fetch real data in background and correct if needed
+        try {
+            if (typeof window.fetchUserPreferences === 'function') {
+                await window.fetchUserPreferences();
+            }
+            
+            // Update with real data
+            updateMobilePresetsDisplay();
+            updateSelectedModelNames();
+            
+            // If we're currently showing a model list, refresh it
+            if (currentPresetId && mobileModelSelection && mobileModelSelection.classList.contains('visible')) {
+                console.log('Mobile: Refreshing currently visible model list for preset', currentPresetId);
+                populateMobileModelList(currentPresetId);
+            }
+            
+            // Force update of active button state
+            if (window.activePresetId) {
+                updateMobileActiveButton(window.activePresetId);
+            }
+            
+            // Trigger desktop UI refresh too for consistency
+            if (typeof window.updatePresetButtonLabels === 'function') {
+                window.updatePresetButtonLabels();
+            }
+        } catch (error) {
+            console.error('Mobile: Background refresh failed:', error);
+        }
+    }
+    
+    // Apply optimistic default updates immediately
+    function applyOptimisticDefaults() {
+        console.log('Mobile: Applying optimistic defaults for immediate feedback');
         
-        // If we're currently showing a model list, refresh it
-        if (currentPresetId && mobileModelSelection && mobileModelSelection.classList.contains('visible')) {
-            console.log('Mobile: Refreshing currently visible model list for preset', currentPresetId);
-            populateMobileModelList(currentPresetId);
+        // Update button labels immediately with cached defaults
+        for (let i = 1; i <= 6; i++) {
+            const button = document.querySelector(`.mobile-preset-btn[data-preset-id="${i}"]`);
+            const selectedModelSpan = document.getElementById(`mobile-selected-model-${i}`);
+            const cachedName = defaultModelCache[i.toString()];
+            
+            if (button && cachedName) {
+                button.setAttribute('data-current-model-name', cachedName);
+            }
+            
+            if (selectedModelSpan && cachedName) {
+                selectedModelSpan.textContent = cachedName;
+            }
         }
         
-        // Force update of active button state
-        if (window.activePresetId) {
-            updateMobileActiveButton(window.activePresetId);
-        }
+        // Clear local preferences immediately
+        window.userPreferences = {};
         
-        // Trigger desktop UI refresh too for consistency
-        if (typeof window.updatePresetButtonLabels === 'function') {
-            window.updatePresetButtonLabels();
-        }
+        // Set active button to preset 1 (typical default)
+        updateMobileActiveButton('1');
     }
 
     // Expose functions globally for external access
@@ -1307,6 +1352,10 @@ document.addEventListener('DOMContentLoaded', function() {
             resetBtn.disabled = true;
         }
         
+        // Apply optimistic updates immediately for instant feedback
+        applyOptimisticDefaults();
+        showMobileNotification('All presets reset to defaults');
+        
         try {
             // Import the reset function from apiService
             const { resetPreferencesAPI } = await import('./apiService.js');
@@ -1316,17 +1365,8 @@ document.addEventListener('DOMContentLoaded', function() {
             if (response && response.success) {
                 console.log('Mobile: All presets reset successfully');
                 
-                // Clear local preferences
-                window.userPreferences = {};
-                
-                // Update mobile UI
-                updateMobilePresetsDisplay();
-                showMobileNotification('All presets reset to defaults');
-                
-                // Trigger refresh of desktop UI too
-                if (typeof window.updatePresetButtonLabels === 'function') {
-                    window.updatePresetButtonLabels();
-                }
+                // Validate and update with real server data in background
+                await refreshMobileUIAfterChange(false); // false since we already applied optimistic updates
             } else {
                 throw new Error(response?.error || 'Unknown error');
             }
