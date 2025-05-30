@@ -1256,6 +1256,11 @@ def chat_conversation(conversation_id):
         initial_conversation_id=conversation_id
     )
 
+@app.route('/robots.txt')
+def robots_txt():
+    """Serve robots.txt file"""
+    return send_from_directory('static', 'robots.txt', mimetype='text/plain')
+
 @app.route('/login')
 def login():
     # If user is already logged in, redirect to index

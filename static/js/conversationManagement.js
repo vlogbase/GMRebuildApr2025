@@ -35,6 +35,12 @@ export async function loadConversation(conversationId) {
                 addMessage(message.content, message.role, false, message.metadata);
             });
             
+            // Update URL to reflect the current conversation
+            if (window.history && window.history.pushState) {
+                window.history.pushState(null, '', `/chat/${conversationId}`);
+                console.log(`🔗 Updated URL to /chat/${conversationId}`);
+            }
+            
             console.log(`✅ Loaded conversation ${conversationId} with ${data.messages.length} messages`);
         }
         
