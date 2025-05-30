@@ -933,20 +933,32 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
                         // Handle reasoning chunks
                         if (parsed.reasoning || parsed.type === 'reasoning') {
                             const reasoningText = parsed.reasoning || parsed.content || '';
-                            console.log('🧠 Reasoning chunk:', reasoningText);
+                            console.log('🧠 Reasoning chunk detected:', reasoningText);
+                            console.log('🧠 Full parsed object:', parsed);
                             
                             // Create reasoning box if this is the first reasoning chunk
                             if (!isStreamingReasoning) {
+                                console.log('🧠 Creating reasoning box...');
                                 const reasoningBoxData = createReasoningBox(messageContent);
                                 reasoningBox = reasoningBoxData.reasoningContainer;
                                 isStreamingReasoning = true;
+                                console.log('🧠 Reasoning box created:', reasoningBox);
                             }
                             
                             // Add reasoning content
                             reasoningContent += reasoningText;
                             const reasoningContentDiv = reasoningBox.querySelector('.reasoning-content');
                             reasoningContentDiv.textContent = reasoningContent;
+                            console.log('🧠 Updated reasoning content, total length:', reasoningContent.length);
                             chatMessages.scrollTop = chatMessages.scrollHeight;
+                        } else {
+                            // Add debug logging to see what we're actually receiving
+                            console.log('🔍 Stream chunk type check:', {
+                                hasReasoning: !!parsed.reasoning,
+                                type: parsed.type,
+                                hasContent: !!parsed.content,
+                                allKeys: Object.keys(parsed)
+                            });
                         }
                         
                         // Handle content chunks (main response) - but skip if this is reasoning content
