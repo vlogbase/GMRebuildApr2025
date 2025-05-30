@@ -1829,6 +1829,31 @@ body.account-page .tab-pane {
     color: var(--accent-color);
 }
 
+/* Reasoning container styles */
+.reasoning-container {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    margin-bottom: 12px;
+    background: rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+.reasoning-container.reasoning-expanded {
+    border-color: var(--accent-color);
+}
+
+.reasoning-container.reasoning-expanded .reasoning-header {
+    color: var(--accent-color);
+}
+
+.reasoning-content {
+    display: block;
+}
+
+.main-response {
+    margin-top: 0;
+}
+
 /* Metadata styles */
 .message-metadata {
     font-size: 12px;

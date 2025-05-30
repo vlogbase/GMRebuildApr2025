@@ -84,6 +84,50 @@ export function clearAttachedPdf() {
     attachedPdfName = null;
 }
 
+// Function to create reasoning box for models that support reasoning
+function createReasoningBox(messageContent) {
+    const reasoningContainer = document.createElement('div');
+    reasoningContainer.className = 'reasoning-container';
+    
+    const reasoningHeader = document.createElement('div');
+    reasoningHeader.className = 'reasoning-header';
+    reasoningHeader.innerHTML = `
+        <span class="reasoning-toggle">▼</span>
+        <span>Reasoning...</span>
+    `;
+    
+    const reasoningContentDiv = document.createElement('div');
+    reasoningContentDiv.className = 'reasoning-content';
+    
+    reasoningContainer.appendChild(reasoningHeader);
+    reasoningContainer.appendChild(reasoningContentDiv);
+    messageContent.appendChild(reasoningContainer);
+    
+    // Add click handler for toggle
+    reasoningHeader.addEventListener('click', () => {
+        const isExpanded = reasoningContainer.classList.contains('reasoning-expanded');
+        if (isExpanded) {
+            reasoningContainer.classList.remove('reasoning-expanded');
+            reasoningContentDiv.style.display = 'none';
+            reasoningHeader.querySelector('.reasoning-toggle').textContent = '▶';
+        } else {
+            reasoningContainer.classList.add('reasoning-expanded');
+            reasoningContentDiv.style.display = 'block';
+            reasoningHeader.querySelector('.reasoning-toggle').textContent = '▼';
+        }
+    });
+    
+    return { reasoningContainer, reasoningContentDiv, reasoningHeader };
+}
+
+// Function to collapse reasoning box after reasoning is complete
+function collapseReasoningBox(reasoningContainer, reasoningHeader, reasoningContentDiv) {
+    reasoningContainer.classList.remove('reasoning-expanded');
+    reasoningContentDiv.style.display = 'none';
+    reasoningHeader.querySelector('.reasoning-toggle').textContent = '▶';
+    reasoningHeader.querySelector('span:last-child').textContent = 'Reasoning';
+}
+
 // Function to update message metadata after receiving it from stream
 function updateMessageMetadata(messageElement, metadata) {
     console.log('🔧 updateMessageMetadata called with:', {
@@ -865,6 +909,10 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
         
         let fullResponse = '';
         let messageMetadata = null;
+        let reasoningBox = null;
+        let reasoningContent = '';
+        let isStreamingReasoning = false;
+        let reasoningComplete = false;
         
         // Process stream
         while (true) {
@@ -883,9 +931,45 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
                         const parsed = JSON.parse(data);
                         console.log('🔍 RAW STREAM DATA:', parsed);
                         
-                        // Handle content chunks
+                        // Handle reasoning chunks
+                        if (parsed.reasoning || parsed.type === 'reasoning') {
+                            const reasoningText = parsed.reasoning || parsed.content || '';
+                            console.log('🧠 Reasoning chunk:', reasoningText);
+                            
+                            // Create reasoning box if this is the first reasoning chunk
+                            if (!isStreamingReasoning) {
+                                const reasoningBoxData = createReasoningBox(messageContent);
+                                reasoningBox = reasoningBoxData.reasoningContainer;
+                                isStreamingReasoning = true;
+                            }
+                            
+                            // Add reasoning content
+                            reasoningContent += reasoningText;
+                            const reasoningContentDiv = reasoningBox.querySelector('.reasoning-content');
+                            reasoningContentDiv.textContent = reasoningContent;
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                        
+                        // Handle content chunks (main response)
                         if (parsed.content) {
                             console.log('📝 Content chunk:', parsed.content);
+                            
+                            // If we were streaming reasoning and now got content, collapse the reasoning box
+                            if (isStreamingReasoning && !reasoningComplete) {
+                                reasoningComplete = true;
+                                const reasoningHeader = reasoningBox.querySelector('.reasoning-header');
+                                const reasoningContentDiv = reasoningBox.querySelector('.reasoning-content');
+                                collapseReasoningBox(reasoningBox, reasoningHeader, reasoningContentDiv);
+                                
+                                // Create a separate container for the main response below reasoning
+                                const responseContainer = document.createElement('div');
+                                responseContainer.className = 'main-response';
+                                messageContent.appendChild(responseContainer);
+                                
+                                // Update reference to point to the response container
+                                messageContent = responseContainer;
+                            }
+                            
                             fullResponse += parsed.content;
                             messageContent.innerHTML = formatMessage(fullResponse);
                             chatMessages.scrollTop = chatMessages.scrollHeight;
