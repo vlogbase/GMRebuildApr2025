@@ -2451,33 +2451,35 @@ def chat(): # Synchronous function
         message_history = data.get('history', [])
         conversation_id = data.get('conversation_id', None)
         
-        # For non-authenticated users, force the free model
+        # --- NEW CREDIT VALIDATION LOGIC ---
+        # Import billing functions
+        from billing import is_free_model, check_user_can_use_paid_models
+        
+        # Check if the requested model is free or paid
+        requested_model_is_free = is_free_model(model_id)
+        
+        # For non-authenticated users, force free models
         if not current_user.is_authenticated:
-            is_free_model = False
-            
-            # First check: If the model ID contains the ':free' suffix
-            if ':free' in model_id.lower():
-                is_free_model = True
-                logger.debug(f"Model {model_id} identified as free by suffix")
-                
-            # Second check: If the model is in our known free models list
-            elif model_id in FREE_MODEL_FALLBACKS:
-                is_free_model = True
-                logger.debug(f"Model {model_id} identified as free from FREE_MODEL_FALLBACKS")
-                
-            # Third check: Check against OpenRouter's model info (if available)
-            elif OPENROUTER_MODELS_INFO:
-                # Look for this model in the OpenRouter data
-                model_info = next((model for model in OPENROUTER_MODELS_INFO if model.get('id') == model_id), None)
-                if model_info and model_info.get('is_free', False):
-                    is_free_model = True
-                    logger.debug(f"Model {model_id} identified as free from OpenRouter API data")
-
-            # If it's not a free model, override with the default free model
-            if not is_free_model:
-                old_model = model_id  # Save for logging
+            if not requested_model_is_free:
+                old_model = model_id
                 model_id = DEFAULT_PRESET_MODELS.get('6', 'google/gemini-2.0-flash-exp:free')
                 logger.info(f"Non-authenticated user restricted to free model: {model_id} (was: {old_model})")
+        
+        # For authenticated users with zero/negative balance, force free models
+        elif current_user.is_authenticated and not requested_model_is_free:
+            user_can_use_paid = check_user_can_use_paid_models(current_user.id)
+            if not user_can_use_paid:
+                old_model = model_id
+                model_id = DEFAULT_PRESET_MODELS.get('6', 'google/gemini-2.0-flash-exp:free')
+                logger.info(f"User {current_user.id} with non-positive balance restricted to free model: {model_id} (was: {old_model})")
+                
+                # Return an error response instead of proceeding
+                return jsonify({
+                    "error": "Insufficient credits",
+                    "message": "You need to purchase credits to use premium models. You've been redirected to a free model.",
+                    "suggested_model": model_id,
+                    "redirect_to_billing": True
+                }), 402  # 402 Payment Required
 
         from models import Conversation, Message # Ensure models are imported
 

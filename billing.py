@@ -1067,6 +1067,71 @@ def check_sufficient_credits(user_id, estimated_credits):
         logger.error(f"Error checking sufficient credits: {e}")
         return False
 
+def is_free_model(model_id):
+    """
+    Determine if a model is free or paid.
+    
+    Args:
+        model_id (str): The model ID to check
+        
+    Returns:
+        bool: True if the model is free, False if it's paid
+    """
+    # Import here to avoid circular imports
+    try:
+        from app import FREE_MODEL_FALLBACKS, OPENROUTER_MODELS_INFO
+    except ImportError:
+        # Fallback if imports fail
+        FREE_MODEL_FALLBACKS = []
+        OPENROUTER_MODELS_INFO = None
+    
+    try:
+        # First check: If the model ID contains the ':free' suffix
+        if ':free' in model_id.lower():
+            return True
+            
+        # Second check: If the model is in our known free models list
+        if model_id in FREE_MODEL_FALLBACKS:
+            return True
+            
+        # Third check: Check against OpenRouter's model info (if available)
+        if OPENROUTER_MODELS_INFO:
+            model_info = next((model for model in OPENROUTER_MODELS_INFO if model.get('id') == model_id), None)
+            if model_info and model_info.get('is_free', False):
+                return True
+                
+        # Default to paid model if we can't determine otherwise
+        return False
+        
+    except Exception as e:
+        logger.error(f"Error checking if model {model_id} is free: {e}")
+        # Default to paid model on error to be safe
+        return False
+
+def check_user_can_use_paid_models(user_id):
+    """
+    Check if a user can use paid models (has positive credit balance).
+    
+    Args:
+        user_id (int): User ID
+        
+    Returns:
+        bool: True if user has positive balance, False otherwise
+    """
+    try:
+        user = User.query.get(user_id)
+        
+        if not user:
+            logger.error(f"User {user_id} not found")
+            return False
+        
+        # User can use paid models if they have a positive balance
+        return user.credits > 0
+    
+    except Exception as e:
+        logger.error(f"Error checking user {user_id} paid model access: {e}")
+        return False
+
 
 def process_affiliate_commission(user_id, transaction):
     """
