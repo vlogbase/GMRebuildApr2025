@@ -5,6 +5,12 @@ import { getCSRFToken } from './utils.js';
 
 // Fetch conversations from the backend
 export async function fetchConversationsAPI(metadataOnly = true) {
+    // Block API calls for guest users viewing shared conversations
+    if (isGuestShareMode()) {
+        console.log('Blocking fetchConversationsAPI for guest user');
+        throw new Error('API calls not allowed for guest users');
+    }
+    
     const url = `/conversations?_=${Date.now()}&metadata_only=${metadataOnly}`;
     
     try {

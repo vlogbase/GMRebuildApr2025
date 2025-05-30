@@ -68,6 +68,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // The initialConversationId variable is set in the template
     const initialConversationIdFromTemplate = typeof initialConversationId !== 'undefined' ? initialConversationId : null;
     
+    // Skip API initialization for guest users viewing shared conversations
+    if (typeof window.isGuestShare !== 'undefined' && window.isGuestShare === true && !isAuthenticated) {
+        console.log('Guest share mode detected - skipping conversation initialization');
+        return;
+    }
+    
     // Initialize conversations and handle initial loading
     fetchConversations().then(() => {
         if (initialConversationIdFromTemplate) {

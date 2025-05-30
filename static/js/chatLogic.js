@@ -944,3 +944,39 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
         addMessage('Sorry, there was an error processing your message. Please try again.', 'assistant');
     }
 }
+
+// Function to display messages for guest users viewing shared conversations
+export function displayMessagesForGuest(messagesData) {
+    console.log('Displaying messages for guest user');
+    
+    // Clear any existing messages
+    if (chatMessages) {
+        chatMessages.innerHTML = '';
+    }
+    
+    // Display each message
+    messagesData.forEach(message => {
+        // Skip system messages
+        if (message.role === 'system') {
+            return;
+        }
+        
+        // Create simplified metadata object
+        const metadata = {
+            id: message.id,
+            model: message.model,
+            created_at: message.created_at,
+            image_url: message.image_url,
+            pdf_url: message.pdf_url,
+            pdf_filename: message.pdf_filename
+        };
+        
+        // Add the message to the chat interface
+        addMessage(message.content, message.role, false, metadata);
+    });
+    
+    console.log(`Loaded ${messagesData.length} messages for guest user`);
+}
+
+// Make function globally available for template usage
+window.displayMessagesForGuest = displayMessagesForGuest;
