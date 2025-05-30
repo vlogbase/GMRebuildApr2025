@@ -2122,7 +2122,7 @@ def delete_conversation_if_empty_api(conversation_id):
             return jsonify({"success": False, "error": "Conversation not found"}), 404
         
         # Check if conversation is empty and delete it if it is
-        deleted = delete_conversation_if_empty(db, Message, Conversation, conversation_id)
+        deleted = delete_conversation_if_empty(db, Message, Conversation, conversation_id, current_user.id)
         
         if deleted:
             logger.info(f"Deleted empty conversation {conversation_id} for user {current_user.id}")
@@ -4771,7 +4771,7 @@ def view_shared_conversation(share_id):
         # SCENARIO 1: Owner viewing their own shared link
         if current_user.is_authenticated and conversation.user_id == current_user.id:
             logger.info(f"Owner viewing their own shared conversation - redirecting to interactive chat")
-            return redirect(url_for('chat_conversation', conversation_id=conversation.id))
+            return redirect(f'/chat/{conversation.id}')
         
         # SCENARIO 2: Different logged-in user - "Import and Continue"
         elif current_user.is_authenticated:
@@ -4783,7 +4783,7 @@ def view_shared_conversation(share_id):
                 
                 # Redirect to their new conversation
                 flash(f"Conversation copied to your account! You can now continue chatting.", "success")
-                return redirect(url_for('chat_conversation', conversation_id=new_conversation.id))
+                return redirect(f'/chat/{new_conversation.id}')
                 
             except Exception as fork_error:
                 logger.error(f"Error forking conversation: {fork_error}")
