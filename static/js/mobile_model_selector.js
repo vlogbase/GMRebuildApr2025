@@ -1087,6 +1087,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // Listen for model changes from the main script
     document.addEventListener('model-selected', function() {
         updateSelectedModelNames();
+        // Force refresh of mobile UI when models change
+        refreshMobileUIAfterChange();
+    });
+    
+    // Listen for preference changes that need immediate UI updates
+    document.addEventListener('preferences-updated', function() {
+        console.log('Mobile: Preferences updated, refreshing UI');
+        refreshMobileUIAfterChange();
+    });
+    
+    // Listen for preset resets
+    document.addEventListener('preset-reset', function() {
+        console.log('Mobile: Preset reset detected, refreshing UI');
+        refreshMobileUIAfterChange();
     });
     
     // Reset All to Default button in model panel
@@ -1237,6 +1251,36 @@ document.addEventListener('DOMContentLoaded', function() {
                     selectedModelSpan.textContent = modelName;
                 }
             }
+        }
+    }
+    
+    // Force complete refresh of mobile UI after state changes
+    async function refreshMobileUIAfterChange() {
+        console.log('Mobile: Force refreshing UI after state change');
+        
+        // Refresh user preferences from server
+        if (typeof window.fetchUserPreferences === 'function') {
+            await window.fetchUserPreferences();
+        }
+        
+        // Update all mobile displays
+        updateMobilePresetsDisplay();
+        updateSelectedModelNames();
+        
+        // If we're currently showing a model list, refresh it
+        if (currentPresetId && mobileModelSelection && mobileModelSelection.classList.contains('visible')) {
+            console.log('Mobile: Refreshing currently visible model list for preset', currentPresetId);
+            populateMobileModelList(currentPresetId);
+        }
+        
+        // Force update of active button state
+        if (window.activePresetId) {
+            updateMobileActiveButton(window.activePresetId);
+        }
+        
+        // Trigger desktop UI refresh too for consistency
+        if (typeof window.updatePresetButtonLabels === 'function') {
+            window.updatePresetButtonLabels();
         }
     }
 
