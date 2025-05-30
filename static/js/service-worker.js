@@ -1,19 +1,21 @@
 // Service Worker for GloriaMundo PWA
-const CACHE_NAME = 'glorimundo-pwa-v2'; // Updated cache version
+const CACHE_NAME = 'glorimundo-pwa-v3'; // Updated cache version for mobile optimizations
 const ASSETS_TO_CACHE = [
   '/',
   '/static/css/style.css',
   '/static/js/script.js',
+  '/static/js/mobile.js',
+  '/static/js/mobile_model_selector.js',
+  '/static/js/modelSelection.js',
+  '/static/js/conversationManagement.js',
   '/static/img/logo.svg',
   '/static/img/favicon.ico',
   '/static/img/favicon.svg',
   '/static/img/favicon-96x96.png',
   '/static/img/apple-touch-icon.png',
-  '/static/img/web-app-manifest-192x192.png',  // PWA icon 192x192
-  '/static/img/web-app-manifest-512x512.png',  // PWA icon 512x512
-  '/static/img/splash_screens/icon.png',
+  '/static/img/web-app-manifest-192x192.png',
+  '/static/img/web-app-manifest-512x512.png',
   '/static/manifest/manifest.json'
-  // Removed non-existent icon files
 ];
 
 // Install event - cache critical assets with detailed error diagnostics
