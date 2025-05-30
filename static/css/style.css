@@ -1712,16 +1712,23 @@ body.account-page .tab-pane {
     overflow: hidden; /* Force hidden overflow in collapsed state */
 }
 
-/* Remove the mask when expanded */
+/* Remove the mask when expanded - no internal scrolling on mobile */
 .message-content.collapsible.expanded {
     max-height: none !important; /* Allow full height */
-    max-height: 10000000px !important; /* Much larger fallback value (10 million pixels) for enormous content */
-    overflow-y: visible !important; /* Allow vertical overflow */
-    overflow-x: hidden !important; /* Prevent horizontal overflow */
+    overflow: visible !important; /* No internal scrolling - let bubbles expand naturally */
     -webkit-mask-image: none !important;
     mask-image: none !important;
     /* Add bottom margin to create space for the toggle button */
     margin-bottom: 20px;
+}
+
+/* Mobile-specific: ensure no internal scrolling in message bubbles */
+@media (max-width: 768px) {
+    .message-content.collapsible.expanded {
+        overflow: visible !important; /* Force no internal scrolling on mobile */
+        height: auto !important; /* Let content determine height naturally */
+        max-height: none !important; /* Remove any height constraints */
+    }
 }
 
 /* Toggle Button Styling (Arrow Icon) */
@@ -4822,7 +4829,7 @@ code {
         box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
         transition: bottom 0.3s ease;
         max-height: 50vh; /* Prevent input from taking too much screen space */
-        overflow-y: auto; /* Allow scrolling within input container if needed */
+        overflow: visible; /* Remove internal scrolling - let content expand naturally */
     }
     
     /* Class added when keyboard is visible */
