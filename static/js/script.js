@@ -13,23 +13,29 @@ import { initializeMainEventListeners, lockPremiumFeatures } from './eventOrches
 window.debugMode = true;
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Check if user is authenticated (look for the logout button which only shows for logged in users)
-    const isAuthenticated = !!document.getElementById('logout-btn');
+    // Check if user is authenticated using template variables or DOM fallback
+    const isAuthenticated = (typeof window.userIsLoggedIn !== 'undefined' && window.userIsLoggedIn) || 
+                           !!document.getElementById('logout-btn');
     console.log('User authentication status:', isAuthenticated ? 'Logged in' : 'Not logged in');
     
     // Get user's credit balance if logged in
     let userCreditBalance = 0;
     if (isAuthenticated) {
-        // Try to extract the credit amount from the account link in the sidebar
-        const accountLink = document.querySelector('.account-link');
-        if (accountLink) {
-            const balanceText = accountLink.textContent.trim();
-            const matches = balanceText.match(/Credits: \$([0-9.]+)/);
-            if (matches && matches[1]) {
-                userCreditBalance = parseFloat(matches[1]);
-                console.log('User credit balance:', userCreditBalance);
+        // Use template-provided credit balance or fallback to DOM extraction
+        if (typeof window.userCreditBalance !== 'undefined') {
+            userCreditBalance = window.userCreditBalance;
+        } else {
+            // Fallback: extract from the account link in the sidebar
+            const accountLink = document.querySelector('.account-link');
+            if (accountLink) {
+                const balanceText = accountLink.textContent.trim();
+                const matches = balanceText.match(/Credits: \$([0-9.]+)/);
+                if (matches && matches[1]) {
+                    userCreditBalance = parseFloat(matches[1]);
+                }
             }
         }
+        console.log('User credit balance:', userCreditBalance);
     }
     
     // Remove billing query parameters on first load to prevent redirect loops
