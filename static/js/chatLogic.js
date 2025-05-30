@@ -122,9 +122,15 @@ function createReasoningBox(messageContent) {
 
 // Function to collapse reasoning box after reasoning is complete
 function collapseReasoningBox(reasoningContainer, reasoningHeader, reasoningContentDiv) {
+    console.log('🔄 collapseReasoningBox called with:', { reasoningContainer, reasoningHeader, reasoningContentDiv });
+    console.log('🔄 Container classes before:', reasoningContainer.className);
+    
     reasoningContainer.classList.remove('reasoning-expanded');
     reasoningHeader.querySelector('.reasoning-toggle').textContent = '▶';
     reasoningHeader.querySelector('span:last-child').textContent = 'Show reasoning';
+    
+    console.log('🔄 Container classes after:', reasoningContainer.className);
+    console.log('🔄 Container still in DOM:', document.contains(reasoningContainer));
 }
 
 // Function to update message metadata after receiving it from stream
@@ -912,6 +918,7 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
         let reasoningContent = '';
         let isStreamingReasoning = false;
         let reasoningComplete = false;
+        let responseContainer = null; // Track the response container
         
         // Process stream
         while (true) {
@@ -967,17 +974,26 @@ async function sendMessageToBackend(message, selectedModel, typingIndicator) {
                             
                             // If we were streaming reasoning and now got content, collapse the reasoning box
                             if (isStreamingReasoning && !reasoningComplete) {
+                                console.log('🔄 Transitioning from reasoning to main response');
                                 reasoningComplete = true;
                                 const reasoningHeader = reasoningBox.querySelector('.reasoning-header');
                                 const reasoningContentDiv = reasoningBox.querySelector('.reasoning-content');
+                                
+                                console.log('🔄 Collapsing reasoning box:', reasoningBox);
                                 collapseReasoningBox(reasoningBox, reasoningHeader, reasoningContentDiv);
                                 
                                 // Create a separate container for the main response below reasoning
-                                const responseContainer = document.createElement('div');
+                                responseContainer = document.createElement('div');
                                 responseContainer.className = 'main-response';
                                 messageContent.appendChild(responseContainer);
+                                console.log('🔄 Created response container:', responseContainer);
                                 
                                 // Display the main response in the response container
+                                fullResponse += parsed.content;
+                                responseContainer.innerHTML = formatMessage(fullResponse);
+                                console.log('🔄 Added content to response container');
+                            } else if (responseContainer) {
+                                // Continue adding to the response container if it exists
                                 fullResponse += parsed.content;
                                 responseContainer.innerHTML = formatMessage(fullResponse);
                             } else {
