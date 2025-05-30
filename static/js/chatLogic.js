@@ -663,8 +663,16 @@ export function clearChat() {
         return;
     }
     
-    // Just clear the chat - no welcome screen for new chats
-    chatMessages.innerHTML = '';
+    // Clear the chat and show logo for new conversations
+    chatMessages.innerHTML = `
+        <div class="welcome-message">
+            <div style="text-align: center;">
+                <a href="https://gloriamundo.com/info">
+                    <img src="/static/img/Gloriamundo512.webp" alt="GloriaMundo Logo" width="512" height="512" style="width: 30%; max-width: 300px; height: auto;">
+                </a>
+            </div>
+        </div>
+    `;
     
     // Remove any existing welcome containers from anywhere else
     const existingWelcome = document.querySelector('.welcome-container');
