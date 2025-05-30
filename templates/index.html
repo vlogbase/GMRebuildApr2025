@@ -349,7 +349,7 @@
         // Make guest share status globally available for API service
         window.isGuestShare = isGuestShare;
         
-        // EARLY RETURN: Handle guest share mode first - no API calls or conversation management
+        // Handle guest share mode - use conditional block instead of return
         if (isGuestShare && !userIsLoggedIn) {
             console.log('Guest share mode detected - skipping all API calls');
             
@@ -364,27 +364,67 @@
             } else {
                 console.log('No messages found for guest user');
             }
+        } else {
+            // Continue with normal initialization only for non-guest users
+            console.log('Normal user initialization - proceeding with conversation management');
             
-            // Stop all script execution for guests - they only view shared content
-            return;
-        }
-        
-        // Continue with normal initialization only for non-guest users
-        console.log('Normal user initialization - proceeding with conversation management');
-        
-        // Set up non-authenticated user message counting
-        if (!userIsLoggedIn) {
-            // Initialize message counter from localStorage or reset to 0
-            let nonAuthMessageCount = parseInt(localStorage.getItem('nonAuthMessageCount') || 0);
-            const MESSAGE_THRESHOLD = 3; // Show login prompt after every 3 messages
-            
-            // Reset if the value is invalid
-            if (isNaN(nonAuthMessageCount)) {
-                nonAuthMessageCount = 0;
-                localStorage.setItem('nonAuthMessageCount', nonAuthMessageCount);
+            // Set up non-authenticated user message counting
+            if (!userIsLoggedIn) {
+                // Initialize message counter from localStorage or reset to 0
+                let nonAuthMessageCount = parseInt(localStorage.getItem('nonAuthMessageCount') || 0);
+                const MESSAGE_THRESHOLD = 3; // Show login prompt after every 3 messages
+                
+                // Reset if the value is invalid
+                if (isNaN(nonAuthMessageCount)) {
+                    nonAuthMessageCount = 0;
+                    localStorage.setItem('nonAuthMessageCount', nonAuthMessageCount);
+                }
+                
+                console.log(`Non-authenticated user message count: ${nonAuthMessageCount}`);
             }
             
-            console.log(`Non-authenticated user message count: ${nonAuthMessageCount}`);
+            // Import and initialize all modules for normal users
+            const { initializePrioritized, performIdleCleanup } = await import("{{ url_for('static', filename='js/uiSetup.js') }}");
+            const { setUserIsLoggedIn } = await import("{{ url_for('static', filename='js/chatLogic.js') }}");
+            const { initializeModelSelectionLogic } = await import("{{ url_for('static', filename='js/modelSelection.js') }}");
+            const { fetchConversations, loadConversation, createNewConversation } = await import("{{ url_for('static', filename='js/conversationManagement.js') }}");
+            const { initializeMainEventListeners, lockPremiumFeatures } = await import("{{ url_for('static', filename='js/eventOrchestration.js') }}");
+            
+            // Initialize prioritized UI components first
+            console.log('Initializing prioritized UI components...');
+            await initializePrioritized();
+            
+            // Set authentication state in chat logic
+            setUserIsLoggedIn(userIsLoggedIn);
+            
+            // Initialize model selection logic
+            initializeModelSelectionLogic();
+            
+            // Initialize main event listeners
+            initializeMainEventListeners(userIsLoggedIn, {{ user_credit_balance if user_credit_balance else 0 }});
+            
+            // For non-authenticated users or users with no credits, lock premium features
+            if (!userIsLoggedIn || {{ user_credit_balance if user_credit_balance else 0 }} <= 0) {
+                lockPremiumFeatures(userIsLoggedIn, {{ user_credit_balance if user_credit_balance else 0 }});
+            }
+            
+            // Initialize conversations and handle initial loading
+            await fetchConversations();
+            
+            if (initialConversationId) {
+                // Load specific conversation if provided (from direct chat link)
+                console.log(`Loading initial conversation from template: ${initialConversationId}`);
+                loadConversation(initialConversationId);
+            } else {
+                // Create new conversation if none specified, but don't update URL (keep homepage at /)
+                console.log('Creating default conversation for homepage without URL update');
+                createNewConversation(false);
+            }
+            
+            // Perform idle cleanup after a delay
+            setTimeout(() => {
+                performIdleCleanup();
+            }, 1000);
         }
         
         // Function to display messages for guest users
