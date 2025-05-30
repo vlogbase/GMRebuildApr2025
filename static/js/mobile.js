@@ -136,6 +136,13 @@ window.addEventListener('load', function() {
             }
         }
         
+        // Check if dedicated mobile buttons exist - if so, don't add touch handlers to desktop buttons
+        const mobilePresetButtons = document.querySelectorAll('.mobile-preset-btn');
+        if (mobilePresetButtons.length > 0) {
+            console.log('Mobile: Dedicated mobile buttons found, skipping desktop button touch handlers');
+            return;
+        }
+        
         // For each preset button, add touch-specific event handlers
         modelPresetButtons.forEach(button => {
             // Store the preset ID
