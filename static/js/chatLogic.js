@@ -577,7 +577,30 @@ export function addMessage(content, sender, isTyping = false, metadata = null) {
     // Add to chat container if it exists
     if (chatMessages) {
         chatMessages.appendChild(messageElement);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        
+        // Improved scrolling behavior for mobile
+        setTimeout(() => {
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            
+            // Additional mobile scroll handling
+            if (window.innerWidth <= 576) {
+                // On mobile, ensure we account for fixed input container
+                const inputContainer = document.querySelector('.chat-input-container');
+                if (inputContainer) {
+                    const inputHeight = inputContainer.offsetHeight;
+                    const extraPadding = 20; // Additional buffer
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    
+                    // Ensure the last message is fully visible above the input
+                    setTimeout(() => {
+                        const scrollBuffer = inputHeight + extraPadding;
+                        if (chatMessages.scrollTop + chatMessages.clientHeight < chatMessages.scrollHeight) {
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                    }, 50);
+                }
+            }
+        }, 10);
     } else {
         console.warn('Chat messages container not found');
     }

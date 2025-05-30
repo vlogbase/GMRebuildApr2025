@@ -484,9 +484,18 @@
                 chatMessages.appendChild(messageDiv);
             });
             
-            // Scroll to bottom
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            console.log('Messages displayed successfully');
+            // Scroll to bottom with improved mobile handling
+            setTimeout(() => {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                console.log('Messages displayed successfully, scrolled to bottom');
+                
+                // Additional mobile scroll handling
+                if (window.innerWidth <= 576) {
+                    // On mobile, ensure we account for fixed input container
+                    const additionalScroll = 50; // Extra scroll to ensure visibility
+                    chatMessages.scrollTop = chatMessages.scrollHeight + additionalScroll;
+                }
+            }, 100);
         }
     </script>
 {% endblock %}

@@ -255,6 +255,14 @@ window.addEventListener('load', function() {
         function scrollToShowEntireInput() {
             console.log('Mobile: Scrolling to show entire input container');
             
+            // Get the chat messages container
+            const chatMessages = document.getElementById('chat-messages');
+            if (chatMessages) {
+                // Scroll to the very bottom of the chat messages
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                console.log('Mobile: Scrolled chat messages to bottom');
+            }
+            
             // Use scrollIntoView with block:'end' to align the bottom of the 
             // container with the bottom of the viewport (above keyboard)
             inputContainer.scrollIntoView({ 
