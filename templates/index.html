@@ -350,6 +350,14 @@
         if (isGuestShare && !userIsLoggedIn) {
             console.log('Initializing guest share mode');
             initializeGuestShareHandler(true);
+            
+            // Load conversation messages for guest users
+            const messagesData = {{ messages|tojson if messages else '[]' }};
+            if (messagesData && messagesData.length > 0) {
+                console.log('Loading messages for guest user:', messagesData.length);
+                // Display messages in the chat interface
+                displayMessagesForGuest(messagesData);
+            }
         }
         
         // Set up non-authenticated user message counting
@@ -365,6 +373,41 @@
             }
             
             console.log(`Non-authenticated user message count: ${nonAuthMessageCount}`);
+        }
+        
+        // Function to display messages for guest users
+        function displayMessagesForGuest(messages) {
+            const chatMessages = document.getElementById('chat-messages');
+            if (!chatMessages) {
+                console.error('Chat messages container not found');
+                return;
+            }
+            
+            // Clear any existing content
+            chatMessages.innerHTML = '';
+            
+            messages.forEach(message => {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${message.role}-message`;
+                
+                let messageContent = `
+                    <div class="message-content">
+                        ${message.image_url ? `<div class="message-image"><img src="${message.image_url}" alt="Shared image" loading="lazy" /></div>` : ''}
+                        ${message.pdf_url ? `<div class="message-pdf"><i class="fa-solid fa-file-pdf"></i> ${message.pdf_filename || 'PDF Document'}</div>` : ''}
+                        <div class="message-text">${message.content}</div>
+                    </div>
+                    <div class="message-meta">
+                        ${message.role === 'assistant' && message.model ? `<span class="model-info">Model: ${message.model}</span>` : ''}
+                        ${message.created_at ? `<span class="timestamp">${new Date(message.created_at).toLocaleString()}</span>` : ''}
+                    </div>
+                `;
+                
+                messageDiv.innerHTML = messageContent;
+                chatMessages.appendChild(messageDiv);
+            });
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
         }
     </script>
 {% endblock %}

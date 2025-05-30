@@ -86,8 +86,8 @@
     {% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
-    {% if request.path.startswith('/share/') %}
-    <!-- Header for shared conversations -->
+    {% if request.path.startswith('/share/') and not is_guest_share %}
+    <!-- Header for shared conversations (only for old-style shared views, not guest shares) -->
     <header>
         <nav class="navbar">
             <div class="navbar-brand">
