@@ -689,6 +689,31 @@ export async function shareConversation(messageElement) {
         }
     } catch (error) {
         console.error('Failed to share conversation:', error);
+        
+        // If conversation not found, refresh the conversation list and create a new one
+        if (error.message.includes('404') || error.message.includes('Conversation not found')) {
+            console.log('Conversation no longer exists, refreshing conversation list');
+            
+            // Import the conversation management functions
+            const { fetchConversations, createNewConversation } = await import('./conversationManagement.js');
+            
+            // Refresh conversations and create a new one
+            await fetchConversations(true, true);
+            await createNewConversation(true);
+            
+            // Show user-friendly message
+            const shareBtn = messageElement.querySelector('.share-btn');
+            if (shareBtn) {
+                const originalText = shareBtn.innerHTML;
+                shareBtn.innerHTML = '<i class="fa-solid fa-exclamation"></i> Please try again';
+                shareBtn.disabled = true;
+                
+                setTimeout(() => {
+                    shareBtn.innerHTML = originalText;
+                    shareBtn.disabled = false;
+                }, 3000);
+            }
+        }
     }
 }
 

@@ -4724,10 +4724,14 @@ def share_conversation(conversation_id):
     try:
         from models import Conversation 
         conversation = db.session.get(Conversation, conversation_id) 
-        if not conversation: abort(404, description="Conversation not found")
+        
+        if not conversation: 
+            logger.warning(f"User {current_user.id} tried to share non-existent conversation {conversation_id}")
+            abort(404, description="Conversation not found")
         
         # Verify the conversation belongs to the current user
         if conversation.user_id != current_user.id:
+            logger.warning(f"User {current_user.id} tried to share conversation {conversation_id} belonging to user {conversation.user_id}")
             abort(403, description="You don't have permission to share this conversation")
 
         if not conversation.share_id:
