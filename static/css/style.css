@@ -4811,7 +4811,7 @@ code {
         flex: 1;
         padding: 20px;
         /* Ensure enough bottom padding to account for fixed input and keyboard */
-        padding-bottom: 200px; /* Increased significantly to ensure all content is accessible */
+        padding-bottom: 250px; /* Increased by 50px to ensure copy/share buttons and metadata are visible */
         min-height: calc(100vh - 120px); /* Ensure scrollable area */
         min-height: calc(100dvh - 120px); /* Use dynamic viewport height if supported */
     }
