@@ -4746,12 +4746,18 @@ def share_conversation(conversation_id):
 
 @app.route('/share/<share_id>')
 def view_shared_conversation(share_id):
-    """Display a shared conversation for anyone with the link"""
+    """
+    Smart conversation sharing endpoint that handles different user scenarios:
+    1. Owner viewing their own share -> redirect to interactive chat
+    2. Logged-in user (not owner) -> fork conversation and redirect to their copy
+    3. Guest user -> show read-only chat interface with sign-up prompts
+    """
     try:
         from models import Conversation, Message
+        from conversation_utils import fork_conversation
         from datetime import datetime
         
-        logger.info(f"Starting to process shared conversation view for share_id: {share_id}")
+        logger.info(f"Processing shared conversation view for share_id: {share_id}")
         
         # Find the conversation by share_id
         conversation = Conversation.query.filter_by(share_id=share_id).first()
@@ -4760,59 +4766,69 @@ def view_shared_conversation(share_id):
             flash("The shared conversation link is invalid or has expired.", "warning")
             return redirect(url_for('index'))
             
-        # Check if this is the owner of the conversation viewing through a shared link
-        # If so, redirect them to the proper chat URL for their own conversation
+        logger.info(f"Found conversation {conversation.id} (title: {conversation.title})")
+        
+        # SCENARIO 1: Owner viewing their own shared link
         if current_user.is_authenticated and conversation.user_id == current_user.id:
-            logger.info(f"Owner of conversation {conversation.id} viewing their own shared link - redirecting to chat URL")
+            logger.info(f"Owner viewing their own shared conversation - redirecting to interactive chat")
             return redirect(url_for('chat_conversation', conversation_id=conversation.id))
         
-        # For authenticated users who are not the owner, explicitly set is_logged_in flag
-        # to pass to the template (ensures consistent rendering regardless of auth status)
-        is_logged_in = current_user.is_authenticated
-        
-        logger.info(f"Found conversation with ID: {conversation.id}, title: {conversation.title}")
-        
-        # Get all messages for this conversation
-        messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.id).all()
-        logger.info(f"Found {len(messages)} messages for conversation ID: {conversation.id}")
-        
-        # Convert messages to a format suitable for the template
-        formatted_messages = []
-        for message in messages:
-            # Skip system messages in shared view
-            if message.role == 'system':
-                continue
+        # SCENARIO 2: Different logged-in user - "Import and Continue"
+        elif current_user.is_authenticated:
+            logger.info(f"Authenticated user {current_user.id} accessing shared conversation - forking")
+            try:
+                # Create a copy for this user
+                new_conversation = fork_conversation(conversation, current_user)
+                logger.info(f"Successfully forked conversation to new ID: {new_conversation.id}")
                 
-            formatted_message = {
-                'id': message.id,
-                'role': message.role,
-                'content': message.content,
-                'model': message.model,
-                'created_at': message.created_at.isoformat() if message.created_at else '',
-                'image_url': message.image_url
-            }
-            formatted_messages.append(formatted_message)
+                # Redirect to their new conversation
+                flash(f"Conversation copied to your account! You can now continue chatting.", "success")
+                return redirect(url_for('chat_conversation', conversation_id=new_conversation.id))
+                
+            except Exception as fork_error:
+                logger.error(f"Error forking conversation: {fork_error}")
+                flash("Unable to copy the conversation. Please try again.", "error")
+                return redirect(url_for('index'))
         
-        logger.info(f"Formatted {len(formatted_messages)} messages for template")
-        
-        # Fix for potential date formatting issue
-        if hasattr(conversation, 'created_at') and conversation.created_at:
-            created_at_str = conversation.created_at.strftime('%B %d, %Y')
-            logger.info(f"Conversation created date: {created_at_str}")
+        # SCENARIO 3: Guest user - show read-only interface
         else:
-            logger.warning("Conversation has no created_at attribute or it's None")
-            # Provide a default date if missing
-            conversation.created_at = datetime.now()
+            logger.info("Guest user viewing shared conversation - showing read-only interface")
             
-        # Return the shared conversation template
-        logger.info("Rendering shared_conversation.html template")
-        return render_template(
-            'shared_conversation.html',
-            conversation=conversation,
-            messages=formatted_messages,
-            is_logged_in=is_logged_in,
-            user=current_user
-        )
+            # Get all messages for this conversation
+            messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.id).all()
+            logger.info(f"Found {len(messages)} messages for conversation")
+            
+            # Convert messages to template format
+            formatted_messages = []
+            for message in messages:
+                # Skip system messages in shared view
+                if message.role == 'system':
+                    continue
+                    
+                formatted_message = {
+                    'id': message.id,
+                    'role': message.role,
+                    'content': message.content,
+                    'model': message.model,
+                    'created_at': message.created_at.isoformat() if message.created_at else '',
+                    'image_url': message.image_url,
+                    'pdf_url': message.pdf_url,
+                    'pdf_filename': message.pdf_filename
+                }
+                formatted_messages.append(formatted_message)
+            
+            # Fix potential date formatting issue
+            if not hasattr(conversation, 'created_at') or not conversation.created_at:
+                conversation.created_at = datetime.now()
+                
+            # Render the public share template
+            logger.info("Rendering public share template for guest user")
+            return render_template(
+                'public_share_view.html',
+                conversation=conversation,
+                messages=formatted_messages,
+                is_logged_in=False
+            )
     
     except Exception as e:
         logger.exception(f"Error viewing shared conversation {share_id}: {e}")

@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}{{ conversation.title or 'Shared Conversation' }} - GloriaMundo{% endblock %}
+
+{% block body_class %}chat-page{% endblock %}
+
+{% block content %}
+<div class="chat-layout">
+    <!-- Left sidebar (minimal for shared view) -->
+    <div class="chat-sidebar">
+        <div class="sidebar-header">
+            <div class="logo-container">
+                <img src="{{ url_for('static', filename='img/light-logo.svg') }}" alt="GloriaMundo" class="sidebar-logo">
+            </div>
+            <div class="shared-indicator">
+                <i class="fa-solid fa-share-nodes"></i>
+                <span>Shared Conversation</span>
+            </div>
+        </div>
+        
+        <div class="sidebar-content">
+            <div class="shared-conversation-info">
+                <h3>{{ conversation.title or 'Shared Conversation' }}</h3>
+                <p class="shared-date">
+                    {% if conversation.created_at %}
+                        {{ conversation.created_at.strftime('%B %d, %Y') }}
+                    {% else %}
+                        Recently shared
+                    {% endif %}
+                </p>
+            </div>
+            
+            <!-- Call to action for guests -->
+            <div class="guest-cta-sidebar">
+                <h4>Like what you see?</h4>
+                <p>Create your own AI conversations</p>
+                <a href="{{ url_for('register') }}" class="btn primary-btn full-width">
+                    <i class="fa-solid fa-rocket"></i>
+                    Sign Up Free
+                </a>
+                <p class="signin-link">
+                    Already have an account? 
+                    <a href="{{ url_for('login') }}">Sign In</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main chat area -->
+    <div class="chat-main">
+        <div class="chat-container">
+            <div class="chat-messages" id="chat-messages">
+                {% for message in messages %}
+                <div class="message {{ message.role }}-message">
+                    <div class="message-content">
+                        {% if message.image_url %}
+                        <div class="message-image">
+                            <img src="{{ message.image_url }}" alt="Shared image" loading="lazy" />
+                        </div>
+                        {% endif %}
+                        
+                        {% if message.pdf_url %}
+                        <div class="message-pdf">
+                            <div class="pdf-indicator">
+                                <i class="fa-solid fa-file-pdf"></i>
+                                <span>{{ message.pdf_filename or 'Document.pdf' }}</span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="message-text">{{ message.content|safe }}</div>
+                    </div>
+                    <div class="message-meta">
+                        {% if message.role == 'assistant' and message.model %}
+                        <div class="model-tag">{{ message.model }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Replace chat input with compelling CTA -->
+            <div class="chat-input-area">
+                <div class="guest-chat-cta">
+                    <div class="cta-content">
+                        <h3>Ready to start your own conversation?</h3>
+                        <p>Join GloriaMundo to access cutting-edge AI models and create unlimited conversations like this one.</p>
+                        
+                        <div class="cta-buttons">
+                            <a href="{{ url_for('register') }}" class="btn primary-btn large">
+                                <i class="fa-solid fa-rocket"></i>
+                                Get Started Free
+                            </a>
+                            <a href="{{ url_for('login') }}" class="btn secondary-btn large">
+                                <i class="fa-solid fa-sign-in-alt"></i>
+                                Sign In
+                            </a>
+                        </div>
+                        
+                        <div class="features-preview">
+                            <div class="feature">
+                                <i class="fa-solid fa-brain"></i>
+                                <span>Access 50+ AI models</span>
+                            </div>
+                            <div class="feature">
+                                <i class="fa-solid fa-image"></i>
+                                <span>Upload images & PDFs</span>
+                            </div>
+                            <div class="feature">
+                                <i class="fa-solid fa-share"></i>
+                                <span>Share conversations</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Shared conversation specific styles */
+.shared-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+
+.shared-conversation-info {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+}
+
+.shared-conversation-info h3 {
+    color: var(--text-color);
+    margin: 0 0 0.5rem 0;
+    font-size: 1.1rem;
+}
+
+.shared-date {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.guest-cta-sidebar {
+    background: linear-gradient(135deg, var(--accent-color), #4f46e5);
+    border-radius: 8px;
+    padding: 1rem;
+    color: white;
+    text-align: center;
+}
+
+.guest-cta-sidebar h4 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1rem;
+}
+
+.guest-cta-sidebar p {
+    margin: 0 0 1rem 0;
+    font-size: 0.9rem;
+    opacity: 0.9;
+}
+
+.signin-link {
+    font-size: 0.8rem !important;
+    margin-top: 0.5rem !important;
+}
+
+.signin-link a {
+    color: white;
+    text-decoration: underline;
+}
+
+.guest-chat-cta {
+    background: var(--background-secondary);
+    border: 2px solid var(--accent-color);
+    border-radius: 12px;
+    padding: 2rem;
+    text-align: center;
+    margin: 1rem;
+}
+
+.cta-content h3 {
+    color: var(--text-color);
+    margin: 0 0 0.5rem 0;
+    font-size: 1.5rem;
+}
+
+.cta-content p {
+    color: var(--text-muted);
+    margin: 0 0 1.5rem 0;
+    font-size: 1.1rem;
+}
+
+.cta-buttons {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.btn.large {
+    padding: 0.75rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.features-preview {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+}
+
+.feature {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.feature i {
+    color: var(--accent-color);
+}
+
+.message-pdf {
+    margin-bottom: 0.5rem;
+}
+
+.pdf-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: var(--background-secondary);
+    border-radius: 6px;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.pdf-indicator i {
+    color: #dc2626;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .cta-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .features-preview {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .guest-chat-cta {
+        margin: 0.5rem;
+        padding: 1.5rem;
+    }
+    
+    .cta-content h3 {
+        font-size: 1.3rem;
+    }
+    
+    .cta-content p {
+        font-size: 1rem;
+    }
+}
+</style>
+{% endblock %}
