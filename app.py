@@ -2452,11 +2452,32 @@ def chat(): # Synchronous function
         conversation_id = data.get('conversation_id', None)
         
         # --- NEW CREDIT VALIDATION LOGIC ---
-        # Import billing functions
-        from billing import is_free_model, check_user_can_use_paid_models
+        # Credit validation functions (moved here to avoid circular imports)
+        def is_free_model_local(model_id):
+            """Check if a model is free"""
+            if ':free' in model_id.lower():
+                return True
+            KNOWN_FREE_MODELS = [
+                'google/gemini-2.0-flash-exp:free',
+                'google/gemini-flash-1.5:free',
+                'mistralai/mistral-7b-instruct:free',
+                'huggingface/microsoft/dialoGPT-medium:free',
+                'meta-llama/llama-3.2-1b-instruct:free',
+                'meta-llama/llama-3.2-3b-instruct:free',
+                'qwen/qwen-2-7b-instruct:free'
+            ]
+            return model_id in KNOWN_FREE_MODELS
+        
+        def check_user_can_use_paid_models_local(user_id):
+            """Check if user has positive credits"""
+            try:
+                user = User.query.get(user_id)
+                return user and user.credits > 0
+            except:
+                return False
         
         # Check if the requested model is free or paid
-        requested_model_is_free = is_free_model(model_id)
+        requested_model_is_free = is_free_model_local(model_id)
         
         # For non-authenticated users, force free models
         if not current_user.is_authenticated:
@@ -2467,7 +2488,7 @@ def chat(): # Synchronous function
         
         # For authenticated users with zero/negative balance, force free models
         elif current_user.is_authenticated and not requested_model_is_free:
-            user_can_use_paid = check_user_can_use_paid_models(current_user.id)
+            user_can_use_paid = check_user_can_use_paid_models_local(current_user.id)
             if not user_can_use_paid:
                 old_model = model_id
                 model_id = DEFAULT_PRESET_MODELS.get('6', 'google/gemini-2.0-flash-exp:free')

@@ -1077,28 +1077,34 @@ def is_free_model(model_id):
     Returns:
         bool: True if the model is free, False if it's paid
     """
-    # Import here to avoid circular imports
-    try:
-        from app import FREE_MODEL_FALLBACKS, OPENROUTER_MODELS_INFO
-    except ImportError:
-        # Fallback if imports fail
-        FREE_MODEL_FALLBACKS = []
-        OPENROUTER_MODELS_INFO = None
-    
     try:
         # First check: If the model ID contains the ':free' suffix
         if ':free' in model_id.lower():
             return True
             
-        # Second check: If the model is in our known free models list
-        if model_id in FREE_MODEL_FALLBACKS:
+        # Second check: Known free models (hardcoded to avoid circular imports)
+        KNOWN_FREE_MODELS = [
+            'google/gemini-2.0-flash-exp:free',
+            'google/gemini-flash-1.5:free',
+            'mistralai/mistral-7b-instruct:free',
+            'huggingface/microsoft/dialoGPT-medium:free',
+            'meta-llama/llama-3.2-1b-instruct:free',
+            'meta-llama/llama-3.2-3b-instruct:free',
+            'qwen/qwen-2-7b-instruct:free'
+        ]
+        
+        if model_id in KNOWN_FREE_MODELS:
             return True
             
-        # Third check: Check against OpenRouter's model info (if available)
-        if OPENROUTER_MODELS_INFO:
-            model_info = next((model for model in OPENROUTER_MODELS_INFO if model.get('id') == model_id), None)
-            if model_info and model_info.get('is_free', False):
+        # Third check: Try to get OpenRouter model info without circular import
+        try:
+            from models import OpenRouterModel
+            db_model = OpenRouterModel.query.filter_by(model_id=model_id).first()
+            if db_model and hasattr(db_model, 'is_free') and db_model.is_free:
                 return True
+        except Exception:
+            # If database query fails, continue with other checks
+            pass
                 
         # Default to paid model if we can't determine otherwise
         return False

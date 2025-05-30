@@ -469,8 +469,10 @@ export function lockPremiumFeatures(isAuthenticated, userCreditBalance) {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
         
-        // Check if this is a free model by looking for the free cost band indicator
-        const isFreeModel = newBtn.querySelector('.cost-band-free') !== null;
+        // Check if this is a free model - multiple ways to detect
+        const isFreeModel = newBtn.querySelector('.cost-band-free') !== null || 
+                           newBtn.classList.contains('free-preset') ||
+                           presetId === '6'; // Preset 6 is always the free model
         const shouldLock = (!isAuthenticated || (userCreditBalance <= 0 && !isFreeModel));
         
         console.log(`🎯 Preset ${presetId}: isFree=${isFreeModel}, authenticated=${isAuthenticated}, credits=${userCreditBalance}, shouldLock=${shouldLock}`);
