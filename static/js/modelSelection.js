@@ -264,6 +264,34 @@ export function formatModelName(modelId) {
     return name;
 }
 
+// Helper function to update cost band indicator based on pricing
+function updateCostBandFromPricing(costBandIndicator, model) {
+    if (!model.pricing) {
+        // No pricing info, use default
+        costBandIndicator.textContent = '$$';
+        costBandIndicator.classList.add('cost-band-2');
+        return;
+    }
+    
+    const inputPrice = model.pricing.prompt || model.input_price || 0;
+    const outputPrice = model.pricing.completion || model.output_price || 0;
+    const maxPrice = Math.max(inputPrice, outputPrice);
+    
+    if (maxPrice >= 100.0) {
+        costBandIndicator.textContent = '$$$$';
+        costBandIndicator.classList.add('cost-band-4-danger');
+    } else if (maxPrice >= 10.0) {
+        costBandIndicator.textContent = '$$$';
+        costBandIndicator.classList.add('cost-band-3-warn');
+    } else if (maxPrice >= 1.0) {
+        costBandIndicator.textContent = '$$';
+        costBandIndicator.classList.add('cost-band-2');
+    } else {
+        costBandIndicator.textContent = '$';
+        costBandIndicator.classList.add('cost-band-1');
+    }
+}
+
 // Function to fetch user preferences
 export async function fetchUserPreferences() {
     try {
@@ -786,6 +814,8 @@ async function selectModelForPreset(presetId, modelId, skipActivation) {
     const button = document.querySelector(`.model-preset-btn[data-preset-id="${presetId}"]`);
     if (button) {
         const nameSpan = button.querySelector('.model-name');
+        const costBandIndicator = button.querySelector('.cost-band-indicator');
+        
         if (nameSpan) {
             // Special handling for preset 6 (Free Model)
             if (presetId === '6') {
@@ -800,6 +830,56 @@ async function selectModelForPreset(presetId, modelId, skipActivation) {
                 } else {
                     nameSpan.textContent = formatModelName(modelId);
                 }
+            }
+        }
+        
+        // Update the price band indicator
+        if (costBandIndicator) {
+            // Find the selected model to get its cost band
+            const selectedModel = allModels.find(m => m.id === modelId);
+            
+            // Remove all existing cost band classes
+            costBandIndicator.classList.remove('cost-band-free', 'cost-band-1', 'cost-band-2', 'cost-band-3-warn', 'cost-band-4-danger', 'cost-band-auto');
+            
+            if (selectedModel) {
+                // Update based on the model's cost band or pricing
+                if (presetId === '6' || selectedModel.is_free || selectedModel.id.includes(':free')) {
+                    costBandIndicator.textContent = 'FREE';
+                    costBandIndicator.classList.add('cost-band-free');
+                } else if (selectedModel.id === 'openrouter/auto') {
+                    costBandIndicator.textContent = 'AUTO';
+                    costBandIndicator.classList.add('cost-band-auto');
+                } else if (selectedModel.cost_band) {
+                    // Use the cost_band from the model if available
+                    switch (selectedModel.cost_band) {
+                        case '$$$$':
+                            costBandIndicator.textContent = '$$$$';
+                            costBandIndicator.classList.add('cost-band-4-danger');
+                            break;
+                        case '$$$':
+                            costBandIndicator.textContent = '$$$';
+                            costBandIndicator.classList.add('cost-band-3-warn');
+                            break;
+                        case '$$':
+                            costBandIndicator.textContent = '$$';
+                            costBandIndicator.classList.add('cost-band-2');
+                            break;
+                        case '$':
+                            costBandIndicator.textContent = '$';
+                            costBandIndicator.classList.add('cost-band-1');
+                            break;
+                        default:
+                            // Fallback to pricing calculation
+                            updateCostBandFromPricing(costBandIndicator, selectedModel);
+                    }
+                } else {
+                    // Fallback to pricing calculation
+                    updateCostBandFromPricing(costBandIndicator, selectedModel);
+                }
+            } else {
+                // Model not found, use a default
+                costBandIndicator.textContent = '$$';
+                costBandIndicator.classList.add('cost-band-2');
             }
         }
     }
