@@ -351,13 +351,18 @@
             console.log('Initializing guest share mode');
             initializeGuestShareHandler(true);
             
-            // Load conversation messages for guest users
+            // Load conversation messages for guest users - don't make any API calls
             const messagesData = {{ messages|tojson if messages else '[]' }};
             if (messagesData && messagesData.length > 0) {
                 console.log('Loading messages for guest user:', messagesData.length);
                 // Display messages in the chat interface
                 displayMessagesForGuest(messagesData);
+            } else {
+                console.log('No messages found for guest user');
             }
+            
+            // Skip all conversation management for guests - they only view existing shared content
+            return;
         }
         
         // Set up non-authenticated user message counting
@@ -377,16 +382,27 @@
         
         // Function to display messages for guest users
         function displayMessagesForGuest(messages) {
+            console.log('displayMessagesForGuest called with:', messages);
+            
             const chatMessages = document.getElementById('chat-messages');
             if (!chatMessages) {
                 console.error('Chat messages container not found');
                 return;
             }
             
+            console.log('Found chat messages container, displaying', messages.length, 'messages');
+            
             // Clear any existing content
             chatMessages.innerHTML = '';
             
-            messages.forEach(message => {
+            if (messages.length === 0) {
+                console.log('No messages to display');
+                return;
+            }
+            
+            messages.forEach((message, index) => {
+                console.log(`Displaying message ${index + 1}:`, message);
+                
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message ${message.role}-message`;
                 
@@ -408,6 +424,7 @@
             
             // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
+            console.log('Messages displayed successfully');
         }
     </script>
 {% endblock %}
