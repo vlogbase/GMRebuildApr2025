@@ -1037,11 +1037,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const mobileResetAllToDefault = document.getElementById('mobile-reset-all-to-default');
     if (mobileResetAllToDefault) {
         mobileResetAllToDefault.addEventListener('click', function() {
-            // Add haptic feedback
-            if (navigator.vibrate) {
-                navigator.vibrate(20);
+            // Add confirmation dialog
+            if (confirm('Are you sure you want to reset all model presets to their defaults? This will clear your custom model selections.')) {
+                // Add haptic feedback
+                if (navigator.vibrate) {
+                    navigator.vibrate(20);
+                }
+                resetAllPresetsToDefault();
             }
-            resetAllPresetsToDefault();
         });
     }
 
