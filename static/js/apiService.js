@@ -57,7 +57,19 @@ export async function loadConversationAPI(conversationId) {
 }
 
 // Create new conversation
+// Check if current session is in guest share mode
+function isGuestShareMode() {
+    return window.location.pathname.startsWith('/share/') && 
+           (typeof window.isGuestShare !== 'undefined' && window.isGuestShare === true);
+}
+
 export async function createNewConversationAPI() {
+    // Block API calls for guest users viewing shared conversations
+    if (isGuestShareMode()) {
+        console.log('Blocking API call for guest user');
+        throw new Error('API calls not allowed for guest users');
+    }
+    
     try {
         const response = await fetch('/api/create-conversation', {
             method: 'POST',

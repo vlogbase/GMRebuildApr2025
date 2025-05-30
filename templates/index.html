@@ -346,27 +346,34 @@
         const initialConversationId = {{ initial_conversation_id|tojson if initial_conversation_id else 'null' }};
         const isGuestShare = {{ is_guest_share|tojson if is_guest_share else 'false' }};
         
-        // Initialize guest share handler if needed
+        // Make guest share status globally available for API service
+        window.isGuestShare = isGuestShare;
+        
+        // EARLY RETURN: Handle guest share mode first - no API calls or conversation management
         if (isGuestShare && !userIsLoggedIn) {
-            console.log('Initializing guest share mode');
+            console.log('Guest share mode detected - skipping all API calls');
+            
+            // Initialize guest interaction blocking
             initializeGuestShareHandler(true);
             
-            // Load conversation messages for guest users - don't make any API calls
+            // Load conversation messages from server data - no API calls needed
             const messagesData = {{ messages|tojson if messages else '[]' }};
             if (messagesData && messagesData.length > 0) {
-                console.log('Loading messages for guest user:', messagesData.length);
-                // Display messages in the chat interface
+                console.log('Loading', messagesData.length, 'messages for guest user');
                 displayMessagesForGuest(messagesData);
             } else {
                 console.log('No messages found for guest user');
             }
             
-            // Skip all conversation management for guests - they only view existing shared content
+            // Stop all script execution for guests - they only view shared content
             return;
         }
         
+        // Continue with normal initialization only for non-guest users
+        console.log('Normal user initialization - proceeding with conversation management');
+        
         // Set up non-authenticated user message counting
-        if (!userIsLoggedIn && !isGuestShare) {
+        if (!userIsLoggedIn) {
             // Initialize message counter from localStorage or reset to 0
             let nonAuthMessageCount = parseInt(localStorage.getItem('nonAuthMessageCount') || 0);
             const MESSAGE_THRESHOLD = 3; // Show login prompt after every 3 messages
