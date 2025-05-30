@@ -2297,7 +2297,7 @@ body.account-page .tab-pane {
     font-size: 16px;
 }
 
-.conversation-title {
+.shared-conversation-info .conversation-title {
     font-size: 16px;
     font-weight: 600;
     color: var(--text-color);
