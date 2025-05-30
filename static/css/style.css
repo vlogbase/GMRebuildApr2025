@@ -5360,3 +5360,203 @@ code {
         -webkit-overflow-scrolling: touch;
     }
 }
+
+/* ===== CREDIT VALIDATION AND PADLOCK STYLES ===== */
+
+/* Locked model button styling */
+.model-preset-btn.model-locked {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: auto; /* Allow clicks to show message */
+}
+
+.model-preset-btn.model-locked:hover {
+    transform: none; /* Disable hover animations for locked buttons */
+    box-shadow: none;
+}
+
+/* Desktop padlock indicator */
+.padlock-indicator.desktop-padlock {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    color: #ff6b6b;
+    background: rgba(255, 107, 107, 0.1);
+    border: 1px solid rgba(255, 107, 107, 0.3);
+    border-radius: 4px;
+    padding: 2px 4px;
+    min-width: 20px;
+    min-height: 20px;
+    cursor: help;
+}
+
+/* Mobile padlock overlay */
+.padlock-overlay.mobile-padlock {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: inherit;
+    backdrop-filter: blur(2px);
+    z-index: 10;
+}
+
+.mobile-padlock .padlock-icon {
+    font-size: 24px;
+    margin-bottom: 4px;
+    color: #ff6b6b;
+}
+
+.mobile-padlock .padlock-text {
+    font-size: 10px;
+    color: #ffffff;
+    text-align: center;
+    font-weight: 500;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+/* Credit message popup */
+.credit-message {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 350px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    animation: slideInRight 0.3s ease-out;
+    display: none;
+}
+
+.credit-message-content {
+    padding: 20px;
+    color: white;
+    position: relative;
+}
+
+.credit-message-content p {
+    margin: 0 0 15px 0;
+    font-size: 14px;
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.credit-message-btn {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-right: 10px;
+}
+
+.credit-message-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
+}
+
+.credit-message-close {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 18px;
+    cursor: pointer;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.credit-message-close:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Animation for credit message */
+@keyframes slideInRight {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Mobile responsive adjustments for credit message */
+@media (max-width: 768px) {
+    .credit-message {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+    }
+    
+    .mobile-padlock .padlock-icon {
+        font-size: 20px;
+    }
+    
+    .mobile-padlock .padlock-text {
+        font-size: 9px;
+    }
+}
+
+/* Ensure padlock indicators work with existing button styles */
+.model-preset-btn {
+    position: relative;
+    overflow: visible; /* Allow padlock to show outside button bounds if needed */
+}
+
+/* Special styling for locked free models (shouldn't happen, but just in case) */
+.model-preset-btn.model-locked .cost-band-free {
+    opacity: 0.5;
+}
+
+/* Ensure desktop padlock doesn't interfere with button layout */
+.desktop-padlock {
+    flex-shrink: 0;
+}
+
+/* Loading state for when credit balance is being checked */
+.credit-checking .model-preset-btn {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.credit-checking .model-preset-btn::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

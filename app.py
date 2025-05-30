@@ -3323,40 +3323,8 @@ def chat(): # Synchronous function
             current_conv_id = conversation.id 
             requested_model_id = model_id 
             
-            # --- Verify user has sufficient credits if authenticated ---
-            if current_user and current_user.is_authenticated:
-                try:
-                    from billing import check_sufficient_credits, calculate_openrouter_credits
-                    
-                    # Estimate token usage based on input size
-                    # Rough estimation: 1 token = ~4 characters for English text
-                    estimated_prompt_tokens = sum(len(msg.get('content', '')) // 4 + 10 for msg in messages)
-                    # Assume completion will be around half the prompt length
-                    estimated_completion_tokens = max(100, estimated_prompt_tokens // 2)
-                    
-                    # We'll use the model ID directly with the dynamic pricing system
-                    
-                    # Calculate estimated credits
-                    estimated_credits = calculate_openrouter_credits(
-                        prompt_tokens=estimated_prompt_tokens,
-                        completion_tokens=estimated_completion_tokens,
-                        model_id=model_id
-                    )
-                    
-                    # Check if user has sufficient credits
-                    has_credits = check_sufficient_credits(current_user.id, estimated_credits)
-                    
-                    # If not, return an error
-                    if not has_credits:
-                        logger.warning(f"User {current_user.id} has insufficient credits for request")
-                        yield f"data: {json.dumps({'type': 'error', 'error': 'Insufficient credits. Please purchase more credits to continue using premium models.'})}\n\n"
-                        return
-                        
-                    logger.info(f"User {current_user.id} has sufficient credits for request (est. {estimated_credits} credits)")
-                    
-                except Exception as credit_error:
-                    logger.error(f"Error checking credits: {credit_error}")
-                    # Continue even if credit check fails (don't block the request)
+            # Credit validation is now handled at the beginning of the chat endpoint
+            # No need to check credits here as it's already been validated
             
             try:
                 # First verify the payload is valid and contains all required fields

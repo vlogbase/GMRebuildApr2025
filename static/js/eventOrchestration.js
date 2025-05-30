@@ -454,7 +454,7 @@ async function resetAllPresets() {
     }
 }
 
-// Setup premium feature locks (moved from main script)
+// Setup premium feature locks with visual padlock indicators
 export function lockPremiumFeatures(isAuthenticated, userCreditBalance) {
     console.log('🔒 Locking premium features...');
     console.log('🔍 Authentication status:', isAuthenticated);
@@ -471,24 +471,37 @@ export function lockPremiumFeatures(isAuthenticated, userCreditBalance) {
         
         // Check if this is a free model by looking for the free cost band indicator
         const isFreeModel = newBtn.querySelector('.cost-band-free') !== null;
-        console.log(`🎯 Preset ${presetId}: isFree=${isFreeModel}, authenticated=${isAuthenticated}, credits=${userCreditBalance}`);
+        const shouldLock = (!isAuthenticated || (userCreditBalance <= 0 && !isFreeModel));
         
-        // Setup new event listeners based on authentication status and model type
-        if (!isAuthenticated) {
-            // Non-authenticated users need to login for any model
+        console.log(`🎯 Preset ${presetId}: isFree=${isFreeModel}, authenticated=${isAuthenticated}, credits=${userCreditBalance}, shouldLock=${shouldLock}`);
+        
+        if (shouldLock) {
+            // Add visual padlock indicators
+            addPadlockIndicator(newBtn, !isAuthenticated);
+            
+            // Add locked state styling
+            newBtn.classList.add('model-locked');
+            newBtn.setAttribute('data-locked', 'true');
+            
+            // Setup click handler for locked models
             newBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.location.href = '/login';
-            });
-        } else if (userCreditBalance <= 0 && !isFreeModel) {
-            // Authenticated users with no credits can only use free models
-            newBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                window.location.href = '/billing/account';
+                
+                if (!isAuthenticated) {
+                    showCreditMessage('Please log in to use AI models', '/login');
+                } else {
+                    showCreditMessage('Buy credits to use premium features', '/billing/account');
+                }
             });
         } else {
+            // Remove any existing padlock indicators
+            removePadlockIndicator(newBtn);
+            
+            // Remove locked state styling
+            newBtn.classList.remove('model-locked');
+            newBtn.removeAttribute('data-locked');
+            
             // Allow access: either has credits OR it's a free model
             newBtn.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -496,4 +509,88 @@ export function lockPremiumFeatures(isAuthenticated, userCreditBalance) {
             });
         }
     });
+}
+
+// Add padlock indicator to a button
+function addPadlockIndicator(button, isLoginRequired) {
+    // Remove any existing padlock
+    removePadlockIndicator(button);
+    
+    const isMobile = window.innerWidth <= 768;
+    
+    if (isMobile) {
+        // Mobile: Show padlock overlay on entire button
+        const overlay = document.createElement('div');
+        overlay.className = 'padlock-overlay mobile-padlock';
+        overlay.innerHTML = `
+            <div class="padlock-icon">🔒</div>
+            <div class="padlock-text">${isLoginRequired ? 'Login Required' : 'Credits Required'}</div>
+        `;
+        button.appendChild(overlay);
+    } else {
+        // Desktop: Show padlock where price band would be
+        const costBand = button.querySelector('.cost-band');
+        if (costBand) {
+            const padlock = document.createElement('div');
+            padlock.className = 'padlock-indicator desktop-padlock';
+            padlock.innerHTML = '🔒';
+            padlock.title = isLoginRequired ? 'Login required to use this model' : 'Credits required to use this model';
+            
+            // Replace cost band with padlock
+            costBand.style.display = 'none';
+            costBand.parentNode.insertBefore(padlock, costBand);
+        }
+    }
+}
+
+// Remove padlock indicator from a button
+function removePadlockIndicator(button) {
+    // Remove mobile padlock overlay
+    const mobileOverlay = button.querySelector('.padlock-overlay');
+    if (mobileOverlay) {
+        mobileOverlay.remove();
+    }
+    
+    // Remove desktop padlock and restore cost band
+    const desktopPadlock = button.querySelector('.padlock-indicator');
+    if (desktopPadlock) {
+        desktopPadlock.remove();
+    }
+    
+    // Restore cost band visibility
+    const costBand = button.querySelector('.cost-band');
+    if (costBand) {
+        costBand.style.display = '';
+    }
+}
+
+// Show credit purchase message
+function showCreditMessage(message, redirectUrl) {
+    // Create or update message element
+    let messageEl = document.getElementById('credit-message');
+    if (!messageEl) {
+        messageEl = document.createElement('div');
+        messageEl.id = 'credit-message';
+        messageEl.className = 'credit-message';
+        document.body.appendChild(messageEl);
+    }
+    
+    messageEl.innerHTML = `
+        <div class="credit-message-content">
+            <p>${message}</p>
+            <button class="credit-message-btn" onclick="window.location.href='${redirectUrl}'">
+                ${redirectUrl === '/login' ? 'Log In' : 'Buy Credits'}
+            </button>
+            <button class="credit-message-close" onclick="this.parentElement.parentElement.style.display='none'">×</button>
+        </div>
+    `;
+    
+    messageEl.style.display = 'block';
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        if (messageEl && messageEl.style.display === 'block') {
+            messageEl.style.display = 'none';
+        }
+    }, 5000);
 }
