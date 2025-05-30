@@ -1,6 +1,7 @@
 /**
  * Mobile responsiveness functionality for GloriaMundo
  * Handles mobile sidebar behavior and other mobile-specific interactions
+ * Enhanced with performance optimizations and full functionality parity
  */
 
 // Use window.onload to ensure script.js has fully initialized first
@@ -142,8 +143,12 @@ window.addEventListener('load', function() {
                 // Reset long press flag
                 isLongPress = false;
                 
-                // Visual feedback - add a pressing class
+                // Immediate visual feedback - add a pressing class
                 button.classList.add('touch-pressing');
+                // Add haptic feedback if available
+                if (navigator.vibrate) {
+                    navigator.vibrate(10);
+                }
                 
                 // Start long press timer
                 longPressTimer = setTimeout(() => {
@@ -153,6 +158,11 @@ window.addEventListener('load', function() {
                     // Remove pressing class and add active-longpress class
                     button.classList.remove('touch-pressing');
                     button.classList.add('active-longpress');
+                    
+                    // Stronger haptic feedback for long press
+                    if (navigator.vibrate) {
+                        navigator.vibrate([25, 50, 25]);
+                    }
                     
                     // Try to call the global function
                     tryOpenModelSelector(presetId, button);

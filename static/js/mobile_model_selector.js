@@ -981,9 +981,138 @@ document.addEventListener('DOMContentLoaded', function() {
     const mobileResetAllToDefault = document.getElementById('mobile-reset-all-to-default');
     if (mobileResetAllToDefault) {
         mobileResetAllToDefault.addEventListener('click', function() {
+            // Add haptic feedback
+            if (navigator.vibrate) {
+                navigator.vibrate(20);
+            }
             resetAllPresetsToDefault();
         });
     }
+
+    // Add global reset function for mobile parity with desktop
+    window.mobileResetToDefaults = function() {
+        if (typeof window.resetToDefault === 'function') {
+            console.log('Mobile: Calling global resetToDefault function');
+            window.resetToDefault();
+            
+            // Update mobile UI after reset
+            setTimeout(() => {
+                updateMobilePresetsDisplay();
+                showMobileNotification('All presets reset to defaults');
+            }, 500);
+        } else {
+            console.error('Mobile: resetToDefault function not available');
+            showMobileNotification('Reset function not available', 'error');
+        }
+    };
+
+    // Mobile notification system for better user feedback
+    function showMobileNotification(message, type = 'success') {
+        // Remove any existing notifications
+        const existingNotification = document.querySelector('.mobile-notification');
+        if (existingNotification) {
+            existingNotification.remove();
+        }
+
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `mobile-notification ${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="fa-solid ${type === 'error' ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+
+        // Add to body
+        document.body.appendChild(notification);
+
+        // Trigger animation
+        requestAnimationFrame(() => {
+            notification.classList.add('show');
+        });
+
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }, 3000);
+
+        // Add haptic feedback
+        if (navigator.vibrate) {
+            navigator.vibrate(type === 'error' ? [100, 50, 100] : 50);
+        }
+    }
+
+    // Enhanced loading states for better UX
+    function showMobileLoadingState(element, text = 'Loading...') {
+        if (!element) return;
+        
+        const originalContent = element.innerHTML;
+        element.setAttribute('data-original-content', originalContent);
+        element.disabled = true;
+        element.classList.add('loading');
+        
+        element.innerHTML = `
+            <div class="loading-content">
+                <div class="loading-spinner"></div>
+                <span>${text}</span>
+            </div>
+        `;
+    }
+
+    function hideMobileLoadingState(element) {
+        if (!element) return;
+        
+        const originalContent = element.getAttribute('data-original-content');
+        if (originalContent) {
+            element.innerHTML = originalContent;
+            element.removeAttribute('data-original-content');
+        }
+        element.disabled = false;
+        element.classList.remove('loading');
+    }
+
+    // Update mobile presets display with loading states
+    function updateMobilePresetsDisplay() {
+        if (!window.userPreferences || !window.availableModels) {
+            console.log('Mobile: Waiting for preferences and models to load...');
+            return;
+        }
+
+        // Update each preset button with current model
+        for (let i = 1; i <= 6; i++) {
+            const button = document.querySelector(`.mobile-preset-btn[data-preset-id="${i}"]`);
+            const panelButton = document.querySelector(`.mobile-panel-preset-btn[data-preset-id="${i}"]`);
+            
+            if (window.userPreferences[i] && window.availableModels) {
+                const modelId = window.userPreferences[i];
+                const model = window.availableModels.find(m => m.id === modelId);
+                const modelName = model ? model.name : modelId;
+                
+                // Update button data attribute for quick access
+                if (button) {
+                    button.setAttribute('data-current-model-name', modelName);
+                }
+                
+                // Update panel display
+                const selectedModelSpan = document.getElementById(`mobile-selected-model-${i}`);
+                if (selectedModelSpan) {
+                    selectedModelSpan.textContent = modelName;
+                }
+            }
+        }
+    }
+
+    // Expose functions globally for external access
+    window.showMobileNotification = showMobileNotification;
+    window.showMobileLoadingState = showMobileLoadingState;
+    window.hideMobileLoadingState = hideMobileLoadingState;
+    window.updateMobilePresetsDisplay = updateMobilePresetsDisplay;
     
     /**
      * Reset all presets to their default models
