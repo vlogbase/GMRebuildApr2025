@@ -4725,6 +4725,9 @@ def share_conversation(conversation_id):
     """ Generate or retrieve share link """
     try:
         from models import Conversation 
+        from sqlalchemy.exc import IntegrityError
+        
+        # Use a fresh database session to avoid conflicts
         conversation = db.session.get(Conversation, conversation_id) 
         
         if not conversation: 
@@ -4736,18 +4739,38 @@ def share_conversation(conversation_id):
             logger.warning(f"User {current_user.id} tried to share conversation {conversation_id} belonging to user {conversation.user_id}")
             abort(403, description="You don't have permission to share this conversation")
 
+        # Check if share_id already exists (refresh from database to get latest state)
+        db.session.refresh(conversation)
+        
         if not conversation.share_id:
-            conversation.share_id = generate_share_id()
-            db.session.commit()
-            logger.info(f"Generated share ID for conversation {conversation_id}")
+            # Retry logic for potential unique constraint violations
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    conversation.share_id = generate_share_id()
+                    db.session.commit()
+                    logger.info(f"Generated share ID for conversation {conversation_id} on attempt {attempt + 1}")
+                    break
+                except IntegrityError as ie:
+                    db.session.rollback()
+                    if attempt == max_retries - 1:
+                        logger.error(f"Failed to generate unique share_id after {max_retries} attempts for conversation {conversation_id}")
+                        raise ie
+                    logger.warning(f"Share ID collision on attempt {attempt + 1}, retrying...")
+                    db.session.refresh(conversation)
 
         # Generate full share URL that will work from anywhere
         share_url = url_for('view_shared_conversation', share_id=conversation.share_id, _external=True)
+        logger.info(f"Successfully generated share URL for conversation {conversation_id}")
         return jsonify({"share_url": share_url})
+        
     except Exception as e:
-        logger.exception(f"Error sharing conversation {conversation_id}")
-        db.session.rollback()
-        abort(500, description=str(e))
+        logger.exception(f"Error sharing conversation {conversation_id}: {str(e)}")
+        try:
+            db.session.rollback()
+        except Exception as rollback_error:
+            logger.error(f"Additional error during rollback: {rollback_error}")
+        abort(500, description="Unable to generate share link. Please try again.")
 
 
 @app.route('/share/<share_id>')
