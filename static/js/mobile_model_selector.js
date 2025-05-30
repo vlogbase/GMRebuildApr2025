@@ -657,79 +657,97 @@ document.addEventListener('DOMContentLoaded', function() {
     function finishPopulatingModels(allModels, presetId) {
         let filteredModels;
         
-        // Use the same filtering logic as desktop for consistency
-        switch (presetId) {
-            case '1':
-            case '2':
-                // All non-free models - include auto model specifically
-                filteredModels = allModels.filter(model => {
-                    if (model.id === 'openrouter/auto') return true;
-                    const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
-                    return !isFree;
-                });
-                break;
-                
-            case '3':
-                // Reasoning models (non-free)
-                filteredModels = allModels.filter(model => {
-                    const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
-                    if (isFree) return false;
+        // Use the exact same filtering logic as desktop for 100% consistency
+        if (window.presetFilters && window.presetFilters[presetId]) {
+            // Use the desktop presetFilters for identical filtering
+            filteredModels = allModels.filter(window.presetFilters[presetId]);
+            console.log(`Mobile: Using desktop presetFilters for preset ${presetId}, filtered to ${filteredModels.length} models`);
+        } else {
+            console.warn(`Mobile: Desktop presetFilters not available for preset ${presetId}, using updated fallback logic`);
+            // Updated fallback logic that matches desktop exactly
+            switch (presetId) {
+                case '1':
+                case '2':
+                    // All non-free models - include auto model specifically
+                    filteredModels = allModels.filter(model => {
+                        if (model.id === 'openrouter/auto') return true;
+                        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+                        return !isFree;
+                    });
+                    break;
                     
-                    if (model.is_reasoning === true) return true;
-                    // Fallback to ID-based detection for o1, o3, reasoning keywords
-                    return model.id.includes('reasoning') || model.id.includes('o1') || model.id.includes('o3');
-                });
-                break;
-                
-            case '4':
-                // Multimodal/image-capable models (non-free)
-                filteredModels = allModels.filter(model => {
-                    const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
-                    const isMultimodal = model.is_multimodal || model.supports_vision || 
-                                        model.id.includes('vision') || model.id.includes('dall-e') || 
-                                        model.id.includes('midjourney') || model.id.includes('stable-diffusion') ||
-                                        model.id.includes('flux') || model.id.includes('imagen');
-                    return !isFree && isMultimodal;
-                });
-                break;
-                
-            case '5':
-                // Search models (perplexity)
-                filteredModels = allModels.filter(model => {
-                    const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
-                    return !isFree && model.id.includes('perplexity');
-                });
-                break;
-                
-            case '6':
-                // Free models only - exclude auto model specifically
-                filteredModels = allModels.filter(model => {
-                    if (model.id === 'openrouter/auto') return false;
-                    return model.is_free === true || model.id.includes(':free') || model.cost_band === 'free';
-                });
-                break;
-                
-            default:
-                filteredModels = allModels;
+                case '3':
+                    // Reasoning models (non-free) - updated to match desktop exactly
+                    filteredModels = allModels.filter(model => {
+                        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+                        if (isFree) return false;
+                        
+                        if (model.is_reasoning === true) return true;
+                        // Updated to include thinking and o4 patterns as requested
+                        return model.id.includes('reasoning') || model.id.includes('thinking') || 
+                               model.id.includes('o1') || model.id.includes('o3') || model.id.includes('o4');
+                    });
+                    break;
+                    
+                case '4':
+                    // Multimodal/image-capable models (non-free) - updated to match desktop exactly
+                    filteredModels = allModels.filter(model => {
+                        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+                        const isMultimodal = model.is_multimodal || model.supports_vision || 
+                                           model.id.includes('vision') || model.id.includes('image') || 
+                                           model.id.includes('multimodal') || model.id.includes('dall-e') || 
+                                           model.id.includes('midjourney') || model.id.includes('stable-diffusion') ||
+                                           model.id.includes('flux') || model.id.includes('imagen');
+                        return !isFree && isMultimodal;
+                    });
+                    break;
+                    
+                case '5':
+                    // Search models - updated to match desktop exactly
+                    filteredModels = allModels.filter(model => {
+                        const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+                        const isSearch = model.id.includes('perplexity') || model.id.includes('search') || 
+                                       model.id.includes('sonar');
+                        return !isFree && isSearch;
+                    });
+                    break;
+                    
+                case '6':
+                    // Free models only
+                    filteredModels = allModels.filter(model => {
+                        return model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+                    });
+                    break;
+                    
+                default:
+                    filteredModels = allModels;
+            }
         }
                               
-        console.log(`Mobile: Filtered to ${filteredModels.length} models for preset ${presetId} (excluding free models for presets 1-5)`);
+        console.log(`Mobile: Filtered to ${filteredModels.length} models for preset ${presetId}`);
         
-        // Sort models based on preset requirements (consistent with desktop)
-        if (presetId === '2') {
-            // Preset 2: Sort by context length (highest first)
-            filteredModels.sort((a, b) => {
-                const contextA = parseInt(a.context_length) || 0;
-                const contextB = parseInt(b.context_length) || 0;
-                return contextB - contextA;
-            });
+        // Use the exact same sorting logic as desktop
+        if (window.sortModelsByPreset && typeof window.sortModelsByPreset === 'function') {
+            filteredModels = window.sortModelsByPreset(filteredModels, presetId);
+            console.log(`Mobile: Using desktop sortModelsByPreset function for preset ${presetId}`);
         } else {
-            // All other presets: Sort by ELO score (highest first)
-            filteredModels.sort((a, b) => {
-                const eloA = parseFloat(a.elo_score) || 0;
-                const eloB = parseFloat(b.elo_score) || 0;
-                return eloB - eloA;
-            });
+            console.warn(`Mobile: Desktop sortModelsByPreset not available, using fallback sorting`);
+            // Fallback sorting logic that matches desktop exactly
+            if (presetId === '2') {
+                // Preset 2: Sort by context length (highest first)
+                filteredModels.sort((a, b) => {
+                    const contextA = parseInt(a.context_length) || 0;
+                    const contextB = parseInt(b.context_length) || 0;
+                    return contextB - contextA;
+                });
+            } else {
+                // All other presets: Sort by ELO score (highest first)
+                filteredModels.sort((a, b) => {
+                    const eloA = parseFloat(a.elo_score) || 0;
+                    const eloB = parseFloat(b.elo_score) || 0;
+                    return eloB - eloA;
+                });
+            }
         }
         
         // Get current selected model for this preset

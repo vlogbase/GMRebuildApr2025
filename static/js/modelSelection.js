@@ -42,8 +42,9 @@ export const presetFilters = {
         if (model.is_reasoning === true) {
             return true;
         }
-        // Fallback to ID-based detection for o1, o3, reasoning keywords
-        return model.id.includes('reasoning') || model.id.includes('o1') || model.id.includes('o3');
+        // Fallback to ID-based detection for o1, o3, o4, reasoning, thinking keywords
+        return model.id.includes('reasoning') || model.id.includes('thinking') || 
+               model.id.includes('o1') || model.id.includes('o3') || model.id.includes('o4');
     },
     '4': (model) => {
         // Multimodal/image-capable models (non-free)
@@ -140,9 +141,11 @@ export const fullModelDisplayNames = {
     'google/gemini-2.0-flash-exp:free': 'Gemini 2.0 Flash Experimental (Free)'
 };
 
-// Expose defaultModels and fullModelDisplayNames globally for mobile scripts
+// Expose defaultModels, fullModelDisplayNames, presetFilters, and sortModelsByPreset globally for mobile scripts
 window.defaultModels = defaultModels;
 window.fullModelDisplayNames = fullModelDisplayNames;
+window.presetFilters = presetFilters;
+window.sortModelsByPreset = sortModelsByPreset;
 
 // Free model fallbacks for different capabilities
 export const freeModelFallbacks = [
