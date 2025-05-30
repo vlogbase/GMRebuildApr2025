@@ -22,6 +22,21 @@
                         <div class="loading-spinner"></div>
                         <div class="loading-text">Loading conversations...</div>
                     </div>
+                {% elif is_guest_share %}
+                    <!-- Guest viewing shared conversation -->
+                    <div class="shared-conversation-info">
+                        <div class="shared-indicator">
+                            <i class="fa-solid fa-share-nodes"></i>
+                            <span>Viewing Shared Conversation</span>
+                        </div>
+                        <div class="conversation-title">{{ conversation.title }}</div>
+                        <div class="guest-action">
+                            <p>Sign in to get your own copy and continue this conversation.</p>
+                            <a href="/google_login" class="auth-btn google-auth-btn">
+                                <i class="fa-brands fa-google"></i> Sign in with Google
+                            </a>
+                        </div>
+                    </div>
                 {% else %}
                     <!-- Login prompt for non-authenticated users -->
                     <div class="login-prompt">
@@ -323,13 +338,22 @@
 {% block scripts %}
     {{ super() }}
     <script src="{{ url_for('static', filename='js/conversationRename.js', v=assets_version) }}"></script>
-    <script>
+    <script type="module">
+        import { initializeGuestShareHandler } from "{{ url_for('static', filename='js/guestShareHandler.js') }}";
+        
         // Pass the login status and initial conversation ID to JavaScript
         const userIsLoggedIn = {{ is_logged_in|tojson }};
         const initialConversationId = {{ initial_conversation_id|tojson if initial_conversation_id else 'null' }};
+        const isGuestShare = {{ is_guest_share|tojson if is_guest_share else 'false' }};
+        
+        // Initialize guest share handler if needed
+        if (isGuestShare && !userIsLoggedIn) {
+            console.log('Initializing guest share mode');
+            initializeGuestShareHandler(true);
+        }
         
         // Set up non-authenticated user message counting
-        if (!userIsLoggedIn) {
+        if (!userIsLoggedIn && !isGuestShare) {
             // Initialize message counter from localStorage or reset to 0
             let nonAuthMessageCount = parseInt(localStorage.getItem('nonAuthMessageCount') || 0);
             const MESSAGE_THRESHOLD = 3; // Show login prompt after every 3 messages

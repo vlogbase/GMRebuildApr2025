@@ -4790,15 +4790,15 @@ def view_shared_conversation(share_id):
                 flash("Unable to copy the conversation. Please try again.", "error")
                 return redirect(url_for('index'))
         
-        # SCENARIO 3: Guest user - show read-only interface
+        # SCENARIO 3: Guest user - show main chat interface in read-only mode
         else:
-            logger.info("Guest user viewing shared conversation - showing read-only interface")
+            logger.info("Guest user viewing shared conversation - showing main interface in read-only mode")
             
             # Get all messages for this conversation
             messages = Message.query.filter_by(conversation_id=conversation.id).order_by(Message.id).all()
             logger.info(f"Found {len(messages)} messages for conversation")
             
-            # Convert messages to template format
+            # Convert messages to template format (same as regular chat)
             formatted_messages = []
             for message in messages:
                 # Skip system messages in shared view
@@ -4821,13 +4821,15 @@ def view_shared_conversation(share_id):
             if not hasattr(conversation, 'created_at') or not conversation.created_at:
                 conversation.created_at = datetime.now()
                 
-            # Render the public share template
-            logger.info("Rendering public share template for guest user")
+            # Render the main chat interface but with guest mode flags
+            logger.info("Rendering main chat interface for guest user in read-only mode")
             return render_template(
-                'public_share_view.html',
+                'index.html',
                 conversation=conversation,
                 messages=formatted_messages,
-                is_logged_in=False
+                is_logged_in=False,
+                is_guest_share=True,
+                share_id=share_id
             )
     
     except Exception as e:
