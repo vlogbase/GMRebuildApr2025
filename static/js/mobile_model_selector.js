@@ -816,37 +816,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         // Create model list items
-                filteredModels.sort((a, b) => {
-                    const contextA = parseInt(a.context_length) || 0;
-                    const contextB = parseInt(b.context_length) || 0;
-                    return contextB - contextA;
-                });
-            } else {
-                // All other presets: Sort by ELO score (highest first)
-                filteredModels.sort((a, b) => {
-                    const eloA = parseFloat(a.elo_score) || 0;
-                    const eloB = parseFloat(b.elo_score) || 0;
-                    return eloB - eloA;
-                });
-            }
-        }
-        
-        // Get current selected model for this preset
-        const currentModel = window.userPreferences?.[presetId] || window.defaultModels?.[presetId];
-        
-        // Display empty state message if no models are available after filtering
-        if (filteredModels.length === 0) {
-            const emptyMessage = document.createElement('div');
-            emptyMessage.className = 'empty-models-message';
-            emptyMessage.textContent = 'No models available for this category. Please try another preset.';
-            
-            if (mobileModelList) {
-                mobileModelList.appendChild(emptyMessage);
-            } else {
-                console.error('Mobile: mobileModelList is null, cannot append empty state message');
-            }
-            return;
-        }
         
         // Create a DocumentFragment for batch DOM updates
         const fragment = document.createDocumentFragment();
