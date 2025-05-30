@@ -58,17 +58,16 @@ document.addEventListener('DOMContentLoaded', function() {
         lockPremiumFeatures(isAuthenticated, userCreditBalance);
     }
     
-    // Check for initial conversation ID from URL (for shared links or direct conversation access)
-    const pathParts = window.location.pathname.split('/');
-    const initialConversationId = pathParts.includes('chat') && pathParts[pathParts.indexOf('chat') + 1] 
-        ? pathParts[pathParts.indexOf('chat') + 1] : null;
+    // Check for initial conversation ID from Flask template (for direct chat links)
+    // The initialConversationId variable is set in the template
+    const initialConversationIdFromTemplate = typeof initialConversationId !== 'undefined' ? initialConversationId : null;
     
     // Initialize conversations and handle initial loading
     fetchConversations().then(() => {
-        if (initialConversationId) {
-            // Load specific conversation if provided (from shared link or direct access)
-            console.log(`Loading initial conversation: ${initialConversationId}`);
-            loadConversation(initialConversationId);
+        if (initialConversationIdFromTemplate) {
+            // Load specific conversation if provided (from direct chat link)
+            console.log(`Loading initial conversation from template: ${initialConversationIdFromTemplate}`);
+            loadConversation(initialConversationIdFromTemplate);
         } else {
             // Create new conversation if none specified, but don't update URL (keep homepage at /)
             console.log('Creating default conversation for homepage without URL update');
