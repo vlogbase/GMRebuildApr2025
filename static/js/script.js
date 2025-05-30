@@ -59,8 +59,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // Initialize main event listeners
     initializeMainEventListeners(isAuthenticated, userCreditBalance);
     
-    // For non-authenticated users or users with no credits, lock premium features
+    // For users without credits, auto-select the free model (preset 6) before locking features
     if (!isAuthenticated || userCreditBalance <= 0) {
+        // Import and set the default preset to 6 (free model) for users without credits
+        import('./modelSelection.js').then(({ selectPresetButton }) => {
+            console.log('Auto-selecting preset 6 (free model) for user without credits');
+            selectPresetButton('6');
+        }).catch(err => {
+            console.error('Failed to auto-select free preset:', err);
+        });
+        
         lockPremiumFeatures(isAuthenticated, userCreditBalance);
     }
     
