@@ -53,6 +53,29 @@ window.addEventListener('load', function() {
             }
         }
     });
+
+    // Handle New Chat button for mobile
+    const newChatBtn = document.getElementById('new-chat-btn');
+    if (newChatBtn) {
+        newChatBtn.addEventListener('click', function() {
+            console.log('Mobile: New Chat button clicked');
+            
+            // Close sidebar on mobile
+            if (window.innerWidth <= 576 && sidebar.classList.contains('active')) {
+                toggleSidebar();
+            }
+            
+            // Call the global new chat function if available
+            if (typeof window.createNewConversation === 'function') {
+                window.createNewConversation();
+            } else if (typeof window.newChat === 'function') {
+                window.newChat();
+            } else {
+                // Fallback - redirect to home to start new chat
+                window.location.href = '/';
+            }
+        });
+    }
     
     // Update layout on resize
     window.addEventListener('resize', function() {

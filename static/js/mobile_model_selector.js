@@ -843,19 +843,45 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Reset the current preset to its default model
-    function resetCurrentPresetToDefault() {
-        if (!currentPresetId || !window.defaultModels) return;
+    async function resetCurrentPresetToDefault() {
+        if (!currentPresetId) {
+            showMobileNotification('No preset selected', 'error');
+            return;
+        }
         
-        const defaultModel = window.defaultModels[currentPresetId];
-        if (defaultModel) {
-            console.log(`Mobile: Resetting preset ${currentPresetId} to default model ${defaultModel}`);
+        try {
+            console.log(`Mobile: Resetting preset ${currentPresetId} to default`);
             
-            // Update the model selection
-            selectModelForPreset(currentPresetId, defaultModel);
+            // Import the reset function from apiService
+            const { resetPreferencesAPI } = await import('./apiService.js');
             
-            // Additional notification since we're closing the panel
-            const friendlyModelName = window.availableModels?.find(m => m.id === defaultModel)?.name || defaultModel;
-            showModelNotification(currentPresetId, `Default (${friendlyModelName})`);
+            const response = await resetPreferencesAPI(currentPresetId);
+            
+            if (response && response.success) {
+                console.log(`Mobile: Preset ${currentPresetId} reset successfully`);
+                
+                // Clear local preference for this preset
+                if (window.userPreferences) {
+                    delete window.userPreferences[currentPresetId];
+                }
+                
+                // Update mobile UI
+                updateMobilePresetsDisplay();
+                showMobileNotification(`Preset ${currentPresetId} reset to default`);
+                
+                // Trigger refresh of desktop UI too
+                if (typeof window.updatePresetButtonLabels === 'function') {
+                    window.updatePresetButtonLabels();
+                }
+                
+                // Close the mobile selection panel
+                hideMobileModelSelection();
+            } else {
+                throw new Error(response?.error || 'Unknown error');
+            }
+        } catch (error) {
+            console.error(`Mobile: Reset failed for preset ${currentPresetId}:`, error);
+            showMobileNotification('Failed to reset preset', 'error');
         }
     }
     
@@ -990,19 +1016,36 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // Add global reset function for mobile parity with desktop
-    window.mobileResetToDefaults = function() {
-        if (typeof window.resetToDefault === 'function') {
-            console.log('Mobile: Calling global resetToDefault function');
-            window.resetToDefault();
+    window.mobileResetToDefaults = async function() {
+        try {
+            // Import the reset function from apiService
+            const { resetPreferencesAPI } = await import('./apiService.js');
             
-            // Update mobile UI after reset
-            setTimeout(() => {
+            console.log('Mobile: Resetting all presets to defaults');
+            showMobileNotification('Resetting all presets...', 'info');
+            
+            const response = await resetPreferencesAPI();
+            
+            if (response && response.success) {
+                console.log('Mobile: All presets reset successfully');
+                
+                // Clear local preferences
+                window.userPreferences = {};
+                
+                // Update mobile UI
                 updateMobilePresetsDisplay();
                 showMobileNotification('All presets reset to defaults');
-            }, 500);
-        } else {
-            console.error('Mobile: resetToDefault function not available');
-            showMobileNotification('Reset function not available', 'error');
+                
+                // Trigger refresh of desktop UI too
+                if (typeof window.updatePresetButtonLabels === 'function') {
+                    window.updatePresetButtonLabels();
+                }
+            } else {
+                throw new Error(response?.error || 'Unknown error');
+            }
+        } catch (error) {
+            console.error('Mobile: Reset failed:', error);
+            showMobileNotification('Failed to reset presets', 'error');
         }
     };
 
@@ -1121,54 +1164,47 @@ document.addEventListener('DOMContentLoaded', function() {
      * the same resetToDefault function used by the desktop interface
      * without specifying a preset_id, which resets all presets.
      */
-    function resetAllPresetsToDefault() {
+    async function resetAllPresetsToDefault() {
         console.log('Mobile: Resetting all presets to canonical server defaults');
         
-        // Check if the main reset function exists
-        if (window.resetToDefault && typeof window.resetToDefault === 'function') {
-            // Show loading state in the UI
-            const resetBtn = document.getElementById('mobile-reset-all-presets');
-            if (resetBtn) {
-                resetBtn.textContent = 'Resetting...';
-                resetBtn.disabled = true;
-            }
-            
-            try {
-                // Call the main script's reset function without a preset ID
-                // This makes a POST to /reset_preferences with an empty body,
-                // which signals the server to reset all preferences
-                window.resetToDefault();
-                
-                // The desktop function already handles:
-                // - Server communication
-                // - Re-fetching preferences
-                // - Showing confirmation messages
-                // - Updating the UI
-                
-                // Hide the mobile panel after reset is complete
-                setTimeout(() => {
-                    hideMobileModelPanel();
-                    
-                    // Reset the button state
-                    if (resetBtn) {
-                        resetBtn.textContent = 'Reset All Models to Defaults';
-                        resetBtn.disabled = false;
-                    }
-                }, 500);
-            } catch (error) {
-                console.error('Mobile: Error while resetting all presets:', error);
-                alert('Error resetting model preferences. Please try again.');
-                
-                // Reset the button state
-                if (resetBtn) {
-                    resetBtn.textContent = 'Reset All Models to Defaults';
-                    resetBtn.disabled = false;
-                }
-            }
-        } else {
-            // Fallback if the main reset function isn't available
-            console.error('Mobile: window.resetToDefault function not available');
-            alert('Cannot reset models at this time. Please try again later.');
+        // Show loading state in the UI
+        const resetBtn = document.getElementById('mobile-reset-all-to-default');
+        if (resetBtn) {
+            resetBtn.textContent = 'Resetting...';
+            resetBtn.disabled = true;
         }
-    }
+        
+        try {
+            // Import the reset function from apiService
+            const { resetPreferencesAPI } = await import('./apiService.js');
+            
+            const response = await resetPreferencesAPI();
+            
+            if (response && response.success) {
+                console.log('Mobile: All presets reset successfully');
+                
+                // Clear local preferences
+                window.userPreferences = {};
+                
+                // Update mobile UI
+                updateMobilePresetsDisplay();
+                showMobileNotification('All presets reset to defaults');
+                
+                // Trigger refresh of desktop UI too
+                if (typeof window.updatePresetButtonLabels === 'function') {
+                    window.updatePresetButtonLabels();
+                }
+            } else {
+                throw new Error(response?.error || 'Unknown error');
+            }
+        } catch (error) {
+            console.error('Mobile: Reset failed:', error);
+            showMobileNotification('Failed to reset presets', 'error');
+        } finally {
+            // Restore button state
+            if (resetBtn) {
+                resetBtn.textContent = 'Reset All to Default';
+                resetBtn.disabled = false;
+            }
+        }
 });
