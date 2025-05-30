@@ -112,9 +112,17 @@ app.config['JSON_SORT_KEYS'] = False  # Prevent JSON sorting for faster response
 @app.after_request
 def add_performance_headers(response):
     """Add performance optimization headers to static assets."""
+    # Only set no-store for specific sensitive endpoints, not all pages
+    sensitive_paths = ['/chat', '/api/', '/billing/', '/admin/']
+    is_sensitive = any(request.path.startswith(path) for path in sensitive_paths)
+    
     if 'Cache-Control' not in response.headers:
-        # Default cache policy
-        response.headers['Cache-Control'] = 'no-store'
+        if is_sensitive:
+            # No cache for sensitive endpoints
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+        else:
+            # Allow caching for main pages to enable back/forward cache
+            response.headers['Cache-Control'] = 'private, max-age=0, must-revalidate'
         
     # Set performance headers for static assets
     if request.path.startswith('/static/'):
