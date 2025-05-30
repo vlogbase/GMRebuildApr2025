@@ -117,6 +117,19 @@
                 <!-- Chat messages will be added here dynamically -->
             </div>
             
+            <!-- Guest Sign-in Prompt (only shown for guest users viewing shared conversations) -->
+            {% if is_guest_share and not is_logged_in %}
+            <div class="guest-signin-prompt">
+                <div class="signin-prompt-content">
+                    <i class="fa-solid fa-lock-open"></i>
+                    <p>Please sign in to view and continue this conversation. It's free.</p>
+                    <a href="/google_login" class="signin-btn">
+                        <i class="fa-brands fa-google"></i> Sign in with Google
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+            
             <!-- Input Area -->
             <div class="chat-input-container">
                 <!-- Desktop Model Buttons - Only visible on desktop -->

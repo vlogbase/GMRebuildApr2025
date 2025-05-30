@@ -2844,6 +2844,65 @@ body.account-page .tab-pane {
     color: #ef4444 !important;
 }
 
+/* Guest sign-in prompt styling */
+.guest-signin-prompt {
+    margin: 20px;
+    padding: 0;
+    background: transparent;
+}
+
+.signin-prompt-content {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.1));
+    border: 2px solid var(--accent-color);
+    border-radius: 12px;
+    padding: 24px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+.signin-prompt-content i {
+    font-size: 24px;
+    color: var(--accent-color);
+    margin-bottom: 12px;
+    display: block;
+}
+
+.signin-prompt-content p {
+    color: var(--text-color);
+    font-size: 16px;
+    margin: 0 0 20px 0;
+    line-height: 1.5;
+}
+
+.signin-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--accent-color);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.signin-btn:hover {
+    background: var(--accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    color: white;
+    text-decoration: none;
+}
+
+.signin-btn i {
+    font-size: 16px;
+    margin: 0;
+}
+
 /* Document preview area styling */
 #document-preview-area {
     background-color: var(--input-bg);
