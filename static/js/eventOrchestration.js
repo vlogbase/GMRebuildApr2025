@@ -469,21 +469,27 @@ export function lockPremiumFeatures(isAuthenticated, userCreditBalance) {
         const newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
         
-        // Setup new event listeners based on authentication status
-        if (!isAuthenticated || userCreditBalance <= 0) {
-            // For non-authenticated users or zero balance, redirect to appropriate action
+        // Check if this is a free model by looking for the free cost band indicator
+        const isFreeModel = newBtn.querySelector('.cost-band-free') !== null;
+        console.log(`🎯 Preset ${presetId}: isFree=${isFreeModel}, authenticated=${isAuthenticated}, credits=${userCreditBalance}`);
+        
+        // Setup new event listeners based on authentication status and model type
+        if (!isAuthenticated) {
+            // Non-authenticated users need to login for any model
             newBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                
-                if (!isAuthenticated) {
-                    window.location.href = '/login';
-                } else {
-                    window.location.href = '/billing/account';
-                }
+                window.location.href = '/login';
+            });
+        } else if (userCreditBalance <= 0 && !isFreeModel) {
+            // Authenticated users with no credits can only use free models
+            newBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.location.href = '/billing/account';
             });
         } else {
-            // For authenticated users with credits, allow normal preset selection
+            // Allow access: either has credits OR it's a free model
             newBtn.addEventListener('click', (e) => {
                 e.preventDefault();
                 selectPresetButton(presetId);
