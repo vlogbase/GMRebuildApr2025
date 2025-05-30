@@ -1258,4 +1258,5 @@ document.addEventListener('DOMContentLoaded', function() {
                 resetBtn.disabled = false;
             }
         }
+    }
 });
