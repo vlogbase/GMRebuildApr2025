@@ -1214,6 +1214,48 @@ def index():
         initial_conversation_id=conversation_id
     )
 
+@app.route('/chat/<int:conversation_id>')
+def chat_conversation(conversation_id):
+    """Route for direct conversation links - renders homepage with conversation ID"""
+    # Verify the conversation exists and belongs to the current user (if logged in)
+    if current_user.is_authenticated:
+        from models import Conversation
+        conversation = Conversation.query.filter_by(
+            id=conversation_id, 
+            user_id=current_user.id,
+            is_active=True
+        ).first()
+        if not conversation:
+            flash("Conversation not found or you don't have permission to view it.", "warning")
+            return redirect(url_for('index'))
+    else:
+        # For non-authenticated users, redirect to login with the conversation URL
+        return redirect(url_for('login', next=request.url))
+    
+    # Render the same homepage template - JavaScript will handle loading the conversation
+    # Use the same logic as the main index route but pass the conversation_id
+    is_logged_in = current_user.is_authenticated
+    
+    # Fetch conversations for the sidebar
+    conversations = []
+    if is_logged_in:
+        try:
+            from models import Conversation
+            conversations = Conversation.query.filter_by(
+                is_active=True, 
+                user_id=current_user.id
+            ).order_by(Conversation.updated_at.desc()).all()
+        except Exception as e:
+            logger.error(f"Error fetching conversations: {e}")
+    
+    return render_template(
+        'index.html', 
+        user=current_user, 
+        is_logged_in=is_logged_in,
+        conversations=conversations,
+        initial_conversation_id=conversation_id
+    )
+
 @app.route('/login')
 def login():
     # If user is already logged in, redirect to index
