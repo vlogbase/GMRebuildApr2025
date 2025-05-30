@@ -1211,7 +1211,8 @@ def index():
         user=current_user, 
         is_logged_in=is_logged_in,
         conversations=conversations,
-        initial_conversation_id=conversation_id
+        initial_conversation_id=conversation_id,
+        user_credit_balance=current_user.get_balance_usd() if current_user.is_authenticated else 0
     )
 
 @app.route('/chat/<int:conversation_id>')
@@ -1253,7 +1254,8 @@ def chat_conversation(conversation_id):
         user=current_user, 
         is_logged_in=is_logged_in,
         conversations=conversations,
-        initial_conversation_id=conversation_id
+        initial_conversation_id=conversation_id,
+        user_credit_balance=current_user.get_balance_usd() if current_user.is_authenticated else 0
     )
 
 @app.route('/robots.txt')

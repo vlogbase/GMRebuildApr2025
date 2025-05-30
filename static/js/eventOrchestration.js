@@ -457,6 +457,9 @@ async function resetAllPresets() {
 // Setup premium feature locks (moved from main script)
 export function lockPremiumFeatures(isAuthenticated, userCreditBalance) {
     console.log('🔒 Locking premium features...');
+    console.log('🔍 Authentication status:', isAuthenticated);
+    console.log('💰 Credit balance received:', userCreditBalance);
+    console.log('🎯 Should lock features?', (!isAuthenticated || userCreditBalance <= 0));
     
     // Process all model preset buttons
     document.querySelectorAll('.model-preset-btn').forEach(btn => {
