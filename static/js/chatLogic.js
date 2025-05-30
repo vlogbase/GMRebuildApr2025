@@ -87,7 +87,7 @@ export function clearAttachedPdf() {
 // Function to create reasoning box for models that support reasoning
 function createReasoningBox(messageContent) {
     const reasoningContainer = document.createElement('div');
-    reasoningContainer.className = 'reasoning-container';
+    reasoningContainer.className = 'reasoning-container reasoning-expanded'; // Start expanded
     
     const reasoningHeader = document.createElement('div');
     reasoningHeader.className = 'reasoning-header';
@@ -108,12 +108,12 @@ function createReasoningBox(messageContent) {
         const isExpanded = reasoningContainer.classList.contains('reasoning-expanded');
         if (isExpanded) {
             reasoningContainer.classList.remove('reasoning-expanded');
-            reasoningContentDiv.style.display = 'none';
             reasoningHeader.querySelector('.reasoning-toggle').textContent = '▶';
+            reasoningHeader.querySelector('span:last-child').textContent = 'Show reasoning';
         } else {
             reasoningContainer.classList.add('reasoning-expanded');
-            reasoningContentDiv.style.display = 'block';
             reasoningHeader.querySelector('.reasoning-toggle').textContent = '▼';
+            reasoningHeader.querySelector('span:last-child').textContent = 'Hide reasoning';
         }
     });
     
@@ -123,9 +123,8 @@ function createReasoningBox(messageContent) {
 // Function to collapse reasoning box after reasoning is complete
 function collapseReasoningBox(reasoningContainer, reasoningHeader, reasoningContentDiv) {
     reasoningContainer.classList.remove('reasoning-expanded');
-    reasoningContentDiv.style.display = 'none';
     reasoningHeader.querySelector('.reasoning-toggle').textContent = '▶';
-    reasoningHeader.querySelector('span:last-child').textContent = 'Reasoning';
+    reasoningHeader.querySelector('span:last-child').textContent = 'Show reasoning';
 }
 
 // Function to update message metadata after receiving it from stream
