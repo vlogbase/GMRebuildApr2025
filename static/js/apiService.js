@@ -59,8 +59,12 @@ export async function loadConversationAPI(conversationId) {
 // Create new conversation
 // Check if current session is in guest share mode
 function isGuestShareMode() {
-    return window.location.pathname.startsWith('/share/') && 
-           (typeof window.isGuestShare !== 'undefined' && window.isGuestShare === true);
+    // Only block if we're on a share URL AND explicitly marked as guest AND not logged in
+    const isOnShareUrl = window.location.pathname.startsWith('/share/');
+    const isMarkedAsGuest = (typeof window.isGuestShare !== 'undefined' && window.isGuestShare === true);
+    const isNotLoggedIn = (typeof window.userIsLoggedIn !== 'undefined' && window.userIsLoggedIn === false);
+    
+    return isOnShareUrl && isMarkedAsGuest && isNotLoggedIn;
 }
 
 export async function createNewConversationAPI() {

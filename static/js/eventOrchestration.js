@@ -476,7 +476,7 @@ export function lockPremiumFeatures(isAuthenticated, userCreditBalance) {
                 if (!isAuthenticated) {
                     window.location.href = '/login';
                 } else {
-                    window.location.href = '/billing';
+                    window.location.href = '/billing/account';
                 }
             });
         } else {

@@ -348,6 +348,7 @@
         
         // Make guest share status globally available for API service
         window.isGuestShare = isGuestShare;
+        window.userIsLoggedIn = userIsLoggedIn;
         
         // Handle guest share mode - use conditional block instead of return
         if (isGuestShare && !userIsLoggedIn) {
