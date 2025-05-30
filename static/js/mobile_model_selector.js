@@ -657,17 +657,60 @@ document.addEventListener('DOMContentLoaded', function() {
     function finishPopulatingModels(allModels, presetId) {
         let filteredModels;
         
-        // Use the exact same filtering logic as desktop for 100% consistency
-        if (window.presetFilters && window.presetFilters[presetId]) {
-            // Use the desktop presetFilters for identical filtering
-            filteredModels = allModels.filter(window.presetFilters[presetId]);
-            console.log(`Mobile: Using desktop presetFilters for preset ${presetId}, filtered to ${filteredModels.length} models`);
-        } else {
-            console.warn(`Mobile: Desktop presetFilters not available for preset ${presetId}, using updated fallback logic`);
-            // Updated fallback logic that matches desktop exactly
-            switch (presetId) {
-                case '1':
-                case '2':
+        // Wait for desktop functions to be available and use them for 100% consistency
+        const waitForDesktopFunctions = () => {
+            return new Promise((resolve) => {
+                if (window.presetFilters && window.presetFilters[presetId]) {
+                    resolve(true);
+                } else {
+                    // Check every 100ms for up to 3 seconds
+                    let attempts = 0;
+                    const maxAttempts = 30;
+                    const checkInterval = setInterval(() => {
+                        attempts++;
+                        if (window.presetFilters && window.presetFilters[presetId]) {
+                            clearInterval(checkInterval);
+                            resolve(true);
+                        } else if (attempts >= maxAttempts) {
+                            clearInterval(checkInterval);
+                            resolve(false);
+                        }
+                    }, 100);
+                }
+            });
+        };
+        
+        waitForDesktopFunctions().then((hasDesktopFunctions) => {
+            if (hasDesktopFunctions) {
+                // Use the desktop presetFilters for identical filtering
+                filteredModels = allModels.filter(window.presetFilters[presetId]);
+                console.log(`Mobile: Using desktop presetFilters for preset ${presetId}, filtered to ${filteredModels.length} models`);
+                
+                // Use desktop sorting function
+                if (window.sortModelsByPreset && typeof window.sortModelsByPreset === 'function') {
+                    filteredModels = window.sortModelsByPreset(filteredModels, presetId);
+                    console.log(`Mobile: Using desktop sortModelsByPreset function for preset ${presetId}`);
+                }
+                
+                // Continue with the rest of the function
+                finishModelDisplay(filteredModels, presetId);
+            } else {
+                console.warn(`Mobile: Desktop functions not available after waiting, using fallback for preset ${presetId}`);
+                // Use fallback filtering and sorting
+                filteredModels = applyFallbackFiltering(allModels, presetId);
+                finishModelDisplay(filteredModels, presetId);
+            }
+        });
+    }
+    
+    // Helper function to apply fallback filtering when desktop functions aren't available
+    function applyFallbackFiltering(allModels, presetId) {
+        let filteredModels;
+        
+        // Updated fallback logic that matches desktop exactly
+        switch (presetId) {
+            case '1':
+            case '2':
                     // All non-free models - include auto model specifically
                     filteredModels = allModels.filter(model => {
                         if (model.id === 'openrouter/auto') return true;
@@ -721,20 +764,58 @@ document.addEventListener('DOMContentLoaded', function() {
                     
                 default:
                     filteredModels = allModels;
-            }
         }
-                              
-        console.log(`Mobile: Filtered to ${filteredModels.length} models for preset ${presetId}`);
         
-        // Use the exact same sorting logic as desktop
-        if (window.sortModelsByPreset && typeof window.sortModelsByPreset === 'function') {
-            filteredModels = window.sortModelsByPreset(filteredModels, presetId);
-            console.log(`Mobile: Using desktop sortModelsByPreset function for preset ${presetId}`);
+        // Apply fallback sorting since desktop sorting isn't available in fallback mode
+        if (presetId === '2') {
+            // Preset 2: Sort by context length (highest first)
+            filteredModels.sort((a, b) => {
+                const contextA = parseInt(a.context_length) || 0;
+                const contextB = parseInt(b.context_length) || 0;
+                return contextB - contextA;
+            });
         } else {
-            console.warn(`Mobile: Desktop sortModelsByPreset not available, using fallback sorting`);
-            // Fallback sorting logic that matches desktop exactly
-            if (presetId === '2') {
-                // Preset 2: Sort by context length (highest first)
+            // All other presets: Sort by ELO score (highest first)
+            filteredModels.sort((a, b) => {
+                const eloA = parseFloat(a.elo_score) || 0;
+                const eloB = parseFloat(b.elo_score) || 0;
+                return eloB - eloA;
+            });
+        }
+        
+        return filteredModels;
+    }
+    
+    // Helper function to handle the final model display after filtering and sorting
+    function finishModelDisplay(filteredModels, presetId) {
+        console.log(`Mobile: Displaying ${filteredModels.length} models for preset ${presetId}`);
+        
+        // Get current selected model for this preset
+        const currentModel = window.userPreferences?.[presetId] || window.defaultModels?.[presetId];
+        
+        // Display empty state message if no models are available after filtering
+        if (filteredModels.length === 0) {
+            const emptyMessage = document.createElement('li');
+            emptyMessage.className = 'mobile-model-item empty-state';
+            emptyMessage.innerHTML = `
+                <div class="model-info">
+                    <span class="model-name">No models available</span>
+                    <span class="model-description">Try a different preset or check your connection</span>
+                </div>
+            `;
+            if (mobileModelList) {
+                mobileModelList.appendChild(emptyMessage);
+            }
+            
+            // Hide loading indicator
+            const loadingElement = document.getElementById('mobile-models-loading');
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
+            }
+            return;
+        }
+        
+        // Create model list items
                 filteredModels.sort((a, b) => {
                     const contextA = parseInt(a.context_length) || 0;
                     const contextB = parseInt(b.context_length) || 0;
