@@ -1,5 +1,5 @@
 """
-Conversation utilities for sharing and forking functionality
+Conversation utilities for sharing, forking, and cleanup functionality
 """
 import logging
 from database import db
@@ -71,5 +71,109 @@ def fork_conversation(original_conversation, new_owner):
         
     except Exception as e:
         logger.error(f"Error forking conversation {original_conversation.id}: {e}")
+        db.session.rollback()
+        raise
+
+
+def cleanup_empty_conversations(db, Message, Conversation, user_id):
+    """
+    Clean up empty conversations (conversations with no messages) for a specific user.
+    
+    Args:
+        db: Database session
+        Message: Message model class
+        Conversation: Conversation model class
+        user_id: ID of the user whose empty conversations to clean up
+        
+    Returns:
+        int: Number of conversations cleaned up
+    """
+    try:
+        # Find conversations that have no messages
+        empty_conversations = db.session.query(Conversation).filter(
+            Conversation.user_id == user_id,
+            ~db.session.query(Message).filter(
+                Message.conversation_id == Conversation.id
+            ).exists()
+        ).all()
+        
+        cleaned_count = len(empty_conversations)
+        
+        # Delete empty conversations
+        for conversation in empty_conversations:
+            db.session.delete(conversation)
+            
+        db.session.commit()
+        
+        logger.info(f"Cleaned up {cleaned_count} empty conversations for user {user_id}")
+        return cleaned_count
+        
+    except Exception as e:
+        logger.error(f"Error cleaning up empty conversations for user {user_id}: {e}")
+        db.session.rollback()
+        raise
+
+
+def is_conversation_empty(db, Message, conversation_id):
+    """
+    Check if a conversation has no messages.
+    
+    Args:
+        db: Database session
+        Message: Message model class
+        conversation_id: ID of the conversation to check
+        
+    Returns:
+        bool: True if conversation is empty, False otherwise
+    """
+    try:
+        message_count = db.session.query(Message).filter_by(
+            conversation_id=conversation_id
+        ).count()
+        
+        return message_count == 0
+        
+    except Exception as e:
+        logger.error(f"Error checking if conversation {conversation_id} is empty: {e}")
+        raise
+
+
+def delete_conversation_if_empty(db, Message, Conversation, conversation_id, user_id):
+    """
+    Delete a conversation if it has no messages and belongs to the specified user.
+    
+    Args:
+        db: Database session
+        Message: Message model class
+        Conversation: Conversation model class
+        conversation_id: ID of the conversation to check and delete
+        user_id: ID of the user (for security verification)
+        
+    Returns:
+        bool: True if conversation was deleted, False otherwise
+    """
+    try:
+        # Get the conversation and verify ownership
+        conversation = db.session.query(Conversation).filter_by(
+            id=conversation_id, 
+            user_id=user_id
+        ).first()
+        
+        if not conversation:
+            logger.warning(f"Conversation {conversation_id} not found or doesn't belong to user {user_id}")
+            return False
+            
+        # Check if conversation is empty
+        if is_conversation_empty(db, Message, conversation_id):
+            db.session.delete(conversation)
+            db.session.commit()
+            logger.info(f"Deleted empty conversation {conversation_id} for user {user_id}")
+            return True
+        else:
+            logger.info(f"Conversation {conversation_id} is not empty, not deleting")
+            return False
+            
+    except Exception as e:
+        logger.error(f"Error deleting conversation {conversation_id} if empty: {e}")
         db.session.rollback()
         raise
