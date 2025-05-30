@@ -655,33 +655,63 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Helper function to filter and display models after they're loaded
     function finishPopulatingModels(allModels, presetId) {
-        // First filter out free models for all presets except 6, but include auto model for presets 1-2
-        const nonFreeModels = presetId === '6' ? allModels : allModels.filter(model => {
-            // Include auto model specifically for non-free presets
-            if (model.id === 'openrouter/auto') return true;
-            return !model.is_free && !model.id.includes(':free');
-        });
+        let filteredModels;
         
-        // Then apply specific filters based on preset
-        let filteredModels = presetId === '3' ? nonFreeModels.filter(model => {
-            // Reasoning models (non-free) - already filtered out free models above
-            return model.is_reasoning === true;
-        }) :
-                              presetId === '4' ? nonFreeModels.filter(model => {
-            const passes = model.is_multimodal === true;
-            // Debug logging for multimodal filter
-            if (model.id === 'qwen/qwen-vl-max' || model.id === 'x-ai/grok-2-vision-1212' || model.id === 'openai/gpt-4o') {
-                console.log(`[Mobile Preset 4 Debug] ${model.id}: is_multimodal=${model.is_multimodal}, is_free=${model.is_free}, passes=${passes}`);
-            }
-            return passes;
-        }) :
-                              presetId === '5' ? nonFreeModels.filter(model => model.id.includes('perplexity')) :
-                              presetId === '6' ? allModels.filter(model => {
-            // Free models only - exclude auto model specifically
-            if (model.id === 'openrouter/auto') return false;
-            return model.is_free === true || model.id.includes(':free');
-        }) :
-                              nonFreeModels; // For presets 1-5, we already filtered out free models above
+        // Use the same filtering logic as desktop for consistency
+        switch (presetId) {
+            case '1':
+            case '2':
+                // All non-free models - include auto model specifically
+                filteredModels = allModels.filter(model => {
+                    if (model.id === 'openrouter/auto') return true;
+                    const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+                    return !isFree;
+                });
+                break;
+                
+            case '3':
+                // Reasoning models (non-free)
+                filteredModels = allModels.filter(model => {
+                    const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+                    if (isFree) return false;
+                    
+                    if (model.is_reasoning === true) return true;
+                    // Fallback to ID-based detection for o1, o3, reasoning keywords
+                    return model.id.includes('reasoning') || model.id.includes('o1') || model.id.includes('o3');
+                });
+                break;
+                
+            case '4':
+                // Multimodal/image-capable models (non-free)
+                filteredModels = allModels.filter(model => {
+                    const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+                    const isMultimodal = model.is_multimodal || model.supports_vision || 
+                                        model.id.includes('vision') || model.id.includes('dall-e') || 
+                                        model.id.includes('midjourney') || model.id.includes('stable-diffusion') ||
+                                        model.id.includes('flux') || model.id.includes('imagen');
+                    return !isFree && isMultimodal;
+                });
+                break;
+                
+            case '5':
+                // Search models (perplexity)
+                filteredModels = allModels.filter(model => {
+                    const isFree = model.id.includes(':free') || model.cost_band === 'free' || model.is_free === true;
+                    return !isFree && model.id.includes('perplexity');
+                });
+                break;
+                
+            case '6':
+                // Free models only - exclude auto model specifically
+                filteredModels = allModels.filter(model => {
+                    if (model.id === 'openrouter/auto') return false;
+                    return model.is_free === true || model.id.includes(':free') || model.cost_band === 'free';
+                });
+                break;
+                
+            default:
+                filteredModels = allModels;
+        }
                               
         console.log(`Mobile: Filtered to ${filteredModels.length} models for preset ${presetId} (excluding free models for presets 1-5)`);
         
