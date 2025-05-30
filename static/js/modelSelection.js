@@ -70,7 +70,7 @@ export const defaultModels = {
     '1': 'google/gemini-2.5-pro-preview', // Current Gemini 2.5 Pro
     '2': 'x-ai/grok-3-beta',
     '3': 'anthropic/claude-sonnet-4', // Reasoning
-    '4': 'openai/gpt-4o', // Multimodal
+    '4': 'openai/gpt-4o-2024-11-20', // Multimodal
     '5': 'perplexity/sonar-pro', // Search/Perplexity
     '6': 'google/gemini-2.0-flash-exp:free' // Free
 };
@@ -100,7 +100,6 @@ export const presetFallbackChains = {
         'anthropic/claude-opus-4'
     ],
     '4': [ // Premium multimodal preset
-        'openai/gpt-4o',
         'openai/gpt-4o-2024-11-20',
         'openai/gpt-4o-2024-05-13',
         'openai/gpt-4.1',
@@ -126,7 +125,7 @@ export const defaultModelDisplayNames = {
     'google/gemini-2.5-pro-preview': 'Gemini 2.5 Pro',
     'x-ai/grok-3-beta': 'Grok 3',
     'anthropic/claude-sonnet-4': 'Claude Sonnet 4',
-    'openai/gpt-4o': 'GPT 4o',
+    'openai/gpt-4o-2024-11-20': 'GPT 4o',
     'perplexity/sonar-pro': 'Perplexity Pro',
     'google/gemini-2.0-flash-exp:free': 'Gemini 2'
 };
