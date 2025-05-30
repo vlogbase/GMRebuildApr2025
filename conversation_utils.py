@@ -2,6 +2,7 @@
 Conversation utilities for sharing, forking, and cleanup functionality
 """
 import logging
+import uuid
 from database import db
 from models import Conversation, Message
 from datetime import datetime
@@ -27,6 +28,7 @@ def fork_conversation(original_conversation, new_owner):
         new_conversation = Conversation(
             user_id=new_owner.id,
             title=f"Copy of: {original_conversation.title}",
+            conversation_uuid=str(uuid.uuid4()),
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
             is_active=True
