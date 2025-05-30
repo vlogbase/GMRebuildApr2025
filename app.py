@@ -4688,8 +4688,9 @@ def share_conversation(conversation_id):
             db.session.commit()
             logger.info(f"Generated share ID for conversation {conversation_id}")
 
-        share_url_path = url_for('view_shared_conversation', share_id=conversation.share_id, _external=False) # Ensure relative path
-        return jsonify({"share_url": share_url_path})
+        # Generate full share URL that will work from anywhere
+        share_url = url_for('view_shared_conversation', share_id=conversation.share_id, _external=True)
+        return jsonify({"share_url": share_url})
     except Exception as e:
         logger.exception(f"Error sharing conversation {conversation_id}")
         db.session.rollback()
@@ -4713,11 +4714,10 @@ def view_shared_conversation(share_id):
             return redirect(url_for('index'))
             
         # Check if this is the owner of the conversation viewing through a shared link
-        # If so, redirect them to the home page with the current conversation ID
-        # The JavaScript will load the correct conversation
+        # If so, redirect them to the proper chat URL for their own conversation
         if current_user.is_authenticated and conversation.user_id == current_user.id:
-            logger.info(f"Owner of conversation {conversation.id} viewing their own shared link - redirecting to home with conversation ID")
-            return redirect(url_for('index', conversation_id=conversation.id))
+            logger.info(f"Owner of conversation {conversation.id} viewing their own shared link - redirecting to chat URL")
+            return redirect(url_for('chat_conversation', conversation_id=conversation.id))
         
         # For authenticated users who are not the owner, explicitly set is_logged_in flag
         # to pass to the template (ensures consistent rendering regardless of auth status)
