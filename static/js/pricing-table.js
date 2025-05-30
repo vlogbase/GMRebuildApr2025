@@ -48,7 +48,33 @@ function loadPricingData() {
         return;
     }
 
-    // Show loading state
+    // Check for cached data first
+    try {
+        const cachedData = localStorage.getItem('modelPricingData');
+        const cachedTimestamp = localStorage.getItem('modelPricingTimestamp');
+        
+        if (cachedData && cachedTimestamp) {
+            const cacheAge = Date.now() - parseInt(cachedTimestamp);
+            const maxCacheAge = 30 * 60 * 1000; // 30 minutes
+            
+            if (cacheAge < maxCacheAge) {
+                console.log('Using cached pricing data');
+                pricingData = JSON.parse(cachedData);
+                renderPricingTable();
+                
+                const cacheDate = new Date(parseInt(cachedTimestamp));
+                lastUpdatedElem.textContent = `Last updated: ${cacheDate.toLocaleTimeString()} ${cacheDate.toLocaleDateString()} (cached)`;
+                
+                // Still fetch fresh data in background for next time
+                fetchPricingDataInBackground();
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn('Error reading cached pricing data:', e);
+    }
+
+    // Show loading state only if no cache available
     pricingTableBody.innerHTML = `
         <tr>
             <td colspan="6" class="text-center py-5">
@@ -63,6 +89,81 @@ function loadPricingData() {
     `;
     lastUpdatedElem.textContent = 'Loading...';
 
+    // Fetch fresh data from API
+    fetchPricingData();
+}
+
+function fetchPricingDataInBackground() {
+    // Silent background update - no UI changes
+    fetch('/api/get_model_prices')
+        .then(response => response.ok ? response.json() : null)
+        .then(data => {
+            if (data && data.prices) {
+                // Update cache silently
+                updatePricingCache(data);
+            }
+        })
+        .catch(error => {
+            console.log('Background pricing update failed:', error);
+        });
+}
+
+function updatePricingCache(data) {
+    try {
+        const rawPricingData = data.prices;
+        const processedData = Object.entries(rawPricingData).map(([modelId, modelDetails]) => {
+            const modelName = modelDetails.model_name ||
+                              modelId.split('/').pop().replace(/-/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+
+            let inputPriceStr, outputPriceStr;
+            if (modelDetails.display_input_price) {
+                inputPriceStr = modelDetails.display_input_price;
+            } else if (modelDetails.input_price === null || modelDetails.input_price === undefined) {
+                inputPriceStr = 'Dynamic*';
+            } else if (modelDetails.input_price === 0) {
+                inputPriceStr = '$0.00';
+            } else if (modelDetails.input_price < 0.01) {
+                inputPriceStr = `$${modelDetails.input_price.toFixed(4)}`;
+            } else {
+                inputPriceStr = `$${modelDetails.input_price.toFixed(2)}`;
+            }
+
+            if (modelDetails.display_output_price) {
+                outputPriceStr = modelDetails.display_output_price;
+            } else if (modelDetails.output_price === null || modelDetails.output_price === undefined) {
+                outputPriceStr = 'Dynamic*';
+            } else if (modelDetails.output_price === 0) {
+                outputPriceStr = '$0.00';
+            } else if (modelDetails.output_price < 0.01) {
+                outputPriceStr = `$${modelDetails.output_price.toFixed(4)}`;
+            } else {
+                outputPriceStr = `$${modelDetails.output_price.toFixed(2)}`;
+            }
+
+            return {
+                model_id: modelId,
+                model_name: modelName,
+                input_price: inputPriceStr,
+                output_price: outputPriceStr,
+                context_length: modelDetails.context_length_display || modelDetails.context_length || 'N/A',
+                multimodal: modelDetails.multimodal,
+                pdfs: modelDetails.pdfs,
+                cost_band: modelDetails.cost_band || calculateCostBand(modelDetails.input_price, modelDetails.output_price),
+                elo_score: modelDetails.elo_score || null,
+                display_input_price: modelDetails.display_input_price,
+                display_output_price: modelDetails.display_output_price,
+                context_length_display: modelDetails.context_length_display
+            };
+        });
+
+        localStorage.setItem('modelPricingData', JSON.stringify(processedData));
+        localStorage.setItem('modelPricingTimestamp', new Date().getTime().toString());
+    } catch (e) {
+        console.warn('Could not update pricing cache:', e);
+    }
+}
+
+function fetchPricingData() {
     // Fetch data from API
     fetch('/api/get_model_prices')
         .then(response => {
