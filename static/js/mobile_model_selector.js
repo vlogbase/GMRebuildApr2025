@@ -903,8 +903,12 @@ document.addEventListener('DOMContentLoaded', function() {
             modelInfo.appendChild(modelCost);
             li.appendChild(modelInfo);
             
-            // Add click handler
+            // Add click handler with optimistic updates
             li.addEventListener('click', function() {
+                // Apply optimistic update immediately
+                applyOptimisticModelSelection(presetId, model.id, model.name);
+                
+                // Then make the actual API call
                 selectModelForPreset(presetId, model.id);
             });
             
@@ -1254,11 +1258,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Cache of default model names for immediate updates
+    // Cache of default model names for immediate updates (matches desktop presets)
     const defaultModelCache = {
-        '1': 'Claude 3.5 Sonnet',
-        '2': 'GPT-4o',
-        '3': 'Claude 3.5 Sonnet',
+        '1': 'Gemini-2.5-pro-preview',
+        '2': 'Grok-3-beta',
+        '3': 'Claude-sonnet-4',
         '4': 'GPT-4o',
         '5': 'Perplexity Sonar Pro',
         '6': 'Gemini 2.0 Flash'
@@ -1327,6 +1331,38 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Set active button to preset 1 (typical default)
         updateMobileActiveButton('1');
+    }
+    
+    // Apply optimistic updates when user selects a specific model
+    function applyOptimisticModelSelection(presetId, modelId, modelName) {
+        console.log(`Mobile: Applying optimistic selection for preset ${presetId}: ${modelName}`);
+        
+        // Update local preferences immediately
+        if (!window.userPreferences) {
+            window.userPreferences = {};
+        }
+        window.userPreferences[presetId] = modelId;
+        
+        // Update button label immediately
+        const button = document.querySelector(`.mobile-preset-btn[data-preset-id="${presetId}"]`);
+        if (button) {
+            button.setAttribute('data-current-model-name', modelName);
+        }
+        
+        // Update panel display immediately
+        const selectedModelSpan = document.getElementById(`mobile-selected-model-${presetId}`);
+        if (selectedModelSpan) {
+            selectedModelSpan.textContent = modelName;
+        }
+        
+        // Update active state immediately
+        updateMobileActiveButton(presetId);
+        
+        // Show immediate feedback
+        showMobileNotification(`Selected ${modelName} for preset ${presetId}`);
+        
+        // Close the model selection panel immediately for instant response
+        hideMobileModelSelection();
     }
 
     // Expose functions globally for external access
