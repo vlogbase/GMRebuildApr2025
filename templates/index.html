@@ -351,6 +351,8 @@
 {% block scripts %}
     {{ super() }}
     <script src="{{ url_for('static', filename='js/conversationRename.js', v=assets_version) }}"></script>
+    <script src="{{ url_for('static', filename='js/ModelCache.js', v=assets_version) }}"></script>
+    <script src="{{ url_for('static', filename='js/ModelCacheIntegration.js', v=assets_version) }}"></script>
     <script type="module">
         import { initializeGuestShareHandler } from "{{ url_for('static', filename='js/guestShareHandler.js') }}";
         
