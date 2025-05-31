@@ -4643,7 +4643,7 @@ def reset_preferences():
         abort(500, description=str(e))
 
 
-@app.route('/conversation/<int:conversation_id>/messages', methods=['GET'])
+@app.route('/api/conversations/<int:conversation_id>/messages', methods=['GET'])
 @login_required
 def get_conversation_messages(conversation_id):
     """ Get all messages for a specific conversation """

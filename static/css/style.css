@@ -4864,7 +4864,7 @@ code {
     .chat-messages {
         flex: 1;
         padding: 20px;
-        padding-bottom: 250px; /* Ensure enough bottom padding to account for fixed input and keyboard */
+        padding-bottom: 400px; /* Increased padding to ensure last message is fully visible */
         overflow-y: auto;
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
