@@ -4412,11 +4412,12 @@ code {
     padding: 8px 0;
     overflow-y: auto;
     flex: 1;
+    min-height: 200px; /* Ensure minimum height for content visibility */
 }
 
 /* Refined panel preset buttons - matches the minimalist aesthetic */
 .mobile-panel-preset-btn {
-    display: flex;
+    display: flex !important; /* Force display */
     justify-content: space-between;
     align-items: center;
     width: 100%;
@@ -4429,6 +4430,8 @@ code {
     position: relative;
     overflow: hidden;
     transition: all 0.2s ease;
+    visibility: visible !important; /* Force visibility */
+    opacity: 1 !important; /* Force opacity */
 }
 
 /* Add subtle left border for preset identification and colored icons */
