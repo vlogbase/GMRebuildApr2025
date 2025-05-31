@@ -5670,3 +5670,104 @@ code {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* Mobile Model Selector Enhancements */
+.mobile-model-notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-100%);
+    background: var(--accent-color);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    z-index: 1001;
+    transition: transform 0.3s ease;
+    max-width: 90%;
+    text-align: center;
+    font-size: 14px;
+}
+
+.mobile-model-notification.show {
+    transform: translateX(-50%) translateY(0);
+}
+
+.mobile-model-error {
+    padding: 20px;
+    text-align: center;
+    color: #666;
+}
+
+.mobile-model-error .error-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.mobile-model-error .error-message i {
+    color: #ff6b6b;
+    font-size: 18px;
+}
+
+/* Enhanced mobile model list items */
+.mobile-model-item {
+    padding: 16px;
+    border-bottom: 1px solid #eee;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.mobile-model-item:hover {
+    background-color: #f8f9fa;
+}
+
+.mobile-model-item:last-child {
+    border-bottom: none;
+}
+
+.mobile-model-item .model-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.mobile-model-item .model-name {
+    font-weight: 500;
+    color: #333;
+    font-size: 14px;
+}
+
+.mobile-model-item .model-pricing {
+    color: #666;
+    font-size: 12px;
+}
+
+/* Mobile loading improvements */
+.mobile-models-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    color: #666;
+}
+
+.mobile-models-loading.hidden {
+    display: none;
+}
+
+.loading-spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid #f3f3f3;
+    border-top: 3px solid var(--accent-color);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 12px;
+}
+
+.loading-text {
+    font-size: 14px;
+}
