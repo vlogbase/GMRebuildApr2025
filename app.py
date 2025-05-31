@@ -2753,14 +2753,18 @@ def chat(): # Synchronous function
 
 
         # --- Prepare Message History ---
-        system_message = ( # Make sure this is defined correctly
-             "You are a helpful assistant at GloriaMundo, an advanced AI chat platform. "
-             "Provide detailed, accurate, and helpful responses to user queries. "
-             "Write in a conversational yet professional tone. "
-             "If you don't know something, say so rather than making up information. "
-             "Format responses with clear structure using paragraphs, lists, and emphasis when appropriate."
-         )
-        messages = [{'role': 'system', 'content': system_message}]
+        messages = []
+        
+        # Only add the identity system prompt if the user has it enabled
+        if current_user.is_authenticated and current_user.enable_identity_prompt:
+            system_message = ( # Make sure this is defined correctly
+                 "You are a helpful assistant at GloriaMundo, an advanced AI chat platform. "
+                 "Provide detailed, accurate, and helpful responses to user queries. "
+                 "Write in a conversational yet professional tone. "
+                 "If you don't know something, say so rather than making up information. "
+                 "Format responses with clear structure using paragraphs, lists, and emphasis when appropriate."
+             )
+            messages.append({'role': 'system', 'content': system_message})
 
         # Check if model supports multimodal input by querying the database
         model_supports_multimodal = False
