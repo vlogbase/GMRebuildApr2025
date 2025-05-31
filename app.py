@@ -2500,12 +2500,21 @@ def chat(): # Synchronous function
             """Check if user has positive credits"""
             try:
                 user = User.query.get(user_id)
-                return user and user.credits > 0
-            except:
+                if not user:
+                    logger.error(f"Credit validation: User {user_id} not found in database")
+                    return False
+                
+                logger.info(f"Credit validation: User {user_id} has {user.credits} credits")
+                result = user.credits > 0
+                logger.info(f"Credit validation: User {user_id} can use paid models: {result}")
+                return result
+            except Exception as e:
+                logger.error(f"Credit validation error for user {user_id}: {e}")
                 return False
         
         # Check if the requested model is free or paid
         requested_model_is_free = is_free_model_local(model_id)
+        logger.info(f"Model validation: Requested model '{model_id}' is {'free' if requested_model_is_free else 'paid'}")
         
         # For non-authenticated users, force free models
         if not current_user.is_authenticated:
