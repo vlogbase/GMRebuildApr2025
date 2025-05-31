@@ -4368,9 +4368,9 @@ code {
     transition: transform 0.3s ease;
     display: flex;
     flex-direction: column;
-    height: auto !important; /* Force auto height */
-    max-height: none !important; /* Remove height constraint */
-    overflow: visible !important; /* Force visibility */
+    max-height: 80vh; /* Limit to 80% of viewport height */
+    min-height: 40vh; /* Ensure minimum height for content */
+    overflow: hidden; /* Hide overflow on container */
 }
 
 .mobile-model-panel.visible,
@@ -4412,9 +4412,9 @@ code {
 
 .panel-content {
     padding: 8px 0;
-    overflow-y: visible;
-    flex: none; /* Don't expand to fill space */
-    min-height: auto; /* Let content determine height */
+    overflow-y: auto;
+    flex: 1; /* Expand to fill available space */
+    min-height: 0; /* Allow shrinking for flex */
 }
 
 /* Refined panel preset buttons - matches the minimalist aesthetic */
@@ -4617,6 +4617,8 @@ code {
     flex: 1;
     padding: 8px 0;
     position: relative;
+    -webkit-overflow-scrolling: touch;
+    min-height: 0;
 }
 
 /* Loading spinner for mobile models */
