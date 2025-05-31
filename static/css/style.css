@@ -4368,7 +4368,8 @@ code {
     transition: transform 0.3s ease;
     display: flex;
     flex-direction: column;
-    /* Remove height constraints to let content determine size */
+    max-height: 60vh;
+    min-height: 200px;
 }
 
 .mobile-model-panel.visible,
@@ -4411,7 +4412,8 @@ code {
 .panel-content {
     padding: 8px 0;
     overflow-y: auto;
-    flex: 0 0 auto; /* Size to content only */
+    flex: 1;
+    min-height: 250px; /* Ensure content is visible */
 }
 
 /* Refined panel preset buttons - matches the minimalist aesthetic */
