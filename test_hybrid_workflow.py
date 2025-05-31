@@ -14,7 +14,8 @@ def main():
     try:
         from app import app
         print("Starting Flask application for mobile model selector testing...")
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        print("Application will be available at http://0.0.0.0:5000")
+        app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
     except Exception as e:
         print(f"Error starting application: {e}")
         sys.exit(1)
