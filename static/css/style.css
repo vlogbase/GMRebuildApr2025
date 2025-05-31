@@ -4412,9 +4412,9 @@ code {
 
 .panel-content {
     padding: 8px 0;
-    overflow-y: auto;
-    flex: 1;
-    min-height: 250px; /* Ensure content is visible */
+    overflow-y: visible;
+    flex: none; /* Don't expand to fill space */
+    min-height: auto; /* Let content determine height */
 }
 
 /* Refined panel preset buttons - matches the minimalist aesthetic */
@@ -4884,7 +4884,6 @@ code {
     .account-container,
     .conversation-list,
     .sidebar-content,
-    .mobile-model-panel,
     .modal-body {
         padding-bottom: 700px; /* Increased padding for better accessibility of bottom elements */
     }
