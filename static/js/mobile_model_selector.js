@@ -672,28 +672,19 @@ document.addEventListener('DOMContentLoaded', function() {
             // We'll use our own list, but let the main script load the data first
             window.populateModelList(presetId);
             
-            // Check if models are available immediately from the hybrid cache system
+            // Check if models are available immediately
             let allModels = window.availableModels || [];
             
             // Log available models for debugging
-            console.log(`Mobile: Found ${allModels.length} models from cache`);
+            console.log(`Mobile: Found ${allModels.length} models from window.availableModels`);
             
-            // If models are available immediately, use them right away
-            if (allModels.length > 0) {
-                console.log('Mobile: Using cached models for immediate display');
-                finishPopulatingModels(allModels, presetId);
-                
-                // Hide loading indicator
-                if (loadingElement) {
-                    loadingElement.classList.add('hidden');
-                }
-            } else {
-                // No cached models available, wait and retry while fetching fresh data
-                console.log('Mobile: No cached models available, waiting for fresh data');
+            // If no models are available yet, wait and retry a few times
+            if (allModels.length === 0) {
+                console.log('Mobile: No models available yet, will retry');
                 
                 let retryCount = 0;
-                const maxRetries = 8; // Increased retries for better reliability
-                const retryInterval = 600; // Slightly faster retry interval
+                const maxRetries = 5;
+                const retryInterval = 800; // milliseconds
                 
                 const checkModels = () => {
                     allModels = window.availableModels || [];
