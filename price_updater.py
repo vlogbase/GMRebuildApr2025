@@ -13,10 +13,10 @@ import requests
 from datetime import datetime
 from sqlalchemy.exc import SQLAlchemyError
 
-# Import from database to avoid circular references
-from database import db
-from models import OpenRouterModel
-from flask import current_app
+# Avoid circular imports by importing inside functions when needed
+# from database import db
+# from models import OpenRouterModel
+# from flask import current_app
 
 # Set up logging with more details for debugging
 logging.basicConfig(level=logging.DEBUG)
@@ -40,6 +40,9 @@ def should_update_prices() -> bool:
         bool: True if we should update prices, False otherwise
     """
     try:
+        # Import inside function to avoid circular imports
+        from models import OpenRouterModel
+        
         # First check the startup cache for faster startup
         try:
             from startup_cache import startup_cache
@@ -262,9 +265,18 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
     # Import required modules inside function to avoid circular imports
     # and ensure we have access to the app object
     try:
-        from app import app, db
+        from database import db
+        from models import OpenRouterModel
+        # Import app only if we need the context, otherwise work without it
+        app = None
+        try:
+            from flask import current_app
+            app = current_app
+        except RuntimeError:
+            # No app context available, we'll create one later if needed
+            pass
     except ImportError as e:
-        logger.error(f"Failed to import app modules: {e}")
+        logger.error(f"Failed to import required modules: {e}")
         return False
     
     # Redis distributed lock setup
@@ -498,12 +510,11 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
         
         # Store models in the database (This is the new primary storage method)
         try:
-            # Import here to avoid circular imports
-            from app import app, db
-            from models import OpenRouterModel
+            # Always import the Flask app fresh to avoid context issues
+            from app import app as flask_app
             
             # Use a single application context for all database operations
-            with app.app_context():
+            with flask_app.app_context():
                 updated_count = 0
                 new_count = 0
                 
