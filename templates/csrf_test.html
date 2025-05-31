@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const formData = new FormData();
         formData.append('file', blob, 'test-image.png');
         
-        fetch('/upload_image', {
+        fetch('/upload_file', {
             method: 'POST',
             headers: {
                 'X-CSRFToken': currentToken
