@@ -577,6 +577,36 @@ def update_fallback_preference():
             "message": f"Error updating preference: {str(e)}"
         }), 500
 
+
+@billing_bp.route('/update-identity-prompt-preference', methods=['POST'])
+@login_required
+def update_identity_prompt_preference():
+    """
+    Update the user's identity prompt preference setting.
+    """
+    try:
+        # Get the preference value from the request
+        enable_identity_prompt = request.json.get('enable_identity_prompt', True)
+        
+        # Update the user's preference
+        current_user.enable_identity_prompt = enable_identity_prompt
+        db.session.commit()
+        
+        logger.info(f"Updated identity prompt preference for user {current_user.id} to {enable_identity_prompt}")
+        
+        return jsonify({
+            "success": True,
+            "message": "Identity prompt preference updated successfully",
+            "enable_identity_prompt": enable_identity_prompt
+        })
+    
+    except Exception as e:
+        logger.error(f"Error updating identity prompt preference: {e}")
+        return jsonify({
+            "success": False,
+            "message": f"Error updating preference: {str(e)}"
+        }), 500
+
 @billing_bp.route('/transactions', methods=['GET'])
 @login_required
 def transaction_history():

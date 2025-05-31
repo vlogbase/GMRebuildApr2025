@@ -1270,6 +1270,28 @@ block body_class %}account-page{% endblock %} {% block styles %} {{ super() }}
                         </small>
                     </div>
 
+                    <div class="mb-3 form-check">
+                        <input
+                            type="checkbox"
+                            class="form-check-input"
+                            id="enableIdentityPrompt"
+                            {%
+                            if
+                            user.enable_identity_prompt
+                            %}checked{%
+                            endif
+                            %}
+                        />
+                        <label
+                            class="form-check-label"
+                            for="enableIdentityPrompt"
+                            >Identity</label
+                        >
+                        <small class="form-text text-muted d-block mt-1">
+                            By default, all models will call themselves Gloriamundo, and be helpful. For an unmodified experience, turn this off and save 60 tokens per request.
+                        </small>
+                    </div>
+
                     <!-- Advanced Chat Preferences Section -->
                     <div class="mt-4">
                         <h5 class="d-flex align-items-center">
