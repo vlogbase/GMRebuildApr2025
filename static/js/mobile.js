@@ -175,56 +175,10 @@ window.addEventListener('load', function() {
             }
         }
         
-        // Setup handlers for mobile preset buttons
-        function setupMobilePresetHandlers(mobilePresetButtons) {
-            console.log('Mobile: Setting up handlers for mobile preset buttons');
-            
-            mobilePresetButtons.forEach(button => {
-                const presetId = button.getAttribute('data-preset-id');
-                console.log(`Mobile: Setting up handler for mobile preset ${presetId}`);
-                
-                button.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    
-                    console.log(`Mobile: Mobile preset button ${presetId} clicked`);
-                    
-                    // Try to select the preset using the global function
-                    if (typeof window.selectPresetButton === 'function') {
-                        window.selectPresetButton(presetId);
-                    } else {
-                        console.error('Mobile: selectPresetButton function not available');
-                    }
-                    
-                    // Also trigger the mobile panel toggle if available
-                    const panelToggle = document.getElementById('mobile-model-panel-toggle');
-                    if (panelToggle) {
-                        // Show the mobile panel after a short delay to allow preset selection
-                        setTimeout(() => {
-                            panelToggle.click();
-                        }, 100);
-                    }
-                });
-                
-                // Add touch feedback
-                button.addEventListener('touchstart', function() {
-                    button.classList.add('touch-pressing');
-                    if (navigator.vibrate) {
-                        navigator.vibrate(10);
-                    }
-                }, { passive: true });
-                
-                button.addEventListener('touchend', function() {
-                    button.classList.remove('touch-pressing');
-                }, { passive: true });
-            });
-        }
-        
-        // Check if dedicated mobile buttons exist - if so, set up mobile handlers instead
+        // Check if dedicated mobile buttons exist - if so, don't add touch handlers to desktop buttons
         const mobilePresetButtons = document.querySelectorAll('.mobile-preset-btn');
         if (mobilePresetButtons.length > 0) {
-            console.log('Mobile: Dedicated mobile buttons found, setting up mobile handlers');
-            setupMobilePresetHandlers(mobilePresetButtons);
+            console.log('Mobile: Dedicated mobile buttons found, skipping desktop button touch handlers');
             return;
         }
         
