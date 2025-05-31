@@ -2877,7 +2877,7 @@ body.account-page .tab-pane {
     border: 1px solid var(--border-color);
     border-radius: 8px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    z-index: 1050; /* Higher than mobile backdrop (1000) */
+    z-index: 100;
     overflow: hidden;
     /* Position will be set dynamically via JavaScript */
 }

@@ -389,28 +389,7 @@ export async function fetchAvailableModels() {
             allModels = modelDataArray;
             window.availableModels = allModels;
             console.log(`✅ Loaded ${allModels.length} models from prices data`);
-            
-            // Cache the models for all presets for quick future access
-            const now = Date.now();
-            for (let presetId = 1; presetId <= 6; presetId++) {
-                const cacheKey = `models_preset_${presetId}`;
-                const cacheTimestampKey = `${cacheKey}_timestamp`;
-                try {
-                    localStorage.setItem(cacheKey, JSON.stringify(allModels));
-                    localStorage.setItem(cacheTimestampKey, now.toString());
-                } catch (error) {
-                    console.warn(`Failed to cache models for preset ${presetId}:`, error);
-                }
-            }
-            
             updatePresetButtonLabels();
-            
-            // If a model selector is currently open, refresh it with the new data
-            const modelSelector = document.getElementById('model-selector');
-            if (modelSelector && modelSelector.style.display !== 'none' && currentlyEditingPresetId) {
-                console.log(`🔄 Refreshing open model selector for preset ${currentlyEditingPresetId}`);
-                populateModelListFromData(currentlyEditingPresetId);
-            }
             
             // Initialize upload controls for the default preset
             if (currentPresetId) {
@@ -629,83 +608,6 @@ function populateModelList(presetId) {
     console.log(`[Debug] populateModelList called for presetId: ${presetId}`);
     console.log(`[Debug] Current global allModels count: ${allModels ? allModels.length : 'undefined'}`);
     
-    // Cache-aware loading for performance
-    const cacheKey = `models_preset_${presetId}`;
-    const cacheTimestampKey = `${cacheKey}_timestamp`;
-    const cacheExpiry = 15 * 60 * 1000; // 15 minutes
-    
-    // Check cache first
-    const cachedData = localStorage.getItem(cacheKey);
-    const cacheTimestamp = localStorage.getItem(cacheTimestampKey);
-    const now = Date.now();
-    
-    if (cachedData && cacheTimestamp && (now - parseInt(cacheTimestamp)) < cacheExpiry) {
-        console.log(`[Debug] Using cached models for preset ${presetId}`);
-        try {
-            const parsedModels = JSON.parse(cachedData);
-            if (parsedModels && parsedModels.length > 0) {
-                // Use cached models immediately
-                allModels = parsedModels;
-                populateModelListFromData(presetId);
-                
-                // Still fetch fresh data in background if cache is getting old (12+ minutes)
-                if ((now - parseInt(cacheTimestamp)) > (12 * 60 * 1000)) {
-                    fetchFreshModelsInBackground();
-                }
-                return;
-            }
-        } catch (error) {
-            console.warn('Cache parsing failed, falling back to fresh data:', error);
-        }
-    }
-    
-    // No valid cache, proceed with original logic - but ensure data is loaded first
-    ensureModelsLoadedThenPopulate(presetId);
-}
-
-async function ensureModelsLoadedThenPopulate(presetId) {
-    // If no models are loaded yet, wait for them to load
-    if (!allModels || allModels.length === 0) {
-        console.log(`[Debug] No models loaded yet for preset ${presetId}, waiting for data...`);
-        
-        // Show loading state immediately
-        const modelList = document.getElementById('model-list');
-        if (modelList) {
-            modelList.innerHTML = '<li style="padding: 10px; text-align: center; color: #999;">Loading models...</li>';
-        }
-        
-        try {
-            // Wait for models to be fetched
-            await fetchAvailableModels();
-            
-            // Now populate with the loaded data
-            populateModelListFromData(presetId);
-        } catch (error) {
-            console.error('[Debug] Failed to load models:', error);
-            if (modelList) {
-                modelList.innerHTML = '<li style="padding: 10px; text-align: center; color: #ff6b6b;">Failed to load models. Please try again.</li>';
-            }
-        }
-    } else {
-        // Models already loaded, populate immediately
-        populateModelListFromData(presetId);
-    }
-}
-
-function fetchFreshModelsInBackground() {
-    console.log('[Debug] Fetching fresh models in background');
-    // This would trigger a fresh fetch but not update UI immediately
-    // The fresh data would be cached for next time
-    if (typeof fetchAvailableModels === 'function') {
-        fetchAvailableModels().then(() => {
-            console.log('[Debug] Background refresh complete');
-        }).catch(error => {
-            console.warn('[Debug] Background refresh failed:', error);
-        });
-    }
-}
-
-function populateModelListFromData(presetId) {
     const modelList = document.getElementById('model-list');
     if (!modelList) {
         console.error('Model list container not found');

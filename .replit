@@ -7,7 +7,8 @@ packages = ["cargo", "freetype", "glibcLocales", "lcms2", "libev", "libiconv", "
 # Deployment section using main:app and gevent worker
 [deployment]
 deploymentTarget = "autoscale"
-run = ["sh", "-c", "python test_hybrid_workflow.py"]
+# Added -k gevent, -w 4, and --timeout 300
+run = ["gunicorn", "main:app", "-k", "gevent", "-w", "4", "--timeout", "300", "--bind", "0.0.0.0:5000"]
 
 [workflows]
 runButton = "Project"
@@ -15,22 +16,28 @@ runButton = "Project"
 [[workflows.workflow]]
 name = "Project"
 mode = "parallel"
-author = "agent"
+author = "Manual Edit" # Changed author
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "test_hybrid"
+args = "Start application"
 
 [[workflows.workflow]]
-name = "test_hybrid"
-author = "agent"
+name = "Start application"
+author = "Manual Edit" # Changed author
 
 [workflows.workflow.metadata]
 agentRequireRestartOnSave = false
 
 [[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python test_hybrid_workflow.py"
+# Workflow execution using main:app and gevent worker
+# Added "-k", "gevent", "-w", "4", "--timeout", "300"
+args = ["gunicorn", "main:app", "-k", "gevent", "-w", "4", "--timeout", "300", "--bind", "0.0.0.0:5000", "--reuse-port", "--reload"]
+waitForPort = 5000
 
 [[ports]]
 localPort = 3000
