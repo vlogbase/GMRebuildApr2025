@@ -32,6 +32,8 @@ html, body {
 html {
     -webkit-text-size-adjust: 100%;
     -ms-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body {
@@ -40,6 +42,45 @@ body {
     min-height: 100dvh;
     position: relative;
     overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Additional iOS Safari viewport fixes */
+@supports (-webkit-touch-callout: none) {
+    /* iOS-only styles */
+    body {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+    }
+    
+    .app-container {
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
+    }
+    
+    /* Enable scrolling only for the main content area */
+    .chat-container {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        height: 100%;
+    }
+    
+    /* Prevent double-tap zoom */
+    * {
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+        -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Allow text selection in specific areas */
+    .message-content,
+    input,
+    textarea {
+        -webkit-user-select: text;
+    }
 }
 
 /* Mobile Performance Optimizations */
