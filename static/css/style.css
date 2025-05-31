@@ -4872,6 +4872,17 @@ code {
         height: 0; /* Allow flex to control height */
         min-height: 0; /* Allow flex shrinking */
     }
+
+    /* Apply same bottom padding to all mobile views */
+    .balance-card,
+    .tab-content,
+    .account-container,
+    .conversation-list,
+    .sidebar-content,
+    .mobile-model-panel,
+    .modal-body {
+        padding-bottom: 400px; /* Same padding as chat for consistent scrolling */
+    }
     
     /* Fixed input area at the bottom for mobile */
     .chat-input-container {
