@@ -405,6 +405,13 @@ export async function fetchAvailableModels() {
             
             updatePresetButtonLabels();
             
+            // If a model selector is currently open, refresh it with the new data
+            const modelSelector = document.getElementById('model-selector');
+            if (modelSelector && modelSelector.style.display !== 'none' && currentlyEditingPresetId) {
+                console.log(`🔄 Refreshing open model selector for preset ${currentlyEditingPresetId}`);
+                populateModelListFromData(currentlyEditingPresetId);
+            }
+            
             // Initialize upload controls for the default preset
             if (currentPresetId) {
                 console.log(`🔧 Initializing upload controls for default preset: ${currentPresetId}`);
@@ -652,8 +659,37 @@ function populateModelList(presetId) {
         }
     }
     
-    // No valid cache, proceed with original logic
-    populateModelListFromData(presetId);
+    // No valid cache, proceed with original logic - but ensure data is loaded first
+    ensureModelsLoadedThenPopulate(presetId);
+}
+
+async function ensureModelsLoadedThenPopulate(presetId) {
+    // If no models are loaded yet, wait for them to load
+    if (!allModels || allModels.length === 0) {
+        console.log(`[Debug] No models loaded yet for preset ${presetId}, waiting for data...`);
+        
+        // Show loading state immediately
+        const modelList = document.getElementById('model-list');
+        if (modelList) {
+            modelList.innerHTML = '<li style="padding: 10px; text-align: center; color: #999;">Loading models...</li>';
+        }
+        
+        try {
+            // Wait for models to be fetched
+            await fetchAvailableModels();
+            
+            // Now populate with the loaded data
+            populateModelListFromData(presetId);
+        } catch (error) {
+            console.error('[Debug] Failed to load models:', error);
+            if (modelList) {
+                modelList.innerHTML = '<li style="padding: 10px; text-align: center; color: #ff6b6b;">Failed to load models. Please try again.</li>';
+            }
+        }
+    } else {
+        // Models already loaded, populate immediately
+        populateModelListFromData(presetId);
+    }
 }
 
 function fetchFreshModelsInBackground() {
