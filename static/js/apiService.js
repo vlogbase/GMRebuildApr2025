@@ -51,7 +51,7 @@ export async function sendMessageAPI(payload) {
 // Load specific conversation
 export async function loadConversationAPI(conversationId) {
     try {
-        const response = await fetch(`/conversation/${conversationId}/messages`);
+        const response = await fetch(`/api/conversations/${conversationId}/messages`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
@@ -81,7 +81,7 @@ export async function createNewConversationAPI() {
     }
     
     try {
-        const response = await fetch('/api/create-conversation', {
+        const response = await fetch('/api/conversations', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
