@@ -4366,9 +4366,12 @@ code {
     z-index: 1000;
     transform: translateY(100%);
     transition: transform 0.3s ease;
-    max-height: 80vh;
+    max-height: 60vh; /* Reduced from 80vh */
     display: flex;
     flex-direction: column;
+    /* Auto-size to content */
+    height: auto;
+    min-height: 200px;
 }
 
 .mobile-model-panel.visible,
@@ -4411,8 +4414,7 @@ code {
 .panel-content {
     padding: 8px 0;
     overflow-y: auto;
-    flex: 1;
-    min-height: 200px; /* Ensure minimum height for content visibility */
+    flex: 0 1 auto; /* Allow content to size naturally */
 }
 
 /* Refined panel preset buttons - matches the minimalist aesthetic */
