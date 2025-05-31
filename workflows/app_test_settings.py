@@ -18,7 +18,7 @@ def run():
     Run the Flask application
     """
     try:
-        app.run(host='0.0.0.0', port=5000, debug=True)
+        app.run(host='0.0.0.0', port=5000, debug=False)
     except Exception as e:
         logging.error(f"Error starting the app: {e}")
         sys.exit(1)

@@ -7,8 +7,8 @@ from app import app
 
 def run():
     """Run the Flask application"""
-    # Set debug mode
-    app.debug = True
+    # Production mode - debug disabled
+    app.debug = False
     
     # Use 0.0.0.0 to make the server accessible externally
     port = int(os.environ.get('PORT', 5000))

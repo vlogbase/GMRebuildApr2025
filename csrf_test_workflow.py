@@ -27,9 +27,9 @@ def run():
         # Import the Flask app from app.py
         from app import app
         
-        # Set debug mode and disable reloader
-        app.config['DEBUG'] = True
-        app.config['TESTING'] = True
+        # Production mode - disable debug and testing
+        app.config['DEBUG'] = False
+        app.config['TESTING'] = False
         
         # Log CSRF protection status
         if app.config.get('WTF_CSRF_ENABLED', True):

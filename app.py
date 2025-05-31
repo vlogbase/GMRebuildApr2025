@@ -5320,11 +5320,11 @@ def pwa_test():
     return render_template('pwa_test.html')
 
 if __name__ == '__main__':
-    logger.info("Starting Flask development server")
+    logger.info("Starting Flask production server")
     
     # Note: All background tasks are now handled by optimized startup sequence
     # Price fetching uses Redis distributed locks to ensure cluster-wide coordination
     logger.info("🚀 Optimized autoscaling startup completed - ready for requests!")
     
     # ensure gevent monkey-patching already happened at import time
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)

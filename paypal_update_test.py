@@ -17,5 +17,5 @@ def run():
     # Use port 5000 by default or the environment's port
     port = int(os.environ.get('PORT', 5000))
     
-    # Run the development server
-    app.run(host='0.0.0.0', port=port, debug=True)
+    # Run the production server
+    app.run(host='0.0.0.0', port=port, debug=False)

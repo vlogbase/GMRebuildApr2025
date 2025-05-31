@@ -36,8 +36,8 @@ def run():
     try:
         # Set environment variables
         os.environ['ADMIN_EMAIL'] = 'andy@sentigral.com'
-        os.environ['FLASK_ENV'] = 'development'
-        os.environ['FLASK_DEBUG'] = '1'
+        os.environ['FLASK_ENV'] = 'production'
+        os.environ['FLASK_DEBUG'] = '0'
         
         # Ensure we're in the correct directory
         sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -59,7 +59,7 @@ def run():
         # Run the app
         port = int(os.environ.get('PORT', 5000))
         logger.info(f"Starting Flask application with admin interface on port {port}...")
-        app.run(host='0.0.0.0', port=port, debug=True)
+        app.run(host='0.0.0.0', port=port, debug=False)
         
     except Exception as e:
         logger.error(f"Error running Flask application: {e}")
