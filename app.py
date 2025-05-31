@@ -3961,8 +3961,8 @@ def _fetch_openrouter_models(force_refresh=False):
                         'description': model.description,
                         'context_length': model.context_length,
                         'pricing': {
-                            'prompt': model.input_price_usd_million / 1000000,
-                            'completion': model.output_price_usd_million / 1000000
+                            'prompt': model.input_price_usd_million,
+                            'completion': model.output_price_usd_million
                         },
                         'is_free': model.is_free,
                         'is_multimodal': model.is_multimodal,
@@ -4004,8 +4004,8 @@ def update_pricing_cache_background():
                 try:
                     model_data = {
                         'model_name': db_model.name,
-                        'input_price': float(db_model.input_price_usd_million / 1000000) if db_model.input_price_usd_million else 0,
-                        'output_price': float(db_model.output_price_usd_million / 1000000) if db_model.output_price_usd_million else 0,
+                        'input_price': float(db_model.input_price_usd_million) if db_model.input_price_usd_million else 0,
+                        'output_price': float(db_model.output_price_usd_million) if db_model.output_price_usd_million else 0,
                         'cost_band': db_model.cost_band,
                         'is_free': db_model.is_free,
                         'is_multimodal': db_model.is_multimodal,

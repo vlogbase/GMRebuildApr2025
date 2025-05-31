@@ -20,10 +20,8 @@ function calculateCostBand(inputPrice, outputPrice) {
         return 'Free';
     }
 
-    // Convert to per-million-token pricing and find the max price
-    const inputPriceMillion = inputPrice * 1000000;
-    const outputPriceMillion = outputPrice * 1000000;
-    const maxPrice = Math.max(inputPriceMillion, outputPriceMillion);
+    // Prices are already stored as per-million-token in database
+    const maxPrice = Math.max(inputPrice, outputPrice);
 
     // Use the same thresholds as server-side logic
     if (maxPrice >= 100.0) {
