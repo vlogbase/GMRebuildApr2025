@@ -19,31 +19,46 @@
 
     // Enhanced mobile model loading using cache
     function enhanceMobileModelLoading() {
+        // Add mobile-specific cache listener
+        if (window.ModelCache) {
+            window.ModelCache.addListener((event, data) => {
+                if (event === 'cache-updated') {
+                    console.log('ModelCacheIntegration: Mobile selector can use fresh cached data');
+                    // Notify mobile selector that fresh data is available
+                    window.dispatchEvent(new CustomEvent('modelsUpdated', { 
+                        detail: { models: data, source: 'fresh' } 
+                    }));
+                }
+            });
+        }
+        
         const originalPopulateModelList = window.populateModelList;
         
         if (originalPopulateModelList) {
-            window.populateModelList = function(presetId) {
+            window.populateModelList = function(presetId, models, isBackgroundFetch) {
                 console.log('ModelCacheIntegration: Enhanced populateModelList called for preset', presetId);
                 
-                // Try to provide cached models immediately
-                window.ModelCache.provideModelsWithCache((models, source) => {
-                    if (models && models.length > 0) {
-                        console.log(`ModelCacheIntegration: Provided ${models.length} models from ${source}`);
-                        
-                        // Update window.availableModels so mobile selector can use them
-                        window.availableModels = models;
-                        
-                        // If this is fresh data, trigger any waiting mobile selectors
-                        if (source === 'fresh') {
-                            // Dispatch custom event for mobile selector updates
-                            window.dispatchEvent(new CustomEvent('modelsUpdated', { 
-                                detail: { models, source } 
-                            }));
-                        }
-                    }
-                });
+                // If this is a background fetch (mobile cache-first scenario)
+                if (isBackgroundFetch) {
+                    console.log('ModelCacheIntegration: Background fetch detected, updating cache quietly');
+                    
+                    // Call original function to get fresh data
+                    originalPopulateModelList.call(this, presetId);
+                    
+                    // The ModelCache auto-caching will handle storing the fresh data
+                    return;
+                }
                 
-                // Also call the original function to maintain compatibility
+                // For normal calls, check cache first if no models provided
+                if (!models && window.ModelCache) {
+                    const cachedModels = window.ModelCache.getCachedModels();
+                    if (cachedModels && cachedModels.length > 0) {
+                        console.log('ModelCacheIntegration: Using cached models for immediate response');
+                        window.availableModels = cachedModels;
+                    }
+                }
+                
+                // Call the original function
                 originalPopulateModelList.call(this, presetId);
             };
         }
