@@ -11,7 +11,7 @@ export let allModels = []; // All models from OpenRouter
 export let userPreferences = {}; // User preferences for preset buttons
 export let userFallbackEnabled = true; // User's fallback preference setting
 export let currentModel = null; // Model ID of the currently selected preset
-export let currentPresetId = '1'; // Will be adjusted based on user credits
+export let currentPresetId = '6'; // Default to free model, will be adjusted based on user credits
 export let currentlyEditingPresetId = null;
 
 // Expose globally for mobile scripts

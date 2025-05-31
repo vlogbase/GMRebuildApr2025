@@ -52,25 +52,45 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update the UI with current preferences
         updateSelectedModelNames();
         
+        // Always check credit balance first to determine the appropriate default
+        const isAuthenticated = (typeof window.userIsLoggedIn !== 'undefined' && window.userIsLoggedIn) || 
+                               !!document.getElementById('logout-btn');
+        let userCreditBalance = 0;
+        if (isAuthenticated && typeof window.userCreditBalance !== 'undefined') {
+            userCreditBalance = window.userCreditBalance;
+        }
+        
+        console.log(`Mobile: Credit validation - Authenticated: ${isAuthenticated}, Balance: ${userCreditBalance}`);
+        
         // Set the active button based on available information and credit balance
         if (window.activePresetId) {
-            console.log(`Mobile: Setting active button to ${window.activePresetId} from window.activePresetId`);
-            updateMobileActiveButton(window.activePresetId);
-        } else if (window.userPreferences && Object.keys(window.userPreferences).length > 0) {
-            // If no active preset ID but we have preferences, use the first one
-            const firstPresetId = Object.keys(window.userPreferences)[0];
-            console.log(`Mobile: Setting active button to ${firstPresetId} from first user preference`);
-            updateMobileActiveButton(firstPresetId);
-        } else {
-            // Check user credit balance to determine default preset
-            const isAuthenticated = (typeof window.userIsLoggedIn !== 'undefined' && window.userIsLoggedIn) || 
-                                   !!document.getElementById('logout-btn');
-            let userCreditBalance = 0;
-            if (isAuthenticated && typeof window.userCreditBalance !== 'undefined') {
-                userCreditBalance = window.userCreditBalance;
-            }
+            // If there's an active preset, verify it's allowed for this user
+            const activePresetId = window.activePresetId;
+            const isPremiumPreset = activePresetId !== '6';
             
-            // For users without credits, default to preset 6 (free model)
+            if (isPremiumPreset && (!isAuthenticated || userCreditBalance <= 0)) {
+                console.log(`Mobile: Active preset ${activePresetId} requires credits, switching to preset 6`);
+                updateMobileActiveButton('6');
+                // Update the global active preset
+                window.activePresetId = '6';
+            } else {
+                console.log(`Mobile: Using valid active preset ${activePresetId}`);
+                updateMobileActiveButton(activePresetId);
+            }
+        } else if (window.userPreferences && Object.keys(window.userPreferences).length > 0) {
+            // If no active preset ID but we have preferences, use the first valid one
+            const firstPresetId = Object.keys(window.userPreferences)[0];
+            const isPremiumPreset = firstPresetId !== '6';
+            
+            if (isPremiumPreset && (!isAuthenticated || userCreditBalance <= 0)) {
+                console.log(`Mobile: First preference preset ${firstPresetId} requires credits, switching to preset 6`);
+                updateMobileActiveButton('6');
+            } else {
+                console.log(`Mobile: Using first preference preset ${firstPresetId}`);
+                updateMobileActiveButton(firstPresetId);
+            }
+        } else {
+            // No preferences or active preset - determine default based on credits
             if (!isAuthenticated || userCreditBalance <= 0) {
                 console.log('Mobile: User has no credits, defaulting to preset 6 (free model)');
                 updateMobileActiveButton('6');

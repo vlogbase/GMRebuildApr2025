@@ -47,30 +47,10 @@ body {
 
 /* Additional iOS Safari viewport fixes */
 @supports (-webkit-touch-callout: none) {
-    /* iOS-only styles */
-    body {
-        position: fixed;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-    }
+    /* iOS-only styles - less aggressive approach */
     
-    .app-container {
-        height: 100vh;
-        height: 100dvh;
-        overflow: hidden;
-    }
-    
-    /* Enable scrolling only for the main content area */
-    .chat-container {
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        height: 100%;
-    }
-    
-    /* Prevent double-tap zoom */
+    /* Prevent double-tap zoom while preserving layout */
     * {
-        -webkit-user-select: none;
         -webkit-touch-callout: none;
         -webkit-tap-highlight-color: transparent;
     }
@@ -80,6 +60,13 @@ body {
     input,
     textarea {
         -webkit-user-select: text;
+        -webkit-touch-callout: default;
+    }
+    
+    /* Ensure proper scrolling on iOS */
+    .chat-messages {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
     }
 }
 
@@ -5364,7 +5351,7 @@ code {
         }
         
         .chat-messages {
-            padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(200px + env(safe-area-inset-bottom, 0px));
         }
         
         /* Fix input container positioning on iOS when keyboard appears */
