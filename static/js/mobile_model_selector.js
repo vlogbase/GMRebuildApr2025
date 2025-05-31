@@ -50,6 +50,34 @@ document.addEventListener('DOMContentLoaded', function() {
         return cacheAge > (maxAge - nearExpiryThreshold);
     }
     
+    // Filter models based on preset criteria
+    function filterModelsByPreset(models, presetId) {
+        if (!models || !Array.isArray(models)) return models;
+        
+        const preset = parseInt(presetId);
+        let filteredModels = [...models];
+        
+        switch (preset) {
+            case 3: // Reasoning models
+                filteredModels = models.filter(model => model.is_reasoning);
+                break;
+            case 4: // Multimodal models
+                filteredModels = models.filter(model => model.is_multimodal || model.supports_vision);
+                break;
+            case 5: // Search models (Perplexity)
+                filteredModels = models.filter(model => model.id && model.id.includes('perplexity'));
+                break;
+            case 6: // Free models
+                filteredModels = models.filter(model => model.cost_band === 'Free' || (model.input_price === 0 && model.output_price === 0));
+                break;
+            default: // All models for presets 1 and 2
+                filteredModels = models;
+        }
+        
+        console.log(`Mobile: Filtered ${models.length} models to ${filteredModels.length} for preset ${presetId}`);
+        return filteredModels;
+    }
+
     // Helper function to populate model list from data
     function populateModelListFromData(models, presetId) {
         if (!models || !Array.isArray(models)) {
@@ -59,8 +87,11 @@ document.addEventListener('DOMContentLoaded', function() {
         
         console.log(`Mobile: Populating model list with ${models.length} models for preset ${presetId}`);
         
+        // Filter models based on preset
+        const filteredModels = filterModelsByPreset(models, presetId);
+        
         // Make models available globally
-        window.availableModels = models;
+        window.availableModels = filteredModels;
         
         // Hide loading indicator
         const loadingElement = document.getElementById('mobile-models-loading');
@@ -73,19 +104,8 @@ document.addEventListener('DOMContentLoaded', function() {
             mobileModelList.innerHTML = '';
         }
         
-        // Use existing logic to populate the list
-        if (window.populateModelList && typeof window.populateModelList === 'function') {
-            // Call the original function which will use window.availableModels
-            try {
-                window.populateModelList(presetId, models);
-            } catch (error) {
-                console.warn('Mobile: Error calling populateModelList:', error);
-                // Fallback to manual population if needed
-                populateModelListManually(models, presetId);
-            }
-        } else {
-            populateModelListManually(models, presetId);
-        }
+        // Always use manual population for mobile to ensure consistency
+        populateModelListManually(filteredModels, presetId);
     }
     
     // Manual model list population as fallback
@@ -146,7 +166,74 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Main function - cache-first approach for mobile model list population
+    // Direct database fallback function
+    function fetchModelsFromDatabase(presetId) {
+        console.log('Mobile: Fetching models directly from database');
+        
+        const loadingElement = document.getElementById('mobile-models-loading');
+        if (loadingElement) {
+            loadingElement.classList.remove('hidden');
+        }
+        
+        // Direct API call to get models
+        fetch('/api/get_model_prices')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('Mobile: Received models from database API:', data);
+                
+                if (data && data.prices) {
+                    // Convert prices object to array format
+                    const models = Object.keys(data.prices).map(modelId => {
+                        const modelData = data.prices[modelId];
+                        return {
+                            id: modelId,
+                            name: modelData.model_name || modelId,
+                            pricing: `$${(modelData.input_price || 0).toFixed(6)}/M tokens`,
+                            cost_band: modelData.cost_band || '',
+                            is_multimodal: modelData.is_multimodal || false,
+                            supports_pdf: modelData.supports_pdf || false,
+                            is_reasoning: modelData.is_reasoning || false
+                        };
+                    });
+                    
+                    console.log(`Mobile: Converted ${models.length} models for mobile display`);
+                    populateModelListFromData(models, presetId);
+                } else {
+                    console.error('Mobile: No model data received from API');
+                    showErrorMessage('No models available');
+                }
+            })
+            .catch(error => {
+                console.error('Mobile: Error fetching models from database:', error);
+                showErrorMessage('Failed to load models');
+            })
+            .finally(() => {
+                if (loadingElement) {
+                    loadingElement.classList.add('hidden');
+                }
+            });
+    }
+    
+    // Show error message in model list
+    function showErrorMessage(message) {
+        if (mobileModelList) {
+            mobileModelList.innerHTML = `
+                <li class="mobile-model-error">
+                    <div class="error-message">
+                        <i class="fa-solid fa-exclamation-triangle"></i>
+                        <span>${message}</span>
+                    </div>
+                </li>
+            `;
+        }
+    }
+
+    // Main function - cache-first approach with robust database fallback
     function populateMobileModelList(presetId) {
         console.log(`Mobile: Loading models for preset ${presetId} with cache-first approach`);
         
@@ -165,9 +252,30 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
         
-        // Fallback to original behavior if no cache available
-        console.log('Mobile: No cache available, using original loading method');
-        showLoadingAndFetchModels(presetId);
+        // Try original desktop function if available
+        if (window.populateModelList && typeof window.populateModelList === 'function') {
+            console.log('Mobile: Trying original desktop loading method');
+            try {
+                showLoadingAndFetchModels(presetId);
+                
+                // Set a timeout to fallback to database if desktop method doesn't work
+                setTimeout(() => {
+                    const loadingElement = document.getElementById('mobile-models-loading');
+                    if (loadingElement && !loadingElement.classList.contains('hidden')) {
+                        console.log('Mobile: Desktop method taking too long, falling back to database');
+                        fetchModelsFromDatabase(presetId);
+                    }
+                }, 3000); // 3 second timeout
+                
+                return;
+            } catch (error) {
+                console.warn('Mobile: Desktop loading method failed:', error);
+            }
+        }
+        
+        // Final fallback - always fetch directly from database
+        console.log('Mobile: Using database fallback method');
+        fetchModelsFromDatabase(presetId);
     }
     
     // Rest of the mobile selector functions would go here...
@@ -262,14 +370,82 @@ document.addEventListener('DOMContentLoaded', function() {
     function selectModelForPreset(presetId, modelId) {
         console.log(`Mobile: Selected model ${modelId} for preset ${presetId}`);
         
-        // Use existing model selection logic
+        // Update the preset button with selected model
+        updatePresetButtonWithModel(presetId, modelId);
+        
+        // Use existing model selection logic if available
         if (window.selectPresetButton && typeof window.selectPresetButton === 'function') {
-            window.selectPresetButton(presetId, modelId);
+            try {
+                window.selectPresetButton(presetId, modelId);
+            } catch (error) {
+                console.warn('Mobile: Error calling selectPresetButton:', error);
+                // Fallback to direct model selection
+                directModelSelection(presetId, modelId);
+            }
+        } else {
+            // Direct model selection fallback
+            directModelSelection(presetId, modelId);
         }
         
         // Hide panels
         hideMobileModelSelection();
         hideMobileModelPanel();
+        
+        // Show notification
+        showModelSelectionNotification(presetId, modelId);
+    }
+    
+    // Direct model selection when desktop functions aren't available
+    function directModelSelection(presetId, modelId) {
+        console.log(`Mobile: Direct model selection for preset ${presetId}, model ${modelId}`);
+        
+        // Store the selection in localStorage for persistence
+        const selections = JSON.parse(localStorage.getItem('model_selections') || '{}');
+        selections[presetId] = modelId;
+        localStorage.setItem('model_selections', JSON.stringify(selections));
+        
+        // Update global variables if they exist
+        if (window.selectedModels) {
+            window.selectedModels[presetId] = modelId;
+        }
+        
+        // Trigger any existing update functions
+        if (window.updateModelDisplay && typeof window.updateModelDisplay === 'function') {
+            window.updateModelDisplay(presetId, modelId);
+        }
+    }
+    
+    // Update preset button to show selected model
+    function updatePresetButtonWithModel(presetId, modelId) {
+        const selectedModelSpan = document.getElementById(`mobile-selected-model-${presetId}`);
+        if (selectedModelSpan) {
+            // Find the model name from available models
+            const model = window.availableModels?.find(m => m.id === modelId);
+            const modelName = model ? (model.name || modelId) : modelId;
+            
+            // Truncate long model names for mobile display
+            const displayName = modelName.length > 20 ? modelName.substring(0, 17) + '...' : modelName;
+            selectedModelSpan.textContent = displayName;
+        }
+    }
+    
+    // Show selection notification
+    function showModelSelectionNotification(presetId, modelId) {
+        const notification = document.getElementById('mobile-model-notification');
+        const notificationText = document.getElementById('notification-text');
+        
+        if (notification && notificationText) {
+            const model = window.availableModels?.find(m => m.id === modelId);
+            const modelName = model ? (model.name || modelId) : modelId;
+            
+            notificationText.textContent = `Selected ${modelName} for preset ${presetId}`;
+            notification.classList.add('show');
+            
+            // Hide notification after 3 seconds
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
     }
     
     console.log('Mobile: Cache-first mobile model selector initialized');
