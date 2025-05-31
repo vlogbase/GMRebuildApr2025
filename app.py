@@ -2480,6 +2480,9 @@ def chat(): # Synchronous function
         conversation_id = data.get('conversation_id', None)
         
         # --- NEW CREDIT VALIDATION LOGIC ---
+        # Import User model for credit validation
+        from models import User
+        
         # Credit validation functions (moved here to avoid circular imports)
         def is_free_model_local(model_id):
             """Check if a model is free"""
