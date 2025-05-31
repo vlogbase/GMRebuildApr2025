@@ -77,12 +77,12 @@ function loadPricingData() {
     // Show loading state only if no cache available
     pricingTableBody.innerHTML = `
         <tr>
-            <td colspan="6" class="text-center py-5">
+            <td colspan="7" class="text-center py-5">
                 <div class="d-flex flex-column align-items-center">
                     <div class="spinner-border text-info mb-3" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
-                    <p class="caption">Loading pricing data...</p>
+                    <p class="text-muted">Loading pricing data...</p>
                 </div>
             </td>
         </tr>
@@ -252,33 +252,46 @@ function fetchPricingData() {
             // Render the table
             renderPricingTable();
 
-            // Update last updated timestamp
-            if (data.last_updated) {
-                const lastUpdatedDate = new Date(data.last_updated);
-                lastUpdatedElem.textContent = `Last updated: ${lastUpdatedDate.toLocaleTimeString()} ${lastUpdatedDate.toLocaleDateString()}`;
-            } else {
-                const currentTime = new Date();
-                lastUpdatedElem.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
+            // Update last updated timestamp - safely check if element exists
+            const lastUpdatedElem = document.getElementById('lastUpdated');
+            if (lastUpdatedElem) {
+                if (data.last_updated) {
+                    const lastUpdatedDate = new Date(data.last_updated);
+                    lastUpdatedElem.textContent = `Last updated: ${lastUpdatedDate.toLocaleTimeString()} ${lastUpdatedDate.toLocaleDateString()}`;
+                } else {
+                    const currentTime = new Date();
+                    lastUpdatedElem.textContent = `Last updated: ${currentTime.toLocaleTimeString()} ${currentTime.toLocaleDateString()}`;
+                }
             }
         })
         .catch(error => {
             console.error('Error fetching pricing data:', error);
             
-            // Show error state
-            pricingTableBody.innerHTML = `
-                <tr>
-                    <td colspan="6" class="text-center py-5">
-                        <div class="alert alert-danger" role="alert">
-                            <h6 class="alert-heading">Error Loading Pricing Data</h6>
-                            <p class="mb-0">${error.message}</p>
-                            <button class="btn btn-outline-danger btn-sm mt-2" onclick="loadPricingData()">
-                                <i class="fas fa-redo"></i> Retry
-                            </button>
-                        </div>
-                    </td>
-                </tr>
-            `;
-            lastUpdatedElem.textContent = 'Error loading data';
+            // Get fresh reference to table body in case DOM changed
+            const pricingTableBody = document.getElementById('pricingTableBody');
+            const lastUpdatedElem = document.getElementById('lastUpdated');
+            
+            // Show error state if table body exists
+            if (pricingTableBody) {
+                pricingTableBody.innerHTML = `
+                    <tr>
+                        <td colspan="7" class="text-center py-5">
+                            <div class="alert alert-danger" role="alert">
+                                <h6 class="alert-heading">Error Loading Pricing Data</h6>
+                                <p class="mb-0">${error.message}</p>
+                                <button class="btn btn-outline-danger btn-sm mt-2" onclick="loadPricingData()">
+                                    <i class="fas fa-redo"></i> Retry
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            // Update timestamp element if it exists
+            if (lastUpdatedElem) {
+                lastUpdatedElem.textContent = 'Error loading data';
+            }
         });
 }
 
