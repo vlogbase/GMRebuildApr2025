@@ -70,15 +70,25 @@ window.addEventListener('load', function() {
     // Initial state check
     updateMobileChatState();
     
-    // Close sidebar when a conversation is selected (mobile only)
-    // Using event delegation for dynamically created conversation items
+    // Mobile-specific: Close sidebar after conversation selection
+    // This handler runs after the main conversation click handler
     document.addEventListener('click', function(event) {
-        // Only process on mobile
-        if (window.innerWidth <= 576) {
-            // Check if clicked element or its parent is a conversation item
+        // Only process on mobile when sidebar is open
+        if (window.innerWidth <= 576 && sidebar && sidebar.classList.contains('active')) {
             const conversationItem = event.target.closest('.conversation-item');
-            if (conversationItem && sidebar.classList.contains('active')) {
-                toggleSidebar();
+            
+            // Skip if clicking on edit button or other nested elements
+            if (event.target.closest('.edit-conversation-btn')) {
+                return;
+            }
+            
+            // If a conversation item was clicked, close the sidebar
+            // The conversation loading will be handled by the main handler in conversationManagement.js
+            if (conversationItem) {
+                // Use requestAnimationFrame to ensure this runs after other click handlers
+                requestAnimationFrame(() => {
+                    toggleSidebar();
+                });
             }
         }
     });
