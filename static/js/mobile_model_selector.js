@@ -41,6 +41,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Init variables
     let currentPresetId = null;
+
+    /** ----------------------------------------------------------------
+     * Session-cache key  (v1 so you can bust the cache later if needed)
+     * ---------------------------------------------------------------*/
+    const MODEL_CACHE_KEY = 'gm_mobile_model_cache_v1';
     
     // Initialize on page load - fetch user preferences and update model names
     console.log('Mobile: Initializing model selections on page load');
@@ -164,6 +169,13 @@ document.addEventListener('DOMContentLoaded', function() {
             if (window.availableModels.length > 0) {
                 const sampleModels = window.availableModels.slice(0, 3);
                 console.log('Mobile: First few models from event:', sampleModels.map(m => m.id));
+
+                /*  🗄️  cache for this session so re-opens are instant  */
+                try {
+                    sessionStorage.setItem(MODEL_CACHE_KEY, JSON.stringify(window.availableModels));
+                } catch (e) {
+                    console.warn('Mobile: Unable to cache model list in sessionStorage', e);
+                }
             }
         } else {
             console.log('Mobile: No models in event data, using global state');
@@ -656,7 +668,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function populateMobileModelList(presetId) {
         // Clear the current list
         if (mobileModelList) {
-            mobileModelList.innerHTML = '';
+            mobileModelList.innerHTML =
+              '<li class="mobile-model-item loading-placeholder"><span>Loading…</span></li>';
         }
         
         // Get reference to the loading element
@@ -674,6 +687,20 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Check if models are available immediately
             let allModels = window.availableModels || [];
+            
+            /* 🗄️  If nothing in memory, try session cache */
+            if (allModels.length === 0) {
+                const cached = sessionStorage.getItem(MODEL_CACHE_KEY);
+                if (cached) {
+                    try {
+                        allModels = JSON.parse(cached);
+                        window.availableModels = allModels;   // keep the global in sync
+                        console.log(`Mobile: Loaded ${allModels.length} models from sessionStorage cache`);
+                    } catch (e) {
+                        console.warn('Mobile: Failed to parse cached models', e);
+                    }
+                }
+            }
             
             // Log available models for debugging
             console.log(`Mobile: Found ${allModels.length} models from window.availableModels`);
@@ -861,6 +888,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Helper function to handle the final model display after filtering and sorting
     function finishModelDisplay(filteredModels, presetId) {
+        if (mobileModelList) mobileModelList.innerHTML = '';   // remove placeholder
         console.log(`Mobile: Displaying ${filteredModels.length} models for preset ${presetId}`);
         
         // Get current selected model for this preset

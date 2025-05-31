@@ -4766,6 +4766,13 @@ code {
     color: #e53935;
 }
 
+/* Loading placeholder for mobile model list */
+.loading-placeholder {
+    opacity: .6;
+    font-style: italic;
+    pointer-events: none;  /* ensure it's not clickable */
+}
+
 .panel-footer {
     padding: 16px;
     border-top: 1px solid var(--border-color);
