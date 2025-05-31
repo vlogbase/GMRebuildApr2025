@@ -134,6 +134,13 @@ def add_performance_headers(response):
             # Cache images for 1 day
             response.headers['Cache-Control'] = 'public, max-age=86400'
     
+    # Add CORS headers for API endpoints to fix cross-origin issues
+    if request.path.startswith('/api/'):
+        response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+        response.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-CSRFToken, Authorization'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+    
     # Add security and performance headers
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
@@ -2227,10 +2234,23 @@ def rename_conversation(conversation_id):
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/conversations', methods=['POST'])
-@login_required
+@app.route('/api/conversations', methods=['OPTIONS', 'POST'])
 def create_conversation():
     """Create a new conversation for the current user"""
+    # Handle CORS preflight requests
+    if request.method == 'OPTIONS':
+        from flask import make_response
+        response = make_response()
+        response.headers['Access-Control-Allow-Origin'] = request.headers.get('Origin', '*')
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = 'Content-Type, X-CSRFToken, Authorization'
+        response.headers['Access-Control-Allow-Credentials'] = 'true'
+        return response
+    
+    # Require login for POST requests
+    if not current_user.is_authenticated:
+        return jsonify({"success": False, "error": "Authentication required"}), 401
+    
     try:
         from models import Conversation, Message
         from conversation_utils import cleanup_empty_conversations

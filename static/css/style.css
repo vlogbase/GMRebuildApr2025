@@ -4914,6 +4914,11 @@ code {
         font-size: 0.9rem; /* Smaller title on mobile screens */
     }
     
+    /* Hide logo when chat is active on mobile */
+    body.mobile-chat-active .logo {
+        display: none !important;
+    }
+    
     .header-account-link {
         padding: 4px 6px; /* Smaller padding on mobile screens */
     }

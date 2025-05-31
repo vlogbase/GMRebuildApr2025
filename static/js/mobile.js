@@ -41,6 +41,35 @@ window.addEventListener('load', function() {
         }
     });
     
+    // Mobile chat state management
+    function updateMobileChatState() {
+        if (window.innerWidth <= 576) {
+            const chatMessages = document.querySelector('.chat-messages');
+            const hasMessages = chatMessages && chatMessages.children.length > 0;
+            
+            if (hasMessages) {
+                document.body.classList.add('mobile-chat-active');
+            } else {
+                document.body.classList.remove('mobile-chat-active');
+            }
+        } else {
+            document.body.classList.remove('mobile-chat-active');
+        }
+    }
+    
+    // Update mobile chat state when messages are added
+    const observer = new MutationObserver(updateMobileChatState);
+    const chatMessages = document.querySelector('.chat-messages');
+    if (chatMessages) {
+        observer.observe(chatMessages, { childList: true });
+    }
+    
+    // Update state on resize
+    window.addEventListener('resize', updateMobileChatState);
+    
+    // Initial state check
+    updateMobileChatState();
+    
     // Close sidebar when a conversation is selected (mobile only)
     // Using event delegation for dynamically created conversation items
     document.addEventListener('click', function(event) {
