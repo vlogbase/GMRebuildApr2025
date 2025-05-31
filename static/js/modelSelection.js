@@ -333,85 +333,136 @@ export async function fetchUserPreferences() {
     }
 }
 
-// Function to fetch available models
-export async function fetchAvailableModels() {
+// Cache management for models
+const MODEL_CACHE_KEY = 'gloriamundo_available_models';
+const MODEL_CACHE_TIMESTAMP_KEY = 'gloriamundo_models_timestamp';
+const MODEL_CACHE_MAX_AGE = 15 * 60 * 1000; // 15 minutes
+
+// Function to get cached models from localStorage
+function getCachedModels() {
     try {
-        console.log('🤖 Fetching available models...');
-        const data = await fetchAvailableModelsAPI();
+        const cachedData = localStorage.getItem(MODEL_CACHE_KEY);
+        const cachedTimestamp = localStorage.getItem(MODEL_CACHE_TIMESTAMP_KEY);
         
-        console.log('🔍 Complete API response structure:', data);
-        
-        // Check if the API call was successful and returned prices (not models)
-        if (data.success && data.prices) {
-            console.log('✅ API returned prices data, processing models...');
-            
-            // Create model data array directly from pricing data (matching original logic)
-            const modelDataArray = [];
-            for (const modelId in data.prices) {
-                const modelData = data.prices[modelId];
-                
-                // Format the model name if it doesn't exist in the pricing data
-                const formatModelName = (id) => {
-                    return id.split('/').pop().replace(/-/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
-                };
-                
-                // Determine capabilities with fallbacks for known multimodal models
-                const isKnownVisionModel = modelId.includes('claude') || modelId.includes('gpt-4') || 
-                                         modelId.includes('gemini') || modelId.includes('vision');
-                const hasVisionSupport = modelData.supports_vision || modelData.is_multimodal || isKnownVisionModel;
-                const hasPdfSupport = modelData.supports_pdf || isKnownVisionModel;
-                
-                console.log(`📝 Processing model ${modelId}:`, {
-                    originalData: { 
-                        is_multimodal: modelData.is_multimodal, 
-                        supports_vision: modelData.supports_vision, 
-                        supports_pdf: modelData.supports_pdf 
-                    },
-                    computed: { hasVisionSupport, hasPdfSupport, isKnownVisionModel }
-                });
-                
-                modelDataArray.push({
-                    id: modelId,
-                    name: modelData.name || formatModelName(modelId),
-                    cost_band: modelData.cost_band,
-                    pricing: modelData.pricing,
-                    is_multimodal: modelData.is_multimodal || isKnownVisionModel,
-                    supports_vision: hasVisionSupport,
-                    supports_pdf: hasPdfSupport,
-                    context_length: modelData.context_length,
-                    description: modelData.description,
-                    is_reasoning: modelData.is_reasoning || false,
-                    is_free: modelData.is_free || false,
-                    elo_score: modelData.elo_score || null
-                });
+        if (cachedData && cachedTimestamp) {
+            const cacheAge = Date.now() - parseInt(cachedTimestamp);
+            if (cacheAge < MODEL_CACHE_MAX_AGE) {
+                return JSON.parse(cachedData);
             }
-            
-            allModels = modelDataArray;
-            window.availableModels = allModels;
-            console.log(`✅ Loaded ${allModels.length} models from prices data`);
-            updatePresetButtonLabels();
-            
-            // Initialize upload controls for the default preset
-            if (currentPresetId) {
-                console.log(`🔧 Initializing upload controls for default preset: ${currentPresetId}`);
-                selectPresetButton(currentPresetId);
-            }
-        } else {
-            const errorMsg = data.error || 'API response missing success=true or prices data';
-            console.error('❌ Failed to fetch models - API response structure issue:', {
-                hasSuccess: !!data.success,
-                hasPrices: !!data.prices,
-                hasModels: !!data.models,
-                fullResponse: data,
-                errorFromAPI: errorMsg
-            });
         }
     } catch (error) {
-        console.error('❌ Error fetching models in modelSelection.js:', {
-            errorMessage: error.message || error.toString(),
-            errorName: error.name,
-            fullError: error
+        console.warn('Error reading cached models:', error);
+    }
+    return null;
+}
+
+// Function to save models to localStorage
+function cacheModels(models) {
+    try {
+        localStorage.setItem(MODEL_CACHE_KEY, JSON.stringify(models));
+        localStorage.setItem(MODEL_CACHE_TIMESTAMP_KEY, Date.now().toString());
+    } catch (error) {
+        console.warn('Error caching models:', error);
+    }
+}
+
+// Function to process API model data
+function processModelData(data) {
+    const modelDataArray = [];
+    for (const modelId in data.prices) {
+        const modelData = data.prices[modelId];
+        
+        // Format the model name if it doesn't exist in the pricing data
+        const formatModelName = (id) => {
+            return id.split('/').pop().replace(/-/g, ' ').replace(/(^\w|\s\w)/g, m => m.toUpperCase());
+        };
+        
+        // Determine capabilities with fallbacks for known multimodal models
+        const isKnownVisionModel = modelId.includes('claude') || modelId.includes('gpt-4') || 
+                                 modelId.includes('gemini') || modelId.includes('vision');
+        const hasVisionSupport = modelData.supports_vision || modelData.is_multimodal || isKnownVisionModel;
+        const hasPdfSupport = modelData.supports_pdf || isKnownVisionModel;
+        
+        modelDataArray.push({
+            id: modelId,
+            name: modelData.name || formatModelName(modelId),
+            cost_band: modelData.cost_band,
+            pricing: modelData.pricing,
+            is_multimodal: modelData.is_multimodal || isKnownVisionModel,
+            supports_vision: hasVisionSupport,
+            supports_pdf: hasPdfSupport,
+            context_length: modelData.context_length,
+            description: modelData.description,
+            is_reasoning: modelData.is_reasoning || false,
+            is_free: modelData.is_free || false,
+            elo_score: modelData.elo_score || null
         });
+    }
+    return modelDataArray;
+}
+
+// Function to update UI with model data
+function updateModelsUI(models, source = 'api') {
+    allModels = models;
+    window.availableModels = allModels;
+    console.log(`Loaded ${allModels.length} models from ${source}`);
+    updatePresetButtonLabels();
+    
+    // Initialize upload controls for the default preset
+    if (currentPresetId) {
+        console.log(`Initializing upload controls for default preset: ${currentPresetId}`);
+        selectPresetButton(currentPresetId);
+    }
+}
+
+// Function to fetch available models with hybrid caching
+export async function fetchAvailableModels() {
+    console.log('Loading available models...');
+    
+    // STEP 1: Load cached models immediately if available
+    const cachedModels = getCachedModels();
+    if (cachedModels && cachedModels.length > 0) {
+        console.log('Using cached models for immediate loading');
+        updateModelsUI(cachedModels, 'cache');
+    }
+    
+    // STEP 2: Fetch fresh data in background and update if different
+    try {
+        const data = await fetchAvailableModelsAPI();
+        
+        if (data.success && data.prices) {
+            const freshModels = processModelData(data);
+            
+            // Always update with fresh data
+            updateModelsUI(freshModels, 'api');
+            
+            // Cache the fresh data for next time
+            cacheModels(freshModels);
+            
+            console.log('Updated with fresh model data from API');
+        } else {
+            const errorMsg = data.error || 'API response missing success=true or prices data';
+            console.error('Failed to fetch models - API response issue:', {
+                hasSuccess: !!data.success,
+                hasPrices: !!data.prices,
+                errorFromAPI: errorMsg
+            });
+            
+            // If we have cached models and API fails, keep using cache
+            if (!cachedModels || cachedModels.length === 0) {
+                console.error('No cached models available and API failed');
+            }
+        }
+    } catch (error) {
+        console.error('Error fetching fresh model data:', {
+            errorMessage: error.message || error.toString(),
+            errorName: error.name
+        });
+        
+        // If we have cached models and API fails, keep using cache
+        if (!cachedModels || cachedModels.length === 0) {
+            console.error('No cached models available and API failed');
+        }
     }
 }
 

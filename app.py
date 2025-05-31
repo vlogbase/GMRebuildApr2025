@@ -3969,27 +3969,108 @@ def _fetch_openrouter_models(force_refresh=False):
         return {"data": []}
         return None
 
+def update_pricing_cache_background():
+    """
+    Background function to update pricing cache without blocking the main request
+    """
+    try:
+        from models import OpenRouterModel
+        
+        # Get fresh data from database
+        db_models = OpenRouterModel.query.all()
+        
+        if db_models:
+            prices = {}
+            
+            for db_model in db_models:
+                try:
+                    model_data = {
+                        'model_name': db_model.name,
+                        'input_price': float(db_model.input_price_usd_million / 1000000) if db_model.input_price_usd_million else 0,
+                        'output_price': float(db_model.output_price_usd_million / 1000000) if db_model.output_price_usd_million else 0,
+                        'cost_band': db_model.cost_band,
+                        'is_free': db_model.is_free,
+                        'is_multimodal': db_model.is_multimodal,
+                        'supports_vision': db_model.is_multimodal,
+                        'supports_pdf': db_model.supports_pdf,
+                        'is_reasoning': db_model.supports_reasoning,
+                        'context_length': db_model.context_length,
+                        'description': db_model.description,
+                        'elo_score': db_model.elo_score
+                    }
+                    prices[db_model.model_id] = model_data
+                except Exception as model_error:
+                    logger.debug(f"Error processing model {db_model.model_id} in background: {model_error}")
+                    continue
+            
+            # Create response data
+            response_data = {
+                'success': True,
+                'prices': prices,
+                'last_updated': datetime.datetime.utcnow().isoformat()
+            }
+            
+            # Update cache
+            try:
+                from api_cache import get_redis_client
+                redis_client = get_redis_client('cache')
+                
+                if redis_client:
+                    import json
+                    response_json = json.dumps(response_data)
+                    
+                    # Store as fresh cache (5 minutes)
+                    redis_client.setex('cache:pricing_data_fresh', 300, response_json)
+                    
+                    # Store as stale cache (24 hours) for fallback
+                    redis_client.setex('cache:pricing_data_stale', 86400, response_json)
+                    
+                    logger.info("Background cache update completed successfully")
+            except Exception as cache_error:
+                logger.debug(f"Background cache update failed: {cache_error}")
+                
+    except Exception as e:
+        logger.debug(f"Background pricing update failed: {e}")
+
 @app.route('/api/get_model_prices', methods=['GET'])
 def get_model_prices():
     """ 
-    Get the current model prices from the database with Redis caching for instant loading
+    Get the current model prices from the database with hybrid Redis + database caching for instant loading
     """
     try:
-        # Try to get cached pricing data first for instant loading
+        # STEP 1: Try to get cached pricing data first for instant loading
         try:
             from api_cache import get_redis_client
             redis_client = get_redis_client('cache')
             
             if redis_client:
-                cached_data = redis_client.get('cache:pricing_table_data')
-                if cached_data:
+                # Check for both fresh and stale cache entries
+                fresh_cached_data = redis_client.get('cache:pricing_data_fresh')
+                stale_cached_data = redis_client.get('cache:pricing_data_stale')
+                
+                if fresh_cached_data:
                     import json
-                    logger.info("Serving pricing data from Redis cache for instant loading")
-                    return jsonify(json.loads(cached_data))
+                    logger.info("Serving fresh pricing data from Redis cache")
+                    return jsonify(json.loads(fresh_cached_data))
+                elif stale_cached_data:
+                    import json
+                    cached_response = json.loads(stale_cached_data)
+                    logger.info("Serving stale pricing data from Redis cache while updating in background")
+                    
+                    # Trigger background update (non-blocking)
+                    try:
+                        import threading
+                        update_thread = threading.Thread(target=update_pricing_cache_background)
+                        update_thread.daemon = True
+                        update_thread.start()
+                    except Exception as bg_error:
+                        logger.debug(f"Could not start background update: {bg_error}")
+                    
+                    return jsonify(cached_response)
         except Exception as e:
             logger.debug(f"Redis cache unavailable, proceeding with database: {e}")
         
-        # Get fresh data from database
+        # STEP 2: Get fresh data from database
         from models import OpenRouterModel
         
         # Query all models from the database
@@ -4114,19 +4195,22 @@ def get_model_prices():
                 'last_updated': last_updated
             }
             
-            # Cache the response for instant future loading
+            # Cache the response using dual-layer caching for instant future loading
             try:
                 from api_cache import get_redis_client
                 redis_client = get_redis_client('cache')
                 
                 if redis_client:
                     import json
-                    redis_client.setex(
-                        'cache:pricing_table_data',
-                        300,  # Cache for 5 minutes
-                        json.dumps(response_data)
-                    )
-                    logger.info("Cached pricing data in Redis for instant future loading")
+                    response_json = json.dumps(response_data)
+                    
+                    # Store as fresh cache (5 minutes)
+                    redis_client.setex('cache:pricing_data_fresh', 300, response_json)
+                    
+                    # Store as stale cache (24 hours) for fallback
+                    redis_client.setex('cache:pricing_data_stale', 86400, response_json)
+                    
+                    logger.info("Cached pricing data in Redis with dual-layer strategy")
             except Exception as e:
                 logger.debug(f"Could not cache pricing data: {e}")
             
