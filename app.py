@@ -3990,63 +3990,61 @@ def update_pricing_cache_background():
     Background function to update pricing cache without blocking the main request
     """
     try:
-        # Ensure we have proper application context for database operations
-        with app.app_context():
-            from models import OpenRouterModel
+        from models import OpenRouterModel
+        
+        # Get fresh data from database
+        db_models = OpenRouterModel.query.all()
+        
+        if db_models:
+            prices = {}
             
-            # Get fresh data from database
-            db_models = OpenRouterModel.query.all()
-            
-            if db_models:
-                prices = {}
-                
-                for db_model in db_models:
-                    try:
-                        model_data = {
-                            'model_name': db_model.name,
-                            'input_price': float(db_model.input_price_usd_million / 1000000) if db_model.input_price_usd_million else 0,
-                            'output_price': float(db_model.output_price_usd_million / 1000000) if db_model.output_price_usd_million else 0,
-                            'cost_band': db_model.cost_band,
-                            'is_free': db_model.is_free,
-                            'is_multimodal': db_model.is_multimodal,
-                            'supports_vision': db_model.is_multimodal,
-                            'supports_pdf': db_model.supports_pdf,
-                            'is_reasoning': db_model.supports_reasoning,
-                            'context_length': db_model.context_length,
-                            'description': db_model.description,
-                            'elo_score': db_model.elo_score
-                        }
-                        prices[db_model.model_id] = model_data
-                    except Exception as model_error:
-                        logger.debug(f"Error processing model {db_model.model_id} in background: {model_error}")
-                        continue
-                
-                # Create response data
-                response_data = {
-                    'success': True,
-                    'prices': prices,
-                    'last_updated': datetime.datetime.utcnow().isoformat()
-                }
-                
-                # Update cache
+            for db_model in db_models:
                 try:
-                    from api_cache import get_redis_client
-                    redis_client = get_redis_client('cache')
+                    model_data = {
+                        'model_name': db_model.name,
+                        'input_price': float(db_model.input_price_usd_million / 1000000) if db_model.input_price_usd_million else 0,
+                        'output_price': float(db_model.output_price_usd_million / 1000000) if db_model.output_price_usd_million else 0,
+                        'cost_band': db_model.cost_band,
+                        'is_free': db_model.is_free,
+                        'is_multimodal': db_model.is_multimodal,
+                        'supports_vision': db_model.is_multimodal,
+                        'supports_pdf': db_model.supports_pdf,
+                        'is_reasoning': db_model.supports_reasoning,
+                        'context_length': db_model.context_length,
+                        'description': db_model.description,
+                        'elo_score': db_model.elo_score
+                    }
+                    prices[db_model.model_id] = model_data
+                except Exception as model_error:
+                    logger.debug(f"Error processing model {db_model.model_id} in background: {model_error}")
+                    continue
+            
+            # Create response data
+            response_data = {
+                'success': True,
+                'prices': prices,
+                'last_updated': datetime.datetime.utcnow().isoformat()
+            }
+            
+            # Update cache
+            try:
+                from api_cache import get_redis_client
+                redis_client = get_redis_client('cache')
+                
+                if redis_client:
+                    import json
+                    response_json = json.dumps(response_data)
                     
-                    if redis_client:
-                        import json
-                        response_json = json.dumps(response_data)
-                        
-                        # Store as fresh cache (5 minutes)
-                        redis_client.setex('cache:pricing_data_fresh', 300, response_json)
-                        
-                        # Store as stale cache (24 hours) for fallback
-                        redis_client.setex('cache:pricing_data_stale', 86400, response_json)
-                        
-                        logger.info("Background cache update completed successfully")
-                except Exception as cache_error:
-                    logger.debug(f"Background cache update failed: {cache_error}")
+                    # Store as fresh cache (5 minutes)
+                    redis_client.setex('cache:pricing_data_fresh', 300, response_json)
                     
+                    # Store as stale cache (24 hours) for fallback
+                    redis_client.setex('cache:pricing_data_stale', 86400, response_json)
+                    
+                    logger.info("Background cache update completed successfully")
+            except Exception as cache_error:
+                logger.debug(f"Background cache update failed: {cache_error}")
+                
     except Exception as e:
         logger.debug(f"Background pricing update failed: {e}")
 
