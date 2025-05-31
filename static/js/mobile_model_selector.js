@@ -37,6 +37,37 @@ document.addEventListener('DOMContentLoaded', function() {
     // Init variables
     let currentPresetId = null;
     
+    // Function to update mobile panel with current model assignments
+    function updateMobilePanelLabels() {
+        console.log('Mobile: Updating panel labels with current model assignments');
+        
+        // Get current model assignments from desktop preset buttons
+        for (let i = 1; i <= 6; i++) {
+            const desktopButton = document.querySelector(`.model-preset-btn[data-preset-id="${i}"]`);
+            const mobileLabel = document.getElementById(`mobile-selected-model-${i}`);
+            
+            if (desktopButton && mobileLabel) {
+                const currentModelSpan = desktopButton.querySelector('.current-model');
+                if (currentModelSpan) {
+                    const currentModel = currentModelSpan.textContent.trim();
+                    mobileLabel.textContent = currentModel;
+                    console.log(`Mobile: Updated preset ${i} label to: ${currentModel}`);
+                } else {
+                    // Fallback to default labels
+                    const defaultLabels = {
+                        '1': 'General Model',
+                        '2': 'Alternative Model', 
+                        '3': 'Reasoning Model',
+                        '4': 'Vision Model',
+                        '5': 'Search Model',
+                        '6': 'Free Model'
+                    };
+                    mobileLabel.textContent = defaultLabels[i] || 'Model';
+                }
+            }
+        }
+    }
+    
     // Helper function to check if cache is near expiry
     function isNearExpiry() {
         const timestampKey = 'gloriamundo_model_cache_timestamp';
@@ -108,11 +139,67 @@ document.addEventListener('DOMContentLoaded', function() {
         populateModelListManually(filteredModels, presetId);
     }
     
-    // Manual model list population as fallback
+    // Manual model list population with improved styling
     function populateModelListManually(models, presetId) {
         if (!mobileModelList) return;
         
         // Filter models based on preset if needed
+        let filteredModels = models;
+        
+        if (filteredModels.length === 0) {
+            mobileModelList.innerHTML = '<li class="mobile-model-item no-models">No models available for this preset</li>';
+            return;
+        }
+        
+        // Create model items with desktop-style formatting
+        mobileModelList.innerHTML = filteredModels.map(model => {
+            const isSelected = isModelSelected(model.id, presetId);
+            const costBandClass = model.cost_band ? model.cost_band.replace(/\$/g, 'dollar') : 'unknown';
+            const contextLength = model.context_length ? `${(model.context_length / 1000).toFixed(0)}k` : '';
+            
+            // Create description preview (first 100 chars)
+            const description = model.description ? 
+                (model.description.length > 100 ? 
+                    model.description.substring(0, 100) + '...' : 
+                    model.description) : '';
+            
+            return `
+                <li class="mobile-model-item ${isSelected ? 'selected' : ''}" data-model-id="${model.id}">
+                    <div class="model-header">
+                        <div class="model-name">${model.model_name}</div>
+                        <div class="model-badges">
+                            <span class="cost-band cost-${costBandClass}">${model.cost_band || '?'}</span>
+                            ${contextLength ? `<span class="context-length">${contextLength}</span>` : ''}
+                            ${model.is_free ? '<span class="free-badge">FREE</span>' : ''}
+                            ${model.supports_vision ? '<span class="vision-badge">👁</span>' : ''}
+                            ${model.supports_pdf ? '<span class="pdf-badge">📄</span>' : ''}
+                        </div>
+                    </div>
+                    ${description ? `<div class="model-description">${description}</div>` : ''}
+                    <div class="model-pricing">
+                        ${model.input_price ? `Input: $${(model.input_price * 1000).toFixed(3)}/1k` : ''}
+                        ${model.output_price ? ` • Output: $${(model.output_price * 1000).toFixed(3)}/1k` : ''}
+                    </div>
+                    ${isSelected ? '<i class="fa-solid fa-check selected-icon"></i>' : ''}
+                </li>
+            `;
+        }).join('');
+        
+        // Add click handlers for model selection
+        const modelItems = mobileModelList.querySelectorAll('.mobile-model-item');
+        modelItems.forEach(item => {
+            item.addEventListener('click', function() {
+                const modelId = this.getAttribute('data-model-id');
+                selectMobileModel(modelId, presetId);
+            });
+        });
+        
+        console.log(`Mobile: Populated ${filteredModels.length} models for preset ${presetId}`);
+    }
+    
+    // Continue with original forEach implementation for compatibility
+    function populateModelListManuallyLegacy(models, presetId) {
+        if (!mobileModelList) return;
         let filteredModels = models;
         
         // Create model items
@@ -338,7 +425,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Event handlers
     if (mobilePanelToggle) {
-        mobilePanelToggle.addEventListener('click', showMobileModelPanel);
+        mobilePanelToggle.addEventListener('click', function() {
+            updateMobilePanelLabels(); // Update labels before showing panel
+            showMobileModelPanel();
+        });
     }
     
     if (mobilePanelClose) {

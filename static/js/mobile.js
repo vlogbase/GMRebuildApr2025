@@ -180,7 +180,7 @@ window.addEventListener('load', function() {
         if (mobilePresetButtons.length > 0) {
             console.log('Mobile: Dedicated mobile buttons found, adding handlers to mobile buttons');
             
-            // Add click handlers to mobile preset buttons to open the model selector
+            // Add click handlers to mobile preset buttons to directly activate presets
             mobilePresetButtons.forEach(button => {
                 const presetId = button.getAttribute('data-preset-id');
                 
@@ -188,32 +188,13 @@ window.addEventListener('load', function() {
                     e.preventDefault();
                     e.stopPropagation();
                     
-                    // Try to open the desktop model selector for this preset
-                    if (typeof window.openModelSelector === 'function') {
-                        console.log('Mobile: Opening model selector for preset:', presetId);
-                        window.openModelSelector(presetId, button);
+                    // Directly activate the preset (like clicking the main desktop preset button)
+                    if (typeof window.selectPresetButton === 'function') {
+                        console.log('Mobile: Activating preset:', presetId);
+                        window.selectPresetButton(presetId);
                     } else {
-                        console.error('Mobile: openModelSelector function not found');
+                        console.error('Mobile: selectPresetButton function not found');
                     }
-                });
-                
-                // Also add long press for direct preset selection
-                let longPressTimer;
-                button.addEventListener('touchstart', function(e) {
-                    longPressTimer = setTimeout(() => {
-                        if (typeof window.selectPresetButton === 'function') {
-                            console.log('Mobile: Long press - selecting preset:', presetId);
-                            window.selectPresetButton(presetId);
-                        }
-                    }, 500);
-                });
-                
-                button.addEventListener('touchend', function(e) {
-                    clearTimeout(longPressTimer);
-                });
-                
-                button.addEventListener('touchcancel', function(e) {
-                    clearTimeout(longPressTimer);
                 });
             });
             
