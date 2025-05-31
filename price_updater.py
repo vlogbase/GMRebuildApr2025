@@ -418,17 +418,18 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
             output_price_str = pricing.get('completion', '0')
             
             # Convert string prices to float, handling any format issues
+            # Skip models with invalid pricing data instead of defaulting to 0
             try:
                 input_price = float(input_price_str) if input_price_str else 0
             except ValueError:
-                logger.warning(f"Invalid input price format for {model_id}: {input_price_str}, using 0")
-                input_price = 0
+                logger.warning(f"Invalid input price format for {model_id}: {input_price_str}, skipping model")
+                continue
                 
             try:
                 output_price = float(output_price_str) if output_price_str else 0
             except ValueError:
-                logger.warning(f"Invalid output price format for {model_id}: {output_price_str}, using 0")
-                output_price = 0
+                logger.warning(f"Invalid output price format for {model_id}: {output_price_str}, skipping model")
+                continue
             
             # Check if model has multimodal capabilities from architecture
             architecture = model.get('architecture', {})
@@ -533,17 +534,25 @@ def fetch_and_store_openrouter_prices(force_update=False) -> bool:
                         db_model = OpenRouterModel.query.get(model_id)
                         
                         if db_model:
-                            # Update existing model
+                            # Update existing model - preserve existing prices if new ones aren't valid
                             db_model.name = model_data['model_name']
                             
                             # Find the original model object to get description
                             original_model = next((m for m in models_data.get('data', []) if m.get('id') == model_id), {})
                             db_model.description = original_model.get('description', '')
                             
-                            # Update pricing and other details
+                            # Update pricing and other details - only update if we have valid new pricing
                             db_model.context_length = model_data['context_length'] if isinstance(model_data['context_length'], int) else None
-                            db_model.input_price_usd_million = model_data['input_price']
-                            db_model.output_price_usd_million = model_data['output_price']
+                            
+                            # Only update prices if the new data is valid (not just preserving existing)
+                            new_input_price = model_data['input_price']
+                            new_output_price = model_data['output_price']
+                            
+                            # Update pricing if we have valid new data
+                            if new_input_price is not None and new_output_price is not None:
+                                db_model.input_price_usd_million = new_input_price
+                                db_model.output_price_usd_million = new_output_price
+                            # Otherwise, keep existing prices unchanged
                             db_model.is_multimodal = model_data['is_multimodal']
                             db_model.supports_pdf = model_data['supports_pdf']
                             db_model.cost_band = model_data['cost_band']
