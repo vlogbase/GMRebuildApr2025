@@ -1,18 +1,25 @@
+#!/usr/bin/env python3
 """
-Test workflow to verify the credit validation and conversation loading fixes
+Test workflow to verify the 4 mobile fixes
 """
-import os
+
+import subprocess
 import sys
+import os
 
 def run():
-    """Run the Flask application to test fixes"""
-    os.environ['FLASK_ENV'] = 'development'
-    os.environ['FLASK_DEBUG'] = '1'
-    
-    # Import and run the app
-    from app import app
-    print("Starting Flask app to test fixes...")
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    """Start the Flask app to test the fixes"""
+    try:
+        # Change to the project directory
+        os.chdir('/home/runner/workspace')
+        
+        # Start the Flask application
+        print("Starting Flask application...")
+        subprocess.run([sys.executable, 'app.py'], check=True)
+    except KeyboardInterrupt:
+        print("\nShutting down...")
+    except Exception as e:
+        print(f"Error starting app: {e}")
 
 if __name__ == "__main__":
     run()
