@@ -2227,7 +2227,7 @@ def rename_conversation(conversation_id):
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
 
-@app.route('/api/create-conversation', methods=['POST'])
+@app.route('/api/conversations', methods=['POST'])
 @login_required
 def create_conversation():
     """Create a new conversation for the current user"""
