@@ -4366,9 +4366,9 @@ code {
     z-index: 1000;
     transform: translateY(100%);
     transition: transform 0.3s ease;
-    max-height: 50vh; /* Compact bottom sheet */
     display: flex;
     flex-direction: column;
+    /* Remove height constraints to let content determine size */
 }
 
 .mobile-model-panel.visible,
@@ -4411,9 +4411,7 @@ code {
 .panel-content {
     padding: 8px 0;
     overflow-y: auto;
-    flex: 0 1 auto; /* Allow content to size naturally */
-    background-color: rgba(255, 0, 0, 0.1); /* Debug: red background */
-    min-height: 300px; /* Debug: force minimum height */
+    flex: 0 0 auto; /* Size to content only */
 }
 
 /* Refined panel preset buttons - matches the minimalist aesthetic */
