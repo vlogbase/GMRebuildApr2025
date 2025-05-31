@@ -47,6 +47,20 @@ export async function loadConversation(conversationId) {
         return data;
     } catch (error) {
         console.error('Error loading conversation:', error);
+        
+        // Check if this is a 404 error (conversation not found)
+        if (error.message.includes('404')) {
+            console.warn(`Conversation ${conversationId} not found, removing from sidebar`);
+            // Remove the conversation from the sidebar since it doesn't exist
+            const conversationElement = document.querySelector(`[data-conversation-id="${conversationId}"]`);
+            if (conversationElement) {
+                conversationElement.remove();
+            }
+            // Redirect to home page
+            window.location.href = '/';
+            return;
+        }
+        
         throw error;
     }
 }

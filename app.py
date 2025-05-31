@@ -4653,11 +4653,13 @@ def get_conversation_messages(conversation_id):
         # Check if conversation exists
         conversation = db.session.get(Conversation, conversation_id)
         if not conversation:
-            abort(404, description="Conversation not found")
+            logger.warning(f"Conversation {conversation_id} not found in database for user {current_user.id}")
+            return jsonify({"error": "Conversation not found"}), 404
             
         # Verify the conversation belongs to the current user
         if conversation.user_id != current_user.id:
-            abort(403, description="You don't have permission to access this conversation")
+            logger.warning(f"User {current_user.id} attempted to access conversation {conversation_id} owned by user {conversation.user_id}")
+            return jsonify({"error": "You don't have permission to access this conversation"}), 403
             
         # Get all messages for this conversation, ordered by creation time
         messages = Message.query.filter_by(conversation_id=conversation_id).order_by(Message.created_at).all()
