@@ -4864,7 +4864,7 @@ code {
     .chat-messages {
         flex: 1;
         padding: 20px;
-        padding-bottom: 400px; /* Increased padding to ensure last message is fully visible */
+        padding-bottom: 700px; /* Increased padding to ensure last message and action buttons are fully visible */
         overflow-y: auto;
         overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
@@ -4881,7 +4881,13 @@ code {
     .sidebar-content,
     .mobile-model-panel,
     .modal-body {
-        padding-bottom: 400px; /* Same padding as chat for consistent scrolling */
+        padding-bottom: 700px; /* Increased padding for better accessibility of bottom elements */
+    }
+
+    /* Ensure action buttons (copy/share) have extra space below them */
+    .message-actions,
+    .message-metadata {
+        margin-bottom: 20px; /* Additional space below action buttons */
     }
     
     /* Fixed input area at the bottom for mobile */
@@ -5366,7 +5372,7 @@ code {
         }
         
         .chat-messages {
-            padding-bottom: calc(250px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(700px + env(safe-area-inset-bottom, 0px));
             /* Force proper scrolling on iOS */
             overflow-y: scroll !important;
             -webkit-overflow-scrolling: touch !important;
