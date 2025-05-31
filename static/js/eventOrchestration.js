@@ -174,6 +174,12 @@ function setupFileUploadEventListeners() {
             console.log('📷 Camera button clicked');
             await startCameraCapture();
         });
+        
+        cameraButton.addEventListener('touchstart', async (e) => {
+            e.preventDefault();
+            console.log('📷 Camera button tapped (touchstart)');
+            await startCameraCapture();
+        });
     }
     
     // Capture button
@@ -509,6 +515,17 @@ export function lockPremiumFeatures(isAuthenticated, userCreditBalance) {
                 e.preventDefault();
                 selectPresetButton(presetId);
             });
+            
+            // Re-add dropdown handler for free preset (Preset 6)
+            if (presetId === '6') {
+                const selectorContainer = newBtn.querySelector('.selector-icon-container');
+                if (selectorContainer) {
+                    selectorContainer.addEventListener('click', e => {
+                        e.preventDefault(); e.stopPropagation();
+                        window.openModelSelector(presetId, newBtn);
+                    });
+                }
+            }
         }
     });
 }

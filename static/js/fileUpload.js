@@ -138,7 +138,8 @@ export function showImagePreview(imageUrl) {
     const preview = document.createElement('div');
     preview.className = 'image-preview';
     preview.innerHTML = `
-        <img src="${imageUrl}" alt="Preview" class="preview-image">
+        <img src="${imageUrl}" alt="Preview" class="preview-image"
+             style="max-width:100%; height:auto;"/>
         <button class="remove-image" onclick="this.parentElement.remove()">×</button>
     `;
     previewArea.appendChild(preview);
