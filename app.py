@@ -32,6 +32,7 @@ from azure.storage.blob import BlobServiceClient, ContentSettings  # For Azure B
 from apscheduler.schedulers.background import BackgroundScheduler
 from database import db, init_app
 from price_updater import fetch_and_store_openrouter_prices, model_prices_cache
+from ensure_app_context import with_app_context
 
 # Check if we should enable advanced memory features
 ENABLE_MEMORY_SYSTEM = os.environ.get('ENABLE_MEMORY_SYSTEM', 'false').lower() == 'true'
@@ -744,6 +745,7 @@ def get_user_identifier():
 
     return session['user_identifier']
 
+@with_app_context
 def generate_summary(conversation_id, retry_attempt=0, max_retries=2):
     """
     Generate a short, descriptive title for a conversation using OpenRouter LLM.
