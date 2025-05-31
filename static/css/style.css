@@ -4838,13 +4838,10 @@ code {
         height: 100dvh; /* Use dynamic viewport height if supported */
         width: 100%;
         max-width: 100vw;
-        overflow-y: auto;
-        overflow-x: hidden;
-        -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+        overflow: hidden; /* Remove overflow from container */
         display: flex;
         flex-direction: column;
         position: relative;
-        scroll-behavior: smooth; /* Smooth scrolling behavior */
     }
     
     .chat-container {
@@ -4867,10 +4864,13 @@ code {
     .chat-messages {
         flex: 1;
         padding: 20px;
-        /* Ensure enough bottom padding to account for fixed input and keyboard */
-        padding-bottom: 250px; /* Increased by 50px to ensure copy/share buttons and metadata are visible */
-        min-height: calc(100vh - 120px); /* Ensure scrollable area */
-        min-height: calc(100dvh - 120px); /* Use dynamic viewport height if supported */
+        padding-bottom: 250px; /* Ensure enough bottom padding to account for fixed input and keyboard */
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        height: 0; /* Allow flex to control height */
+        min-height: 0; /* Allow flex shrinking */
     }
     
     /* Fixed input area at the bottom for mobile */
@@ -5351,7 +5351,33 @@ code {
         }
         
         .chat-messages {
-            padding-bottom: calc(200px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(250px + env(safe-area-inset-bottom, 0px));
+            /* Force proper scrolling on iOS */
+            overflow-y: scroll !important;
+            -webkit-overflow-scrolling: touch !important;
+            transform: translateZ(0); /* Force hardware acceleration */
+        }
+        
+        /* Fix message bubble sizing on iOS */
+        .message-content {
+            max-width: none !important;
+            width: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
+        }
+        
+        /* Fix message wrapper sizing */
+        .message {
+            width: 100% !important;
+            max-width: none !important;
+            min-height: auto !important;
+        }
+        
+        /* Ensure proper text wrapping in bubbles */
+        .message-content p {
+            word-wrap: break-word !important;
+            overflow-wrap: break-word !important;
+            white-space: pre-wrap !important;
         }
         
         /* Fix input container positioning on iOS when keyboard appears */
