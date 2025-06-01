@@ -3909,8 +3909,8 @@ def _fetch_openrouter_models(force_refresh=False):
                                 'description': model.description,
                                 'context_length': model.context_length,
                                 'pricing': {
-                                    'prompt': model.input_price_usd_million,
-                                    'completion': model.output_price_usd_million
+                                    'prompt': model.input_price_usd_million / 1000000,
+                                    'completion': model.output_price_usd_million / 1000000
                                 },
                                 'is_free': model.is_free,
                                 'is_multimodal': model.is_multimodal,
@@ -3961,8 +3961,8 @@ def _fetch_openrouter_models(force_refresh=False):
                         'description': model.description,
                         'context_length': model.context_length,
                         'pricing': {
-                            'prompt': model.input_price_usd_million,
-                            'completion': model.output_price_usd_million
+                            'prompt': model.input_price_usd_million / 1000000,
+                            'completion': model.output_price_usd_million / 1000000
                         },
                         'is_free': model.is_free,
                         'is_multimodal': model.is_multimodal,
